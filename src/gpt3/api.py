@@ -60,10 +60,6 @@
 #|       'object': 'text_completion'}
 #|
 #|
-#|  ACKNOWLEDGEMENTS:
-#|
-#|      Thanks are due to C.H. for providing useful code snippets!
-#|
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 #|==============================================================================
