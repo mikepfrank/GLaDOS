@@ -1,13 +1,95 @@
 #|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #|
+#|  FILE NAME:  gpt3/api.py                             [Python 3 module file]
 #|
+#|  DESCRIPTION:
+#|
+#|      This module implements a convenience wrapper around OpenAI's API
+#|      for accessing their GPT-3 language model.  The main feature that
+#|      this wrapper provides at the moment is remembering the current
+#|      values of API parameters.
+#|
+#|  PUBLIC CLASSES:
+#|
+#|      GPT3Core - A connection to the core API w. persistent parameters.
+#|
+#|  PUBLIC GLOBALS:
+#|
+#|      Note: The following global 'constants' can be modified 
+#|      dynamically by the user. They will affect the properties of
+#|      subsequently-created instances of GPT3Core, but not of the
+#|      existing instances.  To modify an existing instance, access
+#|      its .conf property.
+#|
+#|          DEF_ENGINE  - GPT-3 engine name (default 'davinci').
+#|          DEF_TOKENS  - Number of tokens to output (def. 42).
+#|          DEF_TEMP    - Default temperature (default is 0.5).
+#|          DEF_STOP    - Stop string or strings (3 newlines).
+#|
+#|  EXAMPLES:
+#|
+#|      /----------------------------------------------------------\
+#|      | #!/usr/bin/python3                                       |
+#|      |                                                          |
+#|      | from pprint   import pprint                              |
+#|      | from gpt3.api import GPT3Core                            |
+#|      |                                                          |
+#|      | gpt3 = GPT3Core()                                        |
+#|      |   # Makes a new instance w. default parameter values.    |
+#|      |                                                          |
+#|      | result = gpt3.genCompletion("Mary had a little lamb, ")  |
+#|      |                                                          |
+#|      | pprint(result)                                           |
+#|      \----------------------------------------------------------/
+#|          |
+#|          V 
+#|          
+#|      {'choices': [{'finish_reason': 'length',
+#|                    'index': 0,
+#|                    'logprobs': None,
+#|                    'text': '\n'
+#|                            'Its fleece was white as snow, \n'
+#|                            'And everywhere that Mary went, \n'
+#|                            'The lamb was sure to go.\n'
+#|                            '\n'
+#|                            'It followed her to school one day, \n'
+#|                            'That was against the'}],
+#|       'created': 1601615096,
+#|       'id': 'cmpl-fTJ18hALZLAlQCvPOxFRrjQL',
+#|       'model': 'davinci:2020-05-03',
+#|       'object': 'text_completion'}
+#|
+#|
+#|  ACKNOWLEDGEMENTS:
+#|
+#|      Thanks are due to C.H. for providing useful code snippets!
+#|
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-import openai
-import backoff
+#|==============================================================================
+#|  Module imports.                                           [code section]
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+import openai       # OpenAI's Python bindings for their REST API to GPT-3.
+import backoff      # Utility module for exponential backoff on failures.
 
 #|==============================================================================
 #|  Global constants.                                           [code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+    #|-----------------------------------------------------------------
+    #| These are the names you get if you do 'from gpt3.api import *'. 
+    #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+global __all__
+__all__ = [
+    'DEF_ENGINE',       # Default GPT-3 engine name ('davinci').
+    'DEF_TOKENS',       # Default number of tokens to return (42).
+    'DEF_TEMP',         # Default temperature value (normally 0.5).
+    'DEF_STOP',         # Default stop string or list of strings.
+    'GPT3APIConfig',    # A collection of API parameter settings.
+    'GPT3Core'          # Instance of the API that remembers its config.
+    ]
 
     #|------------------------------------------------------------------
     #|  These constants provide default values for GPT-3's parameters.
@@ -16,11 +98,11 @@ import backoff
 global  DEF_ENGINE          # Default GPT-3 engine name.
 DEF_ENGINE  = 'davinci'     # I believe this is the biggest one.
 
-global  DEF_TOKENS  # Default number of tokens to return.
-DEF_TOKENS  = 42    # Of course.
+global  DEF_TOKENS      # Default number of tokens to return.
+DEF_TOKENS  = 42        # Of course.
 
-global  DEF_TEMP    # Default temperature value.
-DEF_TEMP    = 0.5   # Is this reasonable?
+global  DEF_TEMP        # Default temperature value.
+DEF_TEMP    = 0.5       # Is this reasonable?
 
 global  DEF_STOP        # Default stop string (or list of up to 4).
 DEF_STOP    = "\n\n\n"  # Use two blank lines as stop.
@@ -98,6 +180,9 @@ class GPT3APIConfig:
 
 class GPT3Core:
 
+    """An instance of this class represents a connection to the core GPT-3 
+        API that remembers its parameter settings."""
+
     #|--------------------------------------------------------------------------
     #|  Instance private data members for class GPT3Core.
     #|
@@ -126,9 +211,9 @@ class GPT3Core:
         #|
         #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-        	#------------------------------------------------------
-        	# This does graceful retries in case of REST failures.
-        	# See https://pypi.org/project/backoff/
+            #------------------------------------------------------
+            # This does graceful retries in case of REST failures.
+            # See https://pypi.org/project/backoff/
  
     @backoff.on_exception(backoff.expo,
                           (openai.error.APIError))
