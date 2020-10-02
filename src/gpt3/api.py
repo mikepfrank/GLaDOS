@@ -1,66 +1,72 @@
 #|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#|
-#|  FILE NAME:  gpt3/api.py                             [Python 3 module file]
-#|
-#|  DESCRIPTION:
-#|
-#|      This module implements a convenience wrapper around OpenAI's API
-#|      for accessing their GPT-3 language model.  The main feature that
-#|      this wrapper provides at the moment is remembering the current
-#|      values of API parameters.
-#|
-#|  PUBLIC CLASSES:
-#|
-#|      GPT3Core - A connection to the core API w. persistent parameters.
-#|
-#|  PUBLIC GLOBALS:
-#|
-#|      Note: The following global 'constants' can be modified 
-#|      dynamically by the user. They will affect the properties of
-#|      subsequently-created instances of GPT3Core, but not of the
-#|      existing instances.  To modify an existing instance, access
-#|      its .conf property.
-#|
-#|          DEF_ENGINE  - GPT-3 engine name (default 'davinci').
-#|          DEF_TOKENS  - Number of tokens to output (def. 42).
-#|          DEF_TEMP    - Default temperature (default is 0.5).
-#|          DEF_STOP    - Stop string or strings (3 newlines).
-#|
-#|  EXAMPLES:
-#|
-#|      /----------------------------------------------------------\
-#|      | #!/usr/bin/python3                                       |
-#|      |                                                          |
-#|      | from pprint   import pprint                              |
-#|      | from gpt3.api import GPT3Core                            |
-#|      |                                                          |
-#|      | gpt3 = GPT3Core()                                        |
-#|      |   # Makes a new instance w. default parameter values.    |
-#|      |                                                          |
-#|      | result = gpt3.genCompletion("Mary had a little lamb, ")  |
-#|      |                                                          |
-#|      | pprint(result)                                           |
-#|      \----------------------------------------------------------/
-#|          |
-#|          V 
-#|          
-#|      {'choices': [{'finish_reason': 'length',
-#|                    'index': 0,
-#|                    'logprobs': None,
-#|                    'text': '\n'
-#|                            'Its fleece was white as snow, \n'
-#|                            'And everywhere that Mary went, \n'
-#|                            'The lamb was sure to go.\n'
-#|                            '\n'
-#|                            'It followed her to school one day, \n'
-#|                            'That was against the'}],
-#|       'created': 1601615096,
-#|       'id': 'cmpl-fTJ18hALZLAlQCvPOxFRrjQL',
-#|       'model': 'davinci:2020-05-03',
-#|       'object': 'text_completion'}
-#|
-#|
+#|  FILE NAME:      gpt3/api.py                         [Python 3 module file]
+"""
+    MODULE NAME:    gpt3/api                                [Python 3 module]
+
+    DESCRIPTION:
+
+        This module implements a convenience wrapper around OpenAI's API
+        for accessing their GPT-3 language models.  The main feature that
+        this wrapper provides at the moment is remembering the current
+        values of various API parameters.
+
+    PUBLIC CLASSES:
+
+        GPT3Core - A connection to the core GPT-3 system that maintains
+            its own persistent API parameters.
+
+        GPT3APIConfig - Tracks a set of API parameter settings.
+            These can also be modified dynamically.
+
+    PUBLIC GLOBALS:
+
+        Note: The following global module 'constants' can be modified 
+        dynamically by the user. They will affect the properties of
+        subsequently-created instances of GPT3Core, but not of the
+        existing instances.  To modify an existing instance, access
+        its .conf property.
+
+            DEF_ENGINE  - GPT-3 engine name (default 'davinci').
+            DEF_TOKENS  - Number of tokens to output (def. 42).
+            DEF_TEMP    - Default temperature (default is 0.5).
+            DEF_STOP    - Stop string or strings (3 newlines).
+
+    EXAMPLES:
+
+        /----------------------------------------------------------\
+        | #!/usr/bin/python3                                       |
+        |                                                          |
+        | from pprint   import pprint                              |
+        | from gpt3.api import GPT3Core                            |
+        |                                                          |
+        | gpt3 = GPT3Core()                                        |
+        |   # Makes a new instance w. default parameter values.    |
+        |                                                          |
+        | result = gpt3.genCompletion("Mary had a little lamb, ")  |
+        |                                                          |
+        | pprint(result)                                           |
+        \----------------------------------------------------------/
+            |
+            V 
+            
+        {'choices': [{'finish_reason': 'length',
+                      'index': 0,
+                      'logprobs': None,
+                      'text': '\n'
+                              'Its fleece was white as snow, \n'
+                              'And everywhere that Mary went, \n'
+                              'The lamb was sure to go.\n'
+                              '\n'
+                              'It followed her to school one day, \n'
+                              'That was against the'}],
+         'created': 1601615096,
+         'id': 'cmpl-fTJ18hALZLAlQCvPOxFRrjQL',
+         'model': 'davinci:2020-05-03',
+         'object': 'text_completion'}
+
+"""
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 
 #|==============================================================================
 #|  Module imports.                                           [code section]
@@ -68,6 +74,7 @@
 
 import openai       # OpenAI's Python bindings for their REST API to GPT-3.
 import backoff      # Utility module for exponential backoff on failures.
+
 
 #|==============================================================================
 #|  Global constants.                                           [code section]
@@ -101,7 +108,7 @@ global  DEF_TEMP        # Default temperature value.
 DEF_TEMP    = 0.5       # Is this reasonable?
 
 global  DEF_STOP        # Default stop string (or list of up to 4).
-DEF_STOP    = "\n\n\n"  # Use two blank lines as stop.
+DEF_STOP    = "\n\n\n"  # Use 3 newlines (two blank lines) as stop.
 
 
     #|==========================================================================
@@ -141,15 +148,18 @@ class GPT3APIConfig:
         #| Initializer for class GPT3APIConfig.
         #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-    def __init__(inst, engId:str=DEF_ENGINE, maxTokens:int=DEF_TOKENS, 
-                    temp:float=DEF_TEMP, topP:float=None, 
+    def __init__(inst, engineId:str=DEF_ENGINE, maxTokens:int=DEF_TOKENS, 
+                    temperature:float=DEF_TEMP, topP:float=None, 
                     nCompletions:int=1, stream:bool=False,
                     logProbs:int=0, echo:bool=False, stop=DEF_STOP,
                     presPen:float=0, freqPen:float=0, bestOf:int=0):
+
+            """Initialize a GPT-3 API configuration, reverting to
+                default values for un-supplied parameters."""
                     
-        inst.engineId           = engId
+        inst.engineId           = engineId
         inst.maxTokens          = maxTokens
-        inst.temperature        = temp
+        inst.temperature        = temperature
         inst.topP               = topP
         inst.nCompletions       = nCompletions
         inst.stream             = stream
@@ -160,30 +170,77 @@ class GPT3APIConfig:
         inst.frequencyPenalty   = freqPen
         inst.bestOf             = bestOf
     
+    
+    def modify(self, engineId:str=None, maxTokens:int=None, 
+                    temperature:float=None, topP:float=None, 
+                    nCompletions:int=None, stream:bool=False,
+                    logProbs:int=None, echo:bool=None, stop=None,
+                    presPen:float=None, freqPen:float=None, bestOf:int=None):
 
-    def __str__(inst):
-        return f"""GPT3 Configuration:
-    			engine_id         = {inst.engineId}
-                        max_tokens        = {inst.maxTokens}
-                        temperature       = {inst.temperature}
-                        top_p             = {inst.topP}
-                        n                 = {inst.nCompletions}
-                        stream            = {inst.stream}
-                        logprobs          = {inst.logProbs}
-                        echo              = {inst.echo}
-                        stop              = {repr(inst.stop)}
-                        presence_penalty  = {inst.presencePenalty}
-                        frequency_penalty = {inst.frequencyPenalty}
-                        best_of           = {inst.bestOf}
-    		   """
+            """Modify one or more parameter values in the configuration."""
+        
+        if engId        != None:    inst.engineId           = engId
+        if maxTokens    != None:    inst.maxTokens          = maxTokens
+        if temperature  != None:    inst.temperature        = temperature
+        if topP         != None:    inst.topP               = topP
+        if nCompletions != None:    inst.nCompletions       = nCompletions
+        if stream       != None:    inst.stream             = stream
+        if logProbs     != None:    inst.logProbs           = logProbs
+        if echo         != None:    inst.echo               = echo
+        if stop         != None:    inst.stop               = stop
+        if presPen      != None:    inst.presencePenalty    = presPen
+        if freqPen      != None:    inst.frequencyPenalty   = freqPen
+        if bestOf       != None:    inst.bestOf             = bestOf
 
+
+    def __str__(self):
+    
+        """A human-readable string description of the parameter values."""
+        
+        return f"""
+GPT3 Configuration:
+    engine_id         = {inst.engineId}
+    max_tokens        = {inst.maxTokens}
+    temperature       = {inst.temperature}
+    top_p             = {inst.topP}
+    n                 = {inst.nCompletions}
+    stream            = {inst.stream}
+    logprobs          = {inst.logProbs}
+    echo              = {inst.echo}
+    stop              = {repr(inst.stop)}
+    presence_penalty  = {inst.presencePenalty}
+    frequency_penalty = {inst.frequencyPenalty}
+    best_of           = {inst.bestOf}"""[1:]
 
     #|==========================================================================
     #|  
     #|  GPT3Core                                        [module public class]
     #|
-    #|      This class abstracts the core GPT-3 system.  An instance of 
-    #|      this class remembers its API configuration options.
+    #|      This class abstracts a connection to the core GPT-3 system.  
+    #|      An instance of this class remembers its API configuration 
+    #|      options.
+    #|
+    #|  Public interface:
+    #|
+    #|      .conf                                   [instance property]
+    #|
+    #|          Current API configuration of this core connection.
+    #|
+    #|      .adjustConf(params)                     [instance method]
+    #|
+    #|          Modify one or more API parameters of the connection.
+    #|
+    #|      .genCompletion(prompt)                  [instance method]
+    #|
+    #|          Generate a completion object from the given prompt.
+    #|
+    #|      .genString(prompt)                      [instance method]
+    #|
+    #|          Generate a single out string from the given prompt.
+    #|      
+    #|  Special methods:
+    #|
+    #|      __init__    - Instance initializer.
     #|
     #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -202,11 +259,11 @@ class GPT3Core:
         #|----------------------------------------------------------------------
         #| Initializer for class GPT3Core.
         #|
-        #|	USAGE:
+        #|  USAGE:
         #|
-        #|		core = GPT3Core()
-        #|		core = GPT3Core(config)
-        #|		core = GPT3Core(params)
+        #|      core = GPT3Core()           # Uses default parameter values.
+        #|      core = GPT3Core(config)     # Use this GPT3APIConfig object.
+        #|      core = GPT3Core(params)     # List of keyword arguments.
         #|
         #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -236,16 +293,44 @@ class GPT3Core:
 
         inst._configuration = config        # Remember our configuration.
 
-    @property
-    def conf(self):
-        """Get our current API configuration."""
-        return self._configuration
 
         #|----------------------------------------------------------------------
-        #|  genCompletion(prompt:string)                    [instance method]
+        #|  .conf                                   [instance public property]
+        #|
+        #|      Returns the API configuration object (instance of class
+        #|      GPT3AIConfig) that is associated with this connection to
+        #|      the core GPT-3 system.
+        #|
+        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+    @property
+    def conf(self):
+            """Get our current API configuration."""
+        return self._configuration
+
+
+        #|----------------------------------------------------------------------
+        #|  .adjustConf(params)                     [instance public method]
+        #|
+        #|      Adjusts the API parameter values of this connection to 
+        #|      the core GPT-3 system as specified by the argument list.
+        #|
+        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+    def adjustConf(self, *args, **kwargs):
+            """Adjust the API configuration as specified."""
+        self.conf.modify(*args, **kwargs)
+
+
+        #|----------------------------------------------------------------------
+        #|  .genCompletion(prompt:string)           [instance public method]
         #|
         #|      This method returns the raw completion of the given prompt,
-        #|      using the core's present API configuration.
+        #|      using the core's present API configuration.  We do graceful
+        #|      backoff and retry in case of REST call failures.
+        #|
+        #|      To do: Provide the option to do a temporary modification of
+        #|      one or more API parameters in the argument list.
         #|
         #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -258,9 +343,14 @@ class GPT3Core:
 
     def genCompletion(self, prompt):
     
+            """With automatic exponential backoff, query the server
+                for a completion object for the given prompt using the
+                connection's current API configuration."""
+    
             # The following code currently assumes that temperature is set,
             # and ignores top_p, stream, logprobs, echo, presence_penalty,
-            # frequency_penalty, and best_of (uses default values for these).
+            # frequency_penalty, and best_of (we revert to the built-in API 
+            # default values for these). TODO: Support more parameters.
     
         return openai.Completion.create(
             prompt      = prompt,
@@ -270,4 +360,21 @@ class GPT3Core:
             stop        = self.conf.stop,
             temperature = self.conf.temperature,    # Assuming this is set.
         )
+
+        #|----------------------------------------------------------------------
+        #|  .genString(prompt:string)               [instance public method]
+        #|
+        #|      This method returns a completion of the given prompt
+        #|      as a single string.  Uses .genCompletion() internally.
+        #|
+        #|      To do: Provide the option to do a temporary modification of
+        #|      one or more API parameters in the argument list.
+        #|
+        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+    
+    def genString(self, prompt):
+    
+            """Generate a single completion string for the given prompt."""
             
+        result = genCompletion(prompt)
+        return ''.join(result['choices'][0]['text'])
