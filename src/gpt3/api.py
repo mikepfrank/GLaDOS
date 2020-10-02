@@ -119,6 +119,17 @@ DEF_STOP    = "\n\n\n"  # Use 3 newlines (two blank lines) as stop.
     #|      GPT-3 API parameter values.  These can be modified dynamically
     #|      at runtime (i.e., in between different API calls).
     #|
+    #|  Public interface:
+    #|
+    #|		.modify(params)							[instance method]
+	#|
+	#|			Modify the specified parameters of the configuration.
+	#|
+    #|  Special methods:
+    #|
+    #|      __init__    - Instance initializer.
+	#|		__str__		- Display as a human-readable string.
+    #|
     #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 class GPT3APIConfig:
@@ -126,23 +137,23 @@ class GPT3APIConfig:
     """This class gathers together a set of parameter values for passing to the
         'completions' and/or 'completions/browser_stream' API calls."""
 
-    #|--------------------------------------------------------------------------
+    #/--------------------------------------------------------------------------
     #|  Instance public data members for class GPT3APIConfig. (See API docs.)
     #|
-    #|      engineId            [string]
-    #|      maxTokens           [intger]
-    #|      temperature         [number]
-    #|      topP                [number]
-    #|      nCompletions        [integer]
-    #|      stream              [boolean]
-    #|      logProbs            [integer]
-    #|      echo                [boolean]
-    #|      stop                [string or array]
-    #|      presencePenalty     [number]
-    #|      frequencyPenalty    [number]
-    #|      bestOf              [integer]
+    #|      .engineId            [string]
+    #|      .maxTokens           [intger]
+    #|      .temperature         [number]
+    #|      .topP                [number]
+    #|      .nCompletions        [integer]
+    #|      .stream              [boolean]
+    #|      .logProbs            [integer]
+    #|      .echo                [boolean]
+    #|      .stop                [string or array]
+    #|      .presencePenalty     [number]
+    #|      .frequencyPenalty    [number]
+    #|      .bestOf              [integer]
     #|
-    #|--------------------------------------------------------------------------
+    #\--------------------------------------------------------------------------
 
         #|----------------------------------------------------------------------
         #| Initializer for class GPT3APIConfig.
@@ -170,6 +181,14 @@ class GPT3APIConfig:
         inst.frequencyPenalty   = freqPen
         inst.bestOf             = bestOf
     
+	
+		#|----------------------------------------------------------------------
+		#|	.modify(params)								[instance public method]
+		#|
+		#|		Modify the specified parameters of the configuration to
+		#|		the given values.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
     
     def modify(self, engineId:str=None, maxTokens:int=None, 
                     temperature:float=None, topP:float=None, 
@@ -211,6 +230,9 @@ GPT3 Configuration:
     presence_penalty  = {inst.presencePenalty}
     frequency_penalty = {inst.frequencyPenalty}
     best_of           = {inst.bestOf}"""[1:]
+
+#__/ End class GPT3APIConfig.
+
 
     #|==========================================================================
     #|  
@@ -378,3 +400,9 @@ class GPT3Core:
             
         result = genCompletion(prompt)
         return ''.join(result['choices'][0]['text'])
+
+#__/ End class GPT3Core.
+
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#|	END FILE:	gpt3/api.py
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
