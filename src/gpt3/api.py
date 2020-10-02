@@ -146,9 +146,6 @@ class GPT3APIConfig:
                     nCompletions:int=1, stream:bool=False,
                     logProbs:int=0, echo:bool=False, stop=DEF_STOP,
                     presPen:float=0, freqPen:float=0, bestOf:int=0):
-    # def __init__(inst, engId=DEF_ENGINE, maxTokens=DEF_TOKENS, temp=DEF_TEMP, 
-    #                 topP=None, nCompletions=1, stream=False, logProbs=0, 
-    #                 echo=False, stop=DEF_STOP, presPen=0, freqPen=0, bestOf=0):
                     
         inst.engineId           = engId
         inst.maxTokens          = maxTokens
@@ -163,7 +160,23 @@ class GPT3APIConfig:
         inst.frequencyPenalty   = freqPen
         inst.bestOf             = bestOf
     
-#--------1---------2---------3---------4---------5---------6---------7---------8
+
+    def __str__(inst):
+        return f"""GPT3 Configuration:
+    			engine_id         = {inst.engineId}
+                        max_tokens        = {inst.maxTokens}
+                        temperature       = {inst.temperature}
+                        top_p             = {inst.topP}
+                        n                 = {inst.nCompletions}
+                        stream            = {inst.stream}
+                        logprobs          = {inst.logProbs}
+                        echo              = {inst.echo}
+                        stop              = {repr(inst.stop)}
+                        presence_penalty  = {inst.presencePenalty}
+                        frequency_penalty = {inst.frequencyPenalty}
+                        best_of           = {inst.bestOf}
+    		   """
+
 
     #|==========================================================================
     #|  
@@ -188,10 +201,39 @@ class GPT3Core:
 
         #|----------------------------------------------------------------------
         #| Initializer for class GPT3Core.
+        #|
+        #|	USAGE:
+        #|
+        #|		core = GPT3Core()
+        #|		core = GPT3Core(config)
+        #|		core = GPT3Core(params)
+        #|
         #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-    def __init__(inst, config:GPT3APIConfig=GPT3APIConfig()):
+    def __init__(inst, *args, **kwargs):
+
+            # If keyword args 'config=' is present, use that as the config.
+        
+        if 'config' in kwargs:
+            config = kwargs['config']
+        else:
+            config = None
+
+            # Otherwise, if the first argument is a GPT3APIConfig, use that as the config.
     
+        if config == None and len(args) > 0:
+            if args[0] != None and isinstance(args[0],GPT3APIConfig):
+                config = args[0]
+
+            # If no config was provided, then create one from the arguments.
+            # (In future, this should be changed to otherwise modify the provided
+            # config based on the remaining arguments.)
+
+        if config == None:
+            config = GPT3APIConfig(*args, **kwargs)
+
+        print("Creating new GPT3Core connection with configuration:\n", config)
+
         inst._configuration = config        # Remember our configuration.
 
     @property
