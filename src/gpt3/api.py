@@ -1,24 +1,9 @@
-# TODO: Write functionality for:
-#   - Getting the API key from a file
-#   - Configuring API parameters
-#   - Calling the API.
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#|
+#|
 
 import openai
 import backoff
-
-#|==============================================================================
-#|  Special module initialization.                              [code section]
-#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-    #------------------------------------------------------
-    # This does graceful retries in case of REST failures.
-    # See https://pypi.org/project/backoff/
- 
-@backoff.on_exception(backoff.expo,
-                      (openai.error.APIError))
-
-
-#--------1---------2---------3---------4---------5---------6---------7---------8
 
 #|==============================================================================
 #|  Global constants.                                           [code section]
@@ -40,20 +25,6 @@ DEF_TEMP    = 0.5   # Is this reasonable?
 global  DEF_STOP        # Default stop string (or list of up to 4).
 DEF_STOP    = "\n\n\n"  # Use two blank lines as stop.
 
-# Sample code from Coleman Hindes
-
-# def retry_openai(prompt):
-    # return openai.Completion.create(
-            # prompt=prompt,
-            # n=6,
-            # engine='davinci',
-            # max_tokens=700,
-            # stop=["\n\n\n"],
-            # temperature=0.7,
-            # logprobs=0,
-        # )
-        
-#--------1---------2---------3---------4---------5---------6---------7---------8
 
     #|==========================================================================
     #|
@@ -92,11 +63,14 @@ class GPT3APIConfig:
         #| Initializer for class GPT3APIConfig.
         #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-    def __init__(inst, engId:string=DEF_ENGINE, maxTokens:number=DEF_TOKENS, 
-                    temp:number=DEF_TEMP, topP:number=None, 
-                    nCompletions:integer=1, stream:bool=False,
-                    logProbs:integer=0, echo:boolean=False, stop=DEF_STOP,
-                    presPen:number=0, freqPen:number=0, bestOf:integer=0):
+    def __init__(inst, engId:str=DEF_ENGINE, maxTokens:int=DEF_TOKENS, 
+                    temp:float=DEF_TEMP, topP:float=None, 
+                    nCompletions:int=1, stream:bool=False,
+                    logProbs:int=0, echo:bool=False, stop=DEF_STOP,
+                    presPen:float=0, freqPen:float=0, bestOf:int=0):
+    # def __init__(inst, engId=DEF_ENGINE, maxTokens=DEF_TOKENS, temp=DEF_TEMP, 
+    #                 topP=None, nCompletions=1, stream=False, logProbs=0, 
+    #                 echo=False, stop=DEF_STOP, presPen=0, freqPen=0, bestOf=0):
                     
         inst.engineId           = engId
         inst.maxTokens          = maxTokens
@@ -152,7 +126,14 @@ class GPT3Core:
         #|
         #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-    def genCompletion(self, prompt:string):
+        	#------------------------------------------------------
+        	# This does graceful retries in case of REST failures.
+        	# See https://pypi.org/project/backoff/
+ 
+    @backoff.on_exception(backoff.expo,
+                          (openai.error.APIError))
+
+    def genCompletion(self, prompt):
     
             # The following code currently assumes that temperature is set,
             # and ignores top_p, stream, logprobs, echo, presence_penalty,
