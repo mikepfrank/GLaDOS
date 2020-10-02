@@ -11,11 +11,10 @@ higher-level degree of intentionality and cognition.
 
 So far there is only a simple API wrapper and a very simple test script.  To run it, do the following:
 
-    $ export OPENAI_API_KEY=<YourAPIKeyGoesHere>
     $ pip3 install openai
     $ pip3 install backoff
-    $ cd src
-    $ python3 glados-test.py
+    $ export OPENAI_API_KEY=<YourAPIKeyGoesHere>
+    $ python3 src/glados-test.py
 
 and if all goes well, you will see output something like the following:
 
