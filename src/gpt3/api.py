@@ -1,7 +1,7 @@
 #|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #|  FILE NAME:      gpt3/api.py                         [Python 3 module file]
 """
-    MODULE NAME:    gpt3/api                                [Python 3 module]
+    MODULE NAME:    gpt3.api                                [Python 3 module]
 
     DESCRIPTION:
 
@@ -111,9 +111,13 @@ global  DEF_STOP        # Default stop string (or list of up to 4).
 DEF_STOP    = "\n\n\n"  # Use 3 newlines (two blank lines) as stop.
 
 
-    #|==========================================================================
+#|==============================================================================
+#|  Module public classes.                               		[code section]
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+    #|---------------------------------------------------------------------------
     #|
-    #|  GPT3APIConfig                                   [module public class]
+    #|  gpt3.api.GPT3APIConfig                             [module public class]
     #|
     #|      This class provides an abstraction for a 'configuration' of
     #|      GPT-3 API parameter values.  These can be modified dynamically
@@ -234,9 +238,9 @@ GPT3 Configuration:
 #__/ End class GPT3APIConfig.
 
 
-    #|==========================================================================
+    #|--------------------------------------------------------------------------
     #|  
-    #|  GPT3Core                                        [module public class]
+    #|  gpt3.api.GPT3Core                                 [module public class]
     #|
     #|      This class abstracts a connection to the core GPT-3 system.  
     #|      An instance of this class remembers its API configuration 
