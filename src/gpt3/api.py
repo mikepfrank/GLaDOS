@@ -329,7 +329,10 @@ class Completion:
 
 	def __init__(inst, completionStruct):
 		inst.complStruct = completionStruct
-		
+	
+	def __str__(inst):
+		return inst.text
+	
 	@property
 	def text(inst):
 		return ''.join(inst.complStruct['choices'][0]['text'])
