@@ -15,7 +15,7 @@ from gpt3.api	import GPT3Core
 
 #gpt3 = GPT3Core()
 	# Create a new instance with default parameter values.
-gpt3 = GPT3Core(maxTokens=50)	# Give a little extra room for response.
+gpt3 = GPT3Core(maxTokens=150)	# Give a little extra room for response.
 
 #gpt3 = GPT3Core('davinci-beta')	
 	# Create a new instance with default parameter values, except for the engine type.
