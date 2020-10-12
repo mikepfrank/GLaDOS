@@ -10,8 +10,8 @@
 #|
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from pprint 	import pprint
-from gpt3.api	import *	# Import all public symbols from API module.
+from pprint 	import pprint	# Pretty-printer function.
+from gpt3.api	import *		# Import all public symbols from API module.
 
 gpt3 = GPT3Core()
 	# Create a new instance with default parameter values.

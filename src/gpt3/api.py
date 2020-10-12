@@ -92,7 +92,7 @@ __all__ = [
     'DEF_STOP',         # Default stop string or list of strings.
     'GPT3APIConfig',    # A collection of API parameter settings.
     'GPT3Core',         # Instance of the API that remembers its config.
-	'countTokens'		# Function to count tokens in a string.
+    'countTokens'       # Function to count tokens in a string.
     ]
 
     #|------------------------------------------------------------------
@@ -113,11 +113,11 @@ DEF_STOP    = "\n\n\n"  # Use 3 newlines (two blank lines) as stop.
 
 
 #|==============================================================================
-#|  Global objects.                                           	[code section]
+#|  Global objects.                                             [code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global	theTokenCounterCore		# A core connection for counting tokens.
-theTokenCounterCore = None		# Initially not yet created.
+global  theTokenCounterCore     # A core connection for counting tokens.
+theTokenCounterCore = None      # Initially not yet created.
 
 #|==============================================================================
 #|  Module public classes.                                      [code section]
@@ -190,7 +190,7 @@ class GPT3APIConfig:
         #|
         #|          A floating-point number between 0 and 1 that roughly
         #|          indicates the degree of randomness in the response.
-		#|			Default value: 0.5.
+        #|          Default value: 0.5.
         #|
         #|      topP                                                [number]
         #|
@@ -208,14 +208,14 @@ class GPT3APIConfig:
         #|
         #|          If true, then the result will be streamed back incre-
         #|          mentally as a sequence of server-sent events.
-		#|			Default: False.
+        #|          Default: False.
         #|
         #|      logProbs                                            [integer]
         #|
         #|          Return the log-probabilities of this many of the top
         #|          most likely tokens, in addition to the sampled token
         #|          (which may or may not be in this set). Default: None.
-		#|			(Meaning, don't return log-probabilities.)
+        #|          (Meaning, don't return log-probabilities.)
         #|
         #|      echo                                                [boolean]
         #|
@@ -226,19 +226,19 @@ class GPT3APIConfig:
         #|          A string or an array of up to 4 strings, such that
         #|          the first occurrence of any of these strings in the 
         #|          output will terminate the response just before it.
-		#|			Default value: Three newlines (two blank lines).
+        #|          Default value: Three newlines (two blank lines).
         #|
         #|      presencePenalty                                     [number]
         #|
         #|          Number between 0 and 1 that penalizes new tokens
         #|          based on whether they appear in the text so far.
-		#|			Default value: 0 (no penalty).
+        #|          Default value: 0 (no penalty).
         #|
         #|      frequencyPenalty                                    [number]
         #|
         #|          Number between 0 and 1 that penalizes new tokens
         #|          based on how often they appear in the text so far.
-		#|			Default value: 0 (no penalty).
+        #|          Default value: 0 (no penalty).
         #|
         #|      bestOf                                              [integer]
         #|
@@ -322,25 +322,69 @@ GPT3 Configuration:
 
 #__/ End class GPT3APIConfig.
 
-	# This class just provides a friendly window into the Completions data structure
-	# returned by the API.
+
+    # Forward declaration so we can reference it in Completion class.
+class GPT3Core:
+    pass
+    
+    # This class just provides a friendly window into the Completions data structure
+    # returned by the API.
 
 class Completion:
 
-	def __init__(inst, completionStruct):
-		inst.complStruct = completionStruct
-	
-	def __str__(inst):
-		return inst.text
-	
-	@property
-	def text(inst):
-		return ''.join(inst.complStruct['choices'][0]['text'])
-	
-	@property	
-	def nTokens(inst):	# This is only defined if logprobs attribute is present.
-		return len(inst.complStruct['choices'][0]['logprobs']['tokens'])
-	
+    def __init__(inst, *args, **kwargs):
+        
+        prompt = None
+        core = None
+        complStruct = None
+        
+        for arg in args:
+        
+            if isinstance(arg,str):
+                if prompt == None:
+                    prompt = arg
+                else:
+                    prompt = prompt + arg
+
+            if isinstance(arg,GPT3Core):
+                core = arg
+        
+            if isinstance(arg,dict):
+                complStruct = arg
+
+        if 'prompt' in kwargs:
+            prompt = kwargs['prompt']
+            
+        if 'core' in kwargs:
+            core = kwargs['core']
+            
+        if 'struct' in kwargs:
+            complStruct = kwargs['struct']
+        
+        inst.prompt = prompt
+        inst.core = core
+        
+        if complStruct == None and core!=None:      
+            apiArgs = core.genArgs(prompt)
+            complStruct = inst.createComplStruct(apiArgs)
+        
+        inst.complStruct = completionStruct
+    
+    def __str__(inst):
+        return inst.text
+    
+    @property
+    def text(inst):
+        return ''.join(inst.complStruct['choices'][0]['text'])
+    
+    @property   
+    def nTokens(inst):  # This is only defined if logprobs attribute is present.
+        return len(inst.complStruct['choices'][0]['logprobs']['tokens'])
+
+    @backoff.on_exception(backoff.expo,
+                          (openai.error.APIError))
+    def createComplStruct(self,apiArgs):
+        return openai.Completion.create(**apiArgs)
 
     #|--------------------------------------------------------------------------
     #|  
@@ -452,35 +496,15 @@ class GPT3Core:
         self.conf.modify(*args, **kwargs)
 
 
-        #|----------------------------------------------------------------------
-        #|  .genCompletion(prompt:string)           [instance public method]
-        #|
-        #|      This method returns the raw completion of the given prompt,
-        #|      using the core's present API configuration.  We do graceful
-        #|      backoff and retry in case of REST call failures.
-        #|
-        #|      To do: Provide the option to do a temporary modification of
-        #|      one or more API parameters in the argument list.
-        #|
-        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-            #------------------------------------------------------
-            # This does graceful retries in case of REST failures.
-            # See https://pypi.org/project/backoff/
- 
-    @backoff.on_exception(backoff.expo,
-                          (openai.error.APIError))
-
-    def genCompletion(self, prompt=None):
-    
-        """With automatic exponential backoff, query the server
-                for a completion object for the given prompt using the
-                connection's current API configuration."""
-    
+        # Generate the argument list for calling the core API.
+    def genArgs(self, prompt=None):
+   
         kwargs = dict() # Empty dict for building up argument list.
         
         conf = self.conf    # Get our current configuration.
-        
+
+        kwargs['engine'] = conf.engineId    # This API arg. is required. Can't skip it.
+                
         if prompt                   != None:    kwargs['prompt']            = prompt
         if conf.maxTokens           != None:    kwargs['max_tokens']        = conf.maxTokens
         if conf.temperature         != None:    kwargs['temperature']       = conf.temperature
@@ -497,11 +521,30 @@ class GPT3Core:
         if conf.temperature != None and conf.topP != None:
             # Do some better error handling here. Warning and/or exception.
             print("WARNING: Setting both temperature and top_p is not recommended.")
+
+        return kwargs
+
+        #|----------------------------------------------------------------------
+        #|  .genCompletion(prompt:string)           [instance public method]
+        #|
+        #|      This method returns the raw completion of the given prompt,
+        #|      using the core's present API configuration.  We do graceful
+        #|      backoff and retry in case of REST call failures.
+        #|
+        #|      To do: Provide the option to do a temporary modification of
+        #|      one or more API parameters in the argument list.
+        #|
+        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+    def genCompletion(self, prompt=None):
     
-        return Completion(openai.Completion.create(engine = conf.engineId, **kwargs))
-            # Call the completion creation with the required argument, and whichever 
-            # ones of the optional arguments were supplied. Wrap result up in our 
-			# own Completion class.
+        """With automatic exponential backoff, query the server
+                for a completion object for the given prompt using the
+                connection's current API configuration."""
+        
+        return Completion(self, prompt)
+            # Calls the Completion constructor with the supplied prompt. This
+            # constructor does all the real work of calling the API.
         
     #__/ End method GPT3Core.genCompletion().
 
@@ -526,22 +569,22 @@ class GPT3Core:
 #__/ End class GPT3Core.
 
 #|==============================================================================
-#| Module object initialization.								[code section]
+#| Module object initialization.                                [code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 theTokenCounterCore = GPT3Core(echo=True, maxTokens=0, logProbs=0)
 
 #|==============================================================================
-#| Module function definitions.									[code section]
+#| Module function definitions.                                 [code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 def countTokens(text:str=None):
-	if text == None or text == "":
-		return 0
-	else:
-			# Please note this is not free! It uses probably 2*text of quota.
-		inputComplObj = theTokenCounterCore.genCompletion(text)
-		return inputComplObj.nTokens
+    if text == None or text == "":
+        return 0
+    else:
+            # Please note this is not free! It uses probably 2*text of quota.
+        inputComplObj = theTokenCounterCore.genCompletion(text)
+        return inputComplObj.nTokens
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #|  END FILE:   gpt3/api.py
