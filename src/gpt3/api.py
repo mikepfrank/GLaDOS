@@ -169,7 +169,7 @@ class GPT3APIConfig:
                     logProbs:int=0, echo:bool=False, stop=DEF_STOP,
                     presPen:float=0, freqPen:float=0, bestOf:int=0):
 
-            """Initialize a GPT-3 API configuration, reverting to
+        """Initialize a GPT-3 API configuration, reverting to
                 default values for un-supplied parameters."""
                     
         inst.engineId           = engineId
@@ -200,7 +200,7 @@ class GPT3APIConfig:
                     logProbs:int=None, echo:bool=None, stop=None,
                     presPen:float=None, freqPen:float=None, bestOf:int=None):
 
-            """Modify one or more parameter values in the configuration."""
+        """Modify one or more parameter values in the configuration."""
         
         if engId        != None:    inst.engineId           = engId
         if maxTokens    != None:    inst.maxTokens          = maxTokens
@@ -222,18 +222,18 @@ class GPT3APIConfig:
         
         return f"""
 GPT3 Configuration:
-    engine_id         = {inst.engineId}
-    max_tokens        = {inst.maxTokens}
-    temperature       = {inst.temperature}
-    top_p             = {inst.topP}
-    n                 = {inst.nCompletions}
-    stream            = {inst.stream}
-    logprobs          = {inst.logProbs}
-    echo              = {inst.echo}
-    stop              = {repr(inst.stop)}
-    presence_penalty  = {inst.presencePenalty}
-    frequency_penalty = {inst.frequencyPenalty}
-    best_of           = {inst.bestOf}"""[1:]
+    engine_id         = {self.engineId}
+    max_tokens        = {self.maxTokens}
+    temperature       = {self.temperature}
+    top_p             = {self.topP}
+    n                 = {self.nCompletions}
+    stream            = {self.stream}
+    logprobs          = {self.logProbs}
+    echo              = {self.echo}
+    stop              = {repr(self.stop)}
+    presence_penalty  = {self.presencePenalty}
+    frequency_penalty = {self.frequencyPenalty}
+    best_of           = {self.bestOf}"""[1:]
 
 #__/ End class GPT3APIConfig.
 
@@ -331,7 +331,7 @@ class GPT3Core:
 
     @property
     def conf(self):
-            """Get our current API configuration."""
+        """Get our current API configuration."""
         return self._configuration
 
 
@@ -344,7 +344,7 @@ class GPT3Core:
         #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
     def adjustConf(self, *args, **kwargs):
-            """Adjust the API configuration as specified."""
+        """Adjust the API configuration as specified."""
         self.conf.modify(*args, **kwargs)
 
 
@@ -369,7 +369,7 @@ class GPT3Core:
 
     def genCompletion(self, prompt):
     
-            """With automatic exponential backoff, query the server
+        """With automatic exponential backoff, query the server
                 for a completion object for the given prompt using the
                 connection's current API configuration."""
     
@@ -400,7 +400,7 @@ class GPT3Core:
     
     def genString(self, prompt):
     
-            """Generate a single completion string for the given prompt."""
+        """Generate a single completion string for the given prompt."""
             
         result = genCompletion(prompt)
         return ''.join(result['choices'][0]['text'])
