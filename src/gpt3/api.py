@@ -206,7 +206,8 @@ class GPT3APIConfig:
         #|
         #|          Return the log-probabilities of this many of the top
         #|          most likely tokens, in addition to the sampled token
-        #|          (which may or may not be in this set). Default: 0.
+        #|          (which may or may not be in this set). Default: None.
+		#|			(Meaning, don't return log-probabilities.)
         #|
         #|      echo                                                [boolean]
         #|
@@ -242,7 +243,7 @@ class GPT3APIConfig:
     def __init__(inst, engineId:str=DEF_ENGINE, maxTokens:int=DEF_TOKENS, 
                     temperature:float=DEF_TEMP, topP:float=None, 
                     nCompletions:int=1, stream:bool=False,
-                    logProbs:int=0, echo:bool=False, stop=DEF_STOP,
+                    logProbs:int=None, echo:bool=False, stop=DEF_STOP,
                     presPen:float=0, freqPen:float=0, bestOf:int=None):
 
         """Initialize a GPT-3 API configuration, reverting to
