@@ -91,7 +91,8 @@ __all__ = [
     'DEF_TEMP',         # Default temperature value (normally 0.5).
     'DEF_STOP',         # Default stop string or list of strings.
     'GPT3APIConfig',    # A collection of API parameter settings.
-    'GPT3Core'          # Instance of the API that remembers its config.
+    'GPT3Core',         # Instance of the API that remembers its config.
+	'countTokens'		# Function to count tokens in a string.
     ]
 
     #|------------------------------------------------------------------
@@ -531,7 +532,7 @@ theTokenCounterCore = GPT3Core(echo=True, maxTokens=0, logProbs=0)
 #| Module function definitions.									[code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-def countTokens(text:string=None):
+def countTokens(text:str=None):
 	if text == None or text == "":
 		return 0
 	else:
