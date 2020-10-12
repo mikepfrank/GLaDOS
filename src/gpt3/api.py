@@ -368,7 +368,7 @@ class Completion:
             apiArgs = core.genArgs(prompt)
             complStruct = inst.createComplStruct(apiArgs)
         
-        inst.complStruct = completionStruct
+        inst.complStruct = complStruct
     
     def __str__(inst):
         return inst.text
