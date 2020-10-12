@@ -182,6 +182,7 @@ class GPT3APIConfig:
         #|
         #|          A floating-point number between 0 and 1 that roughly
         #|          indicates the degree of randomness in the response.
+		#|			Default value: 0.5.
         #|
         #|      topP                                                [number]
         #|
@@ -199,38 +200,42 @@ class GPT3APIConfig:
         #|
         #|          If true, then the result will be streamed back incre-
         #|          mentally as a sequence of server-sent events.
+		#|			Default: False.
         #|
         #|      logProbs                                            [integer]
         #|
         #|          Return the log-probabilities of this many of the top
         #|          most likely tokens, in addition to the sampled token
-        #|          (which may or may not be in this set).
+        #|          (which may or may not be in this set). Default: 0.
         #|
         #|      echo                                                [boolean]
         #|
-        #|          Includes the prompt in the response.
+        #|          Includes the prompt in the response. Default: False.
         #|
         #|      stop                                                [object]
         #|
         #|          A string or an array of up to 4 strings, such that
         #|          the first occurrence of any of these strings in the 
         #|          output will terminate the response just before it.
+		#|			Default value: Three newlines (two blank lines).
         #|
         #|      presencePenalty                                     [number]
         #|
         #|          Number between 0 and 1 that penalizes new tokens
         #|          based on whether they appear in the text so far.
+		#|			Default value: 0 (no penalty).
         #|
         #|      frequencyPenalty                                    [number]
         #|
         #|          Number between 0 and 1 that penalizes new tokens
         #|          based on how often they appear in the text so far.
+		#|			Default value: 0 (no penalty).
         #|
         #|      bestOf                                              [integer]
         #|
         #|          Number of candidate completions to generate 
         #|          server-side; the best nCompletions ones of those 
-        #|          are returned.
+        #|          are returned.  Default: Not set (i.e., don't do).
         #|
         #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -238,7 +243,7 @@ class GPT3APIConfig:
                     temperature:float=DEF_TEMP, topP:float=None, 
                     nCompletions:int=1, stream:bool=False,
                     logProbs:int=0, echo:bool=False, stop=DEF_STOP,
-                    presPen:float=0, freqPen:float=0, bestOf:int=0):
+                    presPen:float=0, freqPen:float=0, bestOf:int=None):
 
         """Initialize a GPT-3 API configuration, reverting to
                 default values for un-supplied parameters."""
