@@ -112,6 +112,13 @@ DEF_STOP    = "\n\n\n"  # Use 3 newlines (two blank lines) as stop.
 
 
 #|==============================================================================
+#|  Global objects.                                           	[code section]
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+global	theTokenCounterCore		# A core connection for counting tokens.
+theTokenCounterCore = None		# Initially not yet created.
+
+#|==============================================================================
 #|  Module public classes.                                      [code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -314,6 +321,22 @@ GPT3 Configuration:
 
 #__/ End class GPT3APIConfig.
 
+	# This class just provides a friendly window into the Completions data structure
+	# returned by the API.
+
+class Completion:
+
+	def __init__(inst, completionStruct):
+		inst.complStruct = completionStruct
+		
+	@property
+	def text(inst):
+		return ''.join(inst.complStruct['choices'][0]['text'])
+	
+	@property	
+	def nTokens(inst):	# This is only defined if logprobs attribute is present.
+		return len(inst.complStruct['choices'][0]['logprobs']['tokens'])
+	
 
     #|--------------------------------------------------------------------------
     #|  
@@ -471,9 +494,10 @@ class GPT3Core:
             # Do some better error handling here. Warning and/or exception.
             print("WARNING: Setting both temperature and top_p is not recommended.")
     
-        return openai.Completion.create(engine = conf.engineId, **kwargs)
+        return Completion(openai.Completion.create(engine = conf.engineId, **kwargs))
             # Call the completion creation with the required argument, and whichever 
-            # ones of the optional arguments were supplied.
+            # ones of the optional arguments were supplied. Wrap result up in our 
+			# own Completion class.
         
     #__/ End method GPT3Core.genCompletion().
 
@@ -492,10 +516,28 @@ class GPT3Core:
     
         """Generate a single completion string for the given prompt."""
             
-        result = genCompletion(prompt)
-        return ''.join(result['choices'][0]['text'])
+        resultCompletion = genCompletion(prompt)
+        return resultCompletion.text
 
 #__/ End class GPT3Core.
+
+#|==============================================================================
+#| Module object initialization.								[code section]
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+theTokenCounterCore = GPT3Core(echo=True, maxTokens=0, logProbs=0)
+
+#|==============================================================================
+#| Module function definitions.									[code section]
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+def countTokens(text:string=None):
+	if text == None or text == "":
+		return 0
+	else:
+			# Please note this is not free! It uses probably 2*text of quota.
+		inputComplObj = theTokenCounterCore.genCompletion(text)
+		return inputComplObj.nTokens
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #|  END FILE:   gpt3/api.py
