@@ -327,18 +327,44 @@ GPT3 Configuration:
 class GPT3Core:
     pass
     
-    # This class just provides a friendly window into the Completions data structure
-    # returned by the API.
+#|------------------------------------------------------------------------------
+#|  gpt3.api.Completion                                 [module public class]
+#|
+#|      This class is a wrapper for the completion data structure 
+#|      returned by the underlying GPT-3 API.  The constructor calls
+#|      the API to create this structure.  Various properties allow
+#|      easy access to information contained in the structure.
+#|
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 class Completion:
 
+    #|--------------------------------------------------------------------------
+    #| Instance initializer.                        [special instance method]
+    #|      
+    #|      This takes a general argument list, and parses it to extract
+    #|      the text of a prompt and the GPT3Core object that is provided.
+    #|      Then are then used to call the underlying API to create the
+    #|      actual completion data structure.  (Alternatively, if a 
+    #|      structure is already provided, we just remember it.)
+    #|
+    #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
     def __init__(inst, *args, **kwargs):
         
-        prompt = None
-        core = None
+            # These are things we are going to try to find in our arguments,
+            # or generate ourselves.
+        
+        prompt      = None
+        core        = None
         complStruct = None
         
+            # Scan our positional arguments looking for strings, core objects,
+            # or pre-existing compleition structures.
+        
         for arg in args:
+        
+                # If there's a string, add it to our growing prompt.
         
             if isinstance(arg,str):
                 if prompt == None:
@@ -346,11 +372,19 @@ class Completion:
                 else:
                     prompt = prompt + arg
 
+                # If there's a GPT3Core instance, remember it.
+
             if isinstance(arg,GPT3Core):
                 core = arg
         
+                # If there's a dict, assume it's a compleition object.
+        
             if isinstance(arg,dict):
                 complStruct = arg
+        #__/ End for arg in args.
+
+            # Also check any keyword arguments to see if a prompt, core, 
+            # and/or struct are there.
 
         if 'prompt' in kwargs:
             prompt = kwargs['prompt']
@@ -361,14 +395,27 @@ class Completion:
         if 'struct' in kwargs:
             complStruct = kwargs['struct']
         
+            # Remember the prompt and the core that we found, for later use.
+        
         inst.prompt = prompt
         inst.core = core
         
-        if complStruct == None and core!=None:      
+            # If we have no struct yet, we have to create it by calling the
+            # actual API.  Use an internal instance method for this.
+        
+        if complStruct == None and core != None:      
+        
+                # First generate the argument list for passing to the API.
             apiArgs = core.genArgs(prompt)
+            
+                # This actually calls the API, with any needed retries.
             complStruct = inst.createComplStruct(apiArgs)
         
-        inst.complStruct = complStruct
+        #__/ End if we will generate the completion structure.
+        
+        inst.complStruct = complStruct      # Remember the compleition structure.
+    
+    #__/ End of class gpt3.api.Completion's instance initializer.
     
     def __str__(inst):
         return inst.text
@@ -381,10 +428,13 @@ class Completion:
     def nTokens(inst):  # This is only defined if logprobs attribute is present.
         return len(inst.complStruct['choices'][0]['logprobs']['tokens'])
 
+        # This decorator performs automatic exponential backoff on REST failures.
     @backoff.on_exception(backoff.expo,
                           (openai.error.APIError))
     def createComplStruct(self,apiArgs):
         return openai.Completion.create(**apiArgs)
+
+#__/ End class Completion.
 
     #|--------------------------------------------------------------------------
     #|  
