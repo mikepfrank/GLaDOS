@@ -454,7 +454,7 @@ class GPT3Core:
         if conf.topP                != None:    kwargs['top_p']             = conf.topP
         if conf.nCompletions        != None:    kwargs['n']                 = conf.nCompletions
         if conf.stream              != None:    kwargs['stream']            = conf.stream
-        if conf.logprobs            != None:    kwargs['logprobs']          = conf.logProbs
+        if conf.logProbs            != None:    kwargs['logprobs']          = conf.logProbs
         if conf.echo                != None:    kwargs['echo']              = conf.echo
         if conf.stop                != None:    kwargs['stop']              = conf.stop
         if conf.presencePenalty     != None:    kwargs['presence_penalty']  = conf.presencePenalty
