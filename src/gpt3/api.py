@@ -112,7 +112,7 @@ DEF_STOP    = "\n\n\n"  # Use 3 newlines (two blank lines) as stop.
 
 
 #|==============================================================================
-#|  Module public classes.                               		[code section]
+#|  Module public classes.                                      [code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
     #|---------------------------------------------------------------------------
@@ -125,14 +125,14 @@ DEF_STOP    = "\n\n\n"  # Use 3 newlines (two blank lines) as stop.
     #|
     #|  Public interface:
     #|
-    #|		.modify(params)							[instance method]
-	#|
-	#|			Modify the specified parameters of the configuration.
-	#|
+    #|      .modify(params)                         [instance method]
+    #|
+    #|          Modify the specified parameters of the configuration.
+    #|
     #|  Special methods:
     #|
     #|      __init__    - Instance initializer.
-	#|		__str__		- Display as a human-readable string.
+    #|      __str__     - Display as a human-readable string.
     #|
     #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -160,7 +160,78 @@ class GPT3APIConfig:
     #\--------------------------------------------------------------------------
 
         #|----------------------------------------------------------------------
-        #| Initializer for class GPT3APIConfig.
+        #|  Initializer for class GPT3APIConfig.    [special instance method]
+        #|
+        #|  Arguments:
+        #|      
+        #|      engineId                                            [string]
+        #|
+        #|          The name of the specific GPT-3 model/engine to use.
+        #|          Choices as of 10/11/2020 are:  ada, ada-beta, babbage,
+        #|          babbage-beta, content-filter-alpha-c4, curie, 
+        #|          curie-beta, davinci, davinci-beta.  Earlier names
+        #|          alphabetically are smaller models.  The default value
+        #|          is davinci.
+        #|
+        #|      maxTokens                                           [integer]
+        #|
+        #|          The maximum number of tokens to return in the response.
+        #|          Defaults to 42.
+        #|
+        #|      temperature                                         [number]
+        #|
+        #|          A floating-point number between 0 and 1 that roughly
+        #|          indicates the degree of randomness in the response.
+        #|
+        #|      topP                                                [number]
+        #|
+        #|          A floating point number between 0 and 1 that restricts
+        #|          answers to the top percentage of probability mass.
+        #|          Do not use this and temperature in the same query.
+        #|          Default value: None.
+        #|          [NOTE: This parameter is yet supported by this module.]
+        #|
+        #|      nCompletions                                        [integer]
+        #|
+        #|          How many completions to return.  Default value is 1.
+        #|
+        #|      stream                                              [boolean]
+        #|
+        #|          If true, then the result will be streamed back incre-
+        #|          mentally as a sequence of server-sent events.
+        #|
+        #|      logProbs                                            [integer]
+        #|
+        #|          Return the log-probabilities of this many of the top
+        #|          most likely tokens, in addition to the sampled token
+        #|          (which may or may not be in this set).
+        #|
+        #|      echo                                                [boolean]
+        #|
+        #|          Includes the prompt in the response.
+        #|
+        #|      stop                                                [object]
+        #|
+        #|          A string or an array of up to 4 strings, such that
+        #|          the first occurrence of any of these strings in the 
+        #|          output will terminate the response just before it.
+        #|
+        #|      presencePenalty                                     [number]
+        #|
+        #|          Number between 0 and 1 that penalizes new tokens
+        #|          based on whether they appear in the text so far.
+        #|
+        #|      frequencyPenalty                                    [number]
+        #|
+        #|          Number between 0 and 1 that penalizes new tokens
+        #|          based on how often they appear in the text so far.
+        #|
+        #|      bestOf                                              [integer]
+        #|
+        #|          Number of candidate completions to generate 
+        #|          server-side; the best nCompletions ones of those 
+        #|          are returned.
+        #|
         #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
     def __init__(inst, engineId:str=DEF_ENGINE, maxTokens:int=DEF_TOKENS, 
@@ -185,14 +256,14 @@ class GPT3APIConfig:
         inst.frequencyPenalty   = freqPen
         inst.bestOf             = bestOf
     
-	
-		#|----------------------------------------------------------------------
-		#|	.modify(params)								[instance public method]
-		#|
-		#|		Modify the specified parameters of the configuration to
-		#|		the given values.
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+    
+        #|----------------------------------------------------------------------
+        #|  .modify(params)                             [instance public method]
+        #|
+        #|      Modify the specified parameters of the configuration to
+        #|      the given values.
+        #|
+        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
     
     def modify(self, engineId:str=None, maxTokens:int=None, 
                     temperature:float=None, topP:float=None, 
@@ -367,25 +438,38 @@ class GPT3Core:
     @backoff.on_exception(backoff.expo,
                           (openai.error.APIError))
 
-    def genCompletion(self, prompt):
+    def genCompletion(self, prompt=None):
     
         """With automatic exponential backoff, query the server
                 for a completion object for the given prompt using the
                 connection's current API configuration."""
     
-            # The following code currently assumes that temperature is set,
-            # and ignores top_p, stream, logprobs, echo, presence_penalty,
-            # frequency_penalty, and best_of (we revert to the built-in API 
-            # default values for these). TODO: Support more parameters.
+        kwargs = dict() # Empty dict for building up argument list.
+        
+        conf = self.conf    # Get our current configuration.
+        
+        if prompt                   != None:    kwargs['prompt']            = prompt
+        if conf.maxTokens           != None:    kwargs['max_tokens']        = conf.maxTokens
+        if conf.temperature         != None:    kwargs['temperature']       = conf.temperature
+        if conf.topP                != None:    kwargs['top_p']             = conf.topP
+        if conf.nCompletions        != None:    kwargs['n']                 = conf.nCompletions
+        if conf.stream              != None:    kwargs['stream']            = conf.stream
+        if conf.logprobs            != None:    kwargs['logprobs']          = conf.logprobs
+        if conf.echo                != None:    kwargs['echo']              = conf.echo
+        if conf.stop                != None:    kwargs['stop']              = conf.stop
+        if conf.presencePenalty     != None:    kwargs['presence_penalty']  = conf.presencePenalty
+        if conf.frequencyPenalty    != None:    kwargs['frequency_penalty'] = conf.frequencyPenalty
+        if conf.bestOf              != None:    kwargs['best_of']           = conf.bestOf
+        
+        if conf.temperature != None and conf.topP != None:
+            # Do some better error handling here. Warning and/or exception.
+            print("WARNING: Setting both temperature and top_p is not recommended.")
     
-        return openai.Completion.create(
-            prompt      = prompt,
-            n           = self.conf.nCompletions,
-            engine      = self.conf.engineId,
-            max_tokens  = self.conf.maxTokens,
-            stop        = self.conf.stop,
-            temperature = self.conf.temperature,    # Assuming this is set.
-        )
+        return openai.Completion.create(engine = conf.engineId, **kwargs)
+            # Call the completion creation with the required argument, and whichever 
+            # ones of the optional arguments were supplied.
+        
+    #__/ End method GPT3Core.genCompletion().
 
         #|----------------------------------------------------------------------
         #|  .genString(prompt:string)               [instance public method]
@@ -408,5 +492,5 @@ class GPT3Core:
 #__/ End class GPT3Core.
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-#|	END FILE:	gpt3/api.py
+#|  END FILE:   gpt3/api.py
 #|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
