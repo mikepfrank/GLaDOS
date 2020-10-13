@@ -626,7 +626,7 @@ class Completion:
         if self.core.conf.logProbs != 0:
             print("WARNING: .promptLen: Logprobs is not 0.")
             
-        resultPos = len(prompt)
+        resultPos = len(self.prompt)
         resultTokIndex = self.textPosToTokIndex(resultPos)
         return resultTokIndex
         
