@@ -309,6 +309,8 @@ class GPT3APIConfig:
         inst.presencePenalty    = presPen
         inst.frequencyPenalty   = freqPen
         inst.bestOf             = bestOf
+		
+		inst.name				= name
     
     #__/ End instance initializer for class GPT3APIConfig,
     
