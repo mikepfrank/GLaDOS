@@ -601,7 +601,7 @@ class Completion:
             # something more sophisticated here.
     
         if self.core != None:
-            if self.core.conf.logprobs != 0:
+            if self.core.conf.logProbs != 0:
                 print("WARNING: .nTokens only works when logprobs=0!")
                 
         return len(self.complStruct['choices'][0]['logprobs']['tokens'])
@@ -623,7 +623,7 @@ class Completion:
             print("ERROR: .promptLen: Echo not set.")
             return None
             
-        if self.core.conf.logprobs != 0:
+        if self.core.conf.logProbs != 0:
             print("WARNING: .promptLen: Logprobs is not 0.")
             
         resultPos = len(prompt)
