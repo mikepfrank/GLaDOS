@@ -88,7 +88,9 @@ system--for example, a web search engine, a communication system (e.g.,
 Telegram), or to some local subsystem (e.g., a Unix command prompt on
 the current host), or to an internal subsystem of the GLaDOS facility 
 itself, such as the memory system, or the settings interface, which lets
-the AI modify the configuration of the GLaDOS system.
+the AI modify the configuration of the GLaDOS system.  Another goal is to
+create a book-authoring system that the A.I. can use to write and edit
+entire books.
 
 ### Terminal system (`terminal/`)
 
