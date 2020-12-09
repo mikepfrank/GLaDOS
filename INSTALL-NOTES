@@ -1,3 +1,6 @@
-pip install openai
-pip install backoff
+Note the following Python package dependencies:
+
+	pip3 install openai		\___ Used by gpt3/api module.
+	pip3 install backoff	/
+	pip3 install hjson		---- Used by config package.
 
