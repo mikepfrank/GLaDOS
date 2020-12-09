@@ -1,0 +1,35 @@
+#|==============================================================================
+#|                      TOP OF FILE:    glados-config.hjson
+#|------------------------------------------------------------------------------
+#|	FILE NAME:      glados-config.hjson				[Human-readable JSON file]
+#|
+#|	FULL PATH:      $GIT_ROOT/GLaDOS/src/glados-config.hjson
+#|  MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
+#|  SYSTEM NAME:    GLaDOS (Generic Lifeform and Domicile Operating System)
+#|  APP NAME:       GLaDOS.server (GLaDOS server application)
+#|
+#|	DESCRIPTION:
+#|
+#|		This file records configuration parameters for the GLaDOS system
+#|		in human-readable JSON format (see https://hjson.github.io/).  This
+#|		file can and should be edited by hand as needed prior to server 
+#|		startup to configure system parameters.  The config module within
+#|		GLaDOS is used to read in and maintain the configuration encoded
+#|		in this file.
+#|
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
+{
+		# The model-family is a symbol specifying the general architecture
+		# of the AI.  Choices are:  gpt-2 (Samson), gpt-3 (Gladys).
+		# (However, gpt-2 is not yet supported.)
+
+	model-family:		gpt-3		# Used for Gladys
+	
+		# The model-version is a symbol naming the particular model within
+		# the model-family.  Choices for gpt-3 include ada, babbage, curie,
+		# and davinci.
+	
+	model-version:		davinci		# The most powerful GPT-3 model.
+}
