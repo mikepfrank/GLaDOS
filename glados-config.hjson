@@ -20,16 +20,26 @@
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
+# Top-level config struct is a dict of attribute-value pairs.
+
 {
+		#-----------------------------------------------------------------
 		# The model-family is a symbol specifying the general architecture
 		# of the AI.  Choices are:  gpt-2 (Samson), gpt-3 (Gladys).
 		# (However, gpt-2 is not yet supported.)
 
 	model-family:		gpt-3		# Used for Gladys
 	
+		#------------------------------------------------------------------
 		# The model-version is a symbol naming the particular model within
 		# the model-family.  Choices for gpt-3 include ada, babbage, curie,
 		# and davinci.
 	
 	model-version:		davinci		# The most powerful GPT-3 model.
+
+	# Eventually, we need to add more configuration parameters here, to do
+	# things like set GPT-3 model parameters, customize locations in the 
+	# filesystem for various resources such as the memory and history, and
+	# so forth.
+
 }

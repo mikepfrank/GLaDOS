@@ -1,37 +1,74 @@
 #|==============================================================================
-#|                      TOP OF FILE:    loader.py
+#|                      TOP OF FILE:    config/loader.py
 #|------------------------------------------------------------------------------
 #|   The below module documentation string will be displayed by pydoc3.
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 """
 
-	FILE NAME:		loader.py						[Python module source file]
+	FILE NAME:		config/loader.py				[Python module source file]
 	
     IN PACKAGE:		config
-	MODULE NAME:    loader
+	MODULE NAME:    config.loader
     FULL PATH:      $GIT_ROOT/GLaDOS/src/config/loader.py
     MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
     SYSTEM NAME:    GLaDOS (Generic Lifeform and Domicile Operating System)
     APP NAME:       GLaDOS.server (GLaDOS server application)
-    SW COMPONENT:   GLaDOS.config
+    SW COMPONENT:   GLaDOS.server.config (server configuration component)
 
 
 	MODULE DESCRIPTION:
 	-------------------
 	
-		This module that allows loading of the GLaDOS system configuration 
-		from a config file.  The default name of the config file is 
-		'glados-config.hjson'.  The file format is HJSON, which is a more 
+		This module allows loading of the GLaDOS system configuration from a 
+		config file.  The default name of the config file is
+		
+			'glados-config.hjson'
+			
+		It is expected by default to reside in the directory from which the 
+		server process was launched. The file format is HJSON, which is a more 
 		human-readable extension of JSON format; see https://hjson.github.io/.
 		
-		If the environment variable GLADOS_CONFIG_FILENAME is set, then it is 
-		used instead of the default config filename.  If the environment 
-		variable GLADOS_PATH is set, then it (rather than the current 
-		directory) is used as the location in which to look for the config file.  
-		If the environment variable GLADOS_CONFIG_PATH is set, then it is
-		used instead of any of the above.  
+		The config file to use can be customized somewhat by setting environment 
+		variables. If the environment variable GLADOS_CONFIG_FILENAME is set, 
+		then it is used instead of the default config filename.  If the 
+		environment variable GLADOS_PATH is set, then it (rather than the 
+		current directory) is used as the location in which to look for the 
+		config file. If the environment variable GLADOS_CONFIG_PATH is set, then 
+		it is used instead of any of the above.  
 
 
+	USAGE:
+	------
+		
+		from config.loader import ConfigurationLoader
+		...
+		ConfigurationLoader()
+	
+
+	ENVIRONMENT VARIABLES:
+	----------------------
+	
+		GLADOS_CONFIG_FILENAME
+		
+			If the environment variable GLADOS_CONFIG_FILENAME is set, then 
+			it is used instead of the default config filename.  Otherwise,
+			the default filename 'glados-config.hjson' is used.
+	
+	
+		GLADOS_PATH
+			
+			If the environment variable GLADOS_PATH is set, then it (rather 
+			than the current directory) is used as the location in which to 
+			look for the config file.
+		
+		
+		GLADOS_CONFIG_PATH
+			
+			If the environment variable GLADOS_CONFIG_PATH is set, then it
+			is used as the full path to the config file, instead of using 
+			any of the above.  
+	
+	
 	MODULE PUBLIC GLOBALS:
 	----------------------
 	
@@ -41,7 +78,7 @@
 			Configuration class that holds the current configuration
 			of the GLaDOS server.  It is loaded by ConfigurationLoader.
 	
-		
+	
     MODULE PUBLIC CLASSES:
     ----------------------
 
@@ -63,14 +100,21 @@
 #| End of module documentation string.
 #|------------------------------------------------------------------------------
 
+	#|==========================================================================
+	#|	Imports.												[code section]
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 from os		import	getenv, path  # Access environment variables, build paths.
 from hjson	import	load		  # For loading data from .hjson files.
 from pprint	import	pformat		  # For pretty-printing structures for diagnostics.
 
+	#----------------------------------------
+	# Create/access a logger for this module.
+
 from logmaster import getComponentLogger
 
-_component = path.basename(path.dirname(__file__))		# Package name.
-_logger = getComponentLogger(_component)    # Create the component logger.
+_component = path.basename(path.dirname(__file__))		# Our package name.
+_logger = getComponentLogger(_component)    			# Create the component logger.
 
 
     #|==========================================================================
