@@ -128,12 +128,18 @@ from logmaster import (
     #|  The following modules are specific to the present application.
     #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from appdefs                        import  systemName,appName
+from appdefs                        import  systemName, appName
     # Name of the present application.  Used for configuring logmaster.
 
 from config.loader					import	ConfigurationLoader
 	# This class manages loading of the GLaDOS system configuration
 	# from config files on system startup.
+
+from supervisor.starter				import	SupervisorStarter
+	# This class manages startup of the Supervisor subsystem, which in
+	# turn starts up and manages all of the other subsystems.
+
+# NOTE: Move the following to supervisor.starter.
 
 from commands.initializer			import	CommandInterfaceInitializer
 	# This class manages initialization of the command interface.
@@ -317,19 +323,22 @@ def _main():
 	setThreadRole('startup')	# Denotes we are starting up the server.
 
 	ConfigurationLoader()			# Loads the system configuration.
+	SupervisorStarter()				# Start the supervisory subsystem.
+	
+	# Move the below into SupervisorStarter().
 	CommandInterfaceInitializer()	# Initializes the command interface.
 	WindowSystemInitializer()		# Initializes the text windowing system.
 	ProcessLauncher()				# Launch all of the GLaDOS processes.
 	MindStarter()					# Start up the A.I.'s mind, itself.
 	
 		#---------------------------------------------------------------------
-		# By the time we get here, the A.I. is up and running in a background
-		# thread, and all we need to do is wait for it to exit, at which point
-		# we can exit the server.
+		# By the time we get here, the Supervisor is up and running in a 
+		# background thread, and all we need to do is wait for it to exit, at 
+		# which point we can exit the whole server process.
 		
-	_logger.normal("Waiting for the A.I. to exit...")
+	_logger.normal("Waiting for the Supervisor to exit...")
 	setThreadRole('waiting')
-	MindStarter.waitForExit()	# Waits for the started mind to exit.
+	SupervisorStarter.waitForExit()	 # Waits for the Supervisor to exit.
 
 		#------------------------------------------------------------
 		# If we get here, then we are exiting the server application.

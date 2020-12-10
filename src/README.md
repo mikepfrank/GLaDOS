@@ -92,6 +92,13 @@ the AI modify the configuration of the GLaDOS system.  Another goal is to
 create a book-authoring system that the A.I. can use to write and edit
 entire books.
 
+### Supervisor system (`supervisor/`)
+
+The Supervisor system is the main top-level subsystem of GLaDOS as a whole.
+It creates and manages the principal other subsystems: (1) The command 
+interface (`commands/`), (2) The process system (`processes`), (3) The
+mind system (`mind/`), (4) The window system (`windows`).
+
 ### Terminal system (`terminal/`)
 
 This package implements a terminal interface for use by human users who
