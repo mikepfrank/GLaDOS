@@ -1,10 +1,10 @@
 #|==============================================================================
-#|                          TOP OF FILE:    logmaster.py
+#|                   TOP OF FILE:    infrastructure/logmaster.py
 #|------------------------------------------------------------------------------
 #|   The below module documentation string will be displayed by pydoc3.
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 """
-    FILE NAME:      logmaster.py                [Python 3 module source file]
+    FILE NAME:      infrastructure/logmaster.py    [Python 3 module source file]
   
     MODULE NAME:    logmaster
 	FULL PATH:      $GIT_ROOT/GLaDOS/src/logmaster.py
@@ -2757,9 +2757,11 @@ def getComponentLogger(component:str):
        string identifier.  For software components that correspond to
        Python packages, normally the component name is the same as the
        package name.  The package's __init__.py file may obtain this
-       string using the expression:
+       string using the code:
        
-                    __path__[0].split('\\')[-1]
+					from os	import path
+					...
+                    _component = path.basename(__path__[0])
                       
        Note that the name of the logger created by this call is
        <sysName>.<component>, which is a hierarchical logger name.
@@ -3396,5 +3398,5 @@ if not _initialized:     # If the module is not already initialized,
     initLogMaster()         # then initialize it.
 
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-#   End of logmaster.py module.
+#   End of infrastructure/logmaster.py module.
 #===============================================================================

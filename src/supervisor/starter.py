@@ -140,6 +140,10 @@ _logger = getComponentLogger(_component)    			# Create the component logger.
 			#|  The following modules are specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+from config.loader					import	Configuration, serverConfiguration
+	# The server configuration (of class Configuration) that is used
+	# in case no other configuration is supplied on supervisor creation.
+
 from commands.initializer			import	CommandInterfaceInitializer
 	# This class manages initialization of the command interface.
 	# (That is, the command interface used by the AI to control GLaDOS.)
@@ -217,13 +221,82 @@ supervisor = None	# None created yet at module import time.
 
 class Supervisor:	# A GLaDOS supervisor.
 
-	"""Supervisor"""
+	"""
+		Supervisor													[class]
+		
+			An object of this class implements the supervisor function
+			within the GLaDOS system; that is, it is the executive 
+			entity that creates and manages all of the other subsystems.
+			
+			Its constructor optionally takes an object of class 
+			Configuration (defined in config.loader) which specifies the 
+			GLaDOS configuration being used (if not the system-wide one).
+			
+			On startup, the supervisor starts the other primary subsystems
+			of GLaDOS: The command interface, window system, process system,
+			and the AI's mind. It then monitors and manages these systems,
+			and shuts them down if/when needed (generally only when the AI
+			requests it).
+																			"""
+
+	def Supervisor(self, config:Configuration = systemConfiguration):
+		
+			#|-------------------------------------------------------------
+			#| First, we start up all of the GLaDOS subsystems, passing the 
+			#| system configuration we're using in to each of them.  NOTE:
+			#| do we also need to pass each of them a link to ourselves?
+			#| I think we do. [TODO]
+		
+		cii = CommandInterfaceInitializer(config)	# Initializes the command interface.
+		wsi = WindowSystemInitializer(config)		# Initializes the text windowing system.
+		pl  = ProcessLauncher(config)				# Launch all of the GLaDOS processes.
+		ms	= MindStarter(config)					# Start up the A.I.'s mind, itself.
+	
+			# TODO: At this point, I think that we may need to retrieve a handle into 
+			# each of the subsystems from the entities (cii, etc.) that started them
+			# and store them in instance attributes.
+	
+			#|------------------------------------------------------------
+			#| Next, we just start the supervisor main loop. This runs in
+			#| its own background thread that is created for this purpose.
+			
+		self.startSupervisorMainloop()
+	
+	#__/ End Supervisor initializer.
 
 #__/ End class Supervisor.
 
-	# # Move the below into SupervisorStarter().
-	# CommandInterfaceInitializer()	# Initializes the command interface.
-	# WindowSystemInitializer()		# Initializes the text windowing system.
-	# ProcessLauncher()				# Launch all of the GLaDOS processes.
-	# MindStarter()					# Start up the A.I.'s mind, itself.
+
+class SupervisorStarter:
+
+	"""Dummy class that exists for the sole purpose of starting up the 
+		Supervisor.  This could probably just be made into a module-level 
+		function, but whatevs.  Maybe we'll add more stuff to it later."""
+
+	def SupervisorStarter(self):	# Note the caller can just throw away this instance after initialization.
 	
+			# Create a supervisor using the existing system configuration.
+			# We remember this in an instance attribute so we can access 
+			# it later.
+	
+		self.supervisor = Supervisor()
+	
+			# This also sets the module global 'supervisor' to remember
+			# the last supervisor that we created.
+			
+		supervisor = self.supervisor
+		
+	#__/ End SupervisorStarter initializer.
+
+	def waitForExit(self):
+	
+		"""This method just waits for the supervisor instance that we created to exit."""
+	
+		self.supervisor.waitForExit()
+	
+#__/ End class SupervisorStarter.
+
+
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#|                    END OF FILE:   supervisor/starter.py
+#|=============================================================================

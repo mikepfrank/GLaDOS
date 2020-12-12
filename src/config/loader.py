@@ -212,12 +212,14 @@ class Configuration:	# A GLaDOS server configuration.
 
 	"""
 		Configuration													[class]
+		=============
 		
 			An instance of this class contains a particular configuration
 			of a GLaDOS server.  The constructor method automatically loads
 			the configuration from a file.
 			
 		Public instance attributes:
+		---------------------------
 			
 			.modelFamily [string] - Model type (e.g., 'gpt-2' or 'gpt-3').
 			.modelVersion [string] - Model version (e.g., 'davinci').
@@ -352,5 +354,5 @@ class ConfigurationLoader:		# Class for help with loading configurations.
 
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-#|                      END OF FILE:   loader.py
+#|                     END OF FILE:   config/loader.py
 #|=============================================================================
