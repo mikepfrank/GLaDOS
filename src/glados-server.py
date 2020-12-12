@@ -12,7 +12,9 @@
     SYSTEM NAME:    GLaDOS (Generic Lifeform and Domicile Operating System)
     APP NAME:       GLaDOS.server (GLaDOS server application)
 
-	DESCRIPTION:
+
+	FILE DESCRIPTION:
+	-----------------
 
 		This script constitutes the main server process executable for the
 		GLaDOS system.  Within the OS process running this script, threads 
@@ -104,17 +106,17 @@ if __name__ == "__main__":
     if RAW_DEBUG:
         print("__main__: Importing custom application modules...", file=stderr)
 
-    #|----------------------------------------------------------------
-    #|  The following modules, although custom, are generic utilities,
-    #|  not specific to the present application.
-    #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+			#|----------------------------------------------------------------
+			#|  The following modules, although custom, are generic utilities,
+			#|  not specific to the present application.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-        #-------------------------------------------------------------
-        # The logmaster module defines our logging framework; we
-        # import specific definitions we need from it.  (This is a
-        # little cleaner stylistically than "from ... import *".)
+				#-------------------------------------------------------------
+				# The logmaster module defines our logging framework; we
+				# import specific definitions we need from it.  (This is a
+				# little cleaner stylistically than "from ... import *".)
 
-from logmaster import (
+from infrastructure.logmaster import (
         appLogger,          # Top-level logger for the application.
         configLogMaster,    # Function to configure logmaster module.
         setComponent,       # Dynamically sets the current software component.
@@ -137,22 +139,8 @@ from config.loader					import	ConfigurationLoader
 
 from supervisor.starter				import	SupervisorStarter
 	# This class manages startup of the Supervisor subsystem, which in
-	# turn starts up and manages all of the other subsystems.
+	# turn starts up and manages all of the other major subsystems.
 
-# NOTE: Move the following to supervisor.starter.
-
-from commands.initializer			import	CommandInterfaceInitializer
-	# This class manages initialization of the command interface.
-	# (That is, the command interface used by the AI to control GLaDOS.)
-
-from windows.initializer			import	WindowSystemInitializer
-	# This class manages initialization of the text window system.
-
-from processes.launcher             import  ProcessLauncher
-    # This class manages launching of all GLaDOS processes.
-
-from mind.startup					import	MindStarter
-	# This class manages starting up the A.I.'s mind on server startup.
 
     #|==========================================================================
     #|
@@ -264,7 +252,7 @@ def _initLogging():
         #   Configure the logger with default settings (NORMAL level
         #   messages and higher output to console, INFO and higher to
         #   log file), set this main thread's role to "startup", and
-        #   set the thread component to "GABLE.test".
+        #   set the thread component to "GLaDOS.server".
 
     _logger = appLogger  # Set module logger to our application logger.
     
@@ -324,13 +312,8 @@ def _main():
 
 	ConfigurationLoader()			# Loads the system configuration.
 	SupervisorStarter()				# Start the supervisory subsystem.
-	
-	# Move the below into SupervisorStarter().
-	CommandInterfaceInitializer()	# Initializes the command interface.
-	WindowSystemInitializer()		# Initializes the text windowing system.
-	ProcessLauncher()				# Launch all of the GLaDOS processes.
-	MindStarter()					# Start up the A.I.'s mind, itself.
-	
+		# NOTE: This also starts up all of the other major subsystems.
+		
 		#---------------------------------------------------------------------
 		# By the time we get here, the Supervisor is up and running in a 
 		# background thread, and all we need to do is wait for it to exit, at 
@@ -371,7 +354,7 @@ def _main():
 
 is_top = (__name__ == "__main__")
     # Remember this for benefit of stuff called from within _main().
-    # In case this script gets loaded as a module, we export this
+    # In case this script gets loaded as a module, we also export this
     # global publicly in case other modules need to check whether
     # this module was initially loaded at top level or not.
 
