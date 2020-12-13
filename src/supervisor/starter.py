@@ -128,7 +128,7 @@ from os		import	path  	# Manipulate filesystem path strings.
 				# import specific definitions we need from it.  (This is a
 				# little cleaner stylistically than "from ... import *".)
 
-from logmaster import getComponentLogger
+from infrastructure.logmaster import getComponentLogger
 
 	# Go ahead and create or access the logger for this module.
 
@@ -152,7 +152,12 @@ from windows.initializer			import	WindowSystemInitializer
 	# This class manages initialization of the text window system.
 
 from processes.launcher             import  ProcessLauncher
-    # This class manages launching of all GLaDOS processes.
+    # This class manages launching of all essential 'background' 
+	# GLaDOS processes.
+
+from apps.startup					import	AppSystemStarter
+	# This class manages startup of the applications system, including
+	# all applications that need to begin running at system startup.
 
 from mind.startup					import	MindStarter
 	# This class manages starting up the A.I.'s mind on server startup.
@@ -239,17 +244,20 @@ class Supervisor:	# A GLaDOS supervisor.
 			requests it).
 																			"""
 
-	def Supervisor(self, config:Configuration = systemConfiguration):
+	def __init__(self, config:Configuration = systemConfiguration):
 		
 			#|-------------------------------------------------------------
 			#| First, we start up all of the GLaDOS subsystems, passing the 
-			#| system configuration we're using in to each of them.  NOTE:
-			#| do we also need to pass each of them a link to ourselves?
-			#| I think we do. [TODO]
+			#| system configuration we're using in to each of them.  
+			#|
+			#| NOTE: Do we also need to pass each of them a link to 
+			#| ourselves and remember each of them in an instance data 
+			#| member? I think we do. [TODO]
 		
 		cii = CommandInterfaceInitializer(config)	# Initializes the command interface.
 		wsi = WindowSystemInitializer(config)		# Initializes the text windowing system.
-		pl  = ProcessLauncher(config)				# Launch all of the GLaDOS processes.
+		pl  = ProcessLauncher(config)				# Launch all of the essential background GLaDOS processes.
+		ass = AppSystemStarter(config)				# Start up the application system.
 		ms	= MindStarter(config)					# Start up the A.I.'s mind, itself.
 	
 			# TODO: At this point, I think that we may need to retrieve a handle into 
@@ -273,7 +281,7 @@ class SupervisorStarter:
 		Supervisor.  This could probably just be made into a module-level 
 		function, but whatevs.  Maybe we'll add more stuff to it later."""
 
-	def SupervisorStarter(self):	# Note the caller can just throw away this instance after initialization.
+	def __init__(self):	# Note the caller can just throw away this instance after initialization.
 	
 			# Create a supervisor using the existing system configuration.
 			# We remember this in an instance attribute so we can access 

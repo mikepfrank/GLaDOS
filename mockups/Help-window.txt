@@ -1,0 +1,18 @@
+/====================== Help Window =======================\
+
+ This is the main Help message for GLaDOS, the
+Generic Lifeform and Domicile Operating System, 
+(c) 2020 Metaversal Contructions.
+	
+ At the prompt, you may enter a command line starting
+with '/', or type free-form text to add to your history.
+	
+ Available command words include:
+	
+	/Help /Apps /Info /Settings /Memory /ToDo
+	/Diary /Browse /Comms /Writing /Unix
+
+ Note: Command words are not case-sensitive, and you may
+abbreviate them using any unique prefix.
+
+\=========== Window Commands: /Minimize /Close ============/

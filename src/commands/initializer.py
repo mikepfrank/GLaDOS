@@ -48,7 +48,9 @@
         #|  1.1. Imports of standard python modules.    [module code subsection]
         #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from os		import	path  	# Manipulate filesystem path strings.
+from os				import	path  	# Manipulate filesystem path strings.
+from collections	import	OrderedDict		# Dictionary that maintains item order.
+
 import re					# Standard regular expression facility.
 
         #|======================================================================
@@ -181,23 +183,246 @@ class Command:
 		command to the GLaDOS system, followed by the command name, 
 		followed by whitespace and the command's parameters.  However,
 		divergenses from this standard format are possible.
+		
+			Instance public data members:
+			-----------------------------
+			
+				.name [str]		- Symbolic name for this command.
+				
+				.format [str]	- Regex format string for parsing command.
+				
+				.unique [bool]	- Boolean that is True if the format regex 
+									is supposed to uniquely identify this
+									particular command type.
+				
+				.handler [callable]		- Command execution handler.
+				
+				.cmdModule [CommandModule]	- Command module to which this 
+												command is associated.
 																			"""
 
-	def Command(self, name:str=None, format:re=_DEFAULT_COMMAND_REGEX, cm:CommandModule=None):
+	def __init__(self, name:str=None, format:str=None, unique:bool=False,
+					handler:callable=None, cm:CommandModule=None):
 		
-		"""Instance initializer for the Command class."""
+		"""
+			Instance initializer for the Command class.
+		
+				Arguments:
+				----------
+				
+					name [string]	- A symbolic name (required). Converted to
+										all-lowercase for indexing purposes.
+					
+					abbrev [string] - A shortened abbreviation for the command,
+										intended to be unique in a given context.
+					
+					format [string]	- An 're' style regular expression format 
+										string for parsing the command.  If not 
+										supplied, a simple default command-line 
+										format is used.
+										
+					unique [boolean] - This is True if the given format string is
+											supposed to uniquely identify this
+											command.  Defaults to False.  The
+											value provided (if any) is ignored if 
+											no format string was supplied.
+					
+					handler [callable] - This is a callable object that is 
+											called to execute the command.
+											It is passed the groups captured
+											by the format regex.
+					
+					cm [CommandModule] - The CommandModule instance that this
+											command is associated with.  This
+											is optional.
+											
+																			"""
+		
+		if format == None:
+			format = _DEFAULT_COMMAND_REGEX
+			unique = False	# The default regex is most definitely NOT unique.
+		
+			# Store initializer arguments in instance attributes.
+		
+		self.name 		= name
+		self.format 	= format
+		self.unique		= unique
+		self.handler	= handler
+		self.cmdModule	= cm
+		
+			# Automatically add this newly-created command to its command 
+			# module (if known).
+		
+		if cm != None:
+			cm.addCommand(self)
+			
+	#__/ End initializer for class Command.
+
+#__/ End class Command.
+
+
+class Commands:
+
+	"""
+		This is a container class for an ordered list of commands (instances 
+		of the Command class).  It facilitates fast lookup of commands using 
+		their symbolic names.  It also provides features for more general 
+		command lookup using trial regular expression matching.  A constraint 
+		is enforced that only one command having any given symbolic name can 
+		be stored, to avoid confusion.
+		
+		
+			Public instance functions:
+			--------------------------
+			
+				.addCommand(cmd:Command)
+				
+						Adds the given command to the Commands list, at
+						the end of the list (i.e., lowest priority for
+						matching purposes).
+
+			
+				.lookupByName(name:str) -
+				
+						Return the command in the list having the given 
+						name, or None if there is none with that name.
+				
+				
+				.matches(text:str) -
+				
+						Returns an iterable containing all of the commands
+						whose regex's match the given text, in order.
+						
+			
+				.firstMatch(text:str) -
+				
+						Returns the first command whose regex matches
+						the given text.
+				
+																			"""
+																			
+	
+		#/---------------------------------------------------------------------
+		#|	Private data members					[class code documentation]
+		#|	for class Commands: 
+		#|	====================
+		#|
+		#|		Private instance data members:
+		#|		------------------------------
+		#|	
+		#|			._cmdOD [OrderedDictionary]	
+		#|		
+		#|					Ordered dictionary of commands, sorted in 
+		#|					order from highest to lowest priority for 
+		#|					regex matching purposes.
+		#|
+		#\---------------------------------------------------------------------		
+	
+	def __init__(self, initialList:iterable = None):
+	
+		"""
+			Instance initializer for the Commands class.  If <initialList>
+			is provided, then the commands in it are added to the list.
+																			"""
+		
+			# Initialize the internal command list to an empty ordered
+			# dictionary object.
+		
+		self._cmdOD = OrderedDict()
+		
+			# If an initial list of commands is provided, add the commands
+			# in it to the internal command list one at a time.
+			
+		if initialList != None:
+			for cmd in initialList:
+				self.addCommand(cmd)
+		
+	#__/ End initializer for class Commands.
+
+
+	def addCommand(inst, cmd:Command):
+		"""Adds the given command to the end of the command list."""
+		self._cmdOD[cmd.name] = cmd		# NOTE: Need to convert to all-lowercase before using as an index.
+
+#__/ End class Commands.
+
+
+	# Flesh these out more later.
+
+class CommandModule:
+	def __init__(self):
+		self._commands = Commands()
+		
+class CommandModules:
+	def __init__(self):
+		self._commandModuleList = []
+
+
+class CommandInterface:
+
+	"""
+		A CommandInterface object represents the entire command interface
+		subsystem of a GLaDOS server system.  It maintains a set of 
+		pluggable command modules, as well as an index of all commands 
+		that presently exist within the system.
+		
+			Public data members:
+			--------------------
+			
+				.commandModules [CommandModules]
+				
+						This data object contains the set of command 
+						modules that are presently installed in this
+						command interface.
+				
+																			"""
+																			
+						
+		
+		#/---------------------------------------------------------------------
+		#|	Private data members					[class code documentation]
+		#|	for class CommandInterface: 
+		#|	===========================
+		#|
+		#|		Private instance data members:
+		#|		------------------------------
+		#|	
+		#|			._commands [Commands]	
+		#|		
+		#|					This data object contains a list of all commands
+		#|					that are presently supported in this command
+		#|					interface.  (The union of all commands in all of 
+		#|					the installed command modules.)
+		#|
+		#\---------------------------------------------------------------------		
 	
 
-# commands/initializer.py
+	def __init__(self):
+	
+		"""
+			Instance initializer for the CommandInterface class.  Creates
+			a command list and command module set, both initially empty.
+																			"""
+		
+			# Create an initially empty set of installed command modules.
+		
+		self.commandModules = CommandModules()
+		
+			# Create an initially empty list of supported commands.
+		
+		self._commands = Commands()
+		
+	#__/ End initializer for class CommandInterface.
 
-# Classes:
-#	
-#	* Command
-#	* CommandList
-#	* CommandModule
-#	* CommandModules
-#	* CommandInterface
-#	* CommandInterfaceInitializer
-#
+#__/ End class CommandInterface.
 
 
+class CommandInterfaceInitializer:
+	def CommandInterfaceInitializer(self):
+		commandInterface = CommandInterface()
+		self.commandInterface = commandInterface
+
+
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#|                   END OF FILE:   commands/initializer.py
+#|=============================================================================

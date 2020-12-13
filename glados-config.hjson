@@ -37,6 +37,137 @@
 	
 	model-version:		davinci		# The most powerful GPT-3 model.
 
+		#|----------------------------------------------------------------------
+		#| The app-list specifies the list of GLaDOS applications that are
+		#| potentially available to the AI.  Each of these has the following
+		#| attributes:
+		#|
+		#|		name		The short text label for the application
+		#|		available	Boolean; is the app available to the AI?
+		#|
+		#| Initially most of the apps are marked unavailable just because 
+		#| they are not yet finished being implemented.
+		#|
+		#| Commands to start apps generally have one-letter (or similarly
+		#| short) abbreviations. In alphabetical order, they are as follows:
+		#| Note that command names/abbreviations are case-insensitive.
+		#|
+		#|		/(A)pps			/(H)elp			/(T)oDo
+		#|		/(B)rowse		/(I)nfo			/(U)nix
+		#|		/(C)omms		/(M)emory		/(W)riting
+		#|		/(D)iary		/(S)ettings
+		#|		
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		
+	app-list:	[
+	
+				/* Help - The "Help" tool simply displays some basic information
+					about how to use GLaDOS (for the A.I.'s benefit). */
+					
+			{
+				name:			Help
+				available:		true
+			},
+	
+				/* Apps - This tool simply displays the list of all the
+					available apps, and allows the A.I. to select one to 
+					launch. */
+	
+			{
+				name:			Apps
+				available:		false
+			},
+			
+				/* Info - The idea behind this app is that it maintains and 
+					displays certain critical contextual information that the A.I. 
+					needs to know, including its identity, life circumstances, and
+					its present high-level goals.  Its window normally remains pinned 
+					at the top of the A.I.'s receptive field.  When the Information app
+					is launched, it allows the A.I. to edit certain information such
+					as its high-level goals. NOTE: This is one of the few apps that
+					is generally launched automatically at system startup. */
+	
+			{
+				name:			Info
+				available:		true
+			},
+			
+				/* Settings - This app can be used by the A.I. to adjust various
+					settings within GLaDOS.  These can be associated with major 
+					systems or subsystems of GLaDOS, or individual apps or 
+					processes. */
+			
+			{
+				name:			Settings
+				available:		false
+			},
+			
+				/* Memory - The memory tool allows the A.I. to browse and search
+					a database of records of its past conversations, thoughts, and
+					actions. */
+			
+			{
+				name:			Memory
+				available:		false
+			},
+			
+				/* ToDo - The idea of this app is that it is a simple to-do list 
+					tool, which the A.I. can use to make notes to itself of important
+					tasks that it wants to do later.  The tasks can be given priority 
+					levels.  The A.I. can check them off or delete them when complete. */
+			
+			{
+				name:		ToDo
+				available:	false
+			},
+			
+				/* Diary - This tool allows the A.I. to keep a "diary" of important
+					notes to itself, organized by date/time. */
+			
+			{
+				name:		Diary
+				available:	false
+			},
+			
+				/* Browse - This is a simple text-based tool to facilitate simple web
+					browsing and searching. */
+			
+			{
+				name:		Browse
+				available:	false
+			},
+			
+				/* The "comms" tool faciltates the A.I.'s two-way 
+					communications with the outside world.  This may include direct 
+					messages sent via Telegram, email messages, or other interfaces.  
+					This may be broken out later into a whole 'Comms' subfolder of 
+					separate apps. */
+			
+			{
+				name:		Comms
+				available:	false
+			},
+			
+				/* The writing tool is an interface that helps the A.I.
+					to compose and edit complex, hierarchically-structured works:  
+					Stories, poems, and extended multi-chapter books. */
+			
+			{
+				name:		Writing
+				available:	false
+			},
+			
+				/* This app gives the A.I. access to an actual Unix shell
+					environment on the host system that GLaDOS is running on.  The A.I.
+					runs within its own user account with limited permissions. */
+			
+			{
+				name:		Unix
+				available:	false
+			}.
+		]
+
 	# Eventually, we need to add more configuration parameters here, to do
 	# things like set GPT-3 model parameters, customize locations in the 
 	# filesystem for various resources such as the memory and history, and

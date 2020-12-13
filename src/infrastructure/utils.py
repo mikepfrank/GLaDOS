@@ -21,7 +21,7 @@
 #|
 #|              MutableClass - Base class for objects that can change class.
 #|
-#|          and the string function:
+#|          and the string functions:
 #|
 #|              unsplit() - Concatenate a list of strings with a given
 #|                              delimiter in between.
@@ -45,7 +45,8 @@ import flag     # Flag
 
 __all__ = ['get_hostname', 'get_my_ip',         # Networking functions.
            'bind', 'become', 'MutableClass',    # Class manipulation.
-           'unsplit' ]                          # String manipulation.
+           'countLines', 'unsplit', 			# String manipulation.
+		   'WatchBox' ]                         # Watchable storage box.
 
     #|=====================================================================
     #|
@@ -177,14 +178,25 @@ class MutableClass:
         
     def _convertFrom(this, oldClass:type):   pass
 
+
+def countLines(text:str = None):
+
+	if str == None:		# None has no lines.
+		return 0
+	else:
+		return 1 + str.count('\n')
+			# The above treats even an empty string as 1 line,
+			# and each newline character adds an additional line.
+
     # Un-split a list of strings using a given delimiter character.
-    # The list must be non-empty.
+    # The list must be non-empty. NOTE: Obsoleted by .join()
 
 def unsplit(strs, delim:str):
-    result = strs[0]
-    for s in strs[1:]:
-        result = "%s%s%s" % (result, delim, s)      # There must be an easier way to concatenate strings!
-    return result
+	return delim.join(strs)
+#    result = strs[0]
+#    for s in strs[1:]:
+#        result = "%s%s%s" % (result, delim, s)      # There must be an easier way to concatenate strings!
+#    return result
 
     #|======================================================================
     #|
