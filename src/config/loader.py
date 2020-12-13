@@ -226,7 +226,7 @@ class Configuration:	# A GLaDOS server configuration.
 
 	"""
 	
-	def Configuration(self, confStruct=None, checkEnv:bool=True, reloadConf:bool=True):
+	def __init__(self, confStruct=None, checkEnv:bool=True, reloadConf:bool=True):
 	
 		"""Constructor method for configurations.  
 			
@@ -258,6 +258,11 @@ class Configuration:	# A GLaDOS server configuration.
 			# our instance attributes.
 		
 		self.parseConf(conf)
+		
+			# Process the configuration (ourself) to do any other
+			# needed work with that information.
+			
+		self.process()
 	
 	#__/ End Configuration().
 
@@ -282,12 +287,55 @@ class Configuration:	# A GLaDOS server configuration.
 		else:
 			_logger.warn("parseConf(): The required model-version attribute was not provided.")
 			self.modelVersion = None
+
+			# Extract the app-list attribute.
+			
+		if conf.hasattr('app-list'):
+			self.appList = conf['app-list']
+			# TODO: Process app-list structure
+		else:
+			_logger.warn("parseConf(): The required app-list attribute was not provided.")
+			self.appList = None
 	
 		# NOTE: It would be nice to do some additional error-checking here, such as
 		# warning the user if there are other attributes in the provided config file
 		# that we don't understand.
 	
 	#__/ End parseConf().
+
+	def process(self):
+	
+			# Process the app-list to form the .appConfigs dict of app configurations.
+	
+		appConfigs = {}	# Empty dict.
+	
+		for appStruct in self.appList:
+		
+				# The 'name' attribute is the application name.
+		
+			appName = appStruct.name
+			
+				# Convert the 'available' attribute to a proper Boolean value.
+			
+			appAvail = True if appStruct.available == 'true' else False
+			
+				# Construct an 'application attributes' dictionary.
+			
+			appAttribs =
+				{ 	'name':		appName,		# This is not strictly necessary to include, but
+					'avail':	appAvail	}
+			
+				# Set this dict as the value that appName maps to.
+			
+			appConfigs[appName] = appAttribs
+				
+		#__/ End loop over appList. 
+		
+			# Store the availApps set as an instance data member.
+		
+		self.appConfigs = appConfigs
+	
+	#__/ End instance method Configuration.process().
 
 #__/ End class Configuration.
 
@@ -297,7 +345,7 @@ class ConfigurationLoader:		# Class for help with loading configurations.
 	"""This class collects functions used for loading configurations from
 		the filesystem."""
 
-	def ConfigurationLoader(self):
+	def __init__(self):
 	
 		"""This 'constructor' is not really a constructor because instances
 			of this class are empty.  Really, it just initializes the module."""

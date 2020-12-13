@@ -63,9 +63,9 @@ RAW_DEBUG = False   # Change this to True as needed during initial development.
 
 	# Get the name of the current file, for use in raw debug messages.
 
-import os
+from os import path
 global FILENAME
-FILENAME = os.path.basename(__file__)
+FILENAME = path.basename(__file__)
 
     # Conditionally display some initial diagnostics if RAW_DEBUG is on...
 

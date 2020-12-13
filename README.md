@@ -35,3 +35,13 @@ and if all goes well, you will see output something like the following:
        'object': 'text_completion'}
 
 I plan to add many more features to this system over the coming weeks and months.
+
+## Subdirectories
+
+Here we briefly document the various files and subdirectories of this repo.  Additional details
+can be found within each one.
+
+### Python source code (`src/`)
+
+This subdirectory contains the entire source code tree for the GLaDOS server (and auxilliary 
+utilities), written in the Python programming language (version 3).

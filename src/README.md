@@ -6,11 +6,73 @@ contains the Python source code for the GLaDOS system.  [n.b.--Please note there
 is no relation between this facility and the fictional AI named GLaDOS from the 
 Portal video game series.]
 
+## Top-level files
+
+Here we document the various top-level files that exist immediately under 
+the `src/` directory.
+
+[Fill this in.]
+
 ## Package subdirectories
 
 These are the top-level packages that will make up the GLaDOS system.  Note 
 that some of them may eventually also contain subpackages (although they do
 not yet, as of this writing).
+
+### Applications system (`apps/')
+
+This package gathers together modules implementing various application
+programs/tools that are available for use by the A.I. within the GLaDOS 
+environment.  These are anticipated to include the following, listed 
+roughly in the intended order of implementation.
+
+1. **Help** - The "Help" tool simply displays some basic information
+	about how to use GLaDOS (for the A.I.'s benefit).
+	
+2. **Apps** - The "Apps" tool simply displays the list of all of the 
+	available apps and allows the A.I. to select one to launch.
+
+3. **Info** - The idea behind this app is that it maintains and 
+	displays certain critical contextual information that the A.I. 
+	needs to know, including its identity, life circumstances, and
+	its present high-level goals.  Its window normally remains pinned 
+	at the top of the A.I.'s receptive field.  When the Context app
+	is launched, it allows the A.I. to edit certain information such
+	as its high-level goals.
+	
+4. **Settings** - This app can be used by the A.I. to adjust various
+	settings within GLaDOS.  These can be associated with major systems
+	or subsystems of GLaDOS, or individual apps or processes.
+	
+5. **Memory** - The memory tool allows the A.I. to browse and search
+	a database of records of its past conversations, thoughts, and
+	actions.
+	
+6. **ToDo** - The idea of this app is that it is a simple to-do list 
+	tool, which the A.I. can use to make notes to itself of important
+	tasks that it wants to do later.  The tasks can be given priority 
+	levels.  The A.I. can check them off or delete them when complete.
+	
+7. **Diary** - This tool allows the A.I. to keep a "diary" of important
+	notes to itself, organized by date/time.
+	
+8. **Browse** - This is a simple text-based tool to facilitate simple web
+	browsing and searching.
+	
+9. **Comms** - The "comms" tool faciltates the A.I.'s two-way 
+	communications with the outside world.  This may include direct 
+	messages sent via Telegram, email messages, or other interfaces.  
+	This may be broken out later into a whole 'Comms' subfolder of 
+	separate apps.
+	
+10. **Writing** - The writing tool is an interface that helps the A.I.
+	to compose and edit complex, hierarchically-structured works:  
+	Stories, poems, and extended multi-chapter books.
+	
+11. **Unix** - This app gives the A.I. access to an actual Unix shell
+	environment on the host system that GLaDOS is running on.  The A.I.
+	runs within its own user account with limited permissions.
+
 
 ### Command interface (`commands/`)
 
