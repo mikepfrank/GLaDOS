@@ -1,23 +1,77 @@
 # GLaDOS
 
-The Generic Lifeform and Domicile Operating System - An operating environment for text-based AI systems.
+The General Lifeform and Domicile Operating System - An operating environment for text-based AI systems.
 
 ## Purpose
 
 The ultimate purpose of GLaDOS is to experiment with giving text-based AIs a "user environment" that 
-they can manipulate, as an experiment to see if the right environment can get them to exhibit some
-higher-level degree of intentionality and cognition.
+they can manipulate, to see if the right kind environment can get them to exhibit some higher-level 
+degree of intentionality and cognition.
+
+## Language
+
+GLaDOS is implemented in Python 3.  (More specifically, it was tested using version 3.6.12 
+during development.)
+
+## Top-Level Files
+
+This section lists and documents the top-level files contained in the `GLaDOS` directory.
+
+### GIT Ignore file (`.gitignore`)
+
+To the stanard list, this adds the backup files `*~` created by Emacs.
+
+### GLaDOS System Configuration File (`glados-config.hjson`)
+
+This is the main configuration file for the GLaDOS system, in [human-readable JSON format]
+(see [hjson.github.io](https://hjson.github.io/)).  If you would like to maintain
+a customized version of the config file in some other location, simplify set the environment 
+variable `GLADOS_PATH` to point to the directory where it is located before launching 
+`glados-server.py`.  If you want to keep around several alternative configuration files, 
+simply set `GLADOS_CONFIG_FILENAME` to the name of the specific one that you want to use on 
+a given invocation of the system.  Alternatively, just set `GLADOS_CONFIG_PATH` to the full 
+pathname (directory and file) of the config file you want to use.  (If `GLADOS_CONFIG_PATH` 
+is set, then `GLADOS_CONFIG_FILENAME` will be ignored.)
+
+### Installation Notes (`INSTALL-NOTES`)
+
+This is a plain ASCII text file with some human-readable notes on how to install GLaDOS.
+Right now, the only required steps (after cloning the repo) are to pip install several
+packages: `openai`, `backoff`, and `hjson`.  Please make sure that you are using the 
+Python 3 version of pip.
+
+### Top-Level README File (`README.md`)
+
+This file, in GitHub's Markdown format (see [guides.github.com/features/mastering-markdown](https://guides.github.com/features/mastering-markdown/)).
+
+### Test Script (`test-server.sh`)
+
+This executable test script launches the main server application of GLaDOS, as a 
+foreground process.  It assumes `/bin/bash` points to your `sh`- or `bash`-compatible
+Unix shell.  Before running it, make sure `python3` is in your path and that it invokes 
+the Python version 3 executable.  You should run this script from here, the top-level 
+directory of the repo (it looks for the GLaDOS code in the `src/` subdirectory).
 
 ## Usage
 
-So far there is only a simple API wrapper and a very simple test script.  To run it, do the following:
+This script describes various tests that can be run.
+
+### API Wrapper Test
+
+If you are want to use GLaDOS with the GPT-3 language model, you first need to have an 
+API access key (see [beta.openai.com](https://beta.openai.com/)).
+
+If you have an API key, you can make sure that it will work with GLaDOS by 
+using a simple test script that we wrote for GLaDOS's GPT-3 API wrapper.
 
     $ pip3 install openai
     $ pip3 install backoff
     $ export OPENAI_API_KEY=<YourAPIKeyGoesHere>
     $ python3 src/glados-test.py
 
-and if all goes well, you will see output something like the following:
+This prompts GPT-3 with the first line from the nursery rhyme 
+"Mary Had a Little Lamb," and, if all goes well, you will see 
+GPT-3 generated output something like the following:
 
     {'choices': [{'finish_reason': 'length',
                     'index': 0,
@@ -34,7 +88,13 @@ and if all goes well, you will see output something like the following:
        'model': 'davinci:2020-05-03',
        'object': 'text_completion'}
 
-I plan to add many more features to this system over the coming weeks and months.
+### Server Test
+
+See the `Test Script` section above.  This test runs the main server application of
+the GLaDOS system.  As of this writing, the system is still under development, but
+some basic infrastructure is in place.  Some output is displayed on the console.
+Detailed debug-level diagnostics are logged to the application log file in
+`log/GLaDOS.server.log`.
 
 ## Subdirectories
 
