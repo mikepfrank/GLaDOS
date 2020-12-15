@@ -28,14 +28,14 @@
 		# of the AI.  Choices are:  gpt-2 (Samson), gpt-3 (Gladys).
 		# (However, gpt-2 is not yet supported.)
 
-	model-family:		gpt-3		# Used for Gladys
+	model-family:		'gpt-3'		# Used for Gladys
 	
 		#------------------------------------------------------------------
 		# The model-version is a symbol naming the particular model within
 		# the model-family.  Choices for gpt-3 include ada, babbage, curie,
 		# and davinci.
 	
-	model-version:		davinci		# The most powerful GPT-3 model.
+	model-version:		'davinci'	# The most powerful GPT-3 model.
 
 		#|----------------------------------------------------------------------
 		#| The app-list attribute specifies the list of GLaDOS applications 
@@ -74,7 +74,7 @@
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		
-	app-configs:	[
+	app-list:	[
 	
 				/* Help - The "Help" tool simply displays some basic information
 					about how to use GLaDOS (for the A.I.'s benefit). */
@@ -227,7 +227,7 @@
 				name:			Unix
 				available:		false
 				auto-start:		false
-			}.
+			},
 		]
 
 	# Eventually, we need to add more configuration parameters here, to do

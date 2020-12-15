@@ -345,6 +345,9 @@
 #| End of module documentation string.
 #|------------------------------------------------------------------------------
 
+global _RAW_DEBUG
+_RAW_DEBUG = False
+
         #-----------------------------------------------------------------------
         #
         #  Some previously-completed coding tasks:
@@ -608,7 +611,7 @@ global  LEVELNAME_FIELDWIDTH
 
 NAME_FIELDWIDTH         = 17    # Width of logger name field.
 THREADNAME_FIELDWIDTH   = 10    # Width of thread name field.
-COMPONENT_FIELDWIDTH    = 12    # Width of component name field.
+COMPONENT_FIELDWIDTH    = 13    # Width of component name field.
 THREADROLE_FIELDWIDTH   = 8     # Width of thread role field.
 MODULE_FIELDWIDTH       = 20    # Width of module filename field.
 FUNCNAME_FIELDWIDTH     = 18    # Width of function name field.
@@ -3248,8 +3251,9 @@ def configLogMaster(sysname:str = None, appname:str = None,
     if component != None:   theLoggingContext.component     = component
     if role      != None:   theLoggingContext.threadrole    = role
 
-    print("logmaster.configLogMaster(): The top-level log file is %s." % LOG_FILENAME,
-          file=sys.stderr)
+    if _RAW_DEBUG: 
+        print("logmaster.configLogMaster(): The top-level log file is %s." % LOG_FILENAME,
+              file=sys.stderr)
 
         # Start by appending a header to the log file for better
         # human-readability.  NOTE: Currently this has to be manually
@@ -3257,15 +3261,16 @@ def configLogMaster(sysname:str = None, appname:str = None,
         # above.  There must be a better way???
 
     with open(LOG_FILENAME,'a') as tmp_file:
-        tmp_file.write("========================+===================+===================================+==================================================+===========================================================================================\n"
-                       "YYYY-MM-DD hh:mm:ss,msc | SysName.appName   | ThreadName: Component    role     |     sourceModuleName.py:ln# : functionName()     | LGLEVEL: Message text\n"
-                       "------------------------+-------------------+-----------------------------------|--------------------------------------------------|-------------------------------------------------------------------------------------------\n")
+     tmp_file.write(
+      "========================+===================+====================================+==================================================+===========================================================================================\n"
+      "YYYY-MM-DD hh:mm:ss,msc | SysName.appName   | ThreadName: Component     role     |     sourceModuleName.py:ln# : functionName()     | LGLEVEL: Message text\n"
+      "------------------------+-------------------+------------------------------------|--------------------------------------------------|-------------------------------------------------------------------------------------------\n")
 
         # Figure out the file and console log levels based on user
         # selections.  (Verbose in this call is turned on for now,
         # to confirm the final post-config level settings to stderr.)
         
-    setLogLevels(verbose=True)
+    setLogLevels(verbose=_RAW_DEBUG)
     
         # Update the root log file name, logging level, and format.
         # NOTE: So far this only changes the logging level.  More
