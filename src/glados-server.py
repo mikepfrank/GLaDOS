@@ -18,7 +18,7 @@
 
                 This script constitutes the main server process executable for the
                 GLaDOS system.  Within the OS process running this script, threads 
-                are created to carry out the following functions:
+                are created to carry out the following functions (at least):
 
                         1. Primary "mind" thread for the A.I. itself.
 
@@ -32,8 +32,8 @@
                         3. A thread for managing the text-based 'windowing' system
                                 inside of GLaDOS, which is the primary 'GUI' seen by 
                                 the A.I.  (The windowing system itself is not a GLaDOS
-                                process; it is used by the A.I. to interact with GLaDOS
-                                processes.)
+                                process per se; it is used by the A.I. to interact 
+								*with* GLaDOS processes.)
 
 """
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -43,41 +43,71 @@
 
     #|--------------------------------------------------------------------------
     #|
-    #|      RAW_DEBUG:bool                             [module global parameter]
+	#|	0. Debugging flags								[module code section]
+	#|	==================
+	#|
+	#|		These flags are defined at the top of the module so that we
+	#|		can find and modify them quickly and easily during development.
+	#|		All other globals are defined later, in section 2.
+	#|
+	#|
+    #|  RAW_DEBUG:bool                             	[module global parameter]
+	#|	--------------
     #|
-    #|          Raw debugging flag.  This is a very low-level
-    #|          feature, preliminary to any more sophisticated
-    #|          error-logging capability.  Just check this flag
-    #|          before doing low-level diagnostic output.  This
-    #|          allows all such diagnostic output to be
-    #|          suppressed easily.
+    #|          Raw debugging flag for the current module.  This is 
+	#|			a very low-level feature, preliminary to any more 
+	#|			sophisticated diagnostic-logging capability.  The 
+	#|			module code can check this flag before doing any 
+	#|			low-level diagnostic output.  This then allows all 
+	#|			such diagnostic output in this module to be easily 
+	#|			suppressed changing this flag to False.
     #|
-    #|          Please note that this is the only global that
-    #|          appears before the "Globals" code section, so
-    #|          that we can begin using it right away.
+	#|
+	#|	CONS_DEBUG:bool                             [module global parameter]
+	#|	---------------
+	#|
+	#|			If this is True, then all debug-level output sent 
+	#|			to the infrastructure.logmaster module will also be
+	#|			displayed on the console.  This applies throughout 
+	#|			the server application (not just in this module).
+	#|
+	#|
+	#|	LOG_DEBUG:bool                             [module global parameter]
+	#|	--------------
+	#|
+	#|			If this is True, then debug-level output sent to
+	#|			the infrastructure.logmaster module will be recorded
+	#|			in the system log file, '../log/GLaDOS.server.log'.
+	#|			Note this applies throughout the server application,
+	#|			not just in the current module.
     #|
     #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global RAW_DEBUG        # Raw debugging flag.
+global RAW_DEBUG    # Raw debugging flag--controls low-level debug output for this module.
 RAW_DEBUG = False   # Change this to True as needed during initial development.
 
-global CONS_DEBUG, LOG_DEBUG
-CONS_DEBUG = False	# Don't diplay debug-level output on console.
-LOG_DEBUG = True	# Save debug-level output to log file.
+global CONS_DEBUG, LOG_DEBUG	# These control debug-level output to console & log file.
+CONS_DEBUG = False	# Tell logmaster: Don't diplay debug-level output on console.
+LOG_DEBUG = True	# Tell logmaster: Save debug-level output to log file.
 
-        # Get the name of the current file, for use in raw debug messages.
+		#|----------------------------------------------------------------------
+		#| Here we do a little bit more preliminary work, prior to starting the 
+		#| main program. Namely, we (conditionally) display some raw diagnostics 
+		#| to note that we are starting to load the main program.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from os         import path             # Manipulate filesystem path strings.
+    # First, get the name of the current file, for use in raw debug messages.
 
-global FILENAME                                         # Filename of this module's file.
-FILENAME = path.basename(__file__)      # Strip off ancestor directories.
+from os import path             	# This lets us manipulate filesystem path strings.
+global FILENAME                     # Filename of this module's file.
+FILENAME = path.basename(__file__)  # Strip off all ancestor directories.
 
-    # Conditionally display some initial diagnostics if RAW_DEBUG is on...
+    # Conditionally display some initial diagnostics (if RAW_DEBUG is on)...
 
 if RAW_DEBUG:
     print(f"In {FILENAME}:  Turned on raw debugging...")
 
-if __name__ == "__main__":
+if __name__ == "__main__":		# True if top-level script (not an imported module).
     if RAW_DEBUG:
         print(f"__main__: Loading {FILENAME}...")
 
@@ -126,6 +156,7 @@ from infrastructure.logmaster import (
         configLogMaster,    # Function to configure logmaster module.
         setComponent,       # Dynamically sets the current software component.
         setThreadRole,      # Dynamically sets the current thread's role.
+		doDebug,			# Boolean: Whether to display debug-level output.
         doInfo,             # Boolean: Whether to display info-level output.
         doNorm,             # Boolean: Whether to display normal output.
     )
@@ -138,13 +169,14 @@ from infrastructure.logmaster import (
 from appdefs                        import  systemName, appName
     # Name of the present application.  Used for configuring logmaster.
 
-from config.configuration                       import  Configuration
-        # This singleton class manages loading of the GLaDOS system 
-        # configuration from config files on system startup.
+from config.configuration           import  Configuration
+    # This singleton class will manage loading of the GLaDOS system 
+    # configuration from config files on system startup.
 
-from supervisor.supervisor                      import  Supervisor
-        # This class manages startup of the Supervisor subsystem, which in
-        # turn starts up and manages all of the other major subsystems.
+from supervisor.supervisor          import  Supervisor
+    # This singleton class will manage startup of the Supervisor 
+	# subsystem, which in turn starts up and manages all of the other 
+	# major subsystems of GLaDOS.
 
 
     #|==========================================================================
@@ -152,10 +184,10 @@ from supervisor.supervisor                      import  Supervisor
     #|  2.  Global constants, variables, and objects.      [module code section]
     #|
     #|          Declare and/or define various global variables and
-    #|          constants.  Top-level global declarations are not
+    #|          constants.  Top-level 'global' declarations are not
     #|          strictly required, but they serve to verify that
     #|          these names were not previously used, and also
-    #|          serve as documentation.
+    #|          serve as documentation of our intent.
     #|
     #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -174,9 +206,9 @@ from supervisor.supervisor                      import  Supervisor
             # However, if it were, then this might conceivably be useful.
             #vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global __all__          # List of public symbols exported by this module.
+global __all__      # List of public symbols 'exported' by this module.
 __all__ = [
-        'is_top'    # Boolean; is this module running at top level?
+        'is_top'    # Boolean global; is this module running at top level?
     ]
 
 
@@ -248,18 +280,17 @@ def _initLogging():
         print("__main__._initLogging(): Configuring the 'logmaster' "
               "logging module...", file=stderr)
 
-        # NOTE: To turn on log-file debug messages, uncomment the
-        # first line below and comment out the second.
-    
+        # NOTE: CONS_DEBUG and LOG_DEBUG are defined at the top of this file.
     configLogMaster(consdebug = CONS_DEBUG, logdebug = LOG_DEBUG, role = 'startup', component = appName)
-    #configLogMaster(role = 'startup', component = appName)
         #   \
-        #   Configure the logger with default settings (NORMAL level
+        #   Configures the logger with default settings (NORMAL level
         #   messages and higher output to console, INFO and higher to
         #   log file), set this main thread's role to "startup", and
-        #   set the thread component to "GLaDOS.server".
+        #   set the thread component to "GLaDOS.server".  You can 
+		#	alternatively turn on CONS_DEBUG and/or LOG_DEBUG at the
+		#	top of this file to also get lower-level output messages.
 
-    _logger = appLogger  # Set module logger to our application logger.
+    _logger = appLogger  # Sets this module's logger to be our application logger.
     
 #__/ End _initLogging().
 
@@ -277,9 +308,9 @@ def _initLogging():
         #|
         #|           if __name__ == "__main__":
         #|
-        #|      so that it won't be automatically executed in cases when
+        #|      so that it won't get automatically executed in cases when
         #|      this module is only being imported as a sub-module of a
-        #|      larger software system.
+        #|      larger software system for some reason.
         #|
         #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -293,47 +324,54 @@ def _main():
         print("__main__._main(): Entered application's _main() routine...",
               file=stderr)
 
+        #|-------------------------------------------------------------
+		#| Initialize the logging system.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
     _initLogging()      # Initializes/configures the logmaster module.
 
-        #--------------------------------------------------------------
-        # Application startup:  Display splash text.
-        #vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+        #|-------------------------------------------------------------
+        #| Application startup:  Display splash text.
+        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-    if doInfo: _logger.info(f"{systemName} server application is starting up...")
+    if doInfo: 
+		_logger.info(f"{systemName} server application is starting up...")
 
     if doNorm:
         print() # Just visual whitespace; no need to log it.
         _logger.normal(f"Welcome to the {systemName} server, v0.0 (pre-alpha).")
         _logger.normal("Copyright (C) 2020 Metaversal Constructions.")
-        #_logger.normal("See the LICENSE.txt file for terms of use.")
-        print()
+        #_logger.normal("See the LICENSE.txt file for terms of use.")	# Commented out because this file doesn't exist yet.
+        print() # Just visual whitespace; no need to log it.
 
 
-            #=========================================================
-            # Below follows the main code of the server application.
-            #vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+        #=========================================================
+        # Below follows the main code of the server application.
+        #vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-        setThreadRole('startup')        # Denotes we are starting up the server.
+    setThreadRole('startup')        # Denotes we are starting up the server.
 
-        _logger.debug("About to create system configuration and supervisor...")
+	if doDebug:
+		_logger.debug("About to create system configuration and supervisor...")
 
-        config = Configuration()        # Loads the system configuration.
-        supervisor = Supervisor()       # Starts the supervisory subsystem.
-                # NOTE: This also starts up all of the other major subsystems.
+    config = Configuration()        # Loads the system configuration.
+    supervisor = Supervisor()       # Starts the supervisory subsystem.
+            # NOTE: This also starts up all of the other major subsystems.
                 
-                #---------------------------------------------------------------------
-                # By the time we get here, the Supervisor is up and running in a 
-                # background thread, and all we need to do is wait for it to exit, at 
-                # which point we can exit the whole server process.
-                
-        _logger.normal("Waiting for the Supervisor to exit...")
-        setThreadRole('waiting')
-        supervisor.waitForExit()         # Waits for the Supervisor to exit.
+            #---------------------------------------------------------------------
+            # By the time we get here, the Supervisor is up and running in a 
+            # background thread, and all we need to do is wait for it to exit, at 
+            # which point we can exit the whole server process.
+    
+	if doNorm:
+		_logger.normal("Waiting for the Supervisor to exit...")
+    setThreadRole('waiting')	# Denotes that we are just waiting.
+    supervisor.waitForExit()    # Waits for the Supervisor to exit.
 
                 #------------------------------------------------------------
                 # If we get here, then we are exiting the server application.
 
-    setThreadRole('shutdown')   # Denotes we are shutting down.
+    setThreadRole('shutdown')   # Denotes that we are shutting down.
 
     if doNorm:
         _logger.normal(f"{systemName} server application is shutting down...")

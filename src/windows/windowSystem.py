@@ -1,3 +1,39 @@
+#|==============================================================================
+#|                TOP OF FILE:    windows/windowSystem.py
+#|------------------------------------------------------------------------------
+#|   The below module documentation string will be displayed by pydoc3.
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+"""
+    FILE NAME:      windows/windowSystem.py     [Python module source file]
+
+    IN PACKAGE:		windows
+	MODULE NAME:    windows.windowSystem
+    FULL PATH:      $GIT_ROOT/GLaDOS/src/windows/windowSystem.py
+    MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
+    SYSTEM NAME:    GLaDOS (General Lifeform and Domicile Operating System)
+    APP NAME:       GLaDOS.server (GLaDOS server application)
+	SW COMPONENT:	GLaDOS.commands (command interface component)
+
+
+	MODULE DESCRIPTION:
+	-------------------
+
+		This module initializes the GLaDOS command interface. This is the
+		interface that allows the AI to type commands to the GLaDOS system
+		and have them be executed by the system.
+		
+		The command interface is organized into "command modules" associated
+		with specific facilities or processes within the GLaDOS system.  New
+		command modules can be added dynamically into the interface.  In the
+		main loop of the system, when the A.I. generates a text event, it is
+		parsed to see if it matches a command template, and if so, then 
+		control is dispatched to an appropriate command handler.
+
+"""
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#| End of module documentation string.
+#|------------------------------------------------------------------------------
+
 
         # A simple decorator for singleton classes.
 from infrastructure.decorators  import  singleton
