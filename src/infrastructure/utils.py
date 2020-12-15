@@ -38,7 +38,7 @@ import threading    # RLock
 from socket import gethostname, gethostbyname
     # these are used in get_hostname(), get_my_ip()
 
-import flag     # Flag
+import infrastructure.flag     # Flag
 
     # Public names we export from this module to other modules that do
     # "from utils import *"
@@ -181,10 +181,10 @@ class MutableClass:
 
 def countLines(text:str = None):
 
-	if str == None:		# None has no lines.
+	if text == None:		# None has no lines.
 		return 0
 	else:
-		return 1 + str.count('\n')
+		return 1 + text.count('\n')
 			# The above treats even an empty string as 1 line,
 			# and each newline character adds an additional line.
 

@@ -61,6 +61,10 @@
 global RAW_DEBUG        # Raw debugging flag.
 RAW_DEBUG = False   # Change this to True as needed during initial development.
 
+global CONS_DEBUG, LOG_DEBUG
+CONS_DEBUG = False	# Don't diplay debug-level output on console.
+LOG_DEBUG = True	# Save debug-level output to log file.
+
         # Get the name of the current file, for use in raw debug messages.
 
 from os         import path             # Manipulate filesystem path strings.
@@ -247,8 +251,8 @@ def _initLogging():
         # NOTE: To turn on log-file debug messages, uncomment the
         # first line below and comment out the second.
     
-    #configLogMaster(logdebug = True, role = 'startup', component = appName)
-    configLogMaster(role = 'startup', component = appName)
+    configLogMaster(consdebug = CONS_DEBUG, logdebug = LOG_DEBUG, role = 'startup', component = appName)
+    #configLogMaster(role = 'startup', component = appName)
         #   \
         #   Configure the logger with default settings (NORMAL level
         #   messages and higher output to console, INFO and higher to
@@ -299,7 +303,7 @@ def _main():
 
     if doNorm:
         print() # Just visual whitespace; no need to log it.
-        _logger.normal("Welcome to the {systemName} server, v0.1 (alpha).")
+        _logger.normal(f"Welcome to the {systemName} server, v0.0 (pre-alpha).")
         _logger.normal("Copyright (C) 2020 Metaversal Constructions.")
         #_logger.normal("See the LICENSE.txt file for terms of use.")
         print()
@@ -310,6 +314,8 @@ def _main():
             #vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
         setThreadRole('startup')        # Denotes we are starting up the server.
+
+        _logger.debug("About to create system configuration and supervisor...")
 
         config = Configuration()        # Loads the system configuration.
         supervisor = Supervisor()       # Starts the supervisory subsystem.
