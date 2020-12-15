@@ -13,27 +13,27 @@
     APP NAME:       GLaDOS.server (GLaDOS server application)
 
 
-	FILE DESCRIPTION:
-	-----------------
+        FILE DESCRIPTION:
+        -----------------
 
-		This script constitutes the main server process executable for the
-		GLaDOS system.  Within the OS process running this script, threads 
-		are created to carry out the following functions:
+                This script constitutes the main server process executable for the
+                GLaDOS system.  Within the OS process running this script, threads 
+                are created to carry out the following functions:
 
-			1. Primary "mind" thread for the A.I. itself.
+                        1. Primary "mind" thread for the A.I. itself.
 
-			2. Various GLaDOS processes, which may include 'bridge' 
-				processes for communicating to external systems (e.g.,
-				Internet-based services), or to local resources (e.g., 
-				Unix command prompt), or to internal subsystems of
-				the GLaDOS system itself, such as the memory system,
-				the settings interface, & the book authoring system.
+                        2. Various GLaDOS processes, which may include 'bridge' 
+                                processes for communicating to external systems (e.g.,
+                                Internet-based services), or to local resources (e.g., 
+                                Unix command prompt), or to internal subsystems of
+                                the GLaDOS system itself, such as the memory system,
+                                the settings interface, & the book authoring system.
 
-			3. A thread for managing the text-based 'windowing' system
-				inside of GLaDOS, which is the primary 'GUI' seen by 
-				the A.I.  (The windowing system itself is not a GLaDOS
-				process; it is used by the A.I. to interact with GLaDOS
-				processes.)
+                        3. A thread for managing the text-based 'windowing' system
+                                inside of GLaDOS, which is the primary 'GUI' seen by 
+                                the A.I.  (The windowing system itself is not a GLaDOS
+                                process; it is used by the A.I. to interact with GLaDOS
+                                processes.)
 
 """
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -58,15 +58,15 @@
     #|
     #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global RAW_DEBUG	# Raw debugging flag.
+global RAW_DEBUG        # Raw debugging flag.
 RAW_DEBUG = False   # Change this to True as needed during initial development.
 
-	# Get the name of the current file, for use in raw debug messages.
+        # Get the name of the current file, for use in raw debug messages.
 
-from os 	import path		# Manipulate filesystem path strings.
+from os         import path             # Manipulate filesystem path strings.
 
-global FILENAME						# Filename of this module's file.
-FILENAME = path.basename(__file__)	# Strip off ancestor directories.
+global FILENAME                                         # Filename of this module's file.
+FILENAME = path.basename(__file__)      # Strip off ancestor directories.
 
     # Conditionally display some initial diagnostics if RAW_DEBUG is on...
 
@@ -107,15 +107,15 @@ if __name__ == "__main__":
     if RAW_DEBUG:
         print("__main__: Importing custom application modules...", file=stderr)
 
-			#|----------------------------------------------------------------
-			#|  The following modules, although custom, are generic utilities,
-			#|  not specific to the present application.
-			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+                        #|----------------------------------------------------------------
+                        #|  The following modules, although custom, are generic utilities,
+                        #|  not specific to the present application.
+                        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-				#-------------------------------------------------------------
-				# The logmaster module defines our logging framework; we
-				# import specific definitions we need from it.  (This is a
-				# little cleaner stylistically than "from ... import *".)
+                                #-------------------------------------------------------------
+                                # The logmaster module defines our logging framework; we
+                                # import specific definitions we need from it.  (This is a
+                                # little cleaner stylistically than "from ... import *".)
 
 from infrastructure.logmaster import (
         appLogger,          # Top-level logger for the application.
@@ -134,13 +134,13 @@ from infrastructure.logmaster import (
 from appdefs                        import  systemName, appName
     # Name of the present application.  Used for configuring logmaster.
 
-from config.configuration			import	Configuration
-	# This singleton class manages loading of the GLaDOS system 
-	# configuration from config files on system startup.
+from config.configuration                       import  Configuration
+        # This singleton class manages loading of the GLaDOS system 
+        # configuration from config files on system startup.
 
-from supervisor.supervisor			import	Supervisor
-	# This class manages startup of the Supervisor subsystem, which in
-	# turn starts up and manages all of the other major subsystems.
+from supervisor.supervisor                      import  Supervisor
+        # This class manages startup of the Supervisor subsystem, which in
+        # turn starts up and manages all of the other major subsystems.
 
 
     #|==========================================================================
@@ -170,7 +170,7 @@ from supervisor.supervisor			import	Supervisor
             # However, if it were, then this might conceivably be useful.
             #vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global __all__		# List of public symbols exported by this module.
+global __all__          # List of public symbols exported by this module.
 __all__ = [
         'is_top'    # Boolean; is this module running at top level?
     ]
@@ -309,23 +309,23 @@ def _main():
             # Below follows the main code of the server application.
             #vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	setThreadRole('startup')	# Denotes we are starting up the server.
+        setThreadRole('startup')        # Denotes we are starting up the server.
 
-	config = Configuration()	# Loads the system configuration.
-	supervisor = Supervisor()	# Starts the supervisory subsystem.
-		# NOTE: This also starts up all of the other major subsystems.
-		
-		#---------------------------------------------------------------------
-		# By the time we get here, the Supervisor is up and running in a 
-		# background thread, and all we need to do is wait for it to exit, at 
-		# which point we can exit the whole server process.
-		
-	_logger.normal("Waiting for the Supervisor to exit...")
-	setThreadRole('waiting')
-	supervisor.waitForExit()	 # Waits for the Supervisor to exit.
+        config = Configuration()        # Loads the system configuration.
+        supervisor = Supervisor()       # Starts the supervisory subsystem.
+                # NOTE: This also starts up all of the other major subsystems.
+                
+                #---------------------------------------------------------------------
+                # By the time we get here, the Supervisor is up and running in a 
+                # background thread, and all we need to do is wait for it to exit, at 
+                # which point we can exit the whole server process.
+                
+        _logger.normal("Waiting for the Supervisor to exit...")
+        setThreadRole('waiting')
+        supervisor.waitForExit()         # Waits for the Supervisor to exit.
 
-		#------------------------------------------------------------
-		# If we get here, then we are exiting the server application.
+                #------------------------------------------------------------
+                # If we get here, then we are exiting the server application.
 
     setThreadRole('shutdown')   # Denotes we are shutting down.
 
