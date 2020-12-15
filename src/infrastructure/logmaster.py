@@ -577,7 +577,7 @@ if not "appName" in dir():      # If appdefs did not already define systemName,
     appName = systemName + ".(Unknown App)"
         # The name of this application program (child of system).    
 else:                                   # Application name was defined.
-    LOG_FILENAME = '../log/' + appName + ".log"     # Construct the default log file name.
+    LOG_FILENAME = 'log/' + appName + ".log"     # Construct the default log file name.
 
 if not "LOG_FILENAME" in dir():     # If not already defined above,
     LOG_FILENAME = "script.log"     # Set it to a generic default log file name.

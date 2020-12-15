@@ -109,7 +109,7 @@ from pprint	import	pformat		  # For pretty-printing structures for diagnostics.
 	#----------------------------------------
 	# Create/access a logger for this module.
 
-from logmaster import getComponentLogger
+from infrastructure.logmaster import getComponentLogger
 
 global _component, _logger	# Software component name, logger for component.
 
@@ -181,11 +181,11 @@ _CONFIG_FILENAME = _DEFAULT_CONFIG_FILENAME		# Default before checking environme
 _BASEDIR = _DEFAULT_BASEDIR		# Default before checking environment.
 
 	# Pathname to the config file.
-_CONFIG_PATHNAME = path.join(BASEDIR, CONFIG_FILENAME)
+_CONFIG_PATHNAME = path.join(_BASEDIR, _CONFIG_FILENAME)
 	# Default before checking environment.
 
 	# Pathname to the AI-specific data directory.
-_AI_DATADIR = path.join(BASEDIR, _DEFAULT_AI_DATADIR)
+_AI_DATADIR = path.join(_BASEDIR, _DEFAULT_AI_DATADIR)
 	# Default before checking environment.
 
 
@@ -425,12 +425,12 @@ class Configuration:	# The GLaDOS server configuration.
 			
 				# Construct an 'application attributes' dictionary.
 			
-			appAttribs =
-				{ 	'name':		appName,		# This is not strictly necessary to include, but.
-					'avail':	appAvail,		# Is the app available to be registered?
-					'auto':		appAutoStart,	# Should the application auto-start?
-					'conf':		appConfig		# Application-specific configuration info.
-				}
+			appAttribs = { 	
+                                'name':		appName,		# This is not strictly necessary to include, but.
+                                'avail':	appAvail,		# Is the app available to be registered?
+                                'auto':		appAutoStart,		# Should the application auto-start?
+                                'conf':		appConfig		# Application-specific configuration info.
+                        }
 			
 				# Set this dict as the value that appName maps to in 
 				# the appConfigs dict.

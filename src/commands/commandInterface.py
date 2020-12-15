@@ -50,6 +50,7 @@
 
 from os				import	path  	# Manipulate filesystem path strings.
 from collections	import	OrderedDict		# Dictionary that maintains item order.
+from collections.abc	import	Iterable	# Used for type hints
 
 import re					# Standard regular expression facility.
 
@@ -169,6 +170,8 @@ _DEFAULT_COMMAND_REGEX = '^/([a-zA-Z_]\w*)(?:\s+(\S.*)?)?$'
 	#|		Classes defined by this module.
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+class CommandModule: pass	# Forward declaration
 
 class Command:
 
@@ -316,7 +319,7 @@ class Commands:
 		#|
 		#\---------------------------------------------------------------------		
 	
-	def __init__(self, initialList:iterable = None):
+	def __init__(self, initialList:Iterable = None):
 	
 		"""
 			Instance initializer for the Commands class.  If <initialList>
