@@ -38,17 +38,31 @@
 	model-version:		davinci		# The most powerful GPT-3 model.
 
 		#|----------------------------------------------------------------------
-		#| The app-list specifies the list of GLaDOS applications that are
-		#| potentially available to the AI.  Each of these has the following
+		#| The app-list attribute specifies the list of GLaDOS applications 
+		#| that are potentially available to the AI and gives configuration
+		#| details for each.  Each element of this list has the following
 		#| attributes:
 		#|
-		#|		name		The short text label for the application
-		#|		available	Boolean; is the app available to the AI?
+		#|		name		The short text label denoting the application.
+		#|					(This must match the name given in the appList 
+		#|					attribute in src/apps/starter.py.)
+		#|
+		#|		available	Boolean; is the app available to the AI? This
+		#|					controls whether the app will be automatically 
+		#|					registered with the application system when
+		#|					GLaDOS is started up.
+		#|
+		#|		auto-start		Boolean; should this app be lauched 
+		#|						automatically when the application 
+		#|						system is started?  
+		#|
+		#|		app-config	Optional; specifies application-specific
+		#|					configuration attributes.
 		#|
 		#| Initially most of the apps are marked unavailable just because 
 		#| they are not yet finished being implemented.
 		#|
-		#| Commands to start apps generally have one-letter (or similarly
+		#| Commands to start apps will generally have one-letter (or similarly
 		#| short) abbreviations. In alphabetical order, they are as follows:
 		#| Note that command names/abbreviations are case-insensitive.
 		#|
@@ -60,7 +74,7 @@
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		
-	app-list:	[
+	app-configs:	[
 	
 				/* Help - The "Help" tool simply displays some basic information
 					about how to use GLaDOS (for the A.I.'s benefit). */
@@ -68,6 +82,34 @@
 			{
 				name:			Help
 				available:		true
+				auto-start:		false
+				
+				app-config: {
+				
+						/* main-msg is the message to be displayed in the Help
+							window when the Help app first starts up. */
+				
+					main-msg:
+						'''
+								
+						 This is the main Help message for GLaDOS, the
+						Generic Lifeform and Domicile Operating System, 
+						(c) 2020 Metaversal Contructions.
+	
+						 At the prompt, you may enter a command line starting
+						with '/', or type free-form text to add to your history.
+	
+						 Available command words include:
+	
+								/Help /Info /Settings /Memory /ToDo
+								/Diary /Browse /Comms /Writing /Unix
+				
+						 Note: Command words are not case-sensitive, and you may
+						abbreviate them using any unique prefix.  For detailed 
+						help on any command, type "/Help <command>".
+						
+						'''
+				}
 			},
 	
 				/* Apps - This tool simply displays the list of all the
@@ -77,6 +119,7 @@
 			{
 				name:			Apps
 				available:		false
+				auto-start:		false
 			},
 			
 				/* Info - The idea behind this app is that it maintains and 
@@ -91,6 +134,17 @@
 			{
 				name:			Info
 				available:		true
+				auto-start:		true
+				
+				app-config: {
+				
+						/* info-filename is the pathname of the file (relative to the
+							root of the A.I.'s main data directory) that contains the
+							text that will normally be displayed in the Info window
+							when the Info app first starts up. */
+				
+					info-filename:		info.txt
+				}
 			},
 			
 				/* Settings - This app can be used by the A.I. to adjust various
@@ -101,6 +155,7 @@
 			{
 				name:			Settings
 				available:		false
+				auto-start:		false
 			},
 			
 				/* Memory - The memory tool allows the A.I. to browse and search
@@ -110,6 +165,7 @@
 			{
 				name:			Memory
 				available:		false
+				auto-start:		false
 			},
 			
 				/* ToDo - The idea of this app is that it is a simple to-do list 
@@ -118,24 +174,27 @@
 					levels.  The A.I. can check them off or delete them when complete. */
 			
 			{
-				name:		ToDo
-				available:	false
+				name:			ToDo
+				available:		false
+				auto-start:		false
 			},
 			
 				/* Diary - This tool allows the A.I. to keep a "diary" of important
 					notes to itself, organized by date/time. */
 			
 			{
-				name:		Diary
-				available:	false
+				name:			Diary
+				available:		false
+				auto-start:		false
 			},
 			
 				/* Browse - This is a simple text-based tool to facilitate simple web
 					browsing and searching. */
 			
 			{
-				name:		Browse
-				available:	false
+				name:			Browse
+				available:		false
+				auto-start:		false
 			},
 			
 				/* The "comms" tool faciltates the A.I.'s two-way 
@@ -145,8 +204,9 @@
 					separate apps. */
 			
 			{
-				name:		Comms
-				available:	false
+				name:			Comms
+				available:		false
+				auto-start:		false
 			},
 			
 				/* The writing tool is an interface that helps the A.I.
@@ -154,8 +214,9 @@
 					Stories, poems, and extended multi-chapter books. */
 			
 			{
-				name:		Writing
-				available:	false
+				name:			Writing
+				available:		false
+				auto-start:		false
 			},
 			
 				/* This app gives the A.I. access to an actual Unix shell
@@ -163,8 +224,9 @@
 					runs within its own user account with limited permissions. */
 			
 			{
-				name:		Unix
-				available:	false
+				name:			Unix
+				available:		false
+				auto-start:		false
 			}.
 		]
 

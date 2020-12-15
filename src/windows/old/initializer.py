@@ -1,7 +1,4 @@
 
-global windowSystem		# The last one initialized.
-windowSystem = None
-
 class TextBuffer:	# A text buffer.
 
 	# A text buffer has:
@@ -58,12 +55,7 @@ class WindowSystem:
 
 	def __init__(self):
 		self._windows = Windows()
-
-class WindowSystemInitializer:
-	def __init__(self):
-		windowSystem = WindowSystem()
-		self.windowSystem = windowSystem
-
+		
 
 # Window system classes:
 #
@@ -72,6 +64,5 @@ class WindowSystemInitializer:
 #	Windows				- A collection of text windows.
 #	WindowSnapshot		- A static image of a text window at a given point in time.
 #	WindowSystem				- The entire window subsystem in a given GLaDOS system instance.
-#	WindowSystemInitializer		- Initializer class for the window system.
 
 
