@@ -54,21 +54,12 @@
 	USAGE:
 	------
 	
-		from supervisor.starter	import SupervisorStarter
+		from supervisor.starter	import Supervisor
 		...
 		# Server configuration should be loaded first, then call:
-		SupervisorStarter()		# Starts supervisor (and various threads).
+		supervisor = Supervisor()	# Create & start supervisor (and various threads).
 		...
-		SupervisorStarter.waitForExit()	 # Waits for the Supervisor to exit.
-	
-	
-	MODULE PUBLIC GLOBALS:
-	----------------------
-
-		starter.supervisor							[constant object]
-		
-			The Supervisor instance that comprises the system
-			supervisor.
+		supervisor.waitForExit()	# Waits for the Supervisor to exit.
 	
 	
 	MODULE PUBLIC CLASSES:
@@ -76,21 +67,8 @@
 		
 		Supervisor											[class]
 			
-			Class of supervisor objects.  Normally there is 
-			only one instance of this class in the system
-			(stored in starter.supervisor).
-		
-		
-		SupervisorStarter									[class]
-			
-			Dummy class for starting up the supervisor.
-			Instances don't mean anything.  The constructor
-			does all the work.  It could have just been a
-			function instead, but oh well.  It includes a
-			helper function, and maybe we'll also want to 
-			move some other stuff into here eventually.  
-			(Like stuff to load/save the server config.)
-
+			Singleton class, whose sole instance is the single
+			object which is the system supervisor.
 																			"""
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #| End of module documentation string.
@@ -140,26 +118,25 @@ _logger = getComponentLogger(_component)    			# Create the component logger.
 			#|  The following modules are specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from config.loader					import	Configuration, serverConfiguration
-	# The server configuration (of class Configuration) that is used
-	# in case no other configuration is supplied on supervisor creation.
+from config.configuration			import	Configuration
+	# The singleton class that gives the system configuration.
 
-from commands.initializer			import	CommandInterfaceInitializer
+from commands.commandInterface		import	CommandInterface
 	# This class manages initialization of the command interface.
 	# (That is, the command interface used by the AI to control GLaDOS.)
 
-from windows.initializer			import	WindowSystemInitializer
+from windows.windowSystem			import	WindowSystem
 	# This class manages initialization of the text window system.
 
-from processes.launcher             import  ProcessLauncher
+from processes.processSystem        import  ProcessSystem
     # This class manages launching of all essential 'background' 
 	# GLaDOS processes.
 
-from apps.startup					import	AppSystemStarter
+from apps.appSystem					import	AppSystem
 	# This class manages startup of the applications system, including
 	# all applications that need to begin running at system startup.
 
-from mind.startup					import	MindStarter
+from mind.mindSystem				import	MindSystem
 	# This class manages starting up the A.I.'s mind on server startup.
 
 
@@ -185,34 +162,10 @@ from mind.startup					import	MindStarter
         #|
         #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global  __all__         # List of public symbols exported by this module.
+	# List of public symbols exported by this module.
 __all__ = [
-	'Supervisor',		  	# Class for supervisor objects.
-    'supervisor',    		# Object which is the GLaDOS supervisor.
-    'SupervisorStarter',    # Creates & starts up the supervisor.
+	'Supervisor',		  	# Singleton class for the supervisor object.
     ]
-
-
-        #|======================================================================
-        #|
-        #|  Public globals.                              		[code section]
-        #|
-        #|      These globals are specific to the present module
-        #|      and exported publicly to other modules that use it.
-        #|
-		#|      User modules should do "from appdefs import *"
-		#|      to get immediate copies of these globals.
-		#|
-		#|      If users wish to modify these globals, they must also
-		#|      do "import appdefs" and then "appdefs.<global> = ..."
-		#|      (Warning: This will not affect the values of these
-		#|      globals seen by other modules that have already
-		#|      imported this module!)
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-global supervisor	# The supervisor object for the server.
-supervisor = None	# None created yet at module import time.
 
 
 	#|==========================================================================
@@ -224,45 +177,94 @@ supervisor = None	# None created yet at module import time.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
-class Supervisor:	# A GLaDOS supervisor.
+class Supervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 
 	"""
 		Supervisor													[class]
+		==========
 		
-			An object of this class implements the supervisor function
-			within the GLaDOS system; that is, it is the executive 
-			entity that creates and manages all of the other subsystems.
-			
-			Its constructor optionally takes an object of class 
-			Configuration (defined in config.loader) which specifies the 
-			GLaDOS configuration being used (if not the system-wide one).
+			A singleton class whose sole instance implements the 
+			supervisor function within the GLaDOS system; that is, 
+			it is the executive entity that creates and manages all 
+			of the other subsystems.
 			
 			On startup, the supervisor starts the other primary subsystems
 			of GLaDOS: The command interface, window system, process system,
 			and the AI's mind. It then monitors and manages these systems,
 			and shuts them down if/when needed (generally only when the AI
 			requests it).
+						
 																			"""
 
-	def __init__(self, config:Configuration = systemConfiguration):
+	def __init__(self):
+
+		"""
+			Initializer for instances of the Supervisor class.
+			
+			This method is responsible for creating and initializing all 
+			of the other major subsystems of GLaDOS, including:
+			
+				* The command interface (command/CommandInterface).
+				* The window system.
+				* The process system.
+				* The application system.
+				* The mind system.
+			
+		"""
 		
-			#|-------------------------------------------------------------
-			#| First, we start up all of the GLaDOS subsystems, passing the 
-			#| system configuration we're using in to each of them.  
+			#|===============================================================
+			#| First, we start up all of the GLaDOS subsystems.
 			#|
-			#| NOTE: Do we also need to pass each of them a link to 
-			#| ourselves and remember each of them in an instance data 
-			#| member? I think we do. [TODO]
+			#| The assignments to local variables here are not really needed, 
+			#| since these constructors all maintain their own singletons,
+			#| but are included just to document that a value is returned.
 		
-		cii = CommandInterfaceInitializer(config)	# Initializes the command interface.
-		wsi = WindowSystemInitializer(config)		# Initializes the text windowing system.
-		pl  = ProcessLauncher(config)				# Launch all of the essential background GLaDOS processes.
-		ass = AppSystemStarter(config)				# Start up the application system.
-		ms	= MindStarter(config)					# Start up the A.I.'s mind, itself.
+				#|--------------------------------------------------------------
+				#| (1) We start up the command interface subsystem first.  We do 
+				#| this because, in general, every other subsystem of GLaDOS may 
+				#| include an associated command module, which needs to be 
+				#| installed in the command interface, so it needs to be 
+				#| already available.
+		
+		ci = CommandInterface()		# Initializes the command interface.
+
+		
+				#|--------------------------------------------------------------
+				#| (2) Next, we start up the text-based window system.  We do 
+				#| this now because the next step will be to start up various 
+				#| other subsystems that may launch associated GLaDOS processes, 
+				#| and each process generally needs to have an associated window
+				#| which will show its I/O stream.
+		
+		ws = WindowSystem()			# Initializes the text windowing system.
+		
+		
+				#|--------------------------------------------------------------
+				#| (3) Next, we start up the process system.  This is needed to
+				#| support any processes that may need to be created to support
+				#| individual apps that will be launched from within GLaDOS, and 
+				#| furthermore, there may be some background processes started 
+				#| here to support various internal housekeeping functions of 
+				#| GLaDOS itself.
+				
+		ps = ProcessSystem()		
+			# Start the process framework and launch any essential 
+			# background GLaDOS processes.
+		
+		
+				#|--------------------------------------------------------------
+				#| (4) Now we can start the application subsystem.  This allows
+				#| individual GLaDOS applications to be launched as needed, and
+				#| some of them will even be launched automatically on startup.
+				
+		appSys = AppSystem()		# Start up the application system.
+		
+		
+				#|--------------------------------------------------------------
+				#| (5) Finally, we can start up the A.I.'s mind.
+		
+		mind = MindSystem()			# Start up the A.I.'s mind, itself.
 	
-			# TODO: At this point, I think that we may need to retrieve a handle into 
-			# each of the subsystems from the entities (cii, etc.) that started them
-			# and store them in instance attributes.
 	
 			#|------------------------------------------------------------
 			#| Next, we just start the supervisor main loop. This runs in

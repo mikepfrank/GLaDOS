@@ -75,6 +75,13 @@ _component = path.basename(path.dirname(__file__))		# Our package name.
 _logger = getComponentLogger(_component)    			# Create the component logger.
 
 
+			#|----------------------------------------------------------------
+			#|  The following modules are specific to the present application.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+#Commented out because I don't think we use it.
+#from config.loader		import Configuration
+
     #|==========================================================================
     #|
     #|   Globals					    						[code section]
@@ -418,7 +425,15 @@ class CommandInterface:
 
 
 class CommandInterfaceInitializer:
-	def CommandInterfaceInitializer(self):
+
+	def __init__(self):
+	
+			"""
+				Instance initializer for the CommandInterfaceInitializer.
+				Creates a CommandInterface instance, and stashes it in a 
+				global variable (module-level data attribute).
+			"""
+	
 		commandInterface = CommandInterface()
 		self.commandInterface = commandInterface
 

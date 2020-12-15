@@ -67,6 +67,19 @@
 			If the environment variable GLADOS_CONFIG_PATH is set, then it
 			is used as the full path to the config file, instead of using 
 			any of the above.  
+		
+		
+		AI_DATA
+		
+			The environment variable AI_DATA should be set to point to the
+			data directory in which all data specific to a given AI persona
+			is stored; for example, '/opt/AIs/gladys'.  
+			
+			Ideally, each AI should be given its own user account on the 
+			host, and GLaDOS should be run from within that account, so that 
+			the files in the data directory can be made writable only by the
+			AI itself.
+		
 	
 	
 	MODULE PUBLIC GLOBALS:
@@ -138,10 +151,11 @@ _logger = getComponentLogger(_component)    			# Create the component logger.
         #|
         #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global  __all__         # List of public symbols exported by this module.
+	# List of public symbols exported by this module.
 __all__ = [
 	'Configuration',		  # Class for configuration objects.
-    'serverConfiguration',    # Current configuration object for the server.
+	'getSystemConfiguration'  # Function that returns the current (i.e., 
+		# the most-recently-loaded) configuration object for the system.
     'ConfigurationLoader',    # Loads the server configuration from a file.
     ]
 
@@ -155,46 +169,82 @@ __all__ = [
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
-global _DEFAULT_CONFIG_FILENAME		# Default name of config file.
+	# Default name of config file.
 _DEFAULT_CONFIG_FILENAME = 'glados-config.hjson'
 
-global _DEFAULT_BASEDIR		# What is the config filename relative to?
+	# What is the config filename relative to?
 _DEFAULT_BASEDIR = '.'		# Look in current directory by default.
 
-global _lastLoadedConf		# The last raw configuration data structure loaded.
+	# Default working directory for AI-specific state data.
+_DEFAULT_AI_DATADIR = "ai-data"		# Just use this if nothing else is provided.
+
+	# The last *raw* configuration data structure loaded.
 _lastLoadedConf = None		# No such structure has yet been loaded.
 
+	# Filename of the config file.
+_CONFIG_FILENAME = _DEFAULT_CONFIG_FILENAME		# Default before checking environment.
+
+	# Base directory for finding stuff.
+_BASEDIR = _DEFAULT_BASEDIR		# Default before checking environment.
+
+	# Pathname to the config file.
+_CONFIG_PATHNAME = path.join(BASEDIR, CONFIG_FILENAME)
+	# Default before checking environment.
+
+	# Pathname to the AI-specific data directory.
+_AI_DATADIR = path.join(BASEDIR, _DEFAULT_AI_DATADIR)
+	# Default before checking environment.
 
         #|======================================================================
         #|
         #|  Public globals.                              		[code section]
         #|
-        #|      These globals are specific to the present module
-        #|      and exported publicly to other modules that use it.
-        #|
-		#|      User modules should do "from appdefs import *"
-		#|      to get immediate copies of these globals.
+        #|      These globals may be accessed from within other modules,
+		#|		BUT, please node that "from <thisModule> import <global>"
+		#|		DOES NOT WORK IN GENERAL for this purpose, because it only
+		#|		imports a COPY of the global as it was at import time, and
+		#|		this does not dynamically change if the value of the global 
+		#|		is updated.  Thus, to access the *dynamic* value of the 
+		#|		global requires either accessing it *through* the module 
+		#|		name, as in:
+		#|		
+		#|			import thisModule
+		#|			...
+		#|			print(<thisModule>.<global>)
 		#|
-		#|      If users wish to modify these globals, they must also
-		#|      do "import appdefs" and then "appdefs.<global> = ..."
-		#|      (Warning: This will not affect the values of these
-		#|      globals seen by other modules that have already
-		#|      imported this module!)
+		#|		or, by accessing it through a getter function, such as the
+		#|		getSystemConfiguration() function below.
 		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+	#|--------------------------------------------------------------------------
+	#|	systemConfiguration						[module public global variable]
+	#|
+	#|		This module-level public global variable contains the current
+	#|		(i.e., most-recently loaded) Configuration of the GLaDOS system.
+	#|		It is None before any configuration has been loaded, and 
+	#|		afterwards it contains the most recently-loaded configuration.
+	#|		Note, IMPORTING THIS DIRECTLY WILL ONLY GET ITS INITIAL VALUE.
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global serverConfiguration		# Current Configuration of GLaDOS server.
-serverConfiguration = None		# Not loaded yet at import time.
+systemConfiguration = None		# None loaded yet at import time.
 
-global CONFIG_FILENAME			# Filename of the config file.
-CONFIG_FILENAME = _DEFAULT_CONFIG_FILENAME		# Default before checking environment.
+	#|--------------------------------------------------------------------------
+	#|	getSystemConfiguration()					[module public function]
+	#|
+	#|		This module-level public getter function retrieves the current
+	#|		value of the systemConfiguration global variable.  (Due to the
+	#|		way imports work in Python, using modules should import and call 
+	#|		this function instead of importing systemConfiguration directly.
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global BASEDIR					# Base directory for finding stuff.
-BASEDIR = _DEFAULT_BASEDIR
-
-global CONFIG_PATHNAME			# Pathname to the config file.
-CONFIG_PATHNAME = path.join(BASEDIR, CONFIG_FILENAME)
-	# Default before checking environment.
+def getSystemConfiguration():
+	"""
+		Returns the current (i.e., most-recently loaded) configuration of the
+		GLaDOS system.  Returns None before any configuration has been loaded,
+		and afterwards returns an instance of the Configuration class.
+	"""
+	return systemConfiguration
 
 
 	#|==========================================================================
@@ -221,12 +271,18 @@ class Configuration:	# A GLaDOS server configuration.
 		Public instance attributes:
 		---------------------------
 			
-			.modelFamily [string] - Model type (e.g., 'gpt-2' or 'gpt-3').
-			.modelVersion [string] - Model version (e.g., 'davinci').
+			.baseDir [string] - Base directory for GLaDOS system.
+			.configFilename [string] - The name of the system config file that was loaded.
+			.configPathname [string] - The full pathname of the system config file that was loaded.
+			
+			.aiDataDir [string] - The base directory for finding AI-specifi data.
+			
+			.modelFamily [string] - AI model type (e.g., 'gpt-2' or 'gpt-3').
+			.modelVersion [string] - AI model version (e.g., 'davinci').
 
 	"""
 	
-	def __init__(self, confStruct=None, checkEnv:bool=True, reloadConf:bool=True):
+	def __init__(self, confStruct=None, checkEnv:bool=True, reloadConf:bool=False):
 	
 		"""Constructor method for configurations.  
 			
@@ -236,30 +292,58 @@ class Configuration:	# A GLaDOS server configuration.
 			If checkEnv is True, environment variables are checked
 			to reset the location of the current configuration file.
 			
-			If reloadConf is True, the configuration is re-loaded from
-			the current configuration file.  Otherwise, the last loaded 
-			configuration is reused.
+			If no configuration has been loaded yet or reloadConf is True,
+			the configuration is (re-)loaded from the current configuration 
+			file.  Otherwise, the last loaded configuration is reused.
 		"""
+		
+			#-------------------------------------------------------
+			# First, if checkEnv is true, then we check the environment
+			# variables to see if they are overriding any of our default
+			# directory locations.
 		
 		if checkEnv:
 			ConfigurationLoader.checkEnvironment()
+
+			#---------------------------------------------------------
+			# Let's remember the directory locations we ended up with,
+			# in case needed for later reference.
+			
+		self.baseDir 			= _BASEDIR
+		self.configFilename 	= _CONFIG_FILENAME
+		self.configPathname 	= _CONFIG_PATHNAME
+		self.aiDataDir			= _AI_DATADIR
+		
+			#-----------------------------------------------------------
+			# Now let's figure out our raw configuration data structure.
+			# Either it was provided to us in a constructor argument,
+			# or we need to load it from the config file, or we already
+			# loaded it earlier and we're just going to reuse that one.
 		
 		if confStruct == None:		# No config struct provided; we have to load one.
 			
-				# Reload the config file, or else use the last loaded copy.
+				# Load (or possibly reload) the config file, 
+				# or else use the last loaded copy.
 			
-			if reloadConf:
+			if reloadConf or _lastLoadedConf == None:
 				confStruct = ConfigurationLoader.loadConfig()
 			else:
 				confStruct = _lastLoadedConf
 		
 			#-------------------------------------------------------
+			# OK, let's remember the raw structure we're using in case
+			# needed for later reference (mainly for debugging).
+			
+		self._rawConfStruct = confStruct
+		
+			#-------------------------------------------------------
 			# 'Parse' the configuration data structure to initialize
-			# our instance attributes.
+			# our associated instance attributes.
 		
-		self.parseConf(conf)
+		self.parseConf(confStruct)
 		
-			# Process the configuration (ourself) to do any other
+			#-------------------------------------------------------
+			# Now process the configuration (ourself) to do any other
 			# needed work with that information.
 			
 		self.process()
@@ -312,20 +396,41 @@ class Configuration:	# A GLaDOS server configuration.
 		for appStruct in self.appList:
 		
 				# The 'name' attribute is the application name.
+				# (Implicitly required to be present, but really 
+				# we should do some error-checking here.)
 		
-			appName = appStruct.name
+			appName = appStruct['name']
 			
-				# Convert the 'available' attribute to a proper Boolean value.
+				# Convert the 'available' attribute (also required)
+				# to a proper Boolean value.
 			
-			appAvail = True if appStruct.available == 'true' else False
+			appAvail = True if appStruct['available'] == 'true' else False
+			
+				# Convert the 'auto-start' attribute (also required)
+				# to a proper Boolean value.
+				
+			appAutoStart = True if appStruct['auto-start'] == 'true' else False
+			
+				# If the 'app-config' attribute is available, record it.
+				# (We can't process it yet since it's application-specific
+				# and the actual app objects haven't been created yet.)
+				
+			if 'app-config' in appStruct:
+				appConfig = appStruct['app-config']
+			else:
+				appConfig = None
 			
 				# Construct an 'application attributes' dictionary.
 			
 			appAttribs =
-				{ 	'name':		appName,		# This is not strictly necessary to include, but
-					'avail':	appAvail	}
+				{ 	'name':		appName,		# This is not strictly necessary to include, but.
+					'avail':	appAvail,		# Is the app available to be registered?
+					'auto':		appAutoStart,	# Should the application auto-start?
+					'conf':		appConfig		# Application-specific configuration info.
+				}
 			
-				# Set this dict as the value that appName maps to.
+				# Set this dict as the value that appName maps to in 
+				# the appConfigs dict.
 			
 			appConfigs[appName] = appAttribs
 				
@@ -350,28 +455,39 @@ class ConfigurationLoader:		# Class for help with loading configurations.
 		"""This 'constructor' is not really a constructor because instances
 			of this class are empty.  Really, it just initializes the module."""
 		
-			# Set the module global serverConfiguration to the result of
+			# Set the module global systemConfiguration to the result of
 			# calling the Configuration constructor, which automatically
 			# loads the configuration (using other methods of this class).
 			
-		serverConfiguration = Configuration()
+		systemConfiguration = Configuration()
 
 	#__/ End ConfigurationLoader().
 
 	def checkEnvironment():
 	
-		"""Checks environment variables to determine config file location."""
+		"""
+			Checks environment variables to determine locations of
+			GLaDOS system config file and AI-specific state data.
+		"""
+		
+			# Declare these names as globals that we'll reinitialize.
+		global _CONFIG_FILENAME, _BASEDIR, _CONFIG_PATHNAME, _AI_DATADIR
 	
 		envFilename = os.getenv('GLADOS_CONFIG_FILENAME')
 		envBaseDir  = os.getenv('GLADOS_PATH')
 		envPathname = os.getenv('GLADOS_CONFIG_PATH')
 		
-		if envFilename != None:	 CONFIG_FILENAME = envFilename
-		if envBaseDir  != None:  BASEDIR = envBaseDir
+		if envFilename != None:	 _CONFIG_FILENAME = envFilename
+		if envBaseDir  != None:  _BASEDIR = envBaseDir
 		
 		CONFIG_PATHNAME = path.join(envFilename, envBaseDir)
 		
-		if envPathname != None:  CONFIG_PATHNAME = envPathname
+		if envPathname != None:  _CONFIG_PATHNAME = envPathname
+		
+		envAIDataDir = os.getenv("AI_DATADIR")
+		if envAIDataDir != None:	_AI_DATADIR = envAIDataDir
+		
+		_logger.normal(f"The AI-specific data directory is set to {_AI_DATADIR}.")
 		
 	#__/ End ConfigurationLoader.checkEnvironment().
 

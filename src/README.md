@@ -26,8 +26,9 @@ programs/tools that are available for use by the A.I. within the GLaDOS
 environment.  These are anticipated to include the following, listed 
 roughly in the intended order of implementation.
 
-1. **Help** - The "Help" tool simply displays some basic information
-	about how to use GLaDOS (for the A.I.'s benefit).
+1. **Help** - The "Help" tool simply displays some basic information 
+	about how to use GLaDOS (for the A.I.'s benefit).  (Subcommands
+	also exist to provide more detailed help information.)
 	
 2. **Apps** - The "Apps" tool simply displays the list of all of the 
 	available apps and allows the A.I. to select one to launch.

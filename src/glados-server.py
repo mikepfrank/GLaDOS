@@ -58,14 +58,15 @@
     #|
     #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global  RAW_DEBUG   # Declare this to be a module-level global.
+global RAW_DEBUG	# Raw debugging flag.
 RAW_DEBUG = False   # Change this to True as needed during initial development.
 
 	# Get the name of the current file, for use in raw debug messages.
 
-from os import path
-global FILENAME
-FILENAME = path.basename(__file__)
+from os 	import path		# Manipulate filesystem path strings.
+
+global FILENAME						# Filename of this module's file.
+FILENAME = path.basename(__file__)	# Strip off ancestor directories.
 
     # Conditionally display some initial diagnostics if RAW_DEBUG is on...
 
@@ -133,11 +134,11 @@ from infrastructure.logmaster import (
 from appdefs                        import  systemName, appName
     # Name of the present application.  Used for configuring logmaster.
 
-from config.loader					import	ConfigurationLoader
-	# This class manages loading of the GLaDOS system configuration
-	# from config files on system startup.
+from config.configuration			import	Configuration
+	# This singleton class manages loading of the GLaDOS system 
+	# configuration from config files on system startup.
 
-from supervisor.starter				import	SupervisorStarter
+from supervisor.supervisor			import	Supervisor
 	# This class manages startup of the Supervisor subsystem, which in
 	# turn starts up and manages all of the other major subsystems.
 
@@ -169,7 +170,7 @@ from supervisor.starter				import	SupervisorStarter
             # However, if it were, then this might conceivably be useful.
             #vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global  __all__         # List of public symbols exported by this module.
+global __all__		# List of public symbols exported by this module.
 __all__ = [
         'is_top'    # Boolean; is this module running at top level?
     ]
@@ -310,8 +311,8 @@ def _main():
 
 	setThreadRole('startup')	# Denotes we are starting up the server.
 
-	ConfigurationLoader()			# Loads the system configuration.
-	SupervisorStarter()				# Start the supervisory subsystem.
+	config = Configuration()	# Loads the system configuration.
+	supervisor = Supervisor()	# Starts the supervisory subsystem.
 		# NOTE: This also starts up all of the other major subsystems.
 		
 		#---------------------------------------------------------------------
@@ -321,7 +322,7 @@ def _main():
 		
 	_logger.normal("Waiting for the Supervisor to exit...")
 	setThreadRole('waiting')
-	SupervisorStarter.waitForExit()	 # Waits for the Supervisor to exit.
+	supervisor.waitForExit()	 # Waits for the Supervisor to exit.
 
 		#------------------------------------------------------------
 		# If we get here, then we are exiting the server application.
