@@ -505,17 +505,39 @@ class Window:   # A text window within the GLaDOS window system.
         #       - Its state (open, minimized, or closed)
         #       - Its current size (number of lines to view)
         #       - Whether it is trying to stay in the receptive field
-        #       - Whether it anchors to the top or bottom of the receptive field or is gloating.
+        #       - Whether it anchors to the top or bottom of the receptive field or is floating.
+		#		- A set of past snapshots taken of it that are known to exist in the system.
         
-        def __init__(self, *args):
-                self._snapshots = []
+        def __init__(self, title="Untitled Window", textBuf:TextBuffer=None,
+						isActive=True, process:Process=None, state:str='closed'
+						viewSize=15, stayVisible:bool=False, anchor:str=None):
+		
+			if textBuf is None:
+				textBuf = TextBuffer()
+
+			if process is None:
+				process = Process()
+		
+			self._title 		= title
+			self._textBuf 		= textBuf
+			self._isActive		= isActive
+			self._process		= process
+			self._state			= state
+			self._viewSize		= viewSize
+			self._stayVisible	= stayVisible
+			self._anchor		= anchor
+		
+            self._snapshots 	= set()
 
         def addText(self, text:str):
-                pass
+		
+				# First, add the text to the end of our internal buffer.
+			self.textBuffer.addText(text)
+            
 
 class Windows:
-        def Windows(self):
-                self._windowList = []
+    def Windows(self):
+        self._windowList = []
 
 class WindowSnapshot:   # A static image of a text window at a given point in time.
 

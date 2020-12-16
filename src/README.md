@@ -109,7 +109,7 @@ various properties can be attached to them; for example, fine-grained
 permissions specifying which specific entities are authorized to execute 
 which specific commands.
 
-### Event representations (`events/`)
+### Event representations (`events/`) 
 
 An "event" in general just means a object that provides a textual 
 representation of an individual input to, or output from, the AI.  A given 
@@ -130,6 +130,8 @@ field of immediate "perceptual awareness".  Our understanding is that
 GPT-3's architecture limits the size of this field to 2,048 tokens.  
 Within GLaDOS, the receptive field normally shows the AI the most recent
 2,048 tokens worth of information contained in the AI's history buffer.
+The receptive field can be considered the primary input interface to the
+AI from GLaDOS (and the outside world).
 
 ### GPT-3 Interface (`gpt3/`)
 
