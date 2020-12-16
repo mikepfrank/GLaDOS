@@ -101,6 +101,9 @@ from os		import	path	# Manipulate filesystem path strings.
 			#|	not specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+	# A simple decorator for singleton classes.
+from infrastructure.decorators	import	singleton
+
 				#-------------------------------------------------------------
 				# The logmaster module defines our logging framework; we
 				# import specific definitions we need from it.	(This is a
@@ -114,10 +117,6 @@ global _component, _logger		# Software component name, logger for component.
 
 _component = path.basename(path.dirname(__file__))	# Our package name.
 _logger = getComponentLogger(_component)			# Create the component logger.
-
-
-	# A simple decorator for singleton classes.
-from infrastructure.decorators	import	singleton
 
 
 			#|----------------------------------------------------------------

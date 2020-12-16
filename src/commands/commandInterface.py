@@ -58,6 +58,9 @@ import re					# Standard regular expression facility.
         #|  1.2. Imports of custom application modules. [module code subsection]
         #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+	# A simple decorator for singleton classes.
+from infrastructure.decorators	import	singleton
+
 			#|----------------------------------------------------------------
 			#|  The following modules, although custom, are generic utilities,
 			#|  not specific to the present application.
@@ -76,10 +79,6 @@ global _component, _logger	# Software component name, logger for component.
 
 _component = path.basename(path.dirname(__file__))		# Our package name.
 _logger = getComponentLogger(_component)    			# Create the component logger.
-
-
-	# A simple decorator for singleton classes.
-from infrastructure.decorators	import	singleton
 
 
     #|==========================================================================
