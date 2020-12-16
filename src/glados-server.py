@@ -130,8 +130,8 @@ if __name__ == "__main__":
 	if RAW_DEBUG:
 		print("__main__: Importing standard Python library modules...")
 
-from	sys		import	stderr		# Used for error output to console.
-
+from	sys					import	stderr		# Used for error output to console.
+from	collections.abc		import	Iterable	# Used for type hints in declarations.
 
 		#|======================================================================
 		#|	1.2. Imports of custom application modules. [module code subsection]

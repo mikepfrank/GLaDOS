@@ -5,10 +5,10 @@
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 """
 
-        FILE NAME:              config/configuration.py                 [Python module source file]
+    FILE NAME:      config/configuration.py          [Python module source file]
         
-    IN PACKAGE:         config
-        MODULE NAME:    config.configuration
+    IN PACKAGE:     config
+    MODULE NAME:    config.configuration
     FULL PATH:      $GIT_ROOT/GLaDOS/src/config/configuration.py
     MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
     SYSTEM NAME:    GLaDOS (Generic Lifeform and Domicile Operating System)
@@ -16,19 +16,19 @@
     SW COMPONENT:   GLaDOS.server.config (server configuration component)
 
 
-        MODULE DESCRIPTION:
-        -------------------
+    MODULE DESCRIPTION:
+    -------------------
         
-                This module allows loading of the GLaDOS system configuration from a 
-                config file.  The default name of the config file is
+        This module allows loading of the GLaDOS system configuration from a 
+        config file.  The default name of the config file is
                 
-                        'glados-config.hjson'
-                        
-                It is expected by default to reside in the directory from which the 
-                server process was launched. The file format is HJSON, which is a more 
-                human-readable extension of JSON format; see https://hjson.github.io/.
-                
-                The config file to use can be customized somewhat by setting environment 
+            'glados-config.hjson'
+        
+        It is expected by default to reside in the directory from which the 
+        server process was launched. The file format is HJSON, which is a more 
+        human-readable extension of JSON format; see https://hjson.github.io/.
+        
+            The config file to use can be customized somewhat by setting environment 
                 variables. If the environment variable GLADOS_CONFIG_FILENAME is set, 
                 then it is used instead of the default config filename.  If the 
                 environment variable GLADOS_PATH is set, then it (rather than the 
@@ -98,26 +98,50 @@
 #| End of module documentation string.
 #|------------------------------------------------------------------------------
 
-        #|==========================================================================
-        #|      Imports.                                                                                                [code section]
-        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	#|==========================================================================
+	#|
+	#|	 1. Module imports.								   [module code section]
+	#|
+	#|			Load and import names of (and/or names from) various
+	#|			other python modules and pacakges for use from within
+	#|			the present module.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		#|======================================================================
+		#|	1.1. Imports of standard python modules.	[module code subsection]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 from os         import  getenv, path  # Access environment variables, build paths.
 from hjson      import  load              # For loading data from .hjson files.
 from pprint     import  pformat           # For pretty-printing structures for diagnostics.
 
-        #----------------------------------------
-        # Create/access a logger for this module.
+		#|======================================================================
+		#|	1.2. Imports of custom application modules. [module code subsection]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+			#|----------------------------------------------------------------
+			#|	The following modules, although custom, are generic utilities,
+			#|	not specific to the present application.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	# A simple decorator for singleton classes.
+from infrastructure.decorators import singleton
+
+				#-------------------------------------------------------------
+				# The logmaster module defines our logging framework; we
+				# import specific definitions we need from it.	(This is a
+				# little cleaner stylistically than "from ... import *".)
 
 from infrastructure.logmaster import getComponentLogger
+
+	# Go ahead and create or access the logger for this module.
 
 global _component, _logger      # Software component name, logger for component.
 
 _component = path.basename(path.dirname(__file__))              # Our package name.
 _logger = getComponentLogger(_component)                        # Create the component logger.
 
-
-from infrastructure.decorators import singleton
 
     #|==========================================================================
     #|
