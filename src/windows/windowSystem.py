@@ -76,6 +76,15 @@ _component = path.basename(path.dirname(__file__))		# Our package name.
 _logger = getComponentLogger(_component)    			# Create the component logger.
 
 
+			#|----------------------------------------------------------------
+			#|	The following modules are specific to the present application.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from commands.commandInterface	import	CommandModule
+	# We're going to extend CommandModule with various subclasses 
+	# specific to the windowing system.
+
+
     #|==========================================================================
     #|
     #|   Globals					    						[code section]
@@ -99,11 +108,14 @@ _logger = getComponentLogger(_component)    			# Create the component logger.
 
 global __all__	# List of public symbols exported by this module.
 __all__ = [
-		'TextBuffer',		# Class for an adjustable-sized buffer of text spooled to the window.
-		'Window',			# Class for a single window within the GLaDOS text window system.
-		'Windows',			# Class for a collection of text windows.
-		'WindowSnapshot',	# Class for a static, frozen record of what a given window contained at a specific point in time.
-		'WindowSystem',		# A singleton class for the entire window subsystem of GLaDOS.
+		'TextBuffer',			# Class for an adjustable-sized buffer of text spooled to the window.
+		'WindowImage',			# A sort of text buffer that contains a static rendered window image.
+		'WindowCommandModule',	# A command module that contains commands for controlling a specific window.
+		'ViewPort',				# Represents the current view a window has on its underlying text buffer.
+		'Window',				# Class for a single window within the GLaDOS text window system.
+		'Windows',				# Class for a collection of text windows.
+		'WindowSnapshot',		# Class for a static, frozen record of what a given window contained at a specific point in time.
+		'WindowSystem',			# A singleton class for the entire window subsystem of GLaDOS.
 	]
 
 
@@ -161,6 +173,8 @@ class TextBuffer:       # A text buffer.
 					
 			Operations on a text buffer include:
 			
+				- The buffer may be cleared (emptied of all content).
+				
 				- Text (any string) may be appended to the end of the
 					buffer.  This creates new rows as needed.  If the
 					maximum number of rows in the buffer would have been
@@ -263,7 +277,15 @@ class TextBuffer:       # A text buffer.
 				self.addLine(str)	# Make sure each added line ends with a newline.
 				
 	#__/ End TextBuffer.__init__().
-		
+	
+	def nRows(self):
+		"""Returns the length of the buffer's current contents, in rows of text."""
+		return 0 if self._rows is None
+		return len(self._rows)
+	
+	def clear(self)
+		"""Empties the text buffer of all content."""
+		self._rows = None
         
     def addText(self, text:str = None):
 		"""
@@ -302,6 +324,24 @@ class TextBuffer:       # A text buffer.
 	#__/ End method textBuf.addText().
 	
 	
+		# This method can be used to ensure that a given line of
+		# text ends with a newline (if it doesn't, then one is added).
+		# (We could just make this a module function.)
+	
+	def ensureLine(self, line:str = None):
+	
+		return None if line is None
+		
+			# If line doesn't already end with a newline, add one.
+		
+		if line == '' or line[-1] != '\n':
+			line = line + '\n'
+
+			# Now return the tweaked line.
+			
+		return line
+	
+	
 	def addLine(self, line:str = None):
 		"""
 			textBuffer.addLine()						[public instance method]
@@ -318,12 +358,9 @@ class TextBuffer:       # A text buffer.
 		return if line is None		# If nothing, do nothing.
 		
 			# If line doesn't already end with a newline, add one.
-		
-		if line == '' or line[-1] != '\n':
-			line = line + '\n'
+		line = self.ensureLine(line)
 			
-			# Now do the raw add.
-			
+			# Now do the raw add.			
 		self._addRaw(self, line)
 		
 	#__/ End method textBuf._addLine().
@@ -492,13 +529,169 @@ class TextBuffer:       # A text buffer.
 		
 	#__/ End ._openNewLine().
 	
+	
+	def getLine(self, rowIndex):
+		"""Gets a line from the buffer. The returned line
+			will be newline-terminated."""
+	
+		return None if self._rows is None
+		
+		bufLen = self.nRows()
+		return None if bufLen is 0
+		
+		return self.ensureLine(self._rows[rowIndex])
+			# Note this ensures that it will appear that the
+			# buffer contains explicit newlines, even if it doesn't.
+	
+	
+	def getTextSpan(self, startPos, endPos):
+		"""Returns, as a single string, all lines contained
+			in the buffer from row #<startPos> to row #<endPos-1>,
+			inclusive.  Each line (including the last) will be
+			terminated by a newline in the output."""
+		
+		outputStr = ""
+		
+		bufLen = self.nRows()
+		
+		if startPos < 0:
+			startPos = 0
+			
+		if endPos > bufLen:
+			endPos = bufLen
+		
+		for rowIndex in range(startPos, endPos):
+			outputStr = outputStr + getLine(rowIndex)
+		
+		return outputStr
+	
 #__/ End class TextBuffer.
 
+class Window: pass	# Forward declaration
+
+class WindowImage:
+	
+	"""A rendered image of a text window. This is also a text buffer,
+		with decorations at the top and bottom (and maybe also the side)."""
+		
+	def __init__(self, win:Window, imgHt:int):
+		
+		self._window		= win
+		self._imageHeight	= imgHt
+		
+			# Create the text buffer to hold the window image.  Initially, 
+			# we set the buffer height to the image size, and don't set any
+			# maximum width.
+		self._textBuf		= TextBuffer(maxLen = imgHt, maxWid = None)
+		
+			# Paint the window image in our text buffer.
+		self.repaint()
+		
+	#__/ End windowImage.__init__().
+	
+	def repaint(self):
+		"""Tell the window image to repaint itself in its text buffer."""
+		
+		self._textBuf.clear()	# First, clear our text buffer.
+		
+			# Ask our window, "please render your contents in us."
+		self.win.render()
+		
+			# Now that we're done repainting ourselves, tell our
+			# window, "hey, now would be a good time to update 
+			# your display on the receptive field."
+			
+		self.win.redisplay()
+		
+	def addText(self, text:str):
+		self._textBuf.addText(text)
+		
+	def addLine(self, line:str):
+		self._textBuf.addLine(line)
+	
+#__/ End class WindowImage.
+
+class WindowCommandModule(CommandModule):
+
+	"""Provides commands for manipulating a specific window when it is active."""
+	
+	# Note: When a given window becomes active, we should activate its command module,
+	# and deactivate that of the previously-active window.
+	
+	def __init__(self, win:Window):
+	
+			# First, do generic initialization for instances of class CommandModule.
+		super(WindowCommandModule, self).__init__()
+		
+		self._targetWindow = win
+		
+
+
+class ViewPort:
+	"""
+		This object tracks the view that a given window has on its
+		underlying text buffer.  A viewPort instance has the following
+		properties:
+		
+			- The underlying window it's associated with.
+		
+			- size: Size of this viewport, in rows.
+		
+			- mode: What mode is the viewport in? Supported modes:
+			
+				static	- In static mode, the top of the viewport 
+							stays anchored to its current location
+							within the text buffer (relative to the
+							top of the buffer.
+							
+				follow-bot	- In follow-bot mode, the bottom of the
+								viewport tries to stay anchored to
+								the bottom of the text in the buffer.
+								This is the default mode.
+								
+			- topPos: The position of the top row of the viewport,
+				relative to the top of the buffer.
+				
+			- bottomPos: The position of (just past) the bottom row of the
+				viewport, relative to the top of the buffer.
+							
+	"""
+	def __init__(self, win:Window, size:int, mode='follow-bot'):
+		self._window = win
+		self._size = size
+		self._mode = mode
+		
+	def update(self):
+		if self._mode == 'follow-bot':
+			
+				# Find out how many total rows there are in the text buffer currently.
+			bufLen = self._window._textBuffer.nRows()
+			
+				# Get the row number just past the bottom row of the buffer.
+			self._bottomPos = bufLen
+			
+				# Set our top edge position relative to that.
+			self._topPos = self._bottomPos - size
+			
+				# If it's off the top, don't allow that.
+			if self._topPos < 0:  self._topPos = 0
+			
+				# Now set the bottom row position relative to the top.
+			self._bottomPos = self._topPos + size
+			
+
 class Window:   # A text window within the GLaDOS window system.
+
+		_DEFAULT_WINDOW_DECORATOR_ROWS	= 2		# One line top, and one line bottom.
+		_DEFAULT_WINDOW_DECORATOR_WIDTH = 60	# Sixty columns of fixed-width text characters.
+		
+		_windowDecoratorRows 	= _DEFAULT_WINDOW_DECORATOR_ROWS
+		_windowDecoratorWidth	= _DEFAULT_WINDOW_DECORATOR_WIDTH
 
         # A window has:
         #       - A title (textual label).
         #       - A text history buffer.
+		#		- A window image (another text buffer).
         #       - A list of snapshots.
         #       - Whether it is the currently active window.
         #       - An associated process.
@@ -507,6 +700,7 @@ class Window:   # A text window within the GLaDOS window system.
         #       - Whether it is trying to stay in the receptive field
         #       - Whether it anchors to the top or bottom of the receptive field or is floating.
 		#		- A set of past snapshots taken of it that are known to exist in the system.
+		#		- A command module for controlling this window when it is active.
         
         def __init__(self, title="Untitled Window", textBuf:TextBuffer=None,
 						isActive=True, process:Process=None, state:str='closed'
@@ -519,7 +713,7 @@ class Window:   # A text window within the GLaDOS window system.
 				process = Process()
 		
 			self._title 		= title
-			self._textBuf 		= textBuf
+			self._textBuffer 	= textBuf
 			self._isActive		= isActive
 			self._process		= process
 			self._state			= state
@@ -527,14 +721,142 @@ class Window:   # A text window within the GLaDOS window system.
 			self._stayVisible	= stayVisible
 			self._anchor		= anchor
 		
+			self._viewPort		= ViewPort(self, self._viewSize)
+			self._viewPos		= 0		# Window is initially viewing the top of its text buffer.
+			self._image			= WindowImage(self, viewSize + self._windowDecoratorRows)
             self._snapshots 	= set()
+			self._commandModule	= WindowCommandModule(self)
 
         def addText(self, text:str):
+			"""Add the given text to the window contents (at the end)."""
 		
 				# First, add the text to the end of our internal buffer.
-			self.textBuffer.addText(text)
+			self._textBuffer.addText(text)
+			
+				# Update our viewport (in case we're following the bottom of the text).
+			self._viewPort.update()
             
-
+				# Now, ask our window image to repaint itself.
+			self._image.repaint()
+		
+		def addLine(self, line:str):
+			"""Add the given single line of text to the window contents (at the end)."""
+			
+				# First, add the line to the end of our internal buffer.
+			self._textBuffer.addLine(line)
+			
+				# Update our viewport (in case we're following the bottom of the text).
+			self._viewPort.update()
+            
+				# Now, ask our window image to repaint itself.
+			self._image.repaint()
+		
+		def render(self):
+			"""Render this window in its image. Assumes image is initially clear."""
+			self.renderTopDecorator()
+			self.renderContents()
+			self.renderBottomDecorator()
+		
+		def renderLine(self):
+			self._image.addLine()
+		
+		def renderTopDecorator(self):
+			"""
+				The default window top decorator for non-active windows looks as follows:
+			
+					/----- Window Title ---------------------------------------\
+				
+				where the total width of this string (in fixed-width characters) is 60 by default.
+				Alternatively, if the window is active, then the decorator looks like:
+				
+					/===== Window Title =======================================\
+				
+			"""
+			
+				# First, figure out which character we're going to use for the horizontal window edge.
+			horizEdgeChar = '=' if self._isActive else '-'
+			
+				# Next, generate what the top decorator string would look like
+				# if there were no title included at all.
+			topDecStr = '/' + horizEdgeChar*(self._windowDecoratorWidth - 2) + '\\'
+			
+				# Now construct the title string, including padding.
+			titleStr = ' ' + self._title + ' '
+			
+				# How long is it?
+			titleStrLen = len(titleStr)
+			
+				# Where are we going to put it?
+			titleStrLoc = 6
+			
+				# OK, now paint it there (overwriting what was there initially).
+			topDecStr = topDecStr[0:titleStrLoc] + titleStr + topDecStr[titleStrLoc+titleStrLen:]
+			
+				# OK, render that line.
+			self.renderLine(topDecStr)
+			
+		#__/ End method window.renderTopDecorator().
+		
+		def renderContents(self):
+			"""
+				This tells us (this window) to render the current view of our 
+				window contents in our window image.
+			"""
+			self._image.addText(self.getViewText())
+			
+		def getViewText(self)
+			"""
+				This retrieves (as a single string) the portion of the window
+				contents that is presently visible within the window's current 
+				viewport on its contents.
+			"""
+			vp = self._viewPort
+			text = self._textBuffer.getTextSpan(vp._topPos, vp._bottomPos)
+			return text
+		
+		def renderBotDecorator(self):
+			"""
+				The default window bottom decorator for non-active windows looks as follows:
+				
+					\----------------------------------------------------------/
+				
+				If the window is active, however, we change it to:
+				
+					\=========== Window Commands: /Minimize /Close ============/
+				
+				where the commands shown are those provided in the window's command module.
+			"""
+			
+				# First, figure out which character we're going to use for the horizontal window edge.
+			horizEdgeChar = '=' if self._isActive else '-'
+			
+				# Next, generate what the bottom decorator string would look like
+				# if there were no command text included at all.
+			botDecStr = '\\' + horizEdgeChar*(self._windowDecoratorWidth - 2) + '/'
+			
+				# If the window is active, we'll superimpose a command menu on it:
+			if self._isActive:
+			
+					# Generate a string for the command menu.
+				menuStr = ' ' + 'Window Commands: ' + self._commandModule.menuStr() + ' '
+				
+					# How long is it?
+				menuStrLen = len(menuStr)
+			
+					# Where are we going to put it?  Center it... (Rounding down.)
+				menuStrLoc = int((self._windowDecoratorWidth - menuStrLen)/2)
+			
+					# OK, now paint it there (overwriting what was there initially).
+				botDecStr = botDecStr[0:menuStrLoc] + titleStr + botDecStr[menuStrLoc+menuStrLen:]
+			#__/ End if window active.
+				
+		#__/ End method window.renderBotDecorator().
+		
+		def redisplay(self):
+			"""Advises the window to re-display itself on the receptive field 
+				(if it's supposed to be visible)."""
+			pass
+		
 class Windows:
     def Windows(self):
         self._windowList = []

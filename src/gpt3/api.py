@@ -1,10 +1,21 @@
 #|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#|  FILE NAME:      gpt3/api.py                         [Python 3 module file]
+#|						TOP OF FILE:	gpt3/api.py
+#|------------------------------------------------------------------------------
+#|	 The below module documentation string will be displayed by pydoc3.
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 """
     MODULE NAME:    gpt3.api                                [Python 3 module]
 
+	IN PACKAGE:		gpt3
+	FULL PATH:		$GIT_ROOT/GLaDOS/src/gpt3/api.py
+	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
+	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
+	APP NAME:		GLaDOS.server (GLaDOS server application)
+	SW COMPONENT:	GLaDOS.gpt3 (GLaDOS GPT-3 interface component)
 
-    DESCRIPTION:
+
+	MODULE DESCRIPTION:
+	-----------------
 
         This module implements a convenience wrapper around OpenAI's API
         for accessing their GPT-3 language models.  The main feature that
@@ -38,6 +49,14 @@
             DEF_TEMP    - Default temperature (default is 0.5).
             DEF_STOP    - Stop string or strings (3 newlines).
 
+
+	PUBLIC FUNCTIONS:
+	
+			countTokens()	- Counts tokens in a string using the
+								API.  Note that this operation is
+								expensive.  For most applications
+								you should use the method in the
+								tokenizer.tokenizer module instead.
 
     EXAMPLES:
 

@@ -37,6 +37,14 @@
 	
 	model-version:		'davinci'	# The most powerful GPT-3 model.
 
+		#-----------------------------------------------------------------------
+		# The max-visible-ntokens specifies the assumed size of the receptive 
+		# field of the underlying language model.  We're assuming 2,048 tokens
+		# for now, but it might be longer in GPT-3/davinci, so we really need to
+		# do some experiments to figure it out.
+		
+	max-visible-tokens:		2048
+
 		#|----------------------------------------------------------------------
 		#| The app-list attribute specifies the list of GLaDOS applications 
 		#| that are potentially available to the AI and gives configuration
@@ -87,25 +95,26 @@
 				app-config: {
 				
 						/* main-msg is the message to be displayed in the Help
-							window when the Help app first starts up. */
+							window when the Help app first starts up.  We try to
+							keep all system windows in GLaDOS to 60 columns. */
 				
 					main-msg:
+						#--------1---------2---------3---------4---------5---------6
 						'''
 						
-						 This is the main Help message for GLaDOS, the
+							This is the main Help message for GLaDOS, the
 						General Lifeform and Domicile Operating System, 
 						(c) 2020 Metaversal Contructions.
 	
-						 At the prompt, you may enter a command line starting
+							At the prompt, you may enter a command line starting
 						with '/', or type free-form text to add to your history.
-	
-						 Available command words include:
+						Available command words include:
 	
 								/Help /Info /Settings /Memory /ToDo
 								/Diary /Browse /Comms /Writing /Unix
 				
-						 Note: Command words are not case-sensitive, and you may
-						abbreviate them using any unique prefix.  For detailed 
+							Note: Command words are not case-sensitive, and you 
+						may abbreviate them using any unique prefix.  For detailed
 						help on any command, type "/Help <command>".
 						
 						'''

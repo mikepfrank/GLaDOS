@@ -9,7 +9,7 @@
 
 	FULL PATH:		$GIT_ROOT/GLaDOS/src/glados-server.py
 	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
-	SYSTEM NAME:	GLaDOS (Generic Lifeform and Domicile Operating System)
+	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
 	APP NAME:		GLaDOS.server (GLaDOS server application)
 
 

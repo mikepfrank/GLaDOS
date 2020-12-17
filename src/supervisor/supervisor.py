@@ -1,17 +1,16 @@
-#|==============================================================================
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #|					 TOP OF FILE:	 supervisor/supervisor.py
 #|------------------------------------------------------------------------------
 #|	 The below module documentation string will be displayed by pydoc3.
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 """
-
 	FILE NAME:		supervisor/supervisor.py		 [Python module source file]
 		
 	IN PACKAGE:		supervisor
 	MODULE NAME:	supervisor.supervisor
 	FULL PATH:		$GIT_ROOT/GLaDOS/src/supervisor/supervisor.py
 	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
-	SYSTEM NAME:	GLaDOS (Generic Lifeform and Domicile Operating System)
+	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
 	APP NAME:		GLaDOS.server (GLaDOS server application)
 	SW COMPONENT:	GLaDOS.supervisor (server configuration component)
 
@@ -302,6 +301,6 @@ class Supervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 #__/ End class Supervisor.
 
 
-#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #|					END OF FILE:   supervisor/supervisor.py
-#|=============================================================================
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
