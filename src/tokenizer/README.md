@@ -1,5 +1,5 @@
-This file `encoder.py` which implements the tokenizer comes directly from
-OpenAI's gpt-2 repo.  See:
+This file `encoder.py` which implements the core of the tokenizer comes 
+directly from OpenAI's gpt-2 repo.  See:
 
 	https://github.com/openai/gpt-2/blob/master/src/encoder.py
 

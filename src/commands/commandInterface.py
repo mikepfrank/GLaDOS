@@ -342,7 +342,9 @@ class Commands:
 
 	def addCommand(inst, cmd:Command):
 		"""Adds the given command to the end of the command list."""
-		self._cmdOD[cmd.name] = cmd		# NOTE: Need to convert to all-lowercase before using as an index.
+		self._cmdOD[cmd.name.casefold()] = cmd
+			# Convert name to lowercase for indexing purposes.
+			# .casefold() is an interlingual equivalent of .lower()
 
 #__/ End class Commands.
 
@@ -350,13 +352,47 @@ class Commands:
 	# Flesh these out more later.
 
 class CommandModule:
+
 	def __init__(self):
 		self._commands = Commands()
+			# Command modules are initially inactive until activated.
+		self._isActive = False			
 		
+	def menuStr(self):
+		"""
+			Returns a string that can serve as a 'menu'
+			listing commands present in this module. The
+			default representation is:
+			
+				"/Word1 /Word2 ... /Wordn"
+			
+			where Word1, etc. are the command words.
+		"""
+		return "(menu not implemented)"
+	
+	def activate(self):
+		"""
+			To 'activate' a command module means to include
+			all of its commands in the currently active global
+			command index.
+		"""
+		self._isActive = True
+		
+	def deactivate(self):
+		"""
+			To 'deactivate' a command module means to remove
+			all of its commands from the currently active global
+			command index.
+		"""
+		self._isActive = False
+	
 class CommandModules:
+
+	"""An instance of this class represents a collection of
+		command modules."""
+		
 	def __init__(self):
 		self._commandModuleList = []
-
 
 @singleton
 class CommandInterface:		# Singleton class for the command interface subsystem.
@@ -365,10 +401,12 @@ class CommandInterface:		# Singleton class for the command interface subsystem.
 		CommandInterface												[class]
 		================
 		
-			A CommandInterface object represents the entire command 
-			interface subsystem of a GLaDOS server system.  It maintains 
-			a set of pluggable command modules, as well as an index of all 
-			commands that presently exist within the system.
+			This is a singleton class; its sole instance represents the 
+			entire command interface subsystem of the GLaDOS server system.  
+			The command interface maintains a set of pluggable command 
+			modules, as well as an index of all commands that are presently 
+			actively accessible within the system.
+		
 		
 		Public data members:
 		--------------------
@@ -377,7 +415,8 @@ class CommandInterface:		# Singleton class for the command interface subsystem.
 				
 					This data object contains the set of command 
 					modules that are presently installed in this
-					command interface.		
+					command interface.  Some may be active, some
+					inactive.
 																			"""
 	
 		#/---------------------------------------------------------------------
@@ -388,12 +427,12 @@ class CommandInterface:		# Singleton class for the command interface subsystem.
 		#|		Private instance data members:
 		#|		------------------------------
 		#|	
-		#|			._commands [Commands]	
+		#|			._activeCommands [Commands]	
 		#|		
-		#|					This data object contains a list of all commands
-		#|					that are presently supported in this command
+		#|					This data object contains an index of all commands
+		#|					that are presently actively supported in this command
 		#|					interface.  (The union of all commands in all of 
-		#|					the installed command modules.)
+		#|					the active command modules.)
 		#|
 		#\---------------------------------------------------------------------		
 	
@@ -418,9 +457,9 @@ class CommandInterface:		# Singleton class for the command interface subsystem.
 		
 		self.commandModules = CommandModules()
 		
-			# Create an initially empty list of supported commands.
+			# Create an initially empty list of actively supported commands.
 		
-		self._commands = Commands()
+		self._activeCommands = Commands()
 		
 	#__/ End initializer for class CommandInterface.
 
