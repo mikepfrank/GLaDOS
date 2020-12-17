@@ -1,17 +1,17 @@
 #|==============================================================================
-#|                TOP OF FILE:    windows/windowSystem.py
+#|				  TOP OF FILE:	  windows/windowSystem.py
 #|------------------------------------------------------------------------------
-#|   The below module documentation string will be displayed by pydoc3.
+#|	 The below module documentation string will be displayed by pydoc3.
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 """
-    FILE NAME:      windows/windowSystem.py     [Python module source file]
+	FILE NAME:		windows/windowSystem.py		[Python module source file]
 
-    IN PACKAGE:		windows
-	MODULE NAME:    windows.windowSystem
-    FULL PATH:      $GIT_ROOT/GLaDOS/src/windows/windowSystem.py
-    MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
-    SYSTEM NAME:    GLaDOS (General Lifeform and Domicile Operating System)
-    APP NAME:       GLaDOS.server (GLaDOS server application)
+	IN PACKAGE:		windows
+	MODULE NAME:	windows.windowSystem
+	FULL PATH:		$GIT_ROOT/GLaDOS/src/windows/windowSystem.py
+	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
+	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
+	APP NAME:		GLaDOS.server (GLaDOS server application)
 	SW COMPONENT:	GLaDOS.commands (command interface component)
 
 
@@ -23,7 +23,7 @@
 		and have them be executed by the system.
 		
 		The command interface is organized into "command modules" associated
-		with specific facilities or processes within the GLaDOS system.  New
+		with specific facilities or processes within the GLaDOS system.	 New
 		command modules can be added dynamically into the interface.  In the
 		main loop of the system, when the A.I. generates a text event, it is
 		parsed to see if it matches a command template, and if so, then 
@@ -35,35 +35,38 @@
 #|------------------------------------------------------------------------------
 
 
-    #|==========================================================================
-    #|
-    #|   1. Module imports.                                [module code section]
-    #|
-    #|          Load and import names of (and/or names from) various
-    #|          other python modules and pacakges for use from within
-    #|          the present module.
-    #|
-    #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	#|==========================================================================
+	#|
+	#|	 1. Module imports.								   [module code section]
+	#|
+	#|			Load and import names of (and/or names from) various
+	#|			other python modules and pacakges for use from within
+	#|			the present module.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-        #|======================================================================
-        #|  1.1. Imports of standard python modules.    [module code subsection]
-        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		#|======================================================================
+		#|	1.1. Imports of standard python modules.	[module code subsection]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-        #|======================================================================
-        #|  1.2. Imports of custom application modules. [module code subsection]
-        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+from collections.abc import Iterable
+from os import path
+
+		#|======================================================================
+		#|	1.2. Imports of custom application modules. [module code subsection]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 			#|----------------------------------------------------------------
-			#|  The following modules, although custom, are generic utilities,
-			#|  not specific to the present application.
+			#|	The following modules, although custom, are generic utilities,
+			#|	not specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-        # A simple decorator for singleton classes.
-from infrastructure.decorators  import  singleton
+		# A simple decorator for singleton classes.
+from infrastructure.decorators	import	singleton
 
 				#-------------------------------------------------------------
 				# The logmaster module defines our logging framework; we
-				# import specific definitions we need from it.  (This is a
+				# import specific definitions we need from it.	(This is a
 				# little cleaner stylistically than "from ... import *".)
 
 from infrastructure.logmaster	import getComponentLogger
@@ -73,7 +76,7 @@ from infrastructure.logmaster	import getComponentLogger
 global _component, _logger	# Software component name, logger for component.
 
 _component = path.basename(path.dirname(__file__))		# Our package name.
-_logger = getComponentLogger(_component)    			# Create the component logger.
+_logger = getComponentLogger(_component)				# Create the component logger.
 
 
 			#|----------------------------------------------------------------
@@ -84,27 +87,33 @@ from commands.commandInterface	import	CommandModule
 	# We're going to extend CommandModule with various subclasses 
 	# specific to the windowing system.
 
+from processes.processSystem	import	Process
 
-    #|==========================================================================
-    #|
-    #|   Globals					    						[code section]
-    #|
-    #|      Declare and/or define various global variables and
-    #|      constants.  Note that top-level 'global' statements are
+	# We don't need to create applications from this module, so no need
+	# to actually import the real Application_ class.
+#from apps.appSystem				import	Application_
+class Application_: pass	# Do this instead to avoid circular imports.
+
+	#|==========================================================================
+	#|
+	#|	 Globals												[code section]
+	#|
+	#|		Declare and/or define various global variables and
+	#|		constants.	Note that top-level 'global' statements are
 	#|		not strictly required, but they serve to verify that
-	#|      these names were not previously used, and also serve as 
+	#|		these names were not previously used, and also serve as 
 	#|		documentation.
-    #|
-    #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-        #|======================================================================
-        #|
-        #|  Special globals.                              	[code subsection]
-        #|
-        #|      These globals have special meanings defined by the
-        #|      Python language. 
-        #|
-        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		#|======================================================================
+		#|
+		#|	Special globals.								[code subsection]
+		#|
+		#|		These globals have special meanings defined by the
+		#|		Python language. 
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 global __all__	# List of public symbols exported by this module.
 __all__ = [
@@ -130,16 +139,16 @@ __all__ = [
 
 # Window system classes:
 #
-#       TextBuffer              - An adjustable-sized buffer of text spooled to the window.
-#       Window                  - A text window within the GLaDOS window system.
-#       Windows                 - A collection of text windows.
-#       WindowSnapshot          - A static image of a text window at a given point in time.
-#       WindowSystem            - The entire window subsystem in a given GLaDOS system instance.
+#		TextBuffer				- An adjustable-sized buffer of text spooled to the window.
+#		Window					- A text window within the GLaDOS window system.
+#		Windows					- A collection of text windows.
+#		WindowSnapshot			- A static image of a text window at a given point in time.
+#		WindowSystem			- The entire window subsystem in a given GLaDOS system instance.
 
 
 
 
-class TextBuffer:       # A text buffer.
+class TextBuffer:		# A text buffer.
 
 	"""
 		TextBuffer										   [module public class]
@@ -176,7 +185,7 @@ class TextBuffer:       # A text buffer.
 				- The buffer may be cleared (emptied of all content).
 				
 				- Text (any string) may be appended to the end of the
-					buffer.  This creates new rows as needed.  If the
+					buffer.	 This creates new rows as needed.  If the
 					maximum number of rows in the buffer would have been
 					exceeded, rows are automatically removed from the 
 					start of the buffer to make room.
@@ -202,8 +211,8 @@ class TextBuffer:       # A text buffer.
 	#|
 	#|			This is a boolean value which should be True if and only if
 	#|			each line (except possibly the last) should be terminated
-	#|			with an explicit newline character ('\n').  (If this is False
-	#|			then the entire text buffer will contain no newlines.)  (Note
+	#|			with an explicit newline character ('\n').	(If this is False
+	#|			then the entire text buffer will contain no newlines.)	(Note
 	#|			that the AI's view of the buffer will generally have newlines
 	#|			added in any case, so this option doesn't make much difference.)
 	#|
@@ -219,20 +228,20 @@ class TextBuffer:       # A text buffer.
 	#|			each of which should be a string.
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-        
-    def __init__(self, maxLen:int = 100, maxWid:int = 100, includeNewlines:bool=True,
+		
+	def __init__(self, maxLen:int = 100, maxWid:int = 100, includeNewlines:bool=True,
 					wrapLines:bool = True, rows:Iterable=None):
 		
 		"""textBuffer.__init__()					  [special instance method]
 		
-				Instance initializer for the TextBuffer class.  This 
+				Instance initializer for the TextBuffer class.	This 
 				basically just sets private instance data members
-				to the provided parameters.  Arguments are:
+				to the provided parameters.	 Arguments are:
 				
 					maxLen [int or None]
 					
 						Maximum buffer length in rows of text, or None 
-						if unlimited (DANGER!).  Default value is 100.
+						if unlimited (DANGER!).	 Default value is 100.
 					
 					maxWid [int or None]
 					
@@ -263,12 +272,12 @@ class TextBuffer:       # A text buffer.
 						overfull.)
 		"""
 					
-        self._maxLen 			= maxLen
+		self._maxLen			= maxLen
 		self._maxWid			= maxWid
 		self._includeNewlines	= includeNewlines
 		self._wrapLines			= wrapLines
 
-        self._rows = None           # Buffer is empty initially. No row data.
+		self._rows = None			# Buffer is empty initially. No row data.
 		
 			# If rows are provided, add them to the buffer.
 		
@@ -280,14 +289,15 @@ class TextBuffer:       # A text buffer.
 	
 	def nRows(self):
 		"""Returns the length of the buffer's current contents, in rows of text."""
-		return 0 if self._rows is None
+		if self._rows is None:
+			return 0 
 		return len(self._rows)
 	
-	def clear(self)
+	def clear(self):
 		"""Empties the text buffer of all content."""
 		self._rows = None
-        
-    def addText(self, text:str = None):
+		
+	def addText(self, text:str = None):
 		"""
 			textBuffer.addText()						[public instance method]
 			
@@ -297,16 +307,17 @@ class TextBuffer:       # A text buffer.
 				the top of the buffer and discarded until the buffer is
 				no longer overfull.
 		"""
-        return if text is None		# Do nothing if there's no text.
+		if text is None:		# Do nothing if there's no text.
+			return
 
 			# First, we'll split the given text on newlines,
-			# and then add the lines individually.  Note that this 
+			# and then add the lines individually.	Note that this 
 			# always returns a list with at least one element.
 			
 		lines = text.split('\n')
 		
 			# For each line before the last one, we're going to add it 
-			# to the buffer using the '.addLine()' method.  This makes 
+			# to the buffer using the '.addLine()' method.	This makes 
 			# sure that each line added actually ends with a newline 
 			# (these lines don't, yet) and then adds it to the buffer
 			# using the '._addRaw()' method, which doesn't add a newline
@@ -330,7 +341,8 @@ class TextBuffer:       # A text buffer.
 	
 	def ensureLine(self, line:str = None):
 	
-		return None if line is None
+		if line is None:
+			return None 	# No actual line, leave it alone.
 		
 			# If line doesn't already end with a newline, add one.
 		
@@ -347,21 +359,22 @@ class TextBuffer:       # A text buffer.
 			textBuffer.addLine()						[public instance method]
 			
 				The provided text string should not have any newlines,
-				except for possibly one at the end.  This method ensures
+				except for possibly one at the end.	 This method ensures
 				the string ends in a newline (one is added if not present)
-				and then appends that string to the buffer.  In the process,
+				and then appends that string to the buffer.	 In the process,
 				the final line of the buffer could end up being truncated or
 				wrapped, and earlier lines may be scrolled up and off if the
 				buffer becomes overfull.
 		"""
 	
-		return if line is None		# If nothing, do nothing.
+		if line is None:		# If nothing, do nothing.
+			return 
 		
 			# If line doesn't already end with a newline, add one.
 		line = self.ensureLine(line)
 			
 			# Now do the raw add.			
-		self._addRaw(self, line)
+		self._addRaw(line)
 		
 	#__/ End method textBuf._addLine().
 	
@@ -371,8 +384,8 @@ class TextBuffer:       # A text buffer.
 			textBuffer._addRaw()						[private instance method]
 			
 				This method does the real low-level work of adding text to 
-				the buffer.  First, if there are no rows in the buffer yet,
-				then a new row is opened to contain the required text.  Then
+				the buffer.	 First, if there are no rows in the buffer yet,
+				then a new row is opened to contain the required text.	Then
 				the text is appended to that row.  Then, if the row is now
 				overlong, it is truncated or wrapped.  If the buffer now 
 				contains too many rows, then rows are scrolled off the top.
@@ -381,7 +394,8 @@ class TextBuffer:       # A text buffer.
 				prior to its final character, which can be a newline or not.
 				(If so, then a new line is added after this one.)
 		"""
-		return if rawStr is None	# If nothing provided, do nothing.
+		if rawStr is None:	# If nothing provided, do nothing.
+			return
 		
 		# An important assumption here is that rawStr contains no newlines
 		# before the last character. We really should check this here.
@@ -405,7 +419,7 @@ class TextBuffer:       # A text buffer.
 			self._rows[-1] = self._rows[-1] + rawStr
 		
 				# As a result of doing this, the last row of the buffer may have
-				# become overlong!  If so, then we need to either truncate it or
+				# become overlong!	If so, then we need to either truncate it or
 				# wrap it.
 			
 			if self._maxWid is not None:	# First, make sure there *is* a max width.
@@ -456,7 +470,7 @@ class TextBuffer:       # A text buffer.
 			# If we're not in the '_includeNewlines' mode, then we need to
 			# make sure that what we just did didn't cause the last line of
 			# of the buffer to end in a newline character (which could have
-			# happened if the rawStr ended in newline).  If it did, then
+			# happened if the rawStr ended in newline).	 If it did, then
 			# we remove it.
 		
 		if not self._includeNewlines:
@@ -482,7 +496,8 @@ class TextBuffer:       # A text buffer.
 				long is that string if we don't include the final newline
 				(if any) in the count?
 		"""
-		return 0 if text is None or text == ''
+		if text is None or text == '':
+			return 0 
 		
 		realLen = len(text)
 		
@@ -513,7 +528,7 @@ class TextBuffer:       # A text buffer.
 		
 			# At this point, since we just added a new row to the buffer,
 			# we have to make sure that the buffer isn't now overfull (too
-			# many lines).  If it is, then we shorten it by removing rows 
+			# many lines).	If it is, then we shorten it by removing rows 
 			# from the top until it is back in spec.
 			
 		while True:		# Infinite loop (terminated with break).
@@ -534,10 +549,11 @@ class TextBuffer:       # A text buffer.
 		"""Gets a line from the buffer. The returned line
 			will be newline-terminated."""
 	
-		return None if self._rows is None
+		if self._rows is None:
+			return None 
 		
 		bufLen = self.nRows()
-		return None if bufLen is 0
+		if bufLen is 0: return None 
 		
 		return self.ensureLine(self._rows[rowIndex])
 			# Note this ensures that it will appear that the
@@ -547,7 +563,7 @@ class TextBuffer:       # A text buffer.
 	def getTextSpan(self, startPos, endPos):
 		"""Returns, as a single string, all lines contained
 			in the buffer from row #<startPos> to row #<endPos-1>,
-			inclusive.  Each line (including the last) will be
+			inclusive.	Each line (including the last) will be
 			terminated by a newline in the output."""
 		
 		outputStr = ""
@@ -561,7 +577,7 @@ class TextBuffer:       # A text buffer.
 			endPos = bufLen
 		
 		for rowIndex in range(startPos, endPos):
-			outputStr = outputStr + getLine(rowIndex)
+			outputStr = outputStr + self.getLine(rowIndex)
 		
 		return outputStr
 	
@@ -579,10 +595,10 @@ class WindowImage:
 		self._window		= win
 		self._imageHeight	= imgHt
 		
-			# Create the text buffer to hold the window image.  Initially, 
+			# Create the text buffer to hold the window image.	Initially, 
 			# we set the buffer height to the image size, and don't set any
 			# maximum width.
-		self._textBuf		= TextBuffer(maxLen = imgHt, maxWid = None)
+		self._textBuffer	= TextBuffer(maxLen = imgHt, maxWid = None)
 		
 			# Paint the window image in our text buffer.
 		self.repaint()
@@ -592,22 +608,26 @@ class WindowImage:
 	def repaint(self):
 		"""Tell the window image to repaint itself in its text buffer."""
 		
-		self._textBuf.clear()	# First, clear our text buffer.
+		self._textBuffer.clear()	# First, clear our text buffer.
 		
+			# Make sure our window knows how to find us.
+			# NOTE: This breaks encapsulation a bit--improve API.
+		self._window._image = self
+
 			# Ask our window, "please render your contents in us."
-		self.win.render()
+		self._window.render()
 		
 			# Now that we're done repainting ourselves, tell our
 			# window, "hey, now would be a good time to update 
 			# your display on the receptive field."
 			
-		self.win.redisplay()
+		self._window.redisplay()
 		
 	def addText(self, text:str):
-		self._textBuf.addText(text)
+		self._textBuffer.addText(text)
 		
 	def addLine(self, line:str):
-		self._textBuf.addLine(line)
+		self._textBuffer.addLine(line)
 	
 #__/ End class WindowImage.
 
@@ -630,7 +650,7 @@ class WindowCommandModule(CommandModule):
 class ViewPort:
 	"""
 		This object tracks the view that a given window has on its
-		underlying text buffer.  A viewPort instance has the following
+		underlying text buffer.	 A viewPort instance has the following
 		properties:
 		
 			- The underlying window it's associated with.
@@ -652,14 +672,16 @@ class ViewPort:
 			- topPos: The position of the top row of the viewport,
 				relative to the top of the buffer.
 				
-			- bottomPos: The position of (just past) the bottom row of the
+			- botPos: The position of (just past) the bottom row of the
 				viewport, relative to the top of the buffer.
 							
 	"""
-	def __init__(self, win:Window, size:int, mode='follow-bot'):
+	def __init__(self, win:Window, size:int, mode='follow-bot', topPos=None, botPos = None):
 		self._window = win
 		self._size = size
 		self._mode = mode
+		self._topPos = 0 if topPos is None else topPos
+		self._botPos = self._topPos + self._size
 		
 	def update(self):
 		if self._mode == 'follow-bot':
@@ -668,42 +690,43 @@ class ViewPort:
 			bufLen = self._window._textBuffer.nRows()
 			
 				# Get the row number just past the bottom row of the buffer.
-			self._bottomPos = bufLen
+			self._botPos = bufLen
 			
 				# Set our top edge position relative to that.
-			self._topPos = self._bottomPos - size
+			self._topPos = self._botPos - self._size
 			
 				# If it's off the top, don't allow that.
 			if self._topPos < 0:  self._topPos = 0
 			
 				# Now set the bottom row position relative to the top.
-			self._bottomPos = self._topPos + size
+			self._botPos = self._topPos + self._size
 			
 
-class Window:   # A text window within the GLaDOS window system.
+class Window:	# A text window within the GLaDOS window system.
 
 		_DEFAULT_WINDOW_DECORATOR_ROWS	= 2		# One line top, and one line bottom.
 		_DEFAULT_WINDOW_DECORATOR_WIDTH = 60	# Sixty columns of fixed-width text characters.
 		
-		_windowDecoratorRows 	= _DEFAULT_WINDOW_DECORATOR_ROWS
+		_windowDecoratorRows	= _DEFAULT_WINDOW_DECORATOR_ROWS
 		_windowDecoratorWidth	= _DEFAULT_WINDOW_DECORATOR_WIDTH
 
-        # A window has:
-        #       - A title (textual label).
-        #       - A text history buffer.
+		# A window has:
+		#		- A title (textual label).
+		#		- An aplication it's serving.
+		#		- A text history buffer.
 		#		- A window image (another text buffer).
-        #       - A list of snapshots.
-        #       - Whether it is the currently active window.
-        #       - An associated process.
-        #       - Its state (open, minimized, or closed)
-        #       - Its current size (number of lines to view)
-        #       - Whether it is trying to stay in the receptive field
-        #       - Whether it anchors to the top or bottom of the receptive field or is floating.
+		#		- A list of snapshots.
+		#		- Whether it is the currently active window.
+		#		- An associated process.
+		#		- Its state (open, minimized, or closed)
+		#		- Its current size (number of lines to view)
+		#		- Whether it is trying to stay in the receptive field
+		#		- Whether it anchors to the top or bottom of the receptive field or is floating.
 		#		- A set of past snapshots taken of it that are known to exist in the system.
 		#		- A command module for controlling this window when it is active.
-        
-        def __init__(self, title="Untitled Window", textBuf:TextBuffer=None,
-						isActive=True, process:Process=None, state:str='closed'
+		
+		def __init__(self, title="Untitled Window", app:Application_=None, textBuf:TextBuffer=None,
+						isActive=True, process:Process=None, state:str='closed',
 						viewSize=15, stayVisible:bool=False, anchor:str=None):
 		
 			if textBuf is None:
@@ -712,8 +735,9 @@ class Window:   # A text window within the GLaDOS window system.
 			if process is None:
 				process = Process()
 		
-			self._title 		= title
-			self._textBuffer 	= textBuf
+			self._title			= title
+			self._app			= app
+			self._textBuffer	= textBuf
 			self._isActive		= isActive
 			self._process		= process
 			self._state			= state
@@ -721,13 +745,17 @@ class Window:   # A text window within the GLaDOS window system.
 			self._stayVisible	= stayVisible
 			self._anchor		= anchor
 		
-			self._viewPort		= ViewPort(self, self._viewSize)
-			self._viewPos		= 0		# Window is initially viewing the top of its text buffer.
-			self._image			= WindowImage(self, viewSize + self._windowDecoratorRows)
-            self._snapshots 	= set()
 			self._commandModule	= WindowCommandModule(self)
 
-        def addText(self, text:str):
+			self._viewPort		= ViewPort(self, self._viewSize)
+			self._viewPos		= 0		# Window is initially viewing the top of its text buffer.
+
+			self._image			= None	# No image initially--but now we'll make one!
+			self._image			= WindowImage(self, viewSize + self._windowDecoratorRows)
+
+			self._snapshots		= set()
+
+		def addText(self, text:str):
 			"""Add the given text to the window contents (at the end)."""
 		
 				# First, add the text to the end of our internal buffer.
@@ -735,7 +763,7 @@ class Window:   # A text window within the GLaDOS window system.
 			
 				# Update our viewport (in case we're following the bottom of the text).
 			self._viewPort.update()
-            
+			
 				# Now, ask our window image to repaint itself.
 			self._image.repaint()
 		
@@ -747,7 +775,7 @@ class Window:   # A text window within the GLaDOS window system.
 			
 				# Update our viewport (in case we're following the bottom of the text).
 			self._viewPort.update()
-            
+			
 				# Now, ask our window image to repaint itself.
 			self._image.repaint()
 		
@@ -755,10 +783,10 @@ class Window:   # A text window within the GLaDOS window system.
 			"""Render this window in its image. Assumes image is initially clear."""
 			self.renderTopDecorator()
 			self.renderContents()
-			self.renderBottomDecorator()
+			self.renderBotDecorator()	# Render the decorator at the bottom of the window.
 		
-		def renderLine(self):
-			self._image.addLine()
+		def renderLine(self, line:str):
+			self._image.addLine(line)
 		
 		def renderTopDecorator(self):
 			"""
@@ -804,14 +832,14 @@ class Window:   # A text window within the GLaDOS window system.
 			"""
 			self._image.addText(self.getViewText())
 			
-		def getViewText(self)
+		def getViewText(self):
 			"""
 				This retrieves (as a single string) the portion of the window
 				contents that is presently visible within the window's current 
 				viewport on its contents.
 			"""
 			vp = self._viewPort
-			text = self._textBuffer.getTextSpan(vp._topPos, vp._bottomPos)
+			text = self._textBuffer.getTextSpan(vp._topPos, vp._botPos)
 			return text
 		
 		def renderBotDecorator(self):
@@ -843,11 +871,11 @@ class Window:   # A text window within the GLaDOS window system.
 					# How long is it?
 				menuStrLen = len(menuStr)
 			
-					# Where are we going to put it?  Center it... (Rounding down.)
+					# Where are we going to put it?	 Center it... (Rounding down.)
 				menuStrLoc = int((self._windowDecoratorWidth - menuStrLen)/2)
 			
 					# OK, now paint it there (overwriting what was there initially).
-				botDecStr = botDecStr[0:menuStrLoc] + titleStr + botDecStr[menuStrLoc+menuStrLen:]
+				botDecStr = botDecStr[0:menuStrLoc] + menuStr + botDecStr[menuStrLoc+menuStrLen:]
 			#__/ End if window active.
 				
 		#__/ End method window.renderBotDecorator().
@@ -858,32 +886,32 @@ class Window:   # A text window within the GLaDOS window system.
 			pass
 		
 class Windows:
-    def Windows(self):
-        self._windowList = []
+	def Windows(self):
+		self._windowList = []
 
-class WindowSnapshot:   # A static image of a text window at a given point in time.
+class WindowSnapshot:	# A static image of a text window at a given point in time.
 
-        # A snapshot has:
-        #       - A text history buffer.
-        #       - The window it's a snapshot of.
-        #       - The time it was taken.
-        #       - Its location in the text stream.
-        #       - Its state (open or minimized).
-        #       - Its current size (number of lines to inspect).
-        
-        pass
+		# A snapshot has:
+		#		- A text history buffer.
+		#		- The window it's a snapshot of.
+		#		- The time it was taken.
+		#		- Its location in the text stream.
+		#		- Its state (open or minimized).
+		#		- Its current size (number of lines to inspect).
+		
+		pass
 
-@singleton      
+@singleton		
 class WindowSystem:
 
-        # The WindowSystem has:
-        #       - Set of all windows in the system.
-        #       - List of windows present in the receptive field.
-        #       - List of windows anchored to the top of the receptive field.
-        #       - List of windows anchored to the bottom of the receptive field (usually there is just one, the presently active window).
+		# The WindowSystem has:
+		#		- Set of all windows in the system.
+		#		- List of windows present in the receptive field.
+		#		- List of windows anchored to the top of the receptive field.
+		#		- List of windows anchored to the bottom of the receptive field (usually there is just one, the presently active window).
 
-        def __init__(self):
-                self._windows = Windows()
-                
+		def __init__(self):
+				self._windows = Windows()
+				
 
 
