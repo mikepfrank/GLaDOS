@@ -163,7 +163,7 @@ from config.configuration       import  Configuration
         # Singleton class that provides the current GLaDOS system configuration.
 
 from windows.windowSystem       import  Window
-from processes.processSystem    import  GLaDOS_Process
+from processes.processSystem    import  Process
 
     #|==========================================================================
     #|
@@ -289,12 +289,12 @@ class Application_:
                         # Create a new window for this application, with a suitable title.
                         # We don't actually display this window until the application is launched.
                 
-                self.window = Window(name + ' Window', self)
+                self.window = Window(name + ' Window', app=self)
                 
                         # Create a process for this application, to run in that window.
                         # We don't actually start the process until the application is launched.
                 
-                self.process = GLaDOS_Process(name, self.window)
+                self.process = Process(name, self.window)
                 
                         # Designate the state of this application as not yet started.
                         

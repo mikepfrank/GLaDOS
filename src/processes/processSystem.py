@@ -2,7 +2,7 @@
 
 from infrastructure.decorators import singleton
 
-class GLaDOS_Process:
+class Process:
     def __init__(self, *args):
         pass
 
