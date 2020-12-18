@@ -67,7 +67,13 @@
 		#|
 		#|		auto-start		Boolean; should this app be lauched 
 		#|						automatically when the application 
-		#|						system is started?  
+		#|						system is started?  (Some apps may 
+		#|						usually run in the background, so this
+		#|						may not imply auto-open, below.)
+		#|
+		#|		auto-open	Boolean; should this app automatically open its
+		#|					window (placing it on the AI's receptive field) 
+		#|					as soon as the receptive field is available?
 		#|
 		#|		app-config	Optional; specifies application-specific
 		#|					configuration attributes.
@@ -94,8 +100,9 @@
 					
 			{
 				name:			Help
-				available:		true
+				available:		true	# This app is implemented and available to the AI.
 				auto-start:		false
+				auto-open:		false
 				
 				app-config: {
 				
@@ -132,8 +139,9 @@
 	
 			{
 				name:			Apps
-				available:		false
+				available:		false	# THIS APP IS NOT YET IMPLEMENTED.
 				auto-start:		false
+				auto-open:		false
 			},
 			
 				/* Info - The idea behind this app is that it maintains and 
@@ -147,8 +155,12 @@
 	
 			{
 				name:			Info
-				available:		true
-				auto-start:		true
+				available:		true	# This app is implemented and available to the AI.
+				auto-start:		true	# This will become important later when the app has dynamic behavior.
+				auto-open:		true	# We want this to be the first thing the AI sees when it wakes up.
+				placement:		'pinned-to-top'		# We want this app to be prominent.
+					# This means, initially place the app's window at the very top of 
+					# the receptive field.
 				
 				app-config: {
 				
@@ -168,8 +180,9 @@
 			
 			{
 				name:			Settings
-				available:		false
+				available:		false		# THIS APP IS NOT YET IMPLEMENTED.
 				auto-start:		false
+				auto-open:		false
 			},
 			
 				/* Memory - The memory tool allows the A.I. to browse and search
@@ -178,8 +191,9 @@
 			
 			{
 				name:			Memory
-				available:		false
+				available:		false		# THIS APP IS NOT YET IMPLEMENTED.
 				auto-start:		false
+				auto-open:		false
 			},
 			
 				/* ToDo - The idea of this app is that it is a simple to-do list 
@@ -189,8 +203,9 @@
 			
 			{
 				name:			ToDo
-				available:		false
+				available:		false		# THIS APP IS NOT YET IMPLEMENTED.
 				auto-start:		false
+				auto-open:		false
 			},
 			
 				/* Diary - This tool allows the A.I. to keep a "diary" of important
@@ -198,8 +213,9 @@
 			
 			{
 				name:			Diary
-				available:		false
+				available:		false		# THIS APP IS NOT YET IMPLEMENTED.
 				auto-start:		false
+				auto-open:		false
 			},
 			
 				/* Browse - This is a simple text-based tool to facilitate simple web
@@ -207,8 +223,9 @@
 			
 			{
 				name:			Browse
-				available:		false
+				available:		false		# THIS APP IS NOT YET IMPLEMENTED.
 				auto-start:		false
+				auto-open:		false
 			},
 			
 				/* The "comms" tool faciltates the A.I.'s two-way 
@@ -219,8 +236,9 @@
 			
 			{
 				name:			Comms
-				available:		false
+				available:		false		# THIS APP IS NOT YET IMPLEMENTED.
 				auto-start:		false
+				auto-open:		false
 			},
 			
 				/* The writing tool is an interface that helps the A.I.
@@ -229,8 +247,9 @@
 			
 			{
 				name:			Writing
-				available:		false
+				available:		false		# THIS APP IS NOT YET IMPLEMENTED.
 				auto-start:		false
+				auto-open:		false
 			},
 			
 				/* This app gives the A.I. access to an actual Unix shell
@@ -239,14 +258,10 @@
 			
 			{
 				name:			Unix
-				available:		false
+				available:		false		# THIS APP IS NOT YET IMPLEMENTED.
 				auto-start:		false
+				auto-open:		false
 			},
 		]
-
-	# Eventually, we need to add more configuration parameters here, to do
-	# things like set GPT-3 model parameters, customize locations in the 
-	# filesystem for various resources such as the memory and history, and
-	# so forth.
 
 }

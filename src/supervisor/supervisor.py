@@ -80,23 +80,6 @@
 #| End of module documentation string.
 #|------------------------------------------------------------------------------
 
-# To add:
-#
-#		ActionProcessor -
-#
-#			Every time the AI generates an action, several things happen:
-#
-#				* An event for the action is created and appended to 
-#					the AI's own cognitive stream.
-#
-#				* The event is handed to the GLaDOS command interface
-#					for possible processing.
-#
-#			The ActionProcessor class should probably be defined in the
-#			TheSupervisor module--but (for actions that take place in the
-#			AI's cognitive sphere) executed in the mind process.
-#
-
 
 	#|==========================================================================
 	#|
@@ -149,6 +132,9 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 from config.configuration		import	TheConfiguration
 	# The singleton class that gives the system configuration.
 
+from events.action				import	TheActionSystem
+	# The abstract base class for subsystem actions that we'll process.
+
 from commands.commandInterface	import	TheCommandInterface
 	# This class manages initialization of the command interface.
 	# (That is, the command interface used by the AI to control GLaDOS.)
@@ -166,6 +152,10 @@ from apps.appSystem				import	TheAppSystem
 
 from mind.mindSystem			import	TheCognitiveSystem
 	# This class manages starting up the A.I.'s mind on server startup.
+	# NOTE: The receptive field gets created in here; as soon as it
+	# exists, it generates an AnnounceFieldExists action, which gets
+	# passed to the Supervisor, which then tells the application system
+	# to please place all of its open windows on the field.
 
 
 	#|==========================================================================
@@ -202,6 +192,8 @@ __all__ = [
 	#|		Classes defined by this module.
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
 
 @singleton
 class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
@@ -250,7 +242,18 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 			#| The assignments to local variables here are not really needed, 
 			#| since these constructors all maintain their own singletons,
 			#| but are included just to document that a value is returned.
-				
+		
+				#|--------------------------------------------------------------
+				#| (0) We initialize our action system. This is a part of the
+				#| supervisor subsystem that processes, and decides what to do 
+				#| with, major actions taken by other subsystems. It constitutes
+				#| the primary mechanism by which other subsystems talk to the 
+				#| supervisor subsystem, and by which the supervisor subsystem
+				#| maintains supervisory control over the rest of the system.
+
+		_logger.info("    Supervisor: Initializing our action processing facility...")
+		tas = TheActionSystem()		# Initialize the action subsystem.
+		
 				#|--------------------------------------------------------------
 				#| (1) We start up the command interface subsystem first.  We do 
 				#| this because, in general, every other subsystem of GLaDOS may 

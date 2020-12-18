@@ -149,14 +149,14 @@ from pprint		import	pformat			  # For pretty-printing structures for diagnostics
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# A simple decorator for singleton classes.
-from infrastructure.decorators import singleton
+from 	infrastructure.decorators 	import singleton
 
 				#-------------------------------------------------------------
 				# The logmaster module defines our logging framework; we
 				# import specific definitions we need from it.	(This is a
 				# little cleaner stylistically than "from ... import *".)
 
-from infrastructure.logmaster import getComponentLogger
+from 	infrastructure.logmaster 	import getComponentLogger
 
 	# Go ahead and create or access the logger for this module.
 
@@ -165,6 +165,13 @@ global _component, _logger		# Software component name, logger for component.
 _component = path.basename(path.dirname(__file__))				# Our package name.
 _logger = getComponentLogger(_component)						# Create the component logger.
 
+
+			#|----------------------------------------------------------------
+			#|	The following modules are specific to the present application.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from	field.placement				import Placement
+	# This is an enumerated type used for placing new application windows.
 
 	#|==========================================================================
 	#|	2. Globals										   [module code section]
@@ -305,9 +312,18 @@ class TheConfiguration:	# The GLaDOS server configuration.
 									for specific GLaDOS applications.
 	"""
 	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+		#|======================================================================
+		#| Private class constant data members. 				 [class section]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
+		_DEFAULT_APP_INITIAL_PLACEMENT = Placement.MOVE_TO_BOTTOM
+			# Initially, new application windows will by default open up at
+			# the bottom of the receptive field (but above pinned slots).
+	
+	
 		#|----------------------------------------------------------------------
-		#|	TheConfiguration._lastLoadedConf			 [private class data member]
+		#|	TheConfiguration._lastLoadedConf	     [private class data member]
 		#|
 		#|		This class-level attribute references the most recent 
 		#|		*raw* configuration data structure to have been loaded.
@@ -348,6 +364,54 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		#|======================================================================
 		#| Private instance methods.							 [class section]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	def _checkEnvironment(theConfig:TheConfiguration):
+
+		"""
+			--------------------------------------------------------------------
+			theConfig._checkEnvironment()	 [private singleton instance method]
+			
+				Checks environment variables to determine location of
+				GLaDOS's system config file.
+			--------------------------------------------------------------------	
+		"""
+			
+			# Declare these names as globals that we'll reinitialize here.
+			# (It would really be cleaner to change these to class variables.)
+			
+		global _CONFIG_FILENAME, _BASEDIR, _CONFIG_PATHNAME
+
+			# Go ahead and get the environment variables associated with
+			# locating the main system config file.
+			
+		envFilename = getenv('GLADOS_CONFIG_FILENAME')
+		envBaseDir	= getenv('GLADOS_PATH')
+		envPathname = getenv('GLADOS_CONFIG_PATH')
+		
+			# Update the globals for the file name and base directory
+			# if they were specified in the environment variables.
+		
+		if envFilename != None:	 _CONFIG_FILENAME = envFilename
+		if envBaseDir  != None:	 _BASEDIR = envBaseDir
+		
+			# If the full pathname was not provided in an environment
+			# variable, then calculate it from those globals.
+		
+		if envPathname is None:
+		
+			_logger.debug(f"Constructuring config path from '{_BASEDIR}'"
+						  f" + '{_CONFIG_FILENAME}'... ")
+
+			_CONFIG_PATHNAME = path.join(_BASEDIR, _CONFIG_FILENAME)
+		
+		else:	# Full pathname was provided in environment.
+		
+			_CONFIG_PATHNAME = envPathname
+			
+		#__/ End if envPathname==None ... else ...
+			
+	#__/ End private singleton instance method theConfiguration._checkEnvironment().
+
 
 	def _loadConfig(theConfig:TheConfiguration):
 
@@ -453,6 +517,22 @@ class TheConfiguration:	# The GLaDOS server configuration.
 					
 				appAutoStart = appStruct['auto-start']
 				
+					# Convert the 'auto-open' parameter (also required)
+					# to a proper Boolean value.
+					
+				appAutoOpen = appStruct['auto-open']
+				
+					# If the 'placement' parameter is available, record it.
+					# Otherwise, we use MOVE_TO_BOTTOM as the default 
+					# initial placement for newly-started apps.
+					
+				if 'placement' in appStruct:
+					# Really should do error checking here to make sure the
+					# provided symbol is a valid Placement value.
+					appInitialPlacement = Placement(appStruct['placement'])
+				else:
+					appInitialPlacement = _DEFAULT_APP_INITIAL_PLACEMENT
+				
 					# If the 'app-config' parameter is available, record it.
 					# (We can't process it yet since it's application-specific
 					# and the actual app objects haven't been created yet.)
@@ -466,10 +546,13 @@ class TheConfiguration:	# The GLaDOS server configuration.
 					# This is what we'll actually end up handing to the app.
 				
 				appAttribs = {	
-					'name':		appName,  # Not strictly necessary to include, but.
-					'avail':	appAvail, # Is the app available to be registered?
-					'auto':		appAutoStart, # Should the application auto-start?
-					'conf':		appConfig	  # App-specific configuration info.
+					'name':			appName,  		# This one is not strictly necessary to include, but.
+					'avail':		appAvail, 		# Is the app available to be registered?
+					'auto-start':	appAutoStart,	# Should the application auto-start?
+					'auto-open':	appAutoOpen,	# Should the application window auto-open?
+					'placement':	appPlacement, 	# Where should we initially place the window on the field?
+						# (Allowed values for this are specified in the field.placement.Placement class.)
+					'conf':			appConfig	  # App-specific configuration info.
 				}
 				
 				_logger.debug(f"Setting attribs of '{appName}' app to:\n    " + 
@@ -488,54 +571,6 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		theConfig.appConfigs = appConfigs
 	
 	#__/ End private singleton instance method _theConfiguration.process().
-
-
-	def _checkEnvironment(theConfig:TheConfiguration):
-
-		"""
-			--------------------------------------------------------------------
-			theConfig._checkEnvironment()	 [private singleton instance method]
-			
-				Checks environment variables to determine location of
-				GLaDOS's system config file.
-			--------------------------------------------------------------------	
-		"""
-			
-			# Declare these names as globals that we'll reinitialize here.
-			# (It would really be cleaner to change these to class variables.)
-			
-		global _CONFIG_FILENAME, _BASEDIR, _CONFIG_PATHNAME
-
-			# Go ahead and get the environment variables associated with
-			# locating the main system config file.
-			
-		envFilename = getenv('GLADOS_CONFIG_FILENAME')
-		envBaseDir	= getenv('GLADOS_PATH')
-		envPathname = getenv('GLADOS_CONFIG_PATH')
-		
-			# Update the globals for the file name and base directory
-			# if they were specified in the environment variables.
-		
-		if envFilename != None:	 _CONFIG_FILENAME = envFilename
-		if envBaseDir  != None:	 _BASEDIR = envBaseDir
-		
-			# If the full pathname was not provided in an environment
-			# variable, then calculate it from those globals.
-		
-		if envPathname is None:
-		
-			_logger.debug(f"Constructuring config path from '{_BASEDIR}'"
-						  f" + '{_CONFIG_FILENAME}'... ")
-
-			_CONFIG_PATHNAME = path.join(_BASEDIR, _CONFIG_FILENAME)
-		
-		else:	# Full pathname was provided in environment.
-		
-			_CONFIG_PATHNAME = envPathname
-			
-		#__/ End if envPathname==None ... else ...
-			
-	#__/ End private singleton instance method theConfiguration._checkEnvironment().
 
 
 		#|======================================================================

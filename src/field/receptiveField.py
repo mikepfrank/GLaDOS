@@ -1,5 +1,10 @@
 # receptiveField.py
-
+#
+#	Please note that conceptually, this module is considered part of the AI,
+#	since some of its basic properties, such as its size, are associated with
+#	the AI.  However, we place it in its own package since much the rest of the 
+#	system talks to it directly (and to the rest of the AI, less directly).
+#
 # 	This module implements the input to the AI's main receptive field; 
 # 	that it, it displays everything that the A.I. can "see."  This generally
 # 	consists of the following:
@@ -32,6 +37,7 @@
 #			for purposes of displaying more content on wide terminals.
 #
 
+
 		#|======================================================================
 		#|	1.2. Imports of custom application modules. [module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -45,6 +51,11 @@
 from infrastructure.decorators	import	singleton
 
 
+
+from events.action		import ActionByAI
+	# This is an abstract class for actions that we might want to take,
+	# which should then be automatically handled by the Supervisor.
+
 	#|==========================================================================
 	#|
 	#|	3. Classes.												  [code section]
@@ -53,7 +64,19 @@ from infrastructure.decorators	import	singleton
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-# Classes:
+#	AnnounceFieldExistsAction(ActionByAI) -
+#
+#		This is a class of action that is taken by the AI as soon as its 
+#		receptive field has been created, and is ready for entities outside
+#		of itself to begin writing information into it.  Like all actions, 
+#		as soon as it gets created, it gets automatically processed by the
+#		supervisor's ActionProcessor.  This responds appropriately, for 
+#		example, by telling the application system that its windows that want
+#		to auto-open can now open themselves on the field.
+
+class AnnounceFieldExistsAction(ActionByAI):
+	pass
+	
 #
 #	FieldSlot			- A "slot" in the display order for the receptive field.
 #							A slot holds an object that will be displayed at that

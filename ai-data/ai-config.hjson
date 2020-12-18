@@ -10,27 +10,30 @@
 #|
 #|	DESCRIPTION:
 #|
-#|		This file records configuration parameters for the specific AI 
+#|		This file records configuration parameters for a specific AI 
 #|		'persona' to be hosted within the GLaDOS system.  The file format
 #|		is HJSON or "human readable JSON" (see https://hjson.github.io/).  
 #|
-#|		Please note that this file may be relocated/renamed by setting the 
-#|		following environment variables prior to launching GLaDOS:
+#|		Please note that this file may be relocated/renamed if one sets 
+#|		the following environment variables appropriately prior to 
+#|		launching GLaDOS:
 #|
-#|			AI_DATADIR		- Pathname to the top-level directory of the
-#|								file hierarchy that will contain all data
-#|								specific to the particular AI persona.  A
-#|								suggested location for this could be:
+#|			AI_DATADIR -
 #|
-#|									/opt/AIs/<username>
+#|				Pathname to the top-level directory of the file hierarchy 
+#|				that will contain all data specific to the particular AI 
+#|				persona.  A suggested location for this could be:
 #|
-#|								where <username> is the Unix username that
-#|								owns most of the directory contents, and
-#|								that the GLaDOS server instance will run 
-#|								as.
+#|								/opt/AIs/<username>
 #|
-#|			AI_CONFIG_FILENAME	-	The default value for this is just
-#|										ai-config.hjson, like this file.
+#|				where <username> is the Unix username that owns most of 
+#|				the directory contents, and that the GLaDOS server 
+#|				instance will run as.
+#|
+#|			AI_CONFIG_FILENAME -	
+#|
+#|				The default value for this is just ai-config.hjson, like 
+#|				this file.
 #|
 #|		If these environment variables are set, the implied full pathname 
 #|		of this file will be taken as:
@@ -69,5 +72,10 @@
 		# do some experiments to figure it out.
 		
 	max-visible-tokens:		2048
+
+	# Eventually, we need to add more configuration parameters here, to do
+	# things like set GPT-3 API parameters, customize locations in the 
+	# filesystem for various resources such as the memory and history, and
+	# so forth.
 
 }
