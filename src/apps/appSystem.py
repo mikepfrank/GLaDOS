@@ -159,6 +159,8 @@ from infrastructure.utils		import	countLines
 			#|	The following modules are specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+from field.placement			import	Placement
+
 from config.configuration		import	TheConfiguration   
 		# Singleton class that provides the current GLaDOS system configuration.
 
@@ -282,21 +284,28 @@ class Application_:
 			- launch()		- Starts the application running.
 	"""
 	
-	def __init__(self, name:str, conf:dict):
+	def __init__(self, name:str, autoStart:bool, autoOpen:bool, placement:Placement, conf:dict):
+		#	name - The name of the application object.
+		#	autoStart - Whether to start the app on system startup.
+		#	placement - Where to place the app window in the receptive field.
+		#	conf - Application-specific dictionary object.
 	
-			# Remember the name of this application.
+			# Remember the name of this application, & other generic parameters.
 
-		self.name = name
+		self.name 				= name
+		self.autoStart			= autoStart
+		self.autoOpen			= autoOpen
+		self.initialPlacement	= placement
 		
-			# Create a new window for this application, with a suitable title.
+			# Create a new window for this application, with a suitable title & placement.
 			# We don't actually display this window until the application is launched.
 		
-		self.window = Window(name + ' Window', app=self)
+		self.window = Window(name + ' Window', app=self, placement=placement)
 		
-			# Create a process for this application, to run in that window.
+			# Create a subprocess (GLaDOS process) for this application, to run in that window.
 			# We don't actually start the process until the application is launched.
 	
-		self.process = Process(name, self.window)
+		self.process = SubProcess(name, self.window)
 		
 			# Designate the state of this application as not yet started.
 		
@@ -312,7 +321,7 @@ class Application_:
 		self.initCommandModule()
 		
 	#__/ End initializer for class Application.
-	
+			
 			
 	def appSpecificInit(self, conf:dict): 
 	
@@ -345,8 +354,7 @@ class Application_:
 		
 			# Install it in the system's command interface.
 		
-		
-		
+				
 	#__/ End initCommandModule().
 
 
@@ -364,7 +372,12 @@ class Application_:
 			# associated with any specific command module.
 				
 	#__/ End createCommandModule().
-	
+
+	def start(self):	# Generic start method for apps.
+		# For generic apps, generally speaking, the only thing we need to do
+		# when we first start them up is 
+		pass	
+
 #__/ End class Application.
 
 @singleton
@@ -385,19 +398,15 @@ class AppSystem:
 		self._registerAvailableApps()
 
 
-	def _registerApp(self, appName:str, appClass:type, appConfig:dict, appAutoStart:bool):
+	def _registerApp(self, appName:str, appClass:type, appAutoStart:bool, appAutoOpen:bool, appPlacement:Placement, appConfig:dict):
 			
 			# First, call the class constructor to actually create the application object.
-				
-		app = appClass(appName, appConfig)
+		app = appClass(appName, appAutoStart, appAutoOpen, appPlacement, appConfig)
 		
 			# Now add that app object to our dict of apps.
-		
 		self._appDict[appName] = app
+	#__/
 		
-			# Annotate the app with its autostart indicator.
-		app.autoStart = appAutoStart
-					
 	def __call__(self, name:str):
 		return self._appDict(name)
 			
@@ -418,13 +427,21 @@ class AppSystem:
 			
 			appConfigs = Configuration().appConfigs
 			
-			appAvailable = appConfigs[appName]['avail']	 # Is the app available to be registered?
-			appAutoStart = appConfigs[appName]['auto']
-			appConfig		 = appConfigs[appName]['conf']
+			appAvailable = appConfigs[appName]['avail']	 		# Is the app marked as available to be registered?
+			appAutoStart = appConfigs[appName]['auto-start']	# Should the app be automatically started on system startup?
+			appAutoOpen	 = appConfigs[appName]['auto-open']		# Should the app window be automatically opened on field startup?
+			appPlacement = appConfigs[appName]['placement']		# Where should the app window (if any) initially be placed?
+			appConfig	 = appConfigs[appName]['conf']			# What's the app-specific data structure?
 			
 			if appAvailable:
-				self._registerApp(appName, appClass, appConfig, appAutoStart)
-				
+				self._registerApp(appName, appClass, appAutoStart, appAutoOpen, appPlacement, appConfig)
+		
+		#__/ End loop over global _APP_LIST array.
+		
+			#-------------------------------------------------------------
+			# We might as well go ahead and start up all the apps that are 
+			# supposed to be launched immediately on system startup.
+			
 		self.startup()
 			
 #__/ End class AppSystem.
@@ -576,7 +593,11 @@ class Info_App(Application_):
 		self.window.addText(infoText)
 
 	def start(inst):
-			pass
+		"""Starts up the Info application."""
+		# Right now, the start method for the Info app doesn't need
+		# to do anything particular, because the app has no dynamic 
+		# behavior yet.  So, just dispatch to our parent class.
+		super(Info_App, inst).start()
 
 #__/ End class Info_App.
 
