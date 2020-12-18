@@ -146,7 +146,9 @@ __all__ = [
 #		TheWindowSystem			- The entire window subsystem in a given GLaDOS system instance.
 
 
-
+# We should probably move this to its own package because it isn't really
+# specific to the window system per se.  For example, it can also be used
+# by the receptive field, the writing app, or other packages.
 
 class TextBuffer:		# A text buffer.
 
