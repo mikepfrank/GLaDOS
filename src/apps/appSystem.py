@@ -372,10 +372,10 @@ class AppSystem:
 
 	# The AppSystem has:
 	#
-	#       - Dict of registered applications: Maps app name to app object.
+	#   - Dict of registered applications: Maps app name to app object.
 
 
-	def __init__(self):             # One-time initializer for singleton instance.
+	def __init__(self):     # One-time initializer for singleton instance.
 			
 		self._appDict = {}
 		
@@ -405,27 +405,27 @@ class AppSystem:
 		# all of the apps that we tagged for auto-start.
 			
 	def startup(self):
-			for app in self._appDict.values():
-					if app.autoStart:
-							app.start()
+		for app in self._appDict.values():
+			if app.autoStart:
+				app.start()
 
 	def _registerAvailableApps(self):
 	
-			for app in _APP_LIST:           # These are simple dict structures.
+		for app in _APP_LIST:    # These are simple dict structures.
+		
+			appName = app['name']
+			appClass = app['class']
 			
-					appName = app['name']
-					appClass = app['class']
-					
-					appConfigs = Configuration().appConfigs
-					
-					appAvailable = appConfigs[appName]['avail']             # Is the app available to be registered?
-					appAutoStart = appConfigs[appName]['auto']
-					appConfig        = appConfigs[appName]['conf']
-					
-					if appAvailable:
-							self._registerApp(appName, appClass, appConfig, appAutoStart)
-					
-			self.startup()
+			appConfigs = Configuration().appConfigs
+			
+			appAvailable = appConfigs[appName]['avail']  # Is the app available to be registered?
+			appAutoStart = appConfigs[appName]['auto']
+			appConfig        = appConfigs[appName]['conf']
+			
+			if appAvailable:
+				self._registerApp(appName, appClass, appConfig, appAutoStart)
+				
+		self.startup()
 			
 #__/ End class AppSystem.
         
