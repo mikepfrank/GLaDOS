@@ -169,11 +169,11 @@ from infrastructure.logmaster import (
 from appdefs						import	systemName, appName
 	# Name of the present application.	Used for configuring logmaster.
 
-from config.configuration			import	Configuration
+from config.configuration			import	TheConfiguration
 	# This singleton class will manage loading of the GLaDOS system 
 	# configuration from config files on system startup.
 
-from supervisor.supervisor			import	Supervisor
+from supervisor.supervisor			import	TheSupervisor
 	# This singleton class will manage startup of the Supervisor 
 	# subsystem, which in turn starts up and manages all of the other 
 	# major subsystems of GLaDOS.
@@ -354,8 +354,8 @@ def _main():
 	if doDebug:
 		_logger.debug("About to create system configuration and supervisor...")
 
-	config = Configuration()		# Loads the system configuration.
-	supervisor = Supervisor()		# Starts the supervisory subsystem.
+	config = TheConfiguration()		# Loads the system configuration.
+	supervisor = TheSupervisor()	# Starts the main supervisory subsystem.
 			# NOTE: This also starts up all of the other major subsystems.
 				
 			#---------------------------------------------------------------------

@@ -108,7 +108,9 @@ __all__ = [
 		'Commands',			# Special container class for a set of commands to allow fast lookup.
 		'CommandModule',	# A CommandModule is a set of commands associated with a specific facility.
 		'CommandModules',	# Container class for a set of currently-loaded command modules.
-		'CommandInterface',	# Singleton class representing the entire command interface for a GLaDOS system instance.
+		'TheCommandInterface',	
+			# Singleton class representing the entire command interface for the
+			# current GLaDOS system instance.
 	]
 
 
@@ -395,10 +397,10 @@ class CommandModules:
 		self._commandModuleList = []
 
 @singleton
-class CommandInterface:		# Singleton class for the command interface subsystem.
+class TheCommandInterface:		# Singleton class for the command interface subsystem.
 
 	"""
-		CommandInterface												[class]
+		TheCommandInterface												[class]
 		================
 		
 			This is a singleton class; its sole instance represents the 
@@ -421,7 +423,7 @@ class CommandInterface:		# Singleton class for the command interface subsystem.
 	
 		#/---------------------------------------------------------------------
 		#|	Private data members					[class code documentation]
-		#|	for class CommandInterface: 
+		#|	for class TheCommandInterface: 
 		#|	===========================
 		#|
 		#|		Private instance data members:
@@ -443,7 +445,7 @@ class CommandInterface:		# Singleton class for the command interface subsystem.
 			commandInterface.__init__()				   [special instance method]
 		
 				This is the singleton instance initializer for the 
-				CommandInterface class.  Note that because this class
+				TheCommandInterface class.  Note that because this class
 				is a singleton class, this will only be called once,
 				to initialize the first and only instance of the class.
 		
@@ -461,9 +463,9 @@ class CommandInterface:		# Singleton class for the command interface subsystem.
 		
 		self._activeCommands = Commands()
 		
-	#__/ End initializer for class CommandInterface.
+	#__/ End initializer for class TheCommandInterface.
 
-#__/ End class CommandInterface.
+#__/ End class TheCommandInterface.
 
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -96,7 +96,7 @@ class Application_: pass	# Do this instead to avoid circular imports.
 
 	#|==========================================================================
 	#|
-	#|	 Globals												[code section]
+	#|	 2. Globals												  [code section]
 	#|
 	#|		Declare and/or define various global variables and
 	#|		constants.	Note that top-level 'global' statements are
@@ -124,17 +124,17 @@ __all__ = [
 		'Window',				# Class for a single window within the GLaDOS text window system.
 		'Windows',				# Class for a collection of text windows.
 		'WindowSnapshot',		# Class for a static, frozen record of what a given window contained at a specific point in time.
-		'WindowSystem',			# A singleton class for the entire window subsystem of GLaDOS.
+		'TheWindowSystem',			# A singleton class for the entire window subsystem of GLaDOS.
 	]
 
 
 	#|==========================================================================
 	#|
-	#|	Classes.												[code section]
+	#|	3. Classes.												  [code section]
 	#|
 	#|		Classes defined by this module.
 	#|
-	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
 # Window system classes:
@@ -143,7 +143,7 @@ __all__ = [
 #		Window					- A text window within the GLaDOS window system.
 #		Windows					- A collection of text windows.
 #		WindowSnapshot			- A static image of a text window at a given point in time.
-#		WindowSystem			- The entire window subsystem in a given GLaDOS system instance.
+#		TheWindowSystem			- The entire window subsystem in a given GLaDOS system instance.
 
 
 
@@ -902,9 +902,9 @@ class WindowSnapshot:	# A static image of a text window at a given point in time
 		pass
 
 @singleton		
-class WindowSystem:
+class TheWindowSystem:
 
-		# The WindowSystem has:
+		# The TheWindowSystem has:
 		#		- Set of all windows in the system.
 		#		- List of windows present in the receptive field.
 		#		- List of windows anchored to the top of the receptive field.
