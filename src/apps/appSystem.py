@@ -1,18 +1,18 @@
 #|==============================================================================
-#|                TOP OF FILE:    apps/appSystem.py
+#|				  TOP OF FILE:	  apps/appSystem.py
 #|------------------------------------------------------------------------------
-#|   The below module documentation string will be displayed by pydoc3.
+#|	 The below module documentation string will be displayed by pydoc3.
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 """
-    FILE NAME:      apps/appSystem.py     			 [Python module source file]
+	FILE NAME:		apps/appSystem.py				 [Python module source file]
 
-    MODULE NAME:    apps.appSystem
-    IN PACKAGE:     apps
-    FULL PATH:      $GIT_ROOT/GLaDOS/src/apps/appSystem.py
-    MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
-    SYSTEM NAME:    GLaDOS (Generic Lifeform and Domicile Operating System)
-    APP NAME:       GLaDOS.server (GLaDOS server application)
-    SW COMPONENT:   GLaDOS.apps (application system component)
+	MODULE NAME:	apps.appSystem
+	IN PACKAGE:		apps
+	FULL PATH:		$GIT_ROOT/GLaDOS/src/apps/appSystem.py
+	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
+	SYSTEM NAME:	GLaDOS (Generic Lifeform and Domicile Operating System)
+	APP NAME:		GLaDOS.server (GLaDOS server application)
+	SW COMPONENT:	GLaDOS.apps (application system component)
 
 
 	MODULE DESCRIPTION:
@@ -29,7 +29,7 @@
 
 		The general classes include:
 
-			* Application_  - Abstract base class from which to derive
+			* Application_	- Abstract base class from which to derive
 								classes for specific applications.
 			
 			* TheAppSystem	- Singleton class for the overall application
@@ -42,9 +42,9 @@
 								help menus and obtain detailed help for 
 								specific commands.
 			
-			2. Apps_App     - This app is not yet implemented, but it is
+			2. Apps_App		- This app is not yet implemented, but it is
 								anticipated to become needed in the future
-								as GLaDOS becomes more complex.  The intent
+								as GLaDOS becomes more complex.	 The intent
 								is to show a menu of all of the installed
 								applications that the A.I. can navitage.
 								(Note, however, that the Apps app is the
@@ -110,146 +110,146 @@
 #|------------------------------------------------------------------------------
 
 
-    #|==========================================================================
-    #|
-    #|   1. Module imports.                                [module code section]
-    #|
-    #|          Load and import names of (and/or names from) various
-    #|          other python modules and pacakges for use from within
-    #|          the present module.
-    #|
-    #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	#|==========================================================================
+	#|
+	#|	 1. Module imports.								   [module code section]
+	#|
+	#|			Load and import names of (and/or names from) various
+	#|			other python modules and pacakges for use from within
+	#|			the present module.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-        #|======================================================================
-        #|  1.1. Imports of standard python modules.    [module code subsection]
-        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		#|======================================================================
+		#|	1.1. Imports of standard python modules.	[module code subsection]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from os         import path             # Manipulate filesystem path strings.
+from os			import path				# Manipulate filesystem path strings.
 
 
-        #|======================================================================
-        #|  1.2. Imports of custom application modules. [module code subsection]
-        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		#|======================================================================
+		#|	1.2. Imports of custom application modules. [module code subsection]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 			#|----------------------------------------------------------------
-			#|  The following modules, although custom, are generic utilities,
-			#|  not specific to the present application.
+			#|	The following modules, although custom, are generic utilities,
+			#|	not specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 				#-------------------------------------------------------------
 				# The logmaster module defines our logging framework; we
-				# import specific definitions we need from it.  (This is a
+				# import specific definitions we need from it.	(This is a
 				# little cleaner stylistically than "from ... import *".)
 
-from infrastructure.logmaster   import getComponentLogger
+from infrastructure.logmaster	import getComponentLogger
 
-        # Go ahead and create or access the logger for this module.
+		# Go ahead and create or access the logger for this module.
 
-global _component, _logger      # Software component name, logger for component.
+global _component, _logger		# Software component name, logger for component.
 
 _component = path.basename(path.dirname(__file__))	# Our package name.
-_logger = getComponentLogger(_component)            # Create the component logger.
+_logger = getComponentLogger(_component)			# Create the component logger.
 
 
-        # A simple decorator for singleton classes.
-from infrastructure.decorators  import  singleton
-from infrastructure.utils       import  countLines
+		# A simple decorator for singleton classes.
+from infrastructure.decorators	import	singleton
+from infrastructure.utils		import	countLines
 
 			#|----------------------------------------------------------------
-			#|  The following modules are specific to the present application.
+			#|	The following modules are specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from config.configuration       import  TheConfiguration   
-        # Singleton class that provides the current GLaDOS system configuration.
+from config.configuration		import	TheConfiguration   
+		# Singleton class that provides the current GLaDOS system configuration.
 
-from windows.windowSystem       import  Window
-from processes.processSystem    import  SubProcess
+from windows.windowSystem		import	Window
+from processes.processSystem	import	SubProcess
 
-    #|==========================================================================
-    #|
-    #|   2. Globals                                        [module code section]
-    #|
-    #|      Declare and/or define various global variables and
-    #|      constants.  Note that top-level 'global' statements are
-    #|      not strictly required, but they serve to verify that
-    #|      these names were not previously used, and also serve as 
-    #|      documentation.
-    #|
-    #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	#|==========================================================================
+	#|
+	#|	 2. Globals										   [module code section]
+	#|
+	#|		Declare and/or define various global variables and
+	#|		constants.	Note that top-level 'global' statements are
+	#|		not strictly required, but they serve to verify that
+	#|		these names were not previously used, and also serve as 
+	#|		documentation.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-        #|======================================================================
-        #|
-        #|  Special globals.                                    [code subsection]
-        #|
-        #|      These globals have special meanings defined by the
-        #|      Python language. 
-        #|
-        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		#|======================================================================
+		#|
+		#|	Special globals.									[code subsection]
+		#|
+		#|		These globals have special meanings defined by the
+		#|		Python language. 
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global __all__  # List of public symbols exported by this module.
+global __all__	# List of public symbols exported by this module.
 __all__ = [
 		'Application_',		# Abstract base class for deriving applications.
-		'AppSystem',        # Singleton class for the application system.
-		'Help_App',         # Application that manages the help system.
-		'Info_App',         # Application that manages the information window.
-            # Add others as they are implemented.
-    ]
+		'AppSystem',		# Singleton class for the application system.
+		'Help_App',			# Application that manages the help system.
+		'Info_App',			# Application that manages the information window.
+			# Add others as they are implemented.
+	]
 
 
 		#|======================================================================
-		#|      
-		#|	Private globals.                                   [code subsection]
+		#|		
+		#|	Private globals.								   [code subsection]
 		#|
 		#|		These globals are not supposed to be accessed from 
-		#|      outside of the present module.
+		#|		outside of the present module.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 			#|------------------------------------------------------------------
-			#|	_APP_LIST                       [module private global constant]
+			#|	_APP_LIST						[module private global constant]
 			#|
 			#|		This is a structure (list of dicts) that defines the
-			#|      full list of supported applications.  See the 
-			#|      definition at the end of the file for further 
-			#|      documentation.
+			#|		full list of supported applications.  See the 
+			#|		definition at the end of the file for further 
+			#|		documentation.
 			#|
-			#|      Note that some of these may not yet be implemented.
+			#|		Note that some of these may not yet be implemented.
 			#|
-			#|      The structure of each dict in the list is:
+			#|		The structure of each dict in the list is:
 			#|
-			#|      	name    - Short text name of the application.
-			#|          			This must match the name used in the
-			#|                      app-configs attribute of the system
-			#|                      config file (glados-config.hjson).
+			#|			name	- Short text name of the application.
+			#|						This must match the name used in the
+			#|						app-configs attribute of the system
+			#|						config file (glados-config.hjson).
 			#|
-			#|			class   - Class defining the application.  This 
+			#|			class	- Class defining the application.  This 
 			#|						must be a subclass of Application_.
 			#|
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global _APP_LIST    # We could put this into the AppSystem class instead.
+global _APP_LIST	# We could put this into the AppSystem class instead.
 
 
-    #|==========================================================================
-    #|
-    #|	3. Classes.                                        [module code section]
-    #|
-    #|      Declare and/or define the classes of this module.
-    #|
-    #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	#|==========================================================================
+	#|
+	#|	3. Classes.										   [module code section]
+	#|
+	#|		Declare and/or define the classes of this module.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		#|======================================================================
-		#|	3.1. General classes.                              [code subsection]
+		#|	3.1. General classes.							   [code subsection]
 		#|
 		#|		These classes are not application-specific but apply 
-		#|      generally to the entire application system.
+		#|		generally to the entire application system.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-                
+				
 class Application_:
 	#---------------------------------------------------------------------------
 	"""
-	app.Application_                              [module public abstract class]
+	app.Application_							  [module public abstract class]
 	
 		This is the abstract superclass from which the class for each 
 		specific GLaDOS application should be derived.
@@ -279,7 +279,7 @@ class Application_:
 
 		And some methods are:
 		
-			- launch()      - Starts the application running.
+			- launch()		- Starts the application running.
 	"""
 	
 	def __init__(self, name:str, conf:dict):
@@ -353,13 +353,13 @@ class Application_:
 	def createCommandModule(self):
 		"""
 		This virtual method should be overridden in application-specific
-		subclasses.  It should create a command module for the application
+		subclasses.	 It should create a command module for the application
 		(i.e., an instance of CommandModule or one of its subclasses) and
-		return it.  Generally, the command module should have been pre-
+		return it.	Generally, the command module should have been pre-
 		loaded with all of the application's commands.
 		"""
 		
-		return None             
+		return None				
 			# This makes sense since the abstract Application class isn't itself 
 			# associated with any specific command module.
 				
@@ -372,10 +372,10 @@ class AppSystem:
 
 	# The AppSystem has:
 	#
-	#   - Dict of registered applications: Maps app name to app object.
+	#	- Dict of registered applications: Maps app name to app object.
 
 
-	def __init__(self):     # One-time initializer for singleton instance.
+	def __init__(self):		# One-time initializer for singleton instance.
 			
 		self._appDict = {}
 		
@@ -411,16 +411,16 @@ class AppSystem:
 
 	def _registerAvailableApps(self):
 	
-		for app in _APP_LIST:    # These are simple dict structures.
+		for app in _APP_LIST:	 # These are simple dict structures.
 		
 			appName = app['name']
 			appClass = app['class']
 			
 			appConfigs = Configuration().appConfigs
 			
-			appAvailable = appConfigs[appName]['avail']  # Is the app available to be registered?
+			appAvailable = appConfigs[appName]['avail']	 # Is the app available to be registered?
 			appAutoStart = appConfigs[appName]['auto']
-			appConfig        = appConfigs[appName]['conf']
+			appConfig		 = appConfigs[appName]['conf']
 			
 			if appAvailable:
 				self._registerApp(appName, appClass, appConfig, appAutoStart)
@@ -428,10 +428,10 @@ class AppSystem:
 		self.startup()
 			
 #__/ End class AppSystem.
-        
+		
 
 		#|======================================================================
-		#|	3.2. Application-specific classes.                 [code subsection]
+		#|	3.2. Application-specific classes.				   [code subsection]
 		#|
 		#|		These classes define specific applications within GLaDOS.
 		#|
@@ -490,9 +490,9 @@ class Help_App(Application_):
 			# Now, display the text.
 		self.window.addText(helpMsg)
 
-        #----------------------------------------------------------
-        # NOTE: At the moment, the 'Apps' app is not needed because
-        # the help window already lists all the apps.
+		#----------------------------------------------------------
+		# NOTE: At the moment, the 'Apps' app is not needed because
+		# the help window already lists all the apps.
 
 @singleton
 class Apps_App(Application_):
@@ -507,7 +507,7 @@ class Apps_App(Application_):
 
 @singleton
 class Info_App(Application_):
-        
+		
 	"""
 	Info - The idea behind this app is that it maintains and 
 	displays certain critical contextual information that the A.I. 
@@ -586,7 +586,7 @@ class Settings_App(Application_):
 
 	"""
 	Settings - This app can be used by the A.I. to adjust various
-	settings within GLaDOS.  These can be associated with major 
+	settings within GLaDOS.	 These can be associated with major 
 	systems or subsystems of GLaDOS, or individual apps or 
 	processes. 
 	"""
@@ -595,7 +595,7 @@ class Settings_App(Application_):
 
 @singleton
 class Memory_App(Application_):
-        
+		
 	"""
 	Memory - The memory tool allows the A.I. to browse and search
 	a database of records of its past conversations, thoughts, and
@@ -606,19 +606,19 @@ class Memory_App(Application_):
 
 @singleton
 class ToDo_App(Application_):
-        
+		
 	"""
 	ToDo - The idea of this app is that it is a simple to-do list 
 	tool, which the A.I. can use to make notes to itself of important
 	tasks that it wants to do later.  The tasks can be given priority 
-	levels.  The A.I. can check them off or delete them when complete. 
+	levels.	 The A.I. can check them off or delete them when complete. 
 	"""
 
 	pass
 
 @singleton
 class Diary_App(Application_):
-        
+		
 	"""
 	Diary - This tool allows the A.I. to keep a "diary" of important
 	notes to itself, organized by date/time.
@@ -628,7 +628,7 @@ class Diary_App(Application_):
 
 @singleton
 class Browse_App(Application_):
-        
+		
 	"""
 	Browse - This is a simple text-based tool to facilitate simple web
 	browsing and searching.
@@ -638,10 +638,10 @@ class Browse_App(Application_):
 
 @singleton
 class Comms_App(Application_):
-        
+		
 	"""
 	The "comms" tool faciltates the A.I.'s two-way 
-	communications with the outside world.  This may include direct 
+	communications with the outside world.	This may include direct 
 	messages sent via Telegram, email messages, or other interfaces.  
 	This may be broken out later into a whole 'Comms' subfolder of 
 	separate apps.
@@ -651,7 +651,7 @@ class Comms_App(Application_):
 
 @singleton
 class Writing_App(Application_):
-        
+		
 	"""
 	The writing tool is an interface that helps the A.I.
 	to compose and edit complex, hierarchically-structured works:  
@@ -662,7 +662,7 @@ class Writing_App(Application_):
 
 @singleton
 class Unix_App(Application_):
-        
+		
 	"""
 	This app gives the A.I. access to an actual Unix shell
 	environment on the host system that GLaDOS is running on.  The A.I.
@@ -671,17 +671,17 @@ class Unix_App(Application_):
 
 	pass
 
-    #|==========================================================================
-    #|
-    #|	4. Main body.                                	   [module code section]
-    #|
-    #|		This code constitutes the main body of the module
-	#|      which is executed on the initial import of the module.
-	#|                      
-	#|      All it does currently is initialize the appList global 
-	#|      using the application classes as defined above.
-    #|
-    #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	#|==========================================================================
+	#|
+	#|	4. Main body.									   [module code section]
+	#|
+	#|		This code constitutes the main body of the module
+	#|		which is executed on the initial import of the module.
+	#|						
+	#|		All it does currently is initialize the appList global 
+	#|		using the application classes as defined above.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		#|------------------------------------------------------------------
 		#|	Here, we initialize the _APP_LIST global (declared earlier).
@@ -692,65 +692,65 @@ class Unix_App(Application_):
 		#|
 		#|	The structure of each dict in the list is:
 		#|
-		#|		name    - Short text name of the application.  This must 
+		#|		name	- Short text name of the application.  This must 
 		#|					match the name used in the app-configs 
-		#|                  attribute of the system config file 
-		#|                  (glados-config.hjson).
+		#|					attribute of the system config file 
+		#|					(glados-config.hjson).
 		#|
-		#|      class   - Class defining the application.  This must be 
-		#|                  one of the subclasses of Application_ 
-		#|                  defined above.
+		#|		class	- Class defining the application.  This must be 
+		#|					one of the subclasses of Application_ 
+		#|					defined above.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 _APP_LIST = [
 		{
-			'name':         'Help',
-			'class':        Help_App
+			'name':			'Help',
+			'class':		Help_App
 		},
-		{       
-			'name':         'Apps',
-			'class':        Apps_App
-		},
-		{
-			'name':         'Info',
-			'class':        Info_App
+		{		
+			'name':			'Apps',
+			'class':		Apps_App
 		},
 		{
-			'name':         'Settings',
-			'class':        Settings_App
+			'name':			'Info',
+			'class':		Info_App
 		},
 		{
-			'name':         'Memory',
-			'class':        Memory_App
+			'name':			'Settings',
+			'class':		Settings_App
 		},
 		{
-			'name':         'ToDo',
-			'class':        ToDo_App
+			'name':			'Memory',
+			'class':		Memory_App
 		},
 		{
-			'name':         'Diary',
-			'class':        Diary_App
+			'name':			'ToDo',
+			'class':		ToDo_App
 		},
 		{
-			'name':         'Browse',
-			'class':        Browse_App
+			'name':			'Diary',
+			'class':		Diary_App
 		},
 		{
-			'name':         'Comms',
-			'class':        Comms_App
+			'name':			'Browse',
+			'class':		Browse_App
 		},
 		{
-			'name':         'Writing',
-			'class':        Writing_App
+			'name':			'Comms',
+			'class':		Comms_App
 		},
 		{
-			'name':         'Unix',
-			'class':        Unix_App
+			'name':			'Writing',
+			'class':		Writing_App
+		},
+		{
+			'name':			'Unix',
+			'class':		Unix_App
 		},
 	]
 
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-#|                   END OF FILE:   apps/appSystem.py
+#|					 END OF FILE:	apps/appSystem.py
 #|=============================================================================
