@@ -6,13 +6,13 @@
 """
     FILE NAME:      apps/appSystem.py     [Python module source file]
 
-    IN PACKAGE:         apps
-        MODULE NAME:    apps.appSystem
+    IN PACKAGE:     apps
+    MODULE NAME:    apps.appSystem
     FULL PATH:      $GIT_ROOT/GLaDOS/src/apps/appSystem.py
     MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
     SYSTEM NAME:    GLaDOS (Generic Lifeform and Domicile Operating System)
     APP NAME:       GLaDOS.server (GLaDOS server application)
-        SW COMPONENT:   GLaDOS.apps (application system component)
+    SW COMPONENT:   GLaDOS.apps (application system component)
 
 
         MODULE DESCRIPTION:
@@ -159,11 +159,11 @@ from infrastructure.utils       import  countLines
                         #|  The following modules are specific to the present application.
                         #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from config.configuration       import  Configuration   
+from config.configuration       import  TheConfiguration   
         # Singleton class that provides the current GLaDOS system configuration.
 
 from windows.windowSystem       import  Window
-from processes.processSystem    import  Process
+from processes.processSystem    import  SubProcess
 
     #|==========================================================================
     #|

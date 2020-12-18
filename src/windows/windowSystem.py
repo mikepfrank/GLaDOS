@@ -87,7 +87,7 @@ from commands.commandInterface	import	CommandModule
 	# We're going to extend CommandModule with various subclasses 
 	# specific to the windowing system.
 
-from processes.processSystem	import	Process
+from processes.processSystem	import	SubProcess
 
 	# We don't need to create applications from this module, so no need
 	# to actually import the real Application_ class.
@@ -726,14 +726,14 @@ class Window:	# A text window within the GLaDOS window system.
 		#		- A command module for controlling this window when it is active.
 		
 		def __init__(self, title="Untitled Window", app:Application_=None, textBuf:TextBuffer=None,
-						isActive=True, process:Process=None, state:str='closed',
+						isActive=True, process:SubProcess=None, state:str='closed',
 						viewSize=15, stayVisible:bool=False, anchor:str=None):
 		
 			if textBuf is None:
 				textBuf = TextBuffer()
 
 			if process is None:
-				process = Process()
+				process = SubProcess()
 		
 			self._title			= title
 			self._app			= app

@@ -80,6 +80,7 @@
 #| End of module documentation string.
 #|------------------------------------------------------------------------------
 
+# To add:
 #
 #		ActionProcessor -
 #
@@ -145,25 +146,25 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 			#|	The following modules are specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from config.configuration		import	Configuration
+from config.configuration		import	TheConfiguration
 	# The singleton class that gives the system configuration.
 
-from commands.commandInterface	import	CommandInterface
+from commands.commandInterface	import	TheCommandInterface
 	# This class manages initialization of the command interface.
 	# (That is, the command interface used by the AI to control GLaDOS.)
 
-from windows.windowSystem		import	WindowSystem
+from windows.windowSystem		import	TheWindowSystem
 	# This class manages initialization of the text window system.
 
-from processes.processSystem	import	ProcessSystem
+from processes.processSystem	import	TheProcessSystem
 	# This class manages launching of all essential 'background' 
 	# GLaDOS processes.
 
-from apps.appSystem				import	AppSystem
+from apps.appSystem				import	TheAppSystem
 	# This class manages startup of the applications system, including
 	# all applications that need to begin running at system startup.
 
-from mind.mindSystem			import	CognitiveSystem
+from mind.mindSystem			import	TheCognitiveSystem
 	# This class manages starting up the A.I.'s mind on server startup.
 
 

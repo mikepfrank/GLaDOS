@@ -204,7 +204,7 @@ __all__ = [
 	#|---------------------------------------------------------------------
 	#| These are constants providing default values for module parameters.
 
-global	_DEFAULT_CONFIG_FILENAME, _DEFAULT_BASEDIR, 
+global	_DEFAULT_CONFIG_FILENAME, _DEFAULT_BASEDIR
 global	_DEFAULT_AI_DATADIR, _DEFAULT_AI_CONFIG_FILENAME
 	
 	# Default name of config file.
@@ -265,8 +265,8 @@ class TheAIPersonaConfig:	pass	# Forward declaration.
 class TheConfiguration:	# The GLaDOS server configuration.
 	#---------------------------------------------------------------------------
 	"""
-		TheConfiguration									[public singleton class]
-		=============
+		TheConfiguration								[public singleton class]
+		================
 				
 			This is a singleton class, meaning that it creates and manages 
 			a single instance.	The TheConfiguration instance represents the
@@ -558,7 +558,7 @@ class TheConfiguration:	# The GLaDOS server configuration.
 			#|		if it hasn't been loaded yet, or if reloadConf==True.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
-	def reinit(theConfig:Configuration, confStruct=None, recheckEnv:bool=False, 
+	def reinit(theConfig:TheConfiguration, confStruct=None, recheckEnv:bool=False, 
 				reloadConf:bool=False):
 		#-----------------------------------------------------------------------
 		"""
@@ -628,9 +628,9 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		
 		theConfig._process()
 		
-	#__/ End Configuration().reinit().
+	#__/ End TheConfiguration().reinit().
 
-#__/ End class Configuration.
+#__/ End class TheConfiguration.
 
 
 @singleton
