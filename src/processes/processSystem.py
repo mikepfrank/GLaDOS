@@ -18,9 +18,9 @@ class SubProcess:
 					
 	"""	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
-    def __init__(self, *args):
-        pass
+	def __init__(self, *args):
+		pass
 
 @singleton
 class TheProcessSystem: 
-    pass
+	pass
