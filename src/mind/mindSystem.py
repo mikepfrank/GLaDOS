@@ -140,6 +140,7 @@ class TheCognitiveSystem:
 		"""
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
+		_logger.normal("The AI's cognitive system is booting up...")
 	
 		#|-----------------------------------------------------------------
 		#| Step 1:  Create the input interface to our AI's receptive field.
@@ -157,7 +158,8 @@ class TheCognitiveSystem:
 			# Finally, create the receptive field (which actually just means, 
 			# the GLaDOS system's input interface to the core AI's real receptive 
 			# field), passing it the nTokens parameter to tell it how big it is.
-			
+		
+		_logger.info("Cognitive system:  Creating {nTokens}-token receptive field...")
 		TheReceptiveField(nTokens)
 		
 		#|--------------------------------------

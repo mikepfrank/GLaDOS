@@ -750,8 +750,9 @@ class	TheAIPersonaConfig:
 			# Extract the model-family parameter.
 		
 		if 'model-family' in conf:
-			theAIConfig.modelFamily = conf['model-family']
+			theAIConfig.modelFamily = modelFamily conf['model-family']
 				# TODO: Make sure value given is valid.
+			_logger.normal("AI configuration:  The AI's model family is {modelFamily}.")
 		else:
 			_logger.warn("parseConf(): The required model-family parameter "
 							"was not provided.")
@@ -762,8 +763,9 @@ class	TheAIPersonaConfig:
 			# Extract the model-version parameter.
 	
 		if 'model-version' in conf:
-			theAIConfig.modelVersion = conf['model-version']
+			theAIConfig.modelVersion = modelVersion = conf['model-version']
 				# TODO: Make sure value given is valid.
+			_logger.normal("AI configuration:  The AI's model version is {modelVersion}.")
 		else:
 			_logger.warn("parseConf(): The required model-version parameter "
 							"was not provided.")
@@ -774,8 +776,9 @@ class	TheAIPersonaConfig:
 			# Extract the max-visible-tokens parameter.
 		
 		if 'max-visible-tokens' in conf:
-			theAIConfig.maxVisibleTokens = conf['max-visible-tokens']
+			theAIConfig.maxVisibleTokens = maxTok = conf['max-visible-tokens']
 				# TODO: Make sure value given is valid.
+			_logger.normal("AI configuration:  The AI's receptive field size is {maxTok}.")
 		else:
 			_logger.warn("parseConf(): The required max-visible-tokens parameter "
 							"was not provided.")

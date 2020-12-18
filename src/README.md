@@ -205,6 +205,12 @@ curses framework to paint the interface to the underlying Unix terminal.
 It runs under the user's account, and uses inter-process communication to
 interact with the GLaDOS process, which runs under the AI's user account.
 
+### Text tools (`text/')
+
+This package contains low-level tools for working with raw text, including
+a basic text buffer module that is itself used in several places in GLaDOS,
+including in the window system and the receptive field facility.
+
 ### 'Window' system (`windows/`)
 
 This package implements a facility that supports the existence of 
