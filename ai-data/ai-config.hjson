@@ -1,0 +1,73 @@
+#|==============================================================================
+#|                      TOP OF FILE:    ai-config.hjson
+#|------------------------------------------------------------------------------
+#|	FILE NAME:      ai-config.hjson					  [Human-readable JSON file]
+#|
+#|	FULL PATH:      $GIT_ROOT/GLaDOS/src/ai-data/ai-config.hjson
+#|  MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
+#|  SYSTEM NAME:    GLaDOS (Generic Lifeform and Domicile Operating System)
+#|  APP NAME:       GLaDOS.server (GLaDOS server application)
+#|
+#|	DESCRIPTION:
+#|
+#|		This file records configuration parameters for the specific AI 
+#|		'persona' to be hosted within the GLaDOS system.  The file format
+#|		is HJSON or "human readable JSON" (see https://hjson.github.io/).  
+#|
+#|		Please note that this file may be relocated/renamed by setting the 
+#|		following environment variables prior to launching GLaDOS:
+#|
+#|			AI_DATADIR		- Pathname to the top-level directory of the
+#|								file hierarchy that will contain all data
+#|								specific to the particular AI persona.  A
+#|								suggested location for this could be:
+#|
+#|									/opt/AIs/<username>
+#|
+#|								where <username> is the Unix username that
+#|								owns most of the directory contents, and
+#|								that the GLaDOS server instance will run 
+#|								as.
+#|
+#|			AI_CONFIG_FILENAME	-	The default value for this is just
+#|										ai-config.hjson, like this file.
+#|
+#|		If these environment variables are set, the implied full pathname 
+#|		of this file will be taken as:
+#|
+#|			${AI_DATADIR}/${AI_CONFIG_FILENAME}
+#|
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	# The top-level config struct is a dict of attribute-value pairs.
+
+{
+		#-----------------------------------------------------------------
+		# The persona-name is the proper name to be used (in event records
+		# and prompts) to refer to the AI's persona.
+	
+	persona-name:		"Gladys"
+
+		#-----------------------------------------------------------------
+		# The model-family is a symbol specifying the general architecture
+		# of the AI.  Choices are:  gpt-2 (Samson), gpt-3 (Gladys).
+		# (However, gpt-2 is not yet supported.)
+
+	model-family:		'gpt-3'		# Used for Gladys
+	
+		#------------------------------------------------------------------
+		# The model-version is a symbol naming the particular model within
+		# the model-family.  Choices for gpt-3 include ada, babbage, curie,
+		# and davinci.
+	
+	model-version:		'davinci'	# The most powerful GPT-3 model.
+
+		#-----------------------------------------------------------------------
+		# The max-visible-ntokens specifies the assumed size of the receptive 
+		# field of the underlying language model.  We're assuming 2,048 tokens
+		# for now, but it might be longer in GPT-3/davinci, so we really need to
+		# do some experiments to figure it out.
+		
+	max-visible-tokens:		2048
+
+}

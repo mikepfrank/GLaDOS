@@ -1,4 +1,4 @@
-#|==============================================================================
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #|					 TOP OF FILE:	 config/configuration.py
 #|------------------------------------------------------------------------------
 #|	 The below module documentation string will be displayed by pydoc3.
@@ -40,14 +40,17 @@
 	USAGE:
 	------
 		
-		from config.configuration import Configuration
+		from config.configuration import TheConfiguration
 		...
-		config = Configuration()				# Construct singleton instance.
+		config = TheConfiguration()				# Construct singleton instance.
 		...
 		
 
 	ENVIRONMENT VARIABLES:
 	----------------------
+	
+		The following environment variable are for main system configuration.
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	
 		GLADOS_CONFIG_FILENAME
 				
@@ -70,28 +73,49 @@
 			any of the above.  
 				
 				
-		AI_DATA
+		The following environment variable are for configuring the AI persona.
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		
+			AI_DATADIR
 				
-			The environment variable AI_DATA should be set to point to the
+			The environment variable AI_DATADIR should be set to point to the
 			data directory in which all data specific to a given AI persona
-			is stored; for example, '/opt/AIs/gladys'.	
+			is stored; for example, '/opt/AIs/gladys'.	If this environment
+			variable is not defined, we default to using the 'ai-data/'
+			subdirectory of the directory from which the GLaDOS server is 
+			executed.
 						
 			Ideally, each AI should be given its own user account on the 
 			host, and GLaDOS should be run from within that account, so that 
 			the files in the data directory can be made writable only by the
 			AI itself.
-				
+		
+		
+		AI_CONFIG_FILENAME
+		
+			If this is envrionment variable is set, then it will be used as 
+			the filename (relative to AI_DATADIR) from which we will load the 
+			main high-level configuration data for the AI persona to be hosted
+			in the GLaDOS system.  If not set, we use the a default filename 
+			'ai-config.hjson'.
 		
 		
 	MODULE PUBLIC CLASSES:
 	----------------------
 
 
-		configuration.Configuration										 [class]
+		configuration.TheConfiguration										 [class]
 				
 			This is a singleton class; its constructor always returns
 			the same instance, which represents the GLaDOS server
 			configuration.
+			
+			
+		configuration.TheAIPersonaConfig									 [class]
+		
+			Another singleton class; its instance represents the 
+			configuration of the specific AI persona to be hosted.
+			
 """
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #| End of module documentation string.
@@ -163,7 +187,8 @@ _logger = getComponentLogger(_component)						# Create the component logger.
 
 global __all__	# List of public symbols exported by this module.
 __all__ = [
-		'Configuration',   # Singleton class for the GLaDOS system configuration.
+		'TheConfiguration',   # Singleton class for the GLaDOS system configuration.
+		'TheAIPersonaConfig',	# Singleton class for the AI persona config.
 	]
 
 
@@ -179,7 +204,8 @@ __all__ = [
 	#|---------------------------------------------------------------------
 	#| These are constants providing default values for module parameters.
 
-global	_DEFAULT_CONFIG_FILENAME, _DEFAULT_BASEDIR, _DEFAULT_AI_DATADIR
+global	_DEFAULT_CONFIG_FILENAME, _DEFAULT_BASEDIR, 
+global	_DEFAULT_AI_DATADIR, _DEFAULT_AI_CONFIG_FILENAME
 	
 	# Default name of config file.
 _DEFAULT_CONFIG_FILENAME = 'glados-config.hjson'
@@ -190,15 +216,19 @@ _DEFAULT_BASEDIR = '.'		# Look in current directory by default.
 	# Default working directory for AI-specific state data.
 _DEFAULT_AI_DATADIR = "ai-data"	   # Just use this if nothing else is provided.
 
+	# Default filename for AI-specific configuration data.
+_DEFAULT_AI_CONFIG_FILENAME = 'ai-config.hjson'		# Generally use this filename.
 
 	#|---------------------------------------------------------------------
 	#| These are variables providing current values for module parameters.
-	#| NOTE: We could make these class variables in Configuration instead.
+	#| NOTE: We could make these class variables instead.
 
-global	_CONFIG_FILENAME, _BASEDIR, _CONFIG_FILENAME, _AI_DATADIR
+global	_CONFIG_FILENAME, _BASEDIR, _CONFIG_FILENAME
+global	_AI_DATADIR, _AI_CONFIG_FILENAME
 
 	# Filename of the config file.
-_CONFIG_FILENAME = _DEFAULT_CONFIG_FILENAME # Default before checking environment.
+_CONFIG_FILENAME = _DEFAULT_CONFIG_FILENAME 
+	# Default to the default value before we've checked the environment.
 
 	# Base directory for finding stuff.
 _BASEDIR = _DEFAULT_BASEDIR					# Default before checking environment.
@@ -211,6 +241,14 @@ _CONFIG_PATHNAME = path.join(_BASEDIR, _CONFIG_FILENAME)
 _AI_DATADIR = path.join(_BASEDIR, _DEFAULT_AI_DATADIR)
 	# Default before checking environment.
 
+	# Filename of the AI-specific config file.
+_AI_CONFIG_FILENAME = _DEFAULT_AI_CONFIG_FILENAME	
+	# Default to the default value before we've checked the environment.
+
+	# Pathname to the AI's config file.
+_AI_CONFIG_PATHNAME = path.join(_AI_DATADIR, _AI_CONFIG_FILENAME)
+	# Default before checking environment.
+
 
 	#|==========================================================================
 	#|
@@ -220,17 +258,18 @@ _AI_DATADIR = path.join(_BASEDIR, _DEFAULT_AI_DATADIR)
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-class Configuration:	pass	# Forward declaration to ourself.
+class TheConfiguration:		pass	# Forward declaration to ourself.
+class TheAIPersonaConfig:	pass	# Forward declaration.
 
 @singleton
-class Configuration:	# The GLaDOS server configuration.
-
+class TheConfiguration:	# The GLaDOS server configuration.
+	#---------------------------------------------------------------------------
 	"""
-		Configuration									[public singleton class]
+		TheConfiguration									[public singleton class]
 		=============
 				
 			This is a singleton class, meaning that it creates and manages 
-			a single instance.	The Configuration instance represents the
+			a single instance.	The TheConfiguration instance represents the
 			configuration of the GLaDOS system.
 				
 			On its initial invocation, the constructor method automatically 
@@ -240,6 +279,9 @@ class Configuration:	# The GLaDOS server configuration.
 			option of reloading the origial config file (in case it has
 			changed), or loading a different file.
 			
+			We also dispatch the loading (or reloading) of the AI persona's
+			configuration to the TheAIPersonaConfig singleton class, below.
+			
 		
 		Public instance attributes:
 		---------------------------
@@ -248,34 +290,24 @@ class Configuration:	# The GLaDOS server configuration.
 			finding other data, and are customized using environment
 			variables.
 		
-				.baseDir [string] - Base directory for the GLaDOS system.
+				.baseDir [str] 			- Base directory for the GLaDOS system.
 				
-				.configFilename [string] - The name of the system config file 
+				.configFilename [str] 	- The name of the system config file 
 											that was loaded.
 				
-				.configPathname [string] - The full pathname of the system 
+				.configPathname [str] 	- The full pathname of the system 
 											config file that was loaded.
-							
-				.aiDataDir [string] - The base directory for finding any 
-										AI-specific data.
 				
 			The following are detailed configuration parameters 
 			that are specified in the config file itself.
 				
-				.modelFamily [string] - AI model type (e.g., 'gpt-2' or 
-											'gpt-3').
-				
-				.modelVersion [string] - AI model version (e.g., 'davinci').
-				
-				.maxVisibleTokens [int] - Assumed size of the AI's receptive
-											field in tokens.
-				
 				.appList [list] - List of more detailed configuration data
 									for specific GLaDOS applications.
 	"""
+	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
 		#|----------------------------------------------------------------------
-		#|	Configuration._lastLoadedConf			 [private class data member]
+		#|	TheConfiguration._lastLoadedConf			 [private class data member]
 		#|
 		#|		This class-level attribute references the most recent 
 		#|		*raw* configuration data structure to have been loaded.
@@ -289,30 +321,64 @@ class Configuration:	# The GLaDOS server configuration.
 		#| Special instance methods.							 [class section]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	def __init__(theConfig:Configuration, *args, **kwargs):
-	
+	def __init__(theConfig:TheConfiguration, *args, **kwargs):
+		#-----------------------------------------------------------------------	
 		"""
-			Configuration.__init__()			[singleton instance initializer]
+			TheConfiguration.__init__()			[singleton instance initializer]
 			
 				This instance initializer (which normally only gets called 
 				once, because of our singleton wrapper) calls the .reinit() 
 				method, which can also be called again manually by the 
 				using module if it wishes to reinitialize the configuration.
 		"""
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		_logger.info("Loading system configuration...")
 
 		theConfig.reinit(*args, **kwargs)
+
+			# Also invoke the initializer for TheAIPersonaConfig.
+			# (Always checks its environment & reloads its config file.)
 			
-	#__/ End singleton instance initializer method Configuration.__init__().
+		TheAIPersonaConfig()
+			
+	#__/ End singleton instance initializer method theConfiguration.__init__().
 		
 
 		#|======================================================================
 		#| Private instance methods.							 [class section]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+	def _loadConfig(theConfig:TheConfiguration):
 
-	def _parseConf(theConfig:Configuration, conf:dict = None):
+		"""
+			--------------------------------------------------------------------
+			theConfig._loadConfig()			 [private singleton instance method]
+			
+				Loads the configuration file and returns it as a raw, 
+				unprocessed data structure (made of dicts & arrays, 
+				similar to what we'd get from json.load).  Also stashes 
+				it in the private theConfig._lastLoadedConf attribute.
+			--------------------------------------------------------------------
+		"""
+	
+		_logger.normal(f"Loading server configuration from {_CONFIG_PATHNAME}...")
+
+		with open(_CONFIG_PATHNAME) as cf:
+			conf = load(cf)			# Load structure from hjson file.
+
+		pconf = pformat(conf, indent=4, width=224)
+
+		_logger.info(f"\tLoaded the following raw configuration structure:\n{pconf}")
+
+		theConfig._lastLoadedConf = conf
+
+		return conf
+
+	#__/ End private singleton instance method theConfiguration._loadConfig().
+
+
+	def _parseConf(theConfig:TheConfiguration, conf:dict = None):
 	   
 		"""
 			theConfig._parseConf()			 [private singleton instance method]
@@ -322,42 +388,6 @@ class Configuration:	# The GLaDOS server configuration.
 		"""
 	 
 		
-			#------------------------------------
-			# Extract the model-family parameter.
-		
-		if 'model-family' in conf:
-			theConfig.modelFamily = conf['model-family']
-				# TODO: Make sure value given is valid.
-		else:
-			_logger.warn("parseConf(): The required model-family parameter "
-							"was not provided.")
-			theConfig.modelFamily = None
-	
-	
-			#------------------------------------
-			# Extract the model-version parameter.
-	
-		if 'model-version' in conf:
-			theConfig.modelVersion = conf['model-version']
-				# TODO: Make sure value given is valid.
-		else:
-			_logger.warn("parseConf(): The required model-version parameter "
-							"was not provided.")
-			theConfig.modelVersion = None
-
-
-			#------------------------------------
-			# Extract the max-visible-tokens parameter.
-		
-		if 'max-visible-tokens' in conf:
-			theConfig.maxVisibleTokens = conf['max-visible-tokens']
-				# TODO: Make sure value given is valid.
-		else:
-			_logger.warn("parseConf(): The required max-visible-tokens parameter "
-							"was not provided.")
-			theConfig.maxVisibleTokens = None
-
-
 			#------------------------------------
 			# Extract the app-list parameter.
 				
@@ -374,10 +404,10 @@ class Configuration:	# The GLaDOS server configuration.
 		# here, such as warning the user if there are other parameters 
 		# in the provided config file that we don't understand.
 		
-	#__/ End parseConf().
+	#__/ End private singleton instance method theConfiguration._parseConf().
 
 
-	def _process(theConfig:Configuration):
+	def _process(theConfig:TheConfiguration):
 	
 		""" 
 			--------------------------------------------------------------------
@@ -457,24 +487,24 @@ class Configuration:	# The GLaDOS server configuration.
 		
 		theConfig.appConfigs = appConfigs
 	
-	#__/ End instance method Configuration.process().
+	#__/ End private singleton instance method _theConfiguration.process().
 
 
-	def _checkEnvironment(theConfig:Configuration):
+	def _checkEnvironment(theConfig:TheConfiguration):
 
 		"""
 			--------------------------------------------------------------------
 			theConfig._checkEnvironment()	 [private singleton instance method]
 			
-				Checks environment variables to determine locations of
-				GLaDOS's system config file and AI-specific state data.
+				Checks environment variables to determine location of
+				GLaDOS's system config file.
 			--------------------------------------------------------------------	
 		"""
 			
 			# Declare these names as globals that we'll reinitialize here.
 			# (It would really be cleaner to change these to class variables.)
 			
-		global _CONFIG_FILENAME, _BASEDIR, _CONFIG_PATHNAME, _AI_DATADIR
+		global _CONFIG_FILENAME, _BASEDIR, _CONFIG_PATHNAME
 
 			# Go ahead and get the environment variables associated with
 			# locating the main system config file.
@@ -499,49 +529,13 @@ class Configuration:	# The GLaDOS server configuration.
 
 			_CONFIG_PATHNAME = path.join(_BASEDIR, _CONFIG_FILENAME)
 		
-		else:	# Pathname was provided in environment.
+		else:	# Full pathname was provided in environment.
 		
 			_CONFIG_PATHNAME = envPathname
-		#__/ 
-		
-			# Update the location of the AI's data directory, 
-			# if that was provided in an environment variable.
-		
-		envAIDataDir = getenv("AI_DATADIR")
-		if envAIDataDir != None:	_AI_DATADIR = envAIDataDir
-		
-		_logger.normal(f"The AI-specific data directory is set to {_AI_DATADIR}.")
 			
-	#__/ End ConfigurationLoader.checkEnvironment().
-
-
-	def _loadConfig(theConfig:Configuration):
-
-		"""
-			--------------------------------------------------------------------
-			theConfig._loadConfig()			 [private singleton instance method]
+		#__/ End if envPathname==None ... else ...
 			
-				Loads the configuration file and returns it as a raw, 
-				unprocessed data structure (made of dicts & arrays, 
-				similar to what we'd get from json.load).  Also stashes 
-				it in the private theConfig._lastLoadedConf attribute.
-			--------------------------------------------------------------------
-		"""
-	
-		_logger.normal(f"Loading server configuration from {_CONFIG_PATHNAME}...")
-
-		with open(_CONFIG_PATHNAME) as cf:
-			conf = load(cf)			# Load structure from hjson file.
-
-		pconf = pformat(conf, indent=4, width=224)
-
-		_logger.info(f"Loaded the following raw configuration structure:\n{pconf}")
-
-		theConfig._lastLoadedConf = conf
-
-		return conf
-
-	#__/ End loadConfig().
+	#__/ End private singleton instance method theConfiguration._checkEnvironment().
 
 
 		#|======================================================================
@@ -566,7 +560,7 @@ class Configuration:	# The GLaDOS server configuration.
 		
 	def reinit(theConfig:Configuration, confStruct=None, recheckEnv:bool=False, 
 				reloadConf:bool=False):
-		
+		#-----------------------------------------------------------------------
 		"""
 		(Re)initialization method for configurations.
 		
@@ -581,6 +575,7 @@ class Configuration:	# The GLaDOS server configuration.
 			the configuration is (re-)loaded from the current configuration 
 			file.  Otherwise, the last loaded configuration is just reused.
 		"""
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 				
 			#-------------------------------------------------------
 			# First, if checkEnv is true, then we check the environment
@@ -598,7 +593,6 @@ class Configuration:	# The GLaDOS server configuration.
 		theConfig.baseDir			 = _BASEDIR
 		theConfig.configFilename	 = _CONFIG_FILENAME
 		theConfig.configPathname	 = _CONFIG_PATHNAME
-		theConfig.aiDataDir			 = _AI_DATADIR
 		
 			#-----------------------------------------------------------
 			# Now let's figure out our raw configuration data structure.
@@ -639,6 +633,276 @@ class Configuration:	# The GLaDOS server configuration.
 #__/ End class Configuration.
 
 
-#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-#|					   END OF FILE:	  config/loader.py
-#|=============================================================================
+@singleton
+class	TheAIPersonaConfig:
+	#---------------------------------------------------------------------------
+	"""
+		TheAIPersonaConfig								[public singleton class]
+		=================
+				
+			This is similar to the main Configuration class above, but it
+			handles configuration information that is specific to the 
+			individual artificially intelligent persona that is being 
+			hosted within the GLaDOS system.
+			
+			NOTE: These two classes are so similar that it might make 
+			sense to abstract their commonalities out into a common 
+			abstract superclass, but we have not done this yet.
+			
+		
+		Public instance attributes:
+		---------------------------
+		
+			The following are basic config parameters needed for
+			finding other data, and are customized using environment
+			variables.
+							
+				.aiDataDir [str] 		- The base directory for finding any 
+											AI-specific data.
+				
+				.aiConfigFilename [str]	- Filename of the AI-specific config 
+											file.
+											
+				.aiConfigPathname [str]	- The full pathname of the AI-specific
+											config file.
+				
+			The following are detailed configuration parameters 
+			that are specified in the config file itself.
+				
+				.modelFamily [string] - AI model type (e.g., 'gpt-2' or 
+											'gpt-3').
+				
+				.modelVersion [string] - AI model version (e.g., 'davinci').
+				
+				.maxVisibleTokens [int] - Assumed size of the AI's receptive
+											field in tokens.
+	"""
+	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		
+		#|======================================================================
+		#| Special instance methods.							 [class section]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	def __init__(theAIConfig:TheAIPersonaConfig, *args, **kwargs):
+		#-----------------------------------------------------------------------	
+		"""
+			TheAIPersonaConfig.__init__()		[singleton instance initializer]
+			
+				This instance initializer (which normally only gets called 
+				once, because of our singleton wrapper) calls the .reinit() 
+				method, which can also be called again manually by the 
+				using module if it wishes to reinitialize the configuration.
+		"""
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		_logger.info("Loading AI persona configuration...")
+
+		theAIConfig.reinit(*args, **kwargs)
+
+	#__/ End singleton instance initializer method TheAIPersonaConfig.__init__().
+		
+
+		#|======================================================================
+		#| Private instance methods.							 [class section]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
+	def _loadConfig(theAIConfig:TheAIPersonaConfig):
+		#-----------------------------------------------------------------------
+		"""
+		theAIConfig._loadConfig()			 [private singleton instance method]
+		
+			Loads the AI's configuration file and returns it as a 
+			raw, unprocessed data structure (made of dicts & arrays, 
+			similar to what we'd get from json.load).  Also stashes 
+			it in the private theAIConfig._lastLoadedConf attribute.
+		"""
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		
+		_logger.normal(f"Loading AI configuration from {_CONFIG_PATHNAME}...")
+
+		with open(_CONFIG_PATHNAME) as cf:
+			conf = load(cf)			# Load structure from hjson file.
+
+		pconf = pformat(conf, indent=4, width=224)
+
+		_logger.info(f"\tLoaded the following raw configuration structure:\n{pconf}")
+
+		theAIConfig._lastLoadedConf = conf
+
+		return conf
+
+	#__/ End theAIConfig.loadConfig().
+
+
+	def _parseConf(theAIConfig:TheAIPersonaConfig, conf:dict = None):			   
+		#-----------------------------------------------------------------------
+		"""
+			theAIConfig._parseConf()		 [private singleton instance method]
+			
+				Reads the given raw configuration data structure into 
+				the AI persona configuration object.
+		"""
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	 
+		
+			#------------------------------------
+			# Extract the model-family parameter.
+		
+		if 'model-family' in conf:
+			theAIConfig.modelFamily = conf['model-family']
+				# TODO: Make sure value given is valid.
+		else:
+			_logger.warn("parseConf(): The required model-family parameter "
+							"was not provided.")
+			theAIConfig.modelFamily = None
+	
+	
+			#------------------------------------
+			# Extract the model-version parameter.
+	
+		if 'model-version' in conf:
+			theAIConfig.modelVersion = conf['model-version']
+				# TODO: Make sure value given is valid.
+		else:
+			_logger.warn("parseConf(): The required model-version parameter "
+							"was not provided.")
+			theAIConfig.modelVersion = None
+
+
+			#------------------------------------
+			# Extract the max-visible-tokens parameter.
+		
+		if 'max-visible-tokens' in conf:
+			theAIConfig.maxVisibleTokens = conf['max-visible-tokens']
+				# TODO: Make sure value given is valid.
+		else:
+			_logger.warn("parseConf(): The required max-visible-tokens parameter "
+							"was not provided.")
+			theAIConfig.maxVisibleTokens = None
+
+
+		# NOTE: It would be nice to do some additional error-checking 
+		# here, such as warning the user if there are other parameters 
+		# in the provided config file that we don't understand.
+		
+	#__/ End private singleton instance method theAIConfig._parseConf().
+
+
+	def _process(theAIConfig:TheAIPersonaConfig):
+	
+		""" 
+			--------------------------------------------------------------------
+			theAIConfig._process()			 [private singleton instance method]
+			
+				Given that the AI TheAIPersonaConfig has just been reinitialized
+				but without much detailed processing of it yet, go ahead
+				and do some routine processing of the provided config
+				data to work it more deeply down into the system innards.
+			--------------------------------------------------------------------
+		"""
+	
+		# (No work needs to be done here yet.)
+	
+	#__/ End private singleton instance method theAIConfig._process().
+
+
+	def _checkEnvironment(theAIConfig:TheAIPersonaConfig):
+
+		"""
+			--------------------------------------------------------------------
+			theAIConfig._checkEnvironment()	 [private singleton instance method]
+			
+				Checks environment variables to determine locations of
+				the AI persona's state data and its config file.
+			--------------------------------------------------------------------	
+		"""
+			
+			# Declare these names as globals that we'll reinitialize here.
+			# (It would really be cleaner to change these to class variables.)
+			
+		global _AI_DATADIR, _AI_CONFIG_FILENAME
+
+			# Update the location of the AI's data directory, 
+			# and the name of its config file, if they were 
+			# provided in environment variables.
+		
+		envAIDataDir	= getenv("AI_DATADIR")
+		envAIConfFile	= getenv("AI_CONFIG_FILENAME")
+		
+		if envAIDataDir 	!= None:	_AI_DATADIR 			= envAIDataDir
+		if envAIConfFile	!= None:	_AI_CONFIG_FILENAME		= envAIConfFile
+		
+			# Compute the full pathname of the AI's config file.
+		
+		_AI_CONFIG_PATHNAME = path.join(_AI_DATADIR, _AI_CONFIG_FILENAME)
+
+			# Print this key info at NORMAL level.
+		
+		_logger.normal(f"The AI-specific data directory is set to {_AI_DATADIR}.")
+		_logger.normal(f"The AI-specific config file is set to {_AI_CONFIG_PATHNAME}.")
+			
+	#__/ End private singleton instance method theAIConfig._checkEnvironment().
+
+
+		#|======================================================================
+		#| Public instance methods.								 [class section]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	def reinit(theAIConfig:TheAIPersonaConfig, confStruct=None, recheckEnv:bool=False, 
+					reloadConf:bool=False):
+		#-----------------------------------------------------------------------
+		"""
+		theAIConfig.reinit()						 [singleton instance method]
+		
+			(Re)initialization method for AI persona configurations.
+			Environment variables are always checked & the config file 
+			is always reloaded.		
+		"""
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+			#---------------------------------------------------------
+			# First, we check the environment variables to see if they
+			# are overriding any of our default directory locations.
+	
+		theAIConfig._checkEnvironment()
+				
+			#---------------------------------------------------------
+			# Let's remember the directory locations we ended up with,
+			# in case needed for later reference.
+			
+		theAIConfig.aiDataDir			= _AI_DATADIR
+		theAIConfig.aiConfigFilename	= _AI_CONFIG_FILENAME
+		theAIConfig.aiConfigPathname	= _AI_CONFIG_PATHNAME
+		
+			#-----------------------------------------------------
+			# Now let's load our raw configuration data structure.
+				
+		confStruct = theAIConfig._loadConfig()
+			
+			#---------------------------------------------------------
+			# OK, let's remember the raw structure we're using in case
+			# it's needed for later reference (mainly for debugging).
+			
+		theAIConfig._rawConfStruct = confStruct
+				
+			#-------------------------------------------------------
+			# 'Parse' the configuration data structure to initialize
+			# our associated instance attributes.
+
+		theAIConfig._parseConf(confStruct)
+				
+			#-------------------------------------------------------
+			# Now process the configuration object (i.e., ourself) 
+			# to do any other needed work with that information.
+		
+		theAIConfig._process()
+		
+	#__/ End TheAIPersonaConfig().reinit().
+
+#__/ End class TheAIPersonaConfig.
+	
+
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#|					END OF FILE:	  config/configuration.py
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

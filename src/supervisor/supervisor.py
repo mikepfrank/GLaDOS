@@ -28,15 +28,27 @@
 				of the entire GLaDOS system by the artificially
 				intelligent mind residing within it.
 						
-			(2) The process subsystem (`processes/`). This subsystem
+			(2) The windowing subsystem (`windows/`). This subsystem
+				manages various text-based 'windows' that appear in the
+				A.I.'s visual field that the A.I. can use to interact 
+				with various processes.
+		
+			(3) The process subsystem (`processes/`). This subsystem
 				manages a set of GLaDOS 'processes' that the AI can
 				interact with to communicate to the outside world,
 				to human users, to other local systems or to various
 				subsystems of GLaDOS itself. Processes come with 
 				associated command modules, and the AI interacts with
 				each process through a dedicated text 'window.'
+
+			(4)	The application subsystem (`apps/`).  This subsystem 
+				manages the various "applications" running within 
+				GLaDOS that can be used by the AI.  This includes the
+				Help system, Info app, Settings app, Memory app, and
+				the ToDo, Diary, Comms, Browse, Writing, and Unix
+				tools.
 						
-			(3) The cognitive subsystem (`mind/`). This subsystem 
+			(5) The cognitive subsystem (`mind/`). This subsystem 
 				maintains the A.I.'s mental state, described in terms
 				of a long-term memory bank, a real-time event history, 
 				a receptive field, and a dynamic API configuration.
@@ -44,27 +56,22 @@
 				them to interact with various processes & subsystems.
 				The main event loop of the A.I. also happens here.
 					   
-			(4) The windowing subsystem (`windows/`). This subsystem
-				manages various text-based 'windows' that appear in the
-				A.I.'s visual field that the A.I. can use to interact 
-				with various processes.
-		
 		
 		USAGE:
 		------
 		
-			from supervisor.starter import Supervisor
+			from supervisor.starter import TheSupervisor
 			...
 			# Server configuration should have been loaded first, then call:
-			supervisor = Supervisor()	# Create & start supervisor (and various threads).
+			supervisor = TheSupervisor()	# Create & start supervisor (and various threads).
 			...
-			supervisor.waitForExit()	# Waits for the Supervisor to exit.
+			supervisor.waitForExit()	# Waits for the TheSupervisor to exit.
 		
 		
 		MODULE PUBLIC CLASSES:
 		----------------------
 				
-			Supervisor													 [class]
+			TheSupervisor												 [class]
 						
 				Singleton class, whose sole instance is the single
 				object which is the system supervisor.
@@ -72,6 +79,22 @@
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #| End of module documentation string.
 #|------------------------------------------------------------------------------
+
+#
+#		ActionProcessor -
+#
+#			Every time the AI generates an action, several things happen:
+#
+#				* An event for the action is created and appended to 
+#					the AI's own cognitive stream.
+#
+#				* The event is handed to the GLaDOS command interface
+#					for possible processing.
+#
+#			The ActionProcessor class should probably be defined in the
+#			TheSupervisor module--but (for actions that take place in the
+#			AI's cognitive sphere) executed in the mind process.
+#
 
 
 	#|==========================================================================
@@ -140,7 +163,7 @@ from apps.appSystem				import	AppSystem
 	# This class manages startup of the applications system, including
 	# all applications that need to begin running at system startup.
 
-from mind.mindSystem			import	MindSystem
+from mind.mindSystem			import	CognitiveSystem
 	# This class manages starting up the A.I.'s mind on server startup.
 
 
@@ -167,7 +190,7 @@ from mind.mindSystem			import	MindSystem
 
 global __all__		# List of public symbols exported by this module.
 __all__ = [
-		'Supervisor',	# Singleton class for the supervisor object.
+		'TheSupervisor',	# Singleton class for the supervisor object.
 	]
 
 
@@ -180,23 +203,23 @@ __all__ = [
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 @singleton
-class Supervisor:	# Singleton class for the GLaDOS supervisor subsystem.
-
+class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
+	#---------------------------------------------------------------------------
 	"""
-		Supervisor														 [class]
-		==========
-		
-			A singleton class whose sole instance implements the 
-			supervisor function within the GLaDOS system; that is, 
-			it is the executive entity that creates and manages all 
-			of the other subsystems.
-		
-			On startup, the supervisor starts the other primary subsystems
-			of GLaDOS: The command interface, window system, process system,
-			and the AI's mind. It then monitors and manages these systems,
-			and shuts them down if/when needed (generally only when the AI
-			requests it).					
+	TheSupervisor														 [class]
+	=============
+	
+		A singleton class whose sole instance implements the supervisor 
+		function within the GLaDOS system; that is, it is the executive 
+		entity that creates and manages all of the other subsystems.
+	
+		On startup, the supervisor starts the other primary subsystems
+		of GLaDOS: The command interface, window system, process system,
+		and the AI's mind. It then monitors and manages these systems,
+		and shuts them down if/when needed (generally only when the AI
+		requests it).					
 	"""
+	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	def __init__(self):
 		
@@ -204,9 +227,9 @@ class Supervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 			supervisor.__init__()					   [special instance method]
 				
 				This is the singleton instance initializer for the 
-				Supervisor class.  Because this is a singleton class,
+				TheSupervisor class.  Because this is a singleton class,
 				this method will only get called once, to initialize
-				the first and only instance of Supervisor.
+				the first and only instance of TheSupervisor.
 				
 				This method is responsible for creating and initializing 
 				all of the other major subsystems of GLaDOS, including:
@@ -234,8 +257,8 @@ class Supervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 				#| installed in the command interface, so it needs to be 
 				#| already available.
 		
-		_logger.info("    Supervisor: Initializing the command interface...")
-		ci = CommandInterface()		# Initializes the command interface.
+		_logger.info("    TheSupervisor: Initializing the command interface...")
+		ci = TheCommandInterface()		# Initializes the command interface.
 
 				
 				#|--------------------------------------------------------------
@@ -245,8 +268,8 @@ class Supervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 				#| and each process generally needs to have an associated window
 				#| which will show its I/O stream.
 				
-		_logger.info("    Supervisor: Initializing the text windowing system...")
-		ws = WindowSystem()			# Initializes the text windowing system.
+		_logger.info("    TheSupervisor: Initializing the text windowing system...")
+		ws = TheWindowSystem()			# Initializes the text windowing system.
 		
 		
 				#|--------------------------------------------------------------
@@ -257,8 +280,8 @@ class Supervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 				#| here to support various internal housekeeping functions of 
 				#| GLaDOS itself.
 		
-		_logger.info("    Supervisor: Initializing the sub-process system...")
-		ps = ProcessSystem()			
+		_logger.info("    TheSupervisor: Initializing the sub-process system...")
+		ps = TheProcessSystem()			
 			# Start the process framework and launch any essential 
 			# background GLaDOS processes.
 				
@@ -268,25 +291,25 @@ class Supervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 				#| individual GLaDOS applications to be launched as needed, and
 				#| some of them will even be launched automatically on startup.
 		
-		_logger.info("    Supervisor: Starting up the applications system...")
-		appSys = AppSystem()		# Start up the application system.
+		_logger.info("    TheSupervisor: Starting up the applications system...")
+		appSys = TheAppSystem()		# Start up the application system.
 		
 		
 				#|--------------------------------------------------------------
 				#| (5) Finally, we can start up the A.I.'s mind.
 		
-		_logger.info("    Supervisor: Starting up the cognitive system...")
-		mind = MindSystem()			# Start up the A.I.'s mind, itself.
+		_logger.info("    TheSupervisor: Starting up the cognitive system...")
+		mind = TheCognitiveSystem()			# Start up the A.I.'s mind, itself.
 		
 		
 			#|------------------------------------------------------------
 			#| Next, we just start the supervisor main loop. This runs in
 			#| its own background thread that is created for this purpose.
 		
-		_logger.info("    Supervisor: Starting main loop...")
+		_logger.info("    TheSupervisor: Starting main loop...")
 		self.startSupervisorMainloop()			# To be implemented.
 		
-	#__/ End singleton instance initializer for class Supervisor.
+	#__/ End singleton instance initializer for class TheSupervisor.
 
 	def startSupervisorMainloop(self):
 		pass
@@ -298,7 +321,7 @@ class Supervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 		pass
 		# TODO: Implement this.
 		
-#__/ End class Supervisor.
+#__/ End class TheSupervisor.
 
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
