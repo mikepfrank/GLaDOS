@@ -147,8 +147,8 @@ from infrastructure.logmaster   import getComponentLogger
 
 global _component, _logger      # Software component name, logger for component.
 
-_component = path.basename(path.dirname(__file__))              # Our package name.
-_logger = getComponentLogger(_component)                        # Create the component logger.
+_component = path.basename(path.dirname(__file__))	# Our package name.
+_logger = getComponentLogger(_component)            # Create the component logger.
 
 
         # A simple decorator for singleton classes.
@@ -167,7 +167,7 @@ from processes.processSystem    import  SubProcess
 
     #|==========================================================================
     #|
-    #|   2. Globals                                                                     [module code section]
+    #|   2. Globals                                        [module code section]
     #|
     #|      Declare and/or define various global variables and
     #|      constants.  Note that top-level 'global' statements are
@@ -227,7 +227,7 @@ __all__ = [
 			#|
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global _APP_LIST                # We could put this into the AppSystem class instead.
+global _APP_LIST    # We could put this into the AppSystem class instead.
 
 
     #|==========================================================================
@@ -431,9 +431,9 @@ class AppSystem:
         
 
 		#|======================================================================
-		#|      3.2. Application-specific classes.                              [code subsection]
+		#|	3.2. Application-specific classes.                 [code subsection]
 		#|
-		#|              These classes define specific applications within GLaDOS.
+		#|		These classes define specific applications within GLaDOS.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
