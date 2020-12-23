@@ -49,29 +49,40 @@
 		# The persona-name is the proper name to be used (in event records
 		# and prompts) to refer to the AI's persona.
 	
-	persona-name:		"Gladys"
+	persona-name:					"Gladys"
+
+		#-----------------------------------------------------------------
+		# The persona-user-account is the user account name on the host 
+		# system under which the server process should be run.
+	
+	persona-user-account:			"gladys"	# Not yet used.
 
 		#-----------------------------------------------------------------
 		# The model-family is a symbol specifying the general architecture
 		# of the AI.  Choices are:  gpt-2 (Samson), gpt-3 (Gladys).
 		# (However, gpt-2 is not yet supported.)
 
-	model-family:		'gpt-3'		# Used for Gladys
+	model-family:					'gpt-3'		# Used for Gladys
 	
 		#------------------------------------------------------------------
 		# The model-version is a symbol naming the particular model within
 		# the model-family.  Choices for gpt-3 include ada, babbage, curie,
 		# and davinci.
 	
-	model-version:		'davinci'	# The most powerful GPT-3 model.
+	model-version:					'davinci'	# The most powerful GPT-3 model.
 
 		#-----------------------------------------------------------------------
 		# The max-visible-ntokens specifies the assumed size of the receptive 
-		# field of the underlying language model.  We're assuming 2,048 tokens
-		# for now, but it might be longer in GPT-3/davinci, so we really need to
-		# do some experiments to figure it out.
+		# field of the underlying language model.  For GPT-3, this is 2,048.
 		
-	max-visible-tokens:		2048
+	max-visible-tokens:				2048	# Comes from paper, n_ctx model parameter.
+	
+		#-----------------------------------------------------------------------
+		# The sys-notification-threshold specifies the minimum importance level
+		# of system actions that we want to be made aware of when they occur.
+		# These actions' completion events will appear in our cognitive stream.
+		
+	sys-notification-threshold:		0	# All system actions with non-negative importance.
 
 	# Eventually, we need to add more configuration parameters here, to do
 	# things like set GPT-3 API parameters, customize locations in the 
