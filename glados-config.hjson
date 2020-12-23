@@ -23,33 +23,43 @@
 # The top-level config struct is a dict of attribute-value pairs.
 
 {
-	# NOTE: Eventually, we should move the following settings into an AI-
-	# specific config file, located in the directory specified by the 
-	# AI_DATA environment variable (or the 'ai-data' subdirectory of the
-	# main GLaDOS directory, if not specified).
 
-		#-----------------------------------------------------------------
-		# The model-family is a symbol specifying the general architecture
-		# of the AI.  Choices are:  gpt-2 (Samson), gpt-3 (Gladys).
-		# (However, gpt-2 is not yet supported.)
+		/* The basic configuration structure for the receptive field. */
 
-	#model-family:		'gpt-3'		# Used for Gladys
+	field-conf:		{
+			
+				/* Title string to be displayed (centered) in the header bar
+					at the very top edge of the entire receptive field. */
+			
+			title:					"GLaDOS Main Screen / GPT-3 Receptive Field"
 	
-		#------------------------------------------------------------------
-		# The model-version is a symbol naming the particular model within
-		# the model-family.  Choices for gpt-3 include ada, babbage, curie,
-		# and davinci.
+				/* The nominal width of the receptive field, in (assumed
+					fixed-width) characters.  (Note that not all field views or 
+					field elements will necessarily end up respecting this
+					suggested value.) */
 	
-	#model-version:		'davinci'	# The most powerful GPT-3 model.
-
-		#-----------------------------------------------------------------------
-		# The max-visible-ntokens specifies the assumed size of the receptive 
-		# field of the underlying language model.  We're assuming 2,048 tokens
-		# for now, but it might be longer in GPT-3/davinci, so we really need to
-		# do some experiments to figure it out.
+			nominal-width:			60		
+			
+				/* This character should be used as the "background" pattern 
+					making up the entire header bar, apart from the title 
+					text itself.*/
+			
+			header-bar-bgchar:		'*'
+			
+				/* This character should be used as the "background" pattern
+					making up the entire prompt separator bar, apart from the
+					separator instruction text. */
+					
+			separator-bar-bgchar:	"\#"
+			
+				/* "Instruction" text to display in the prompt separator bar. */
+				
+			separator-bar-text:		"Enter a command line or free-form text. (/Help)"
+			
+				/* We need to add a parameter here to specify the default prompt
+					format style. */ 
+		}
 		
-	#max-visible-tokens:		2048
-
 		#|----------------------------------------------------------------------
 		#| The app-list attribute specifies the list of GLaDOS applications 
 		#| that are potentially available to the AI and gives configuration

@@ -355,7 +355,13 @@ def _main():
 		_logger.debug("About to create system configuration and supervisor...")
 
 	config = TheConfiguration()		# Loads the system configuration.
-	supervisor = TheSupervisor()	# Starts the main supervisory subsystem.
+	supervisor = TheSupervisor()	# Creates the main supervisory subsystem.
+	
+	_logger.info("System initialization complete.")
+	
+	if doNorm:
+		_logger.normal("Starting the system...")
+	supervisor.start()				# Tells the supervisor to start everything up.
 			# NOTE: This also starts up all of the other major subsystems.
 				
 			#---------------------------------------------------------------------

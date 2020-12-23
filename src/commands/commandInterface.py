@@ -462,7 +462,23 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 			# Create an initially empty list of actively supported commands.
 		
 		self._activeCommands = Commands()
+	
+	def checkForCommand(self, action:Action_):
+	
+		"""Examine the provided action to see if we could interpret it 
+			as a command. (Generally this will only be the case for 
+			speech acts.) If this is the case, then construct an 
+			appropriate CommandAction instance for it.
+		"""
+
+		# STILL NEED TO IMPLEMENT THIS
 		
+		pass
+	
+	def isCommand(self, text:str):
+		"""Is the given text a command?"""
+		return False	# Stub. (Not yet implemented.)
+	
 	#__/ End initializer for class TheCommandInterface.
 
 #__/ End class TheCommandInterface.

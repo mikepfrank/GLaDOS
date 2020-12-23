@@ -1,3 +1,11 @@
+#|==============================================================================
+#|				  TOP OF FILE:	  field/receptiveField.py
+#|------------------------------------------------------------------------------
+#|	 The below module documentation string will be displayed by pydoc3.
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+"""
+"""
+
 # receptiveField.py
 #
 #	Please note that conceptually, this module is considered part of the AI,
@@ -43,22 +51,82 @@
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 			#|----------------------------------------------------------------
-			#|	The following modules, although custom, are generic utilities,
-			#|	not specific to the present application.
+			#|	1.2.1. The following modules, although custom, are generic 
+			#|		utilities, not specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		# A simple decorator for singleton classes.
-from infrastructure.decorators	import	singleton
+from 	infrastructure.decorators	import	singleton
+
+				#-------------------------------------------------------------
+				# The logmaster module defines our logging framework; we
+				# import specific definitions we need from it.	(This is a
+				# little cleaner stylistically than "from ... import *".)
+
+from infrastructure.logmaster	import getComponentLogger
+
+	# Go ahead and create or access the logger for this module.
+
+global _component, _logger	# Software component name, logger for component.
+
+_component = path.basename(path.dirname(__file__))	# Our package name.
+_logger = getComponentLogger(_component)			# Create the component logger.
 
 
+			#|----------------------------------------------------------------
+			#|	1.2.2. The following modules are specific to GLaDOS.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from events.action		import ActionByAI
+from 	events.action				import 	ActionByAI_
 	# This is an abstract class for actions that we might want to take,
 	# which should then be automatically handled by the Supervisor.
 
+			#|----------------------------------------------------------------
+			#|	1.2.3. The following modules are "sibling" modules to the 
+			#|		present module within its package.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from	.placement					import	Placement		
+	# A placement specifies an initial location for new slots on the field.
+
+from	.fieldElement				import	FieldElement_
+	# Field elements are conceptually independent parts of the field display.
+
 	#|==========================================================================
 	#|
-	#|	3. Classes.												  [code section]
+	#|	2. Globals.												  [code section]
+	#|
+	#|		Module-level (global) constant and variable data members.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+global _DEFAULT_NOMINAL_WIDTH	# Default nominal displayed width of field elements, in characters.
+_DEFAULT_NOMINAL_WIDTH	= 60	# Keeping it narrow-ish reduces tokens wasted on decorators.
+	# Note that this default may not be respected in all field elements or views.
+	# (Does it make more sense conceptually to set this in the window system?)
+	# NOTE: We still need to add a config setting to override this.
+
+	#|==========================================================================
+	#|
+	#|	3. Forward declarations.								  [code section]
+	#|
+	#|		Forward declarations to classes that will be defined later
+	#|		in this module.  (This is mainly only useful for use in type 
+	#|		hints; you can't actually construct an *instance* of a class
+	#|		at top level until the class has actually been defined.)
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+class ReceptiveField_:		pass	# For use in type hints.
+	# Abstract base class for receptive fields.
+
+class TheReceptiveField:	pass
+	# This singleton anchors the whole module.
+
+
+	#|==========================================================================
+	#|
+	#|	4. Classes.												  [code section]
 	#|
 	#|		Classes defined by this module.
 	#|
@@ -69,15 +137,15 @@ from events.action		import ActionByAI
 #		This is a class of action that is taken by the AI as soon as its 
 #		receptive field has been created, and is ready for entities outside
 #		of itself to begin writing information into it.  Like all actions, 
-#		as soon as it gets created, it gets automatically processed by the
-#		supervisor's ActionProcessor.  This responds appropriately, for 
-#		example, by telling the application system that its windows that want
-#		to auto-open can now open themselves on the field.
+#		as soon as it gets created and initiated, it gets automatically 
+#		processed by the supervisor's ActionProcessor.  This responds 
+#		appropriately, for example, by telling the application system that 
+#		its windows that want to auto-open can now open themselves on the 
+#		field.
 
-class AnnounceFieldExistsAction(ActionByAI):
+class AnnounceFieldExistsAction(ActionByAI_):
 	pass
 	
-#
 #	FieldSlot			- A "slot" in the display order for the receptive field.
 #							A slot holds an object that will be displayed at that
 #							spot in the field.  Slots can be rearranged in several 
@@ -96,6 +164,68 @@ class AnnounceFieldExistsAction(ActionByAI):
 #							that it won't normally be displaced by slots that are 
 #							only slid to the top or bottom.
 #
+
+class FieldElement_: pass	# Forward declaration.
+
+class FieldSlot:
+	# Data members:
+	#
+	#	- A placement designator for this slot, which determines how its
+	#		position will be set/maintained within the field ordering.
+	#
+	#	- An index giving the slot's current sequential position within
+	#		the receptive field.
+	#
+	#	- A reference to the field element that's being held in this slot.
+	#
+	# Properties:
+	#
+	#	- Height (in rows). This just comes from the element that's being 
+	#		held in the slot.
+	#
+	# Methods:
+	#
+	#	- fieldSlot.place() - Tells the field slot to place itself 
+	#		appropriately within the given base field data object.
+	
+	def __init__(
+			thisFieldSlot, 
+				# How to place the new slot on the field:
+			placement:Placement=Placement:SLIDE_TO_BOTTOM,	
+				# By default, we slide new slots to the bottom without anchoring 
+				# them (thereby displacing pre-placed unanchored slots upwards).
+			forElement:FieldElement_=None,	
+				# The field element we're creating this slot to hold (if it 
+				# exists already).
+			field:ReceptiveField_=TheReceptiveField()
+		):
+		"""
+			FieldSlot.__init__()						  [Instance initializer]
+			
+				This is the instance initialization method that is used in
+				constructing field slots (instances of the FieldSlot class).
+				
+				When a new field slot is created, it is assigned an initial
+				placement, specifying how it will be positioned relative to
+				other slots in the ordering of field slots (top to bottom).
+				
+				Later, after the field slot has been constructed, the 
+				fieldSlot.place() method, below, can be used to actually
+				place it within the field ordering, after which the field
+				display should be refreshed.  (But managing the field 
+				refreshment is a responsibility of higher-level classes.)
+		"""
+			# Remember our placement and our element and our field.
+		thisFieldSlot._placement = placement
+		thisFieldSlot._posIndex = None			# Slot isn't placed yet.
+		thisFieldSlot._element = forElement
+
+	def place(thisFieldSlot, 
+				# Where to place the slot on the field?
+			where:Placement=None, 
+				# By default, we'll just use the element's initial placement.
+			field=TheReceptiveField()):
+
 #	TheBaseFieldData		- The base data object containing everything that's 
 #							intended to be viewed by the A.I. in its 
 #							receptive field.
@@ -108,8 +238,6 @@ class AnnounceFieldExistsAction(ActionByAI):
 #							of human viewing.
 #
 #	TheReceptiveField	- Singleton; the entire receptive field system as a whole.
-
-class TheBaseFieldData: pass	# Forward declaration.
 
 @singleton
 class TheBaseFieldData:
@@ -136,22 +264,24 @@ class TheBaseFieldData:
 		inst._maxTokens = maxTokens
 		inst._slots = []
 		
-	def addElement(theBaseFieldData:TheBaseFieldData, element:object,
-					location:string):
+	def addElement(theBaseFieldData:TheBaseFieldData, 
+					element:FieldElement_,
+					location:Placement):
 		"""
 			In this context, an 'element' just means an object that 
 			can be displayed in the AI's receptive field.
 			
-			The 'location' string has the following possible values:
+			The 'location' is value of the Placement enumerable, which
+			has the following possible values (see placement.py):
 			
-				PIN-TO-BOTTOM - The element is pinned to the bottom
+				PIN_TO_BOTTOM - The element is pinned to the bottom
 					of the receptive field (above elements previously 
 					pinned to the bottom).  This means it cannot be
 					moved from this position in the order by 'normal'
 					placement requests.  Examples of elements pinned
 					to the bottom:  Prompt, separator.
 					
-				PIN-TO-TOP - The element is pinned to the bottom of 
+				PIN_TO-TOP - The element is pinned to the bottom of 
 					the receptive field (below elements previously 
 					pinned to the top).  Examples of elements pinned 
 					to the top:  Info window.
@@ -239,12 +369,38 @@ class HumanFieldView(FieldView_):
 	def render(inst):
 		pass
 
+# In the following design pattern, before designing a singleton class,
+# we put as much of that class's functionality as possible into an abstract
+# base class, and derive the singleton class from it.  This will help us to 
+# identify the amount of re-coding effort that will be needed later if we 
+# need to change this class to no longer be a singleton.
+
+class ReceptiveField_:
+
+	"""Abstract base class from which to derive the receptive field 
+		singleton class."""
+	
+	def refreshViews(thisReceptiveField):
+		thisReceptiveField._aiFieldView.render()
+		thisReceptiveField._humanFieldView.render()
+	
+	def addElement(thisReceptiveField, elem:object):
+	
+			# First just add the element.
+		thisReceptiveField._baseFieldData.addElement(elem)
+		
+			# Now, automatically refresh the field views.
+		thisReceptiveField.refreshViews()
+			
+
 @singleton
-class TheReceptiveField:
+class TheReceptiveField(ReceptiveField_):
 	
 	"""Singleton class for the entire receptive field management system."""
 	
-	def __init__(inst, fieldSize:int):
+	def __init__(inst, fieldSize:int, 
+		nominalWidth:int):
+	
 		"""fieldSize - Specifies the nominal size of the receptive field in tokens."""
 	
 		_logger.info("Receptive field:  Initializing with field size = {fieldSize} tokens.")
@@ -256,15 +412,18 @@ class TheReceptiveField:
 			# Create and store field views for the AI & for humans.
 		inst._aiFieldView		= inst.TheAIFieldView(baseFieldData)
 		inst._humanFieldView	= inst.HumanFieldView(baseFieldData)
-	
-	def refreshViews(inst):
-		inst._aiFieldView.render()
-		inst._humanFieldView.render()
-	
-	def addElement(inst, elem:object):
-	
-			# First just add the element.
-		inst._baseFieldData.addElement(elem)
+
+			# Create the "field topper" element, which automatically pins
+			# itself to the very top edge of the receptive field.
+		TheFieldTopper()
 		
-			# Now, automatically refresh the field views.
-		inst.refreshViews()
+			# Create the "input area" element, which automatically pins 
+			# itself to the very bottom edge of the receptive field.
+		TheInputArea()
+		
+			# Create the "prompt separator" element, which separates the
+			# "context" part of the receptive field (above the separator)
+			# from the "prompt" part of the receptive field (below the
+			# separator). It automaticaly pins itself to the bottom of the
+			# receptive field (just below the input box we just placed).
+		ThePromptSeparator()

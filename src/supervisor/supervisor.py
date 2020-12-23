@@ -6,13 +6,13 @@
 """
 	FILE NAME:		supervisor/supervisor.py		 [Python module source file]
 		
-	IN PACKAGE:		supervisor
 	MODULE NAME:	supervisor.supervisor
+	IN PACKAGE:		supervisor
 	FULL PATH:		$GIT_ROOT/GLaDOS/src/supervisor/supervisor.py
 	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
 	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
-	APP NAME:		GLaDOS.server (GLaDOS server application)
-	SW COMPONENT:	GLaDOS.supervisor (server configuration component)
+	APP NAME:		GLaDOS.server (Main GLaDOS server application)
+	SW COMPONENT:	GLaDOS.supervisor (Principal supervisory subsystem)
 
 
 	MODULE DESCRIPTION:
@@ -132,7 +132,7 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 from config.configuration		import	TheConfiguration
 	# The singleton class that gives the system configuration.
 
-from events.action				import	TheActionSystem
+from .action					import	TheActionSystem
 	# The abstract base class for subsystem actions that we'll process.
 
 from commands.commandInterface	import	TheCommandInterface
@@ -193,7 +193,8 @@ __all__ = [
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-
+class AnnounceStartupAction(ActionBySystem_):
+	pass
 
 @singleton
 class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
@@ -214,7 +215,24 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 	"""
 	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	def __init__(self):
+		#/----------------------------------------------------------------------
+		#|	Private singleton instance data members		   [class documentation]
+		#|
+		#|		These data members keep references to the various 
+		#|		subsystems that we manage:
+		#|
+		#|			._actionSystem
+		#|			._commandInterface
+		#|			._windowSystem
+		#|			._processSystem
+		#|			._appSystem
+		#|			._cognitiveSystem
+		#|
+		#|		(We don't use any of these yet; using singletons instead.)
+		#|
+		#\----------------------------------------------------------------------
+
+	def __init__(theSupervisor):
 		
 		"""
 			supervisor.__init__()					   [special instance method]
@@ -232,12 +250,16 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 					* The process system (process.ProcessSystem).
 					* The application system (apps.appSystem).
 					* The mind system (mind.mindSystem).
+				
+				Once all the subsystems have been initialized, the whole
+				system can be started (commence active operation); this is
+				done in a separate call to supervisor.start().
 		"""
 
 		_logger.info("Initializing supervisory subsystem...")
 		
 			#|===============================================================
-			#| First, we start up all of the GLaDOS subsystems.
+			#| First, we initialize all of the major GLaDOS subsystems.
 			#|
 			#| The assignments to local variables here are not really needed, 
 			#| since these constructors all maintain their own singletons,
@@ -295,30 +317,97 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 				#| individual GLaDOS applications to be launched as needed, and
 				#| some of them will even be launched automatically on startup.
 		
-		_logger.info("    Supervisor: Starting up the applications system...")
-		appSys = TheAppSystem()		# Start up the application system.
+		_logger.info("    Supervisor: Initializing the applications system...")
+		appSys = TheAppSystem()		# Initializes the application system.
 		
 		
 				#|--------------------------------------------------------------
-				#| (5) Finally, we can start up the A.I.'s mind.
+				#| (5) Finally, we can initialize the A.I.'s cognitive system.
 		
-		_logger.info("    Supervisor: Starting up the cognitive system...")
+		_logger.info("    Supervisor: Initializing the cognitive system...")
 		mind = TheCognitiveSystem()			# Start up the A.I.'s mind, itself.
 		
+			#|------------------------------------------------------------------
+			#| At this point, all of the individual subsystems have been 
+			#| initialized.  A final step, which we make explicit at top level 
+			#| here, is we connect up the AI's input feed from the rest of the 
+			#| system.  
+			#|
+			#| What this means is, we tell the cognitive system to go ahead and 
+			#| create and subscribe to all of the "action channels" it wants (to
+			#| get notifications from the rest of the system), and then we tell
+			#| the action system to add these channels to the "Action News 
+			#| Network."
+		
+		theSupervisor.connect_AI_inputs()	
+			# Connects up all of the inputs to AI the from the rest of the system.
+		
+			#|---------------------------------------------------------
+			#| At this point, we have finished initializing everything.
+		
+		_logger.info("    Supervisor:  All subsystems have been initialized.")
+		
+	#__/ End singleton instance initializer for class TheSupervisor.
+
+	def connect_AI_inputs(theSupervisor):
+	
+		"""Connect up all the input channels feeding from us (the supervisory 
+			system) to the AI.  Right now, we basically give the cognitive
+			subsystem full latitude to control this process; it creates all the 
+			channels, and we just obligingly hook them all up.  Later versions
+			of GLaDOS could move more of the responsibility for controlling 
+			the information flow up to the Supervisor.  However, for now, it
+			hardly matters, since they're both part of the same code base."""
+	
+			#|------------------------------------------------------------------
+			#| Ask the cognitive system, "Excuse me, what are all of the input 
+			#| channels that you would like me to fill up with information?"
+	
+		aiInputChannels = TheCognitiveSystem().inputChannels()
+		
+			#|------------------------------------------------------------------
+			#| Tell our friends over at the Action News Network (ANN), "Hey, you 
+			#| guys need to immediately add all of these channels to your 
+			#| network of broadcase stations, and make sure that every bit of 
+			#| the content that you produce gets distributed to all of them!"
+		
+		TheActionNewsNetwork.addChannels(aiInputChannels)
+
+	def start(theSupervisor):
+		"""This method 'starts' the supervisor, which puts it and all subsystems
+			into an active operation mode.  This will kick off all of the various 
+			background subprocesses/threads in the system."""
+	
+		theSupervisor.announceStartup()
+			# This announces that the GLaDOS system is starting up.
+	
+		#TheActionSystem().start()		# No background functionality yet.
+		#TheCommandInterface().start()	# No background functionality yet.
+		#TheWindowSystem().start()		# No background functionality yet.
+		#TheProcessSystem().start()		# No background functionality yet.
+		#TheAppSystem().start()			# No background functionality yet.
+		TheCognitiveSystem().start()	# Start the AI's cognitive system.
 		
 			#|------------------------------------------------------------
 			#| Next, we just start the supervisor main loop. This runs in
 			#| its own background thread that is created for this purpose.
 		
 		_logger.info("    Supervisor: Starting main loop...")
-		self.startSupervisorMainloop()			# To be implemented.
-		
-	#__/ End singleton instance initializer for class TheSupervisor.
-
-	def startSupervisorMainloop(self):
+		theSupervisor.startSupervisorMainloop()		# To be implemented.
+	
+	def announceStartup():
+	
+			# This conceives of the action of announcing that that the 
+			# system is starting up, then immediately initiates this 
+			# action that we just conceived of taking.  The action 
+			# processing system takes over from there.
+		StartupAccouncementAction().initiate()
+	
+	
+	def startSupervisorMainloop(theSupervisor):
 		pass
 
-	def waitForExit(self):
+	def waitForExit(theSupervisor):
 		
 		"""This method just waits for the supervisor instance that we created to exit."""
 	

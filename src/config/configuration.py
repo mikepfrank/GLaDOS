@@ -508,7 +508,7 @@ class TheConfiguration:	# The GLaDOS server configuration.
 				appName = appStruct['name']
 				
 					# Convert the 'available' parameter (also required)
-					# to a proper Boolean value.
+					# to a proper Boolean value. (Need error check.)
 			
 				appAvail = appStruct['available']
 				
@@ -711,6 +711,8 @@ class	TheAIPersonaConfig:
 				
 				.maxVisibleTokens [int] - Assumed size of the AI's receptive
 											field in tokens.
+											
+				.sysNotifyThresh [int] - Threshold for system notifications.
 	"""
 	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
@@ -818,6 +820,19 @@ class	TheAIPersonaConfig:
 			_logger.warn("parseConf(): The required max-visible-tokens parameter "
 							"was not provided.")
 			theAIConfig.maxVisibleTokens = None
+
+
+			#--------------------------------------------------
+			# Extract the sys-notification-threshold parameter.
+
+		if 'sys-notification-threshold' in conf:
+			theAIConfig.sysNotifyThresh = sysNotifyThresh = conf['sys-notification-threshold']
+				# TODO: Make sure value given is valid.
+			_logger.normal("AI configuration:  The importance threshold for system notifications is {sysNotifyThresh}.")
+		else:
+			_logger.warn("parseConf(): The required sys-notification-threshold parameter "
+							"was not provided.")
+			theAIConfig.sysNotifyThresh = 0
 
 
 		# NOTE: It would be nice to do some additional error-checking 

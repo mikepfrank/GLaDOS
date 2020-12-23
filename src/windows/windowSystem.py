@@ -49,8 +49,8 @@
 		#|	1.1. Imports of standard python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from collections.abc import Iterable
-from os import path
+from collections.abc 	import Iterable
+from os 				import path
 
 		#|======================================================================
 		#|	1.2. Imports of custom application modules. [module code subsection]
@@ -466,7 +466,8 @@ class Window:	# A text window within the GLaDOS window system.
 			menuStrLoc = int((Window._decoratorWidth - menuStrLen)/2)
 		
 				# OK, now paint it there (overwriting what was there initially).
-			botDecStr = botDecStr[0:menuStrLoc] + menuStr + botDecStr[menuStrLoc+menuStrLen:]
+			botDecStr = overwrite(botDecStr, menuStrLoc, menuStr)
+			#botDecStr = botDecStr[0:menuStrLoc] + menuStr + botDecStr[menuStrLoc+menuStrLen:]
 		#__/ End if window active.
 			
 	#__/ End method window.renderBotDecorator().

@@ -198,6 +198,27 @@ def unsplit(strs, delim:str):
 #        result = "%s%s%s" % (result, delim, s)      # There must be an easier way to concatenate strings!
 #    return result
 
+def overwrite(botStr:str, pos:int, topStr:str, extend:bool=False):
+
+	"""Overwrite the given 'bottom string', starting at position 'pos', 
+		with the given 'top string.'  The last argument specifies whether
+		to extend the total length of the string if needed."""
+		
+	botLen = len(bottomStr)
+	topLen = len(topStr)
+	
+	res = botLen[:pos]
+	
+	if pos + topLen > botLen:		# Doesn't fit
+		if extend:
+			res = res + topStr
+		else:
+			res = res + topStr[:(botLen - pos)]
+	else:
+		res = res + topStr + botStr[(pos + topLen):]
+
+	return res
+
     #|======================================================================
     #|
     #|      utils.WatchBox                          [module public class]
