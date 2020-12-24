@@ -129,28 +129,31 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 			#|	The following modules are specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from config.configuration		import	TheConfiguration
+from	settings.settings			import	TheSettingsFacility
+	# This facility is for keeping track of all the available settings.
+
+from 	config.configuration		import	TheConfiguration
 	# The singleton class that gives the system configuration.
 
-from .action					import	TheActionSystem
+from 	.action						import	TheActionSystem
 	# The abstract base class for subsystem actions that we'll process.
 
-from commands.commandInterface	import	TheCommandInterface
+from 	commands.commandInterface	import	TheCommandInterface
 	# This class manages initialization of the command interface.
 	# (That is, the command interface used by the AI to control GLaDOS.)
 
-from windows.windowSystem		import	TheWindowSystem
+from 	windows.windowSystem		import	TheWindowSystem
 	# This class manages initialization of the text window system.
 
-from processes.processSystem	import	TheProcessSystem
+from 	processes.processSystem	import	TheProcessSystem
 	# This class manages launching of all essential 'background' 
 	# GLaDOS processes.
 
-from apps.appSystem				import	TheAppSystem
+from 	apps.appSystem				import	TheAppSystem
 	# This class manages startup of the applications system, including
 	# all applications that need to begin running at system startup.
 
-from mind.mindSystem			import	TheCognitiveSystem
+from 	mind.mindSystem			import	TheCognitiveSystem
 	# This class manages starting up the A.I.'s mind on server startup.
 	# NOTE: The receptive field gets created in here; as soon as it
 	# exists, it generates an AnnounceFieldExists action, which gets

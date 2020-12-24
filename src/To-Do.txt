@@ -1,0 +1,151 @@
+To-Do.txt
+=========
+
+Things to do on GLaDOS coding:
+------------------------------
+
+	1.	[ ] Systematically go through all files, packages & modules looking for things to do, and adding them to this list!
+	
+	
+	Top-level files:
+	~~~~~~~~~~~~~~~~
+	
+		[ ] GLaDOS/README.md - Bring this file up-to-date.
+				a.	[ ] Document all subdirectories.
+		[ ] GLaDOS/glados-config.hjson - Make sure all config options are supported.
+				a.	[ ] Support 'field-conf' config options.
+				b.	[ ] Add more config options as needed until done.
+	
+	
+	ai-data subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~
+	
+		[/] Create new 'init-goals.hjson' data file (on server, /opt/AIs/ only).
+		[ ] Add support for 'cur-goals.json' data file.
+		[ ] Define other major files and subdirectories (cur-goals.json, 'history/', 
+				'memory/', 'app-data/', etc.).
+	
+	
+	src/ subdirectory:
+	~~~~~~~~~~~~~~~~~~
+	
+		[ ] src/ - Add a 'settings/' package.
+		[ ] src/README.md - Make sure list of packages is up-to-date.
+	
+	
+	src/apps subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ] apps/appSystem.py - Break out individual apps into their own files.
+		[ ] Add goal list feature to Info app; implement Goals app.
+	
+	
+	src/commands subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+	
+	
+	
+	src/config subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~
+	
+	
+	
+	
+	src/entities subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+	
+	
+	
+	src/events subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~
+	
+	
+	
+	
+	src/field subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~
+	
+	
+	
+	
+	src/gpt3 subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~
+	
+	
+	
+	
+	src/history subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+	
+	
+	
+	src/infrastructure subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+	
+	
+	
+	src/memory subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~
+	
+	
+	
+	
+	src/mind subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~
+	
+	
+	
+	
+	src/processes subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+	
+	
+	
+	src/settings subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ] Implement this entire package, create all the settings modules.
+	
+	
+	src/supervisor subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+	
+	
+	
+	src/terminal subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+	
+	
+	
+	src/text subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~
+	
+		* [ ] 
+	
+	
+	src/tokenizer subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+	7.	[ ] tokenizer/tokenizer.py - Add an option to verify token counts.
+	
+	
+	src/windows subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+	7.	[ ] tokenizer/tokenizer.py - Add an option to verify token counts.
+	
+
+	
+	UNORGANIZED:
+	~~~~~~~~~~~~
+				
+	[ ] Implement thing to render non-printable ASCII characters in human-readable views.
+			(Use curses.ascii module? Or just colored curses characters?)
+	[ ] Put action updates in log file

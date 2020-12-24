@@ -1,46 +1,50 @@
 #|==============================================================================
 #|                      TOP OF FILE:    ai-config.hjson
 #|------------------------------------------------------------------------------
-#|	FILE NAME:      ai-config.hjson					  [Human-readable JSON file]
+#|  FILE NAME:      ai-config.hjson                   [Human-readable JSON file]
 #|
-#|	FULL PATH:      $GIT_ROOT/GLaDOS/src/ai-data/ai-config.hjson
+#|  FULL PATH:      $GIT_ROOT/GLaDOS/src/ai-data/ai-config.hjson
+#|  INSTALL AS:     /opt/AIs/<username>/ai-config.hjson
 #|  MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
 #|  SYSTEM NAME:    GLaDOS (Generic Lifeform and Domicile Operating System)
 #|  APP NAME:       GLaDOS.server (GLaDOS server application)
 #|
-#|	DESCRIPTION:
+#|  DESCRIPTION:
 #|
-#|		This file records configuration parameters for a specific AI 
-#|		'persona' to be hosted within the GLaDOS system.  The file format
-#|		is HJSON or "human readable JSON" (see https://hjson.github.io/).  
+#|      This file records configuration parameters for a specific AI
+#|      'persona' to be hosted within the GLaDOS system.  The file format
+#|      is HJSON or "human readable JSON" (see https://hjson.github.io/).
 #|
-#|		Please note that this file may be relocated/renamed if one sets 
-#|		the following environment variables appropriately prior to 
-#|		launching GLaDOS:
+#|      Please note that this file may be relocated/renamed if one sets
+#|      the following environment variables appropriately prior to
+#|      launching GLaDOS:
 #|
-#|			AI_DATADIR -
+#|          AI_DATADIR -
 #|
-#|				Pathname to the top-level directory of the file hierarchy 
-#|				that will contain all data specific to the particular AI 
-#|				persona.  A suggested location for this could be:
+#|              Pathname to the top-level directory of the file hierarchy
+#|              that will contain all data specific to the particular AI
+#|              persona.  A suggested location for this could be:
 #|
-#|								/opt/AIs/<username>
+#|                              /opt/AIs/<username>
 #|
-#|				where <username> is the Unix username that owns most of 
-#|				the directory contents, and that the GLaDOS server 
-#|				instance will run as.
+#|              where <username> is the Unix username that owns most of
+#|              the directory contents, and that the GLaDOS server
+#|              instance will run as.  If this is not set, the location
+#|              defaults to the 'ai-data/' subdirectory of the working
+#|              directory from which the GLaDOS server is run.
 #|
-#|			AI_CONFIG_FILENAME -	
+#|          AI_CONFIG_FILENAME -
 #|
-#|				The default value for this is just ai-config.hjson, like 
-#|				this file.
+#|              The default value for this is just ai-config.hjson, like
+#|              this file.
 #|
-#|		If these environment variables are set, the implied full pathname 
-#|		of this file will be taken as:
+#|      If these environment variables are set, the implied full pathname
+#|      of this file will be taken as:
 #|
-#|			${AI_DATADIR}/${AI_CONFIG_FILENAME}
+#|                      ${AI_DATADIR}/${AI_CONFIG_FILENAME}
 #|
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 
 	# The top-level config struct is a dict of attribute-value pairs.
 

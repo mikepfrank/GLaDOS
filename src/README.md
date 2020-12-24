@@ -37,9 +37,12 @@ roughly in the intended order of implementation.
 	displays certain critical contextual information that the A.I. 
 	needs to know, including its identity, life circumstances, and
 	its present high-level goals.  Its window normally remains pinned 
-	at the top of the A.I.'s receptive field.  When the Context app
+	at the top of the A.I.'s receptive field.  When the Info app
 	is launched, it allows the A.I. to edit certain information such
-	as its high-level goals.
+	as its high-level goals. (Dispatched to the "Goals" app.)
+	
+4. **Goals** - This is a simple tool to allow the A.I. to view and
+	edit its list of high-level goals.
 	
 4. **Settings** - This app can be used by the A.I. to adjust various
 	settings within GLaDOS.  These can be associated with major systems
@@ -210,6 +213,12 @@ interact with the GLaDOS process, which runs under the AI's user account.
 This package contains low-level tools for working with raw text, including
 a basic text buffer module that is itself used in several places in GLaDOS,
 including in the window system and the receptive field facility.
+
+### Tokenizer (`tokenizer/`)
+
+This package provides a local implementation of the GPT-2/GPT-3 tokenizer,
+so that the API isn't needed simply to measure the length of a string in 
+tokens.
 
 ### 'Window' system (`windows/`)
 
