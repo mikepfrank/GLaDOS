@@ -234,14 +234,29 @@ global _APP_LIST	# We could put this into the AppSystem class instead.
 
 	#|==========================================================================
 	#|
-	#|	3. Classes.										   [module code section]
+	#|	3. Class forward declarations.					   [module code section]
 	#|
-	#|		Declare and/or define the classes of this module.
+	#|			Pre-declare classes to be defined later in this module.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
+class	AppSystem_:		pass	# Abstract base class for application system.
+class	TheAppSystem:	pass	# Singleton class to anchor this module.
+
+class	Application_:	pass	# Abstract base class for applications.
+class	
+
+	#|==========================================================================
+	#|
+	#|	4. Class definitions.							   [module code section]
+	#|
+	#|			Define the classes provided by this module.
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		#|======================================================================
-		#|	3.1. General classes.							   [code subsection]
+		#|	4.1. General classes.							   [code subsection]
 		#|
 		#|		These classes are not application-specific but apply 
 		#|		generally to the entire application system.
@@ -380,10 +395,13 @@ class Application_:
 
 #__/ End class Application.
 
-@singleton
-class AppSystem:
+class AppSystem_:
+	pass
 
-	# The AppSystem has:
+@singleton
+class TheAppSystem(AppSystem_):
+
+	# TheAppSystem has:
 	#
 	#	- Dict of registered applications: Maps app name to app object.
 
@@ -448,14 +466,14 @@ class AppSystem:
 		
 
 		#|======================================================================
-		#|	3.2. Application-specific classes.				   [code subsection]
+		#|	4.2. Application-specific classes.				   [code subsection]
 		#|
 		#|		These classes define specific applications within GLaDOS.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 @singleton
-class Help_App(Application_):
+class The_Help_App(Application_):
 
 	"""
 	The "Help" tool simply displays some basic information

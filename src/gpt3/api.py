@@ -144,6 +144,14 @@ __all__ = [
 global  DEF_ENGINE          # Default GPT-3 engine name.
 DEF_ENGINE  = 'davinci'     # I believe this is the biggest one.
 
+	#	NOTE: Current Model Pricing Per 1 million tokens (as of 12/24/'20):
+	#	-------------------------------------------------------------------
+	#		DaVinci:	$60.00	(175B params?)					$0.34/Bparam/Mtoken
+	#		Curie:		$ 6.00	(13B params?)					$0.46/Bparam/Mtoken
+	#		Babbage:	$ 1.20	(2.7B params? - or maybe 6.7B)	$0.44/Bparam/Mtoken
+	#		Ada:		# 0.80	(1.3B params?)					$0.61/Bparam/Mtoken
+
+
 global  DEF_TOKENS      # Default number of tokens to return.
 DEF_TOKENS  = 42        # Of course.
 
@@ -887,8 +895,9 @@ class GPT3Core:
 #| Module object initialization.                                [code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-_theTokenCounterCore = GPT3Core(echo=True, maxTokens=0, logProbs=0)
+_theTokenCounterCore = GPT3Core(engine='ada', echo=True, maxTokens=0, logProbs=0)
     # This connection provides functionality needed to count tokens.
+	# Note we use the 'ada' engine because it is cheapest ($0.80/1M tokens).
 
 #|==============================================================================
 #| Module function definitions.                                 [code section]
