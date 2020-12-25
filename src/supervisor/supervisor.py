@@ -16,7 +16,7 @@
 
 
 	MODULE DESCRIPTION:
-	-------------------
+	===================
 	
 		This module is responsible for starting up the top-level
 		'supervisor' subsystem of the GLaDOS system.  The supervisor

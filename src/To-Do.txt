@@ -109,7 +109,13 @@ Things to do on GLaDOS coding:
 	src/settings subdirectory:
 	~~~~~~~~~~~~~~~~~~~~~~~~~~
 	
-		[ ] Implement this entire package, create all the settings modules.
+		[ ] Clean up this package, create all the settings modules.
+		
+		[ ] Add capability to save and load settings, to preserve them
+			across system suspend/resume.  (Also, implement suspend/resume
+			capability more broadly throughout GLaDOS.)
+			
+		[ ] Add a command module to provide the '/set' command.
 	
 	
 	src/supervisor subdirectory:
