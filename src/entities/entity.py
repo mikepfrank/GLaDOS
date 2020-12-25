@@ -83,6 +83,57 @@
 from infrastructure.decorators import singleton, classproperty
 	# This provides a @classproperty (getter) decorator.
 
+# Forward class declarations.
+
+class	Entity_:		pass
+
+	# AI entities.
+
+class	AI_Entity_:		pass
+class	AI_Persona_:	pass
+class	AI_System_:		pass
+class	AI_Subsystem_:	pass
+
+class	Cognitive_System:	pass	# This AI subsystem is the entire cognitive system in GLaDOS.
+class	Cognitive_Stream:	pass	# This AI subsystem is a subsystem of the cognitive system.
+class	Receptive_Field:	pass	# This AI subsystem is a subsystem of the cognitive system.
+class	Memory_System:		pass	# This AI subsystem is a subsystem of the cognitive system.
+class	History_Buffer:		pass	# This AI subsystem is a subsystem of the cognitive system.
+
+	# System entities.
+
+class	System_Entity_:		pass
+class	Subsystem_Entity_:	pass
+
+class	The_SettingsFacility_Entity:	pass
+class	The_ConfigSystem_Entity:		pass
+class	The_Supervisor_Entity:			pass
+class	The_CommandInterface_Entity:	pass
+class	The_ProcessSystem_Entity:		pass
+class	The_WindowSystem_Entity:		pass
+class	The_AppSystem_Entity:			pass
+
+	# Application entities.
+
+class	Application_Entity_:		pass
+
+class	The_HelpApp_Entity:			pass
+class	The_InfoApp_Entity:			pass
+class	The_GoalsApp_Entity:		pass
+class	The_SettingsApp_Entity:		pass
+class	The_MemoryApp_Entity:		pass
+class	The_ToDoApp_Entity:			pass
+class	The_DiaryApp_Entity:		pass
+class	The_BrowseApp_Entity:		pass
+class	The_CommsApp_Entity:		pass
+
+	# External entities.
+
+class	External_Entity_:		pass
+class	Human_Entity_:			pass
+
+#-------------Class definitions.
+
 # Entity within the world of GLaDOS, for reference from within the actions, 
 # events, and permissions systems.
 
@@ -216,7 +267,8 @@ class Cognitive_System(AI_Subsystem_):
 	_ENTITY_NAME = "Cognitive System"
 	partOf = AI_System_
 	
-	def __inst__(thisCognitiveSystem, personaEntity
+	def __inst__(thisCognitiveSystem:Cognitive_System, personaEntity:AI_Persona_):
+		thisCognitiveSystem._personaEntity = personaEntity
 
 class Cognitive_Stream(AI_Subsystem_):
 	_isAbstract = False
@@ -273,6 +325,11 @@ class Subsystem_Entity_(System_Entity_):
 	#| of GLaDOS that are not considered aspects of the AI itself.
 
 @singleton
+class The_SettingsFacility_Entity(Subsystem_Entity_):
+	_isAbstract = False
+	_ENTITY_NAME = "Settings Facility"
+
+@singleton
 class The_ConfigSystem_Entity(Subsystem_Entity_):
 	_isAbstract = False
 	_ENTITY_NAME = "Configuration System"
@@ -296,6 +353,11 @@ class The_ProcessSystem_Entity(Subsystem_Entity_):
 class The_WindowSystem_Entity(Subsystem_Entity_):
 	_isAbstract = False
 	_ENTITY_NAME = "Window System"
+	
+@singleton
+class The_AppSystem_Entity(Subsystem_Entity_):
+	_isAbstract = False
+	_ENTITY_NAME = "Applications System"
 	
 
 #=====================================================================

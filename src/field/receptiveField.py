@@ -46,6 +46,8 @@
 #
 
 
+from	os	import path
+
 		#|======================================================================
 		#|	1.2. Imports of custom application modules. [module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -77,7 +79,7 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 			#|	1.2.2. The following modules are specific to GLaDOS.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from 	events.action				import 	ActionByAI_
+from 	mind.aiActions			import 	ActionByAI_
 	# This is an abstract class for actions that we might want to take,
 	# which should then be automatically handled by the Supervisor.
 
@@ -191,7 +193,7 @@ class FieldSlot:
 	def __init__(
 			thisFieldSlot, 
 				# How to place the new slot on the field:
-			placement:Placement=Placement:SLIDE_TO_BOTTOM,	
+			placement:Placement=Placement.SLIDE_TO_BOTTOM,	
 				# By default, we slide new slots to the bottom without anchoring 
 				# them (thereby displacing pre-placed unanchored slots upwards).
 			forElement:FieldElement_=None,	
@@ -225,6 +227,7 @@ class FieldSlot:
 			where:Placement=None, 
 				# By default, we'll just use the element's initial placement.
 			field=TheReceptiveField()):
+		pass
 
 #	TheBaseFieldData		- The base data object containing everything that's 
 #							intended to be viewed by the A.I. in its 
@@ -415,7 +418,7 @@ class TheReceptiveField(ReceptiveField_):
 
 			# Create the "field topper" element, which automatically pins
 			# itself to the very top edge of the receptive field.
-		TheFieldTopper()
+		TheFieldHeader()
 		
 			# Create the "input area" element, which automatically pins 
 			# itself to the very bottom edge of the receptive field.

@@ -81,6 +81,10 @@ _component = path.basename(path.dirname(__file__))		# Our package name.
 _logger = getComponentLogger(_component)    			# Create the component logger.
 
 
+
+from	supervisor.action	import	Action_		# Abstract base class for actions.
+
+
     #|==========================================================================
     #|
     #|   Globals					    						[code section]

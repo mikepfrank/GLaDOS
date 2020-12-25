@@ -67,6 +67,7 @@
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 from	enum	import	Enum	# Support for enumerated types.
+from 	os		import	path	# For manipulating filesystem paths.
 
 
 		#|======================================================================
@@ -117,6 +118,7 @@ __all__ = [
 		'Placement',   # Enumerated type for field element placement values.
 	]
 
+global _CONVERSION_MAP		# Maps convertible placements.
 
 	#|==========================================================================
 	#|	3. Type definitions.							   [module code section]
@@ -286,20 +288,10 @@ class Placement(Enum):
 	MOVE_TO_BOTTOM		= 'move-to-bottom'		# Initial placement; not persistent (converts to ANCHORED_TO_BOTTOM after movement).
 	PINNED_TO_BOTTOM	= 'pinned-to-bottom'	# Persistent placement (above previous pinned-to-bottom).
 
-		# This is declared global here so it doesn't get interpreted as a placement value.
-		
-	global _CONVERSION_MAP		# Maps convertible placements.
-	_CONVERSION_MAP = {	
-			Placement.MOVE_TO_TOP: 		Placement.ANCHORED_TO_TOP,
-			Placement.MOVE_TO_BOTTOM:	Placement.ANCHORED_TO_BOTTOM,
-			Placement.SLIDE_TO_TOP:		Placement.FLOATING,
-			Placement.SLIDE_TO_BOTTOM:	Placement.FLOATING
-		}
-
 	@property
 	def isPersistent(thisPlacement):
 		"""Is this placement value the kind that is persistent (can be maintained)?"""
-		return thisPlacement is not in _CONVERSION_MAP
+		return not (thisPlacement in _CONVERSION_MAP)
 
 	@property
 	def isConvertible(thisPlacement):
@@ -314,6 +306,14 @@ class Placement(Enum):
 
 #__/ End enumerated type class Placement.
 
+
+
+_CONVERSION_MAP = {	
+		Placement.MOVE_TO_TOP: 		Placement.ANCHORED_TO_TOP,
+		Placement.MOVE_TO_BOTTOM:	Placement.ANCHORED_TO_BOTTOM,
+		Placement.SLIDE_TO_TOP:		Placement.FLOATING,
+		Placement.SLIDE_TO_BOTTOM:	Placement.FLOATING
+	}
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #|					 END OF FILE:	field/placement.py

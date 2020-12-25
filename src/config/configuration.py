@@ -317,7 +317,7 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		#| Private class constant data members. 				 [class section]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
-		_DEFAULT_APP_INITIAL_PLACEMENT = Placement.MOVE_TO_BOTTOM
+	_DEFAULT_APP_INITIAL_PLACEMENT = Placement.MOVE_TO_BOTTOM
 			# Initially, new application windows will by default open up at
 			# the bottom of the receptive field (but above pinned slots).
 	
@@ -529,9 +529,9 @@ class TheConfiguration:	# The GLaDOS server configuration.
 				if 'placement' in appStruct:
 					# Really should do error checking here to make sure the
 					# provided symbol is a valid Placement value.
-					appInitialPlacement = Placement(appStruct['placement'])
+					appInitPlacement = Placement(appStruct['placement'])
 				else:
-					appInitialPlacement = _DEFAULT_APP_INITIAL_PLACEMENT
+					appInitPlacement = theConfig._DEFAULT_APP_INITIAL_PLACEMENT
 				
 					# If the 'app-config' parameter is available, record it.
 					# (We can't process it yet since it's application-specific
@@ -546,13 +546,13 @@ class TheConfiguration:	# The GLaDOS server configuration.
 					# This is what we'll actually end up handing to the app.
 				
 				appAttribs = {	
-					'name':			appName,  		# This one is not strictly necessary to include, but.
-					'avail':		appAvail, 		# Is the app available to be registered?
-					'auto-start':	appAutoStart,	# Should the application auto-start?
-					'auto-open':	appAutoOpen,	# Should the application window auto-open?
-					'placement':	appPlacement, 	# Where should we initially place the window on the field?
+					'name':			appName,  			# This one is not strictly necessary to include, but.
+					'avail':		appAvail, 			# Is the app available to be registered?
+					'auto-start':	appAutoStart,		# Should the application auto-start?
+					'auto-open':	appAutoOpen,		# Should the application window auto-open?
+					'placement':	appInitPlacement, 	# Where should we initially place the window on the field?
 						# (Allowed values for this are specified in the field.placement.Placement class.)
-					'conf':			appConfig	  # App-specific configuration info.
+					'conf':			appConfig	  		# App-specific configuration info.
 				}
 				
 				_logger.debug(f"Setting attribs of '{appName}' app to:\n    " + 
@@ -578,7 +578,7 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 			#|------------------------------------------------------------------
-			#|	Configuration().reinit()	  [public singleton instance method]
+			#|	TheConfiguration().reinit()	  [public singleton instance method]
 			#|
 			#|		This public method gets automatically called once,	
 			#|		by this class's singleton instance initializer, to
@@ -787,7 +787,7 @@ class	TheAIPersonaConfig:
 			# Extract the model-family parameter.
 		
 		if 'model-family' in conf:
-			theAIConfig.modelFamily = modelFamily conf['model-family']
+			theAIConfig.modelFamily = modelFamily = conf['model-family']
 				# TODO: Make sure value given is valid.
 			_logger.normal("AI configuration:  The AI's model family is {modelFamily}.")
 		else:

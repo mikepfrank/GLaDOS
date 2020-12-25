@@ -50,7 +50,7 @@
 					making up the entire prompt separator bar, apart from the
 					separator instruction text. */
 					
-			separator-bar-bgchar:	"\#"
+			separator-bar-bgchar:	"#"
 			
 				/* "Instruction" text to display in the prompt separator bar. */
 				
@@ -95,10 +95,10 @@
 		#| short) abbreviations. In alphabetical order, they are as follows:
 		#| Note that command names/abbreviations are case-insensitive.
 		#|
-		#|		/(A)pps			/(H)elp			/(T)oDo
-		#|		/(B)rowse		/(I)nfo			/(U)nix
-		#|		/(C)omms		/(M)emory		/(W)riting
-		#|		/(D)iary		/(S)ettings
+		#|		/(A)pps			/(G)oals		/(S)ettings		
+		#|		/(B)rowse		/(H)elp			/(T)oDo
+		#|		/(C)omms		/(I)nfo			/(U)nix
+		#|		/(D)iary		/(M)emory		/(W)riting
 		#|		
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -183,6 +183,14 @@
 				}
 			},
 			
+			{
+				name:			Goals
+				available:		false		# THIS APP IS NOT YET IMPLEMENTED.
+				auto-start:		false
+				auto-open:		false
+			},
+
+
 				/* Settings - This app can be used by the A.I. to adjust various
 					settings within GLaDOS.  These can be associated with major 
 					systems or subsystems of GLaDOS, or individual apps or 
