@@ -2774,7 +2774,7 @@ def getComponentLogger(component:str):
     # Could do some error checking here to make sure <component>
     # is really a string (or convert it to a string).
 
-    return getLogger(sysName + '.' + component)
+    return getLogger(sysName + '.' + appName + '.' + component)
 
 #__/ End function getComponentLogger().
 
