@@ -161,8 +161,9 @@ from infrastructure.utils		import	countLines
 
 from field.placement			import	Placement
 
-from config.configuration		import	TheConfiguration   
-		# Singleton class that provides the current GLaDOS system configuration.
+from config.configuration		import	TheConfiguration, TheAIPersonaConfig
+		# Singletons that provide the current GLaDOS system configuration
+		# and the configuration of the current AI persona.
 
 from windows.windowSystem		import	Window
 from processes.processSystem	import	SubProcess
@@ -192,8 +193,8 @@ global __all__	# List of public symbols exported by this module.
 __all__ = [
 		'Application_',		# Abstract base class for deriving applications.
 		'AppSystem',		# Singleton class for the application system.
-		'Help_App',			# Application that manages the help system.
-		'Info_App',			# Application that manages the information window.
+		'The_Help_App',		# Application that manages the help system.
+		'The_Info_App',		# Application that manages the information window.
 			# Add others as they are implemented.
 	]
 
@@ -245,7 +246,19 @@ class	AppSystem_:		pass	# Abstract base class for application system.
 class	TheAppSystem:	pass	# Singleton class to anchor this module.
 
 class	Application_:	pass	# Abstract base class for applications.
-class	
+
+class	The_Help_App:		pass
+class	The_Apps_App:		pass
+class	The_Info_App:		pass
+class	The_Goals_App:		pass
+class	The_Settings_App:	pass
+class	The_Memory_App:		pass
+class	The_ToDo_App:		pass
+class	The_Diary_App:		pass
+class	The_Browse_App:		pass
+class	The_Comms_App:		pass
+class	The_Writing_App:	pass
+class	The_Unix_App:		pass
 
 	#|==========================================================================
 	#|
@@ -443,7 +456,7 @@ class TheAppSystem(AppSystem_):
 			appName = app['name']
 			appClass = app['class']
 			
-			appConfigs = Configuration().appConfigs
+			appConfigs = TheConfiguration().appConfigs
 			
 			appAvailable = appConfigs[appName]['avail']	 		# Is the app marked as available to be registered?
 			appAutoStart = appConfigs[appName]['auto-start']	# Should the app be automatically started on system startup?
@@ -530,7 +543,7 @@ class The_Help_App(Application_):
 		# the help window already lists all the apps.
 
 @singleton
-class Apps_App(Application_):
+class The_Apps_App(Application_):
 
 	"""
 	Apps - This tool simply displays the list of all the
@@ -541,7 +554,7 @@ class Apps_App(Application_):
 	pass
 
 @singleton
-class Info_App(Application_):
+class The_Info_App(Application_):
 		
 	"""
 	Info - The idea behind this app is that it maintains and 
@@ -564,11 +577,11 @@ class Info_App(Application_):
 				for the Info application, at app creation time."""
 	
 			#----------------------------------------------------------
-			# First, get the system configuration, because it contains
-			# key information we need, such as the location of the AI's 
-			# data directory.
+			# First, get the AI persona configuration, because it 
+			# contains # key information we need, such as the location
+			# of the AI's data directory.
 
-		sysConf = Configuration()
+		aiConf = TheAIPersonaConfig()
 			# Note this retrieves the singleton instance 
 			# of the Configuration class.
 
@@ -576,7 +589,7 @@ class Info_App(Application_):
 			# First, get the location of the AI's data directory,
 			# which is in the system configuration.
 				
-		aiDataDir = sysConf.aiDataDir
+		aiDataDir = aiConf.aiDataDir
 		
 			#-----------------------------------------------------
 			# Next, we need to get the name of the info text file
@@ -615,13 +628,23 @@ class Info_App(Application_):
 		# Right now, the start method for the Info app doesn't need
 		# to do anything particular, because the app has no dynamic 
 		# behavior yet.  So, just dispatch to our parent class.
-		super(Info_App, inst).start()
+		super(The_Info_App.__wrapped__, inst).start()
 
 #__/ End class Info_App.
 
 
 @singleton
-class Settings_App(Application_):
+class The_Goals_App(Application_):
+
+	"""
+	The 'Goals' app can be used by the A.I. to modify its list
+	of high-level goals.
+	"""
+
+	pass
+
+@singleton
+class The_Settings_App(Application_):
 
 	"""
 	Settings - This app can be used by the A.I. to adjust various
@@ -633,7 +656,7 @@ class Settings_App(Application_):
 	pass
 
 @singleton
-class Memory_App(Application_):
+class The_Memory_App(Application_):
 		
 	"""
 	Memory - The memory tool allows the A.I. to browse and search
@@ -644,7 +667,7 @@ class Memory_App(Application_):
 	pass
 
 @singleton
-class ToDo_App(Application_):
+class The_ToDo_App(Application_):
 		
 	"""
 	ToDo - The idea of this app is that it is a simple to-do list 
@@ -656,7 +679,7 @@ class ToDo_App(Application_):
 	pass
 
 @singleton
-class Diary_App(Application_):
+class The_Diary_App(Application_):
 		
 	"""
 	Diary - This tool allows the A.I. to keep a "diary" of important
@@ -666,7 +689,7 @@ class Diary_App(Application_):
 	pass
 
 @singleton
-class Browse_App(Application_):
+class The_Browse_App(Application_):
 		
 	"""
 	Browse - This is a simple text-based tool to facilitate simple web
@@ -676,7 +699,7 @@ class Browse_App(Application_):
 	pass
 
 @singleton
-class Comms_App(Application_):
+class The_Comms_App(Application_):
 		
 	"""
 	The "comms" tool faciltates the A.I.'s two-way 
@@ -689,7 +712,7 @@ class Comms_App(Application_):
 	pass
 
 @singleton
-class Writing_App(Application_):
+class The_Writing_App(Application_):
 		
 	"""
 	The writing tool is an interface that helps the A.I.
@@ -700,7 +723,7 @@ class Writing_App(Application_):
 	pass
 
 @singleton
-class Unix_App(Application_):
+class The_Unix_App(Application_):
 		
 	"""
 	This app gives the A.I. access to an actual Unix shell
@@ -745,47 +768,51 @@ class Unix_App(Application_):
 _APP_LIST = [
 		{
 			'name':			'Help',
-			'class':		Help_App
+			'class':		The_Help_App
 		},
 		{		
 			'name':			'Apps',
-			'class':		Apps_App
+			'class':		The_Apps_App
 		},
 		{
 			'name':			'Info',
-			'class':		Info_App
+			'class':		The_Info_App
+		},
+		{
+			'name':			'Goals',
+			'class':		The_Goals_App
 		},
 		{
 			'name':			'Settings',
-			'class':		Settings_App
+			'class':		The_Settings_App
 		},
 		{
 			'name':			'Memory',
-			'class':		Memory_App
+			'class':		The_Memory_App
 		},
 		{
 			'name':			'ToDo',
-			'class':		ToDo_App
+			'class':		The_ToDo_App
 		},
 		{
 			'name':			'Diary',
-			'class':		Diary_App
+			'class':		The_Diary_App
 		},
 		{
 			'name':			'Browse',
-			'class':		Browse_App
+			'class':		The_Browse_App
 		},
 		{
 			'name':			'Comms',
-			'class':		Comms_App
+			'class':		The_Comms_App
 		},
 		{
 			'name':			'Writing',
-			'class':		Writing_App
+			'class':		The_Writing_App
 		},
 		{
 			'name':			'Unix',
-			'class':		Unix_App
+			'class':		The_Unix_App
 		},
 	]
 

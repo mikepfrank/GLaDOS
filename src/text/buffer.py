@@ -2,6 +2,8 @@
 
 #		TextBuffer				- An adjustable-sized buffer of text spooled to the window.
 
+from	collections.abc		import	Iterable
+
 
 # We should probably move this to its own package because it isn't really
 # specific to the window system per se.  For example, it can also be used

@@ -115,8 +115,12 @@
 		#|	1.1. Imports of standard python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from datetime			import	datetime
+from	collections.abc		import	Iterable
+
 	# We use datetime objects to keep a record of times associated with an action.
+from 	datetime			import	datetime
+from 	os					import	path	# For manipulating filesystem paths.
+
 
 		#|======================================================================
 		#|	1.2. Imports of custom application modules. [module code subsection]
@@ -154,6 +158,22 @@ from config.configuration	import  TheAIPersonaConfig
 
 from entities.entity	import	Entity_, The_Supervisor_Entity
 	# This is the abstract base class for all entity objects.
+
+
+
+
+
+
+global	__all__
+__all__ = [
+		'Action_',		# Abstract base class for actions.
+	]
+
+
+
+
+
+
 
 	# A couple of forward declarations.
 class TheActionProcessor: 		pass
@@ -258,7 +278,7 @@ class Action_:
 	#__/
 
 	def initiate(thisAction,
-			initiator:Entity_ = None	# OPTIONAL. Assume same as conceiver if not given.
+			initiator:Entity_ = None,	# OPTIONAL. Assume same as conceiver if not given.
 			executeAt:datetime = None	# OPTIONAL. If not provided or None, execute now.
 		):
 		#-----------------------------------------------------------------------
@@ -389,7 +409,7 @@ class StartupAnnouncementAction(SupervisorAnnouncementAction):
 			#(We could make this configurable, though.)
 		super(StartupAccouncement, this).__init__(announcement, importance)
 
-class CommandByHuman_(ActionByHuman, CommandAction):
+class CommandByHuman_(ActionByHuman_, CommandAction_):
 	pass
 
 #==================================================
@@ -418,7 +438,7 @@ class ActionChannel_:
 		thisChannel._name = name
 		thisChannel._subscribers = set()
 	
-	def addSubscriber(thisChannel, subscriber:Subscriber):
+	def addSubscriber(thisChannel, subscriber:ActionSubscriber_):
 		thisChannel._subscribers.add(subscriber)
 	
 	def maybeReport(thisChannel, status:str, action:Action_):
@@ -451,7 +471,8 @@ class TheLogReporter(ActionSubscriber_):
 		theLogReporter.subscribe(TheEverythingChannel)
 	
 	def notify(theLogReporter, status:str, action):
-		_logger.
+		_logger.info("Log reporter:  Action news update:  Action [{action}] was {status}.")
+			# Note: Need to make sure actions convert to strings OK. 
 
 @singleton
 class TheActionNewsNetwork:

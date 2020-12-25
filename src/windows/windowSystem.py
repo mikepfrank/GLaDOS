@@ -83,14 +83,17 @@ _logger = getComponentLogger(_component)				# Create the component logger.
 			#|	The following modules are specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from text.buffer				import	TextBuffer
+from 	text.buffer					import	TextBuffer
 	# We use text buffers for both window contents and window images.
 
-from commands.commandInterface	import	CommandModule
+from	field.placement				import	Placement
+	# This is an enum type that we use for specifying window placement.
+
+from 	commands.commandInterface	import	CommandModule
 	# We're going to extend CommandModule with various subclasses 
 	# specific to the windowing system.
 
-from processes.processSystem	import	SubProcess
+from 	processes.processSystem		import	SubProcess
 
 	# We don't need to create applications from this module, so no need
 	# to actually import the real Application_ class.
@@ -314,10 +317,10 @@ class Window:	# A text window within the GLaDOS window system.
 			isActive=False, 			# OPTIONAL. Is this the currently active window? By default, not yet.
 			process:SubProcess=None, 	# OPTIONAL. Existing subprocess whose I/O will go in this window.  By default, none yet.
 			state:str='closed',			# OPTIONAL. Initial state of window. Normally all windows start closed, and are opened later.
-			viewSize=Window._viewRows,	# OPTIONAL. Initial view size within window, in rows. Default is 15.
+			viewSize=None,				# OPTIONAL. Initial view size within window, in rows. Default is 15.
 			stayVisible:bool=False, 	# OPTIONAL. Whether the window should try to stay visible in the receptive field. 
 				# (This means, if it floats to the top of the receptive field, it sticks and gets anchored there.)
-			):
+		):
 	
 			#-----------------------------------------------------------
 			# A window automatically creates a text buffer to hold its 
@@ -325,6 +328,9 @@ class Window:	# A text window within the GLaDOS window system.
 	
 		if textBuf is None:
 			textBuf = TextBuffer()
+
+		if viewSize is None:
+			viewSize = self._viewRows	# This is actually a class-level data member.
 
 		self._title			= title			# This gets displayed in the top decorator of the window image when it is rendered.
 		self._app			= app			# We reference this when general window commands need to talk to the app (e.g. to terminate it).

@@ -124,128 +124,60 @@
 #					the ActionProcessor for processing.
 #					
 
-from config.configuration import TheAIPersonaConfig
+		#|======================================================================
+		#|	1.1. Imports of standard python modules.	[module code subsection]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from	os	import path
+
+		#|======================================================================
+		#|	1.2. Imports of custom application modules. [module code subsection]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+			#|----------------------------------------------------------------
+			#|	The following modules, although custom, are generic utilities,
+			#|	not specific to the present application.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	# A simple decorator for singleton classes.
+from	infrastructure.decorators	import	singleton
+
+				#-------------------------------------------------------------
+				# The logmaster module defines our logging framework; we
+				# import specific definitions we need from it.	(This is a
+				# little cleaner stylistically than "from ... import *".)
+
+from 	infrastructure.logmaster 	import getComponentLogger
+
+	# Go ahead and create or access the logger for this module.
+
+global _component, _logger		# Software component name, logger for component.
+
+_component = path.basename(path.dirname(__file__))				# Our package name.
+_logger = getComponentLogger(_component)						# Create the component logger.
+
+			#|----------------------------------------------------------------
+			#|	The following modules are specific to the present application.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from 	config.configuration 	import	TheAIPersonaConfig
 	# This class specifies the configuration of the AI's persona.
 
+from	supervisor.action		import	Action_, CommandAction_, ActionChannel_
+	# Abstract base classes for general actionsm command-type actions, and action channels.
 
-#---------------------------------------------------------------------------------------
-# The following classes are for various types of actions that could be taken by the AI.
+from	.aiActions				import	The_AI_Cognosphere_Channel
+	# We tell this dude to init itself, and we list it as our input challen.
 
+from	field.receptiveField	import	TheReceptiveField
+	# This singleton class gives us a handle into the receptive field module.
 
-class ActionByAI_(Action_):
-	def __init__(thisAiAction, 
-			description:str="A generic action was taken by the AI.",
-				# REQUIRED. A description string. SUBCLASSES SHOULD OVERRIDE THIS VALUE.
-			theAI:AI_Entity_=None,		# The AI entity that conceived of taking this action.
-		):
-		
-		super(ActionBySystem_, thisSystemAction).__init__(description, theAI)
+# Forward declarations.
 
-
-class AI_Speech_Action(ActionByAI_):
-
-	"""Class for actions by the AI that consist of it producing some text output.
-		At the moment, all actions taken by the AI start out as this type of action,
-		and then other types of actions are derived from them as they are 
-		interpreted by the system (in particular, the command interface).
-	
-		AI_Speech_Action instances get created in the main loop of the cognitive
-		system upon receiving a completion from the AI; they are then automatically
-		initiated. Credit for their conception goes to the persona (annotated as 
-		running on the language model); credit for their initiation goes to the 
-		cognitive system (on behalf of the persona); credit for their execution 
-		goes to the cognitive system as well I guess.  
-		
-		For resulting command actions, we can credit conception to the AI, initiation
-		to the Supervisor, and execution to whatever subsystem/app implements them.
-		They can also link back to the speech action they were derived from.
-	"""
-		
-	def __init__(this,
-			aiTextOut:strm=None,		# Text output by the AI.
-			theAI:AI_Entity_=None,		# The AI entity that conceived of taking this action.
-		):
-		
-			# Get a string denoting the AI.
-		this._aiStr = aiStr = str(theAI)
-		
-			# Store the AI's output text for later reference.
-		this._aiTextOut = aiTextOut
-		
-			# Compose a description, pretty generic but that's fine for now. 
-		description = f"{aiStr} generated the text: [{aiTextOut}]"
-			# (Later on, if this speech action ends up getting parsed as a command string,
-			# then this action may get transmuted into a command action of some sort.)
-			
-			# Dispatch to superclass to finish initialization.
-		super(AI_Speech_Action, this).__init__(description, theAI)
-
-	# Note to self: Should we go ahead and add AI speech actions to the cognitive stream 
-	# immediately upon conception? Or wait until the command (if any) is interpreted?
-	# I'm thinking yes, we should go ahead and add them at execution time, and the 
-	# command (if any) should be treated as a second action that is consequent on the 
-	# first action. Use ".interpretedAs" and ".triggeredBy" members as appropriate.
-
-class CommandByAI_(AI_Speech_Action, CommandAction):
-	pass
-	
+class	TheCognitiveSystem: 			pass
 
 
-# Consider moving this to the mind package since it depends on configuration
-# parameters for the AI persona.
-@singleton
-class The_AI_Cognosphere_Channel(ActionChannel_):
-	"""The action system creates this specific action channel which is for 
-		reporting actions that we consider eligible for entering into the
-		AI's sphere of awareness.  Such actions include:
-		
-			(1) All actions that were conceived/initiated by the AI 
-				itself.
-			
-			(2) All actions that were conceived/initiated by a human
-				user who has logged into GLaDOS to interact with the AI.
-			
-			(3) All high-importance system actions, which the AI might
-				need to be aware of.  The threshold importance level can
-				be configured in the system/AI configuration.
-	"""
-	def willReport(thisChannel, status:str, action:Action_):
-		
-			# At present, we report all status updates for actions, including
-			# 'conceived', 'initiated', 'executing', and 'completed'.  However,
-			# the individual subscriber can choose to ignore most of these.
-			
-		#if status != 'completed': return False
-		
-			# Next, see if this is an action by the AI itself.  An easy way
-			# to check this is to see if this action is an ActionByAI_. 
-			# (Instance of this class, or a subclass derived from it.)  A 
-			# more sophisticated way would be to actually look at the entity
-			# specified in the ._conceivedBy and/or ._initiatedBy members.
-			# However, we'll just use the simple method for now.
-			
-		isAIAction = isinstance(action, ActionByAI_)
-		if isAIAction: 	return True
-		
-		# FUTURE: Check for actions by human users here (not implemented yet
-		# because we haven't implemented the login system).
-		
-			# Next, check to see if this is a system-initiated action.
-			
-		isSystemAction = isinstance(action, ActionBySystem_)
-		if not isSystemAction:	return False
-		
-			# Get its importance, and our threshold level.
-		
-		importance = action._importance
-		threshold = TheAIPersonaConfig().sysNotifyThresh
-		
-		return importance >= threshold
-		
-	
 
-
-class TheCognitiveSystem: pass
 
 @singleton
 class TheCognitiveSystem:
