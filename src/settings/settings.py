@@ -1,31 +1,125 @@
-# settings.py
-#
-# 	This module defines a facility that provides organized access to various 
-# 	system and application settings.  This is utilized by the Settings app
-# 	(in the 'apps' package).
-#
-#	The module is anchored in the singleton class TheSettingsFacility.
-#	The main class of the module is called SettingsModule, and it provides
-#	essentially a 'directory' of settings.  Instances of SettingsModule can
-#	be nested inside of each other.  Each instance has a short name 
-#	(identifier used in commands), a longer decription used at the top of
-#	the headings window, and an even longer docstring.
-#
-#	The bottommost element in the Settings module is called a Setting.  Each
-#	setting has a short name (identifier), a longer description, and an even 
-#	longer docstring.  It also has a Type, and an iterable ValueList (except
-#	for settings with very large or continuous ranges).
-#
-#	Types include the following:
-#	
-#		Toggle		- Boolean value; toggle switch or checkbox.
-#		Enumerated	- Short enumerated list of possible values.
-#		Range		- Short range of integers.
-#		Integer		- Wide range of integers.
-#		Continuous	- Continuous ranges of numbers.
-#
-#	Types are associated with 'widgets' which are used to display the options.
-#	(Is this going overboard?)
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#|					 TOP OF FILE:	 settings/settings.py
+#|------------------------------------------------------------------------------
+#|	 The below module documentation string will be displayed by pydoc3.
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+"""
+	FILE NAME:		settings/settings.py		 	 [Python module source file]
+		
+	MODULE NAME:	settings.settings
+	IN PACKAGE:		settings
+	FULL PATH:		$GIT_ROOT/GLaDOS/src/settings/settings.py
+	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
+	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
+	APP NAME:		GLaDOS.server (Main GLaDOS server application)
+	SW COMPONENT:	GLaDOS.settings (Settings management facility)
+
+
+	MODULE DESCRIPTION:
+	===================
+	
+		This Python module provides an implementation of the settings 
+		management facility, one of the subsystems of the GLaDOS server.
+		
+		The purpose of the settings management facility is to provide the 
+		underlying infrastructure that is required in order for the AI to 
+		be enabled to browse and modify the settings of GLaDOS and its major
+		subsystems within the 'Settings' GLaDOS app.
+		
+		The settings facility is intended to be initialized by a call to 
+		the singleton class constructor TheSettingsFacility(), after config
+		files are loaded but before any other subsystems are initialized.
+		
+		The facility maintains a hierarchy of "settings modules," rooted at
+		the top-level module (singleton class) TheRootSettingsModule().
+		
+		As the various other subsystems of GLaDOS are created and initialized,
+		they should each construct their own settings modules and Settings 
+		objects, and insert them at the appropriate locations within the 
+		existing settings module hierarchy.  Thus, after the system has 
+		finished initializing, all of the settings modules will be in place. 
+		
+		The settings facility will eventually support a full suspend/resume
+		capability, in which all settings are saved to a file when the system
+		suspends operation, and reloaded when the system resumes operation.
+		However, in general, suspend/resume is not implemented in GLaDOS yet.
+	
+	
+	PUBLIC DEFINITIONS:
+	-------------------
+	
+		TheSettingsFacility 								   [singleton class]
+	
+			This singleton class anchors the entire settings facility.  It
+			should be initialized (after config files are loaded) by calling
+			the class constructor TheSettingsFacility().  This initializes 
+			a settings module hierarchy that is initially empty, except for 
+			a root module _TheRootSettingsModule which is given appropriate
+			name/description/docstring parameters.  After TheSettingsFacility
+			has been initialized, other subsystems of GLaDOS may create their
+			own settings modules, and plug them into the hierarchy.
+			
+		Setting 														 [class]
+		
+			GLaDOS subsystems should create subclasses/instances of this 
+			class at initialization time to define their individual settings.  
+			Subsystems should specify a hard-coded default value for each 
+			setting, but (for configurable settings) should also reference 
+			config values as needed to override the hard-coded defaults.
+		
+		SettingsModule													 [class]
+		
+			GLaDOS subsystems should organize their settings into "settings
+			modules" which get installed into the hierarchical settings 
+			module tree that is rooted at the root settings module.
+"""
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#| End of module documentation string.
+#|------------------------------------------------------------------------------
+
+	# An earlier file header comment block follows:
+#|==============================================================================
+#|	settings.py
+#|
+#|		This module defines a facility that provides organized access to 
+#|		various system and application settings.  This faculity is utilized 
+#|		by the 'Settings' GLaDOS app (defined in the 'apps' package).
+#|
+#|		The module is anchored in the singleton class TheSettingsFacility.
+#|		The main class of the module is called SettingsModule, and it 
+#|		provides essentially a 'directory' of related settings.  Instances 
+#|		of SettingsModule can be nested inside of each other.  Each instance 
+#|		has a short name \(identifier used in commands), a longer decription 
+#|		used at the top of the headings window, and an even longer docstring.
+#|
+#|		The bottommost element in the settings hierarchy is called a Setting.  
+#|		Each setting has a short name (identifier), a longer description, and 
+#|		an even longer docstring.  It also has a SettingType_, and an iterable 
+#|		ValueList (except for settings with very large or continuous ranges).
+#|
+#|		Settings types include the following (these are classes that should
+#|		be instantiated as needed to set various type-specific parameters):
+#|
+#|			ToggleType		- Boolean value; toggle switch or checkbox.
+#|			EnumeratedType	- Short enumerated list of possible values.
+#|			RangeType		- Short range of integers.
+#|			IntegerType		- Wide range of integers.
+#|			ContinuousType	- Continuous ranges of numbers.
+#|
+#|		In the future, types may be associated with 'widgets' within the 
+#|		settings app which are used to display/adjust their options.  (Or, is 
+#|		this going overboard, perhaps?  Instructions to the AI may suffice.)
+#|
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+#/-------------- IDIOM TO ACCESS THE CURRENT PACKAGE'S LOGGER -----------------\
+from os	import path		# We use this to parse out the current package name.
+from infrastructure.logmaster import getComponentLogger	# Used below.
+  # Now go ahead and create (or access) the component logger for this package:
+global _component, _logger	# Software component name, logger for component.
+_component = path.basename(path.dirname(__file__))	# Infers our package name.
+_logger = getComponentLogger(_component)  # Create/access the component logger.
+#\----------------------- END PACKAGE LOGGER IDIOM ----------------------------/
 
 	#|==========================================================================
 	#|
@@ -42,10 +136,7 @@
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 from	collections.abc		import	Callable, Iterable
-	# Types for settings update methods, settings lists.
-
-from 	os			import	path	# For manipulating filesystem paths.
-
+	# Type hints that we use for settings-update methods & settings lists.
 
 		#|======================================================================
 		#|	1.2. Imports of custom application modules. [module code subsection]
@@ -59,24 +150,10 @@ from 	os			import	path	# For manipulating filesystem paths.
 	# A simple decorator for singleton classes.
 from 	infrastructure.decorators 	import singleton
 
-				#-------------------------------------------------------------
-				# The logmaster module defines our logging framework; we
-				# import specific definitions we need from it.	(This is a
-				# little cleaner stylistically than "from ... import *".)
-
-from 	infrastructure.logmaster 	import getComponentLogger
-
-	# Go ahead and create or access the logger for this module.
-
-global _component, _logger		# Software component name, logger for component.
-
-_component = path.basename(path.dirname(__file__))				# Our package name.
-_logger = getComponentLogger(_component)						# Create the component logger.
-
 
 	#|==========================================================================
 	#|
-	#| 	Forward class declarations. 							  [code section]
+	#| 	2. Forward class declarations. 							  [code section]
 	#|
 	#|		Here we declare classes to be defined later in this module.
 	#|		(Basically, this is only useful to facilitate type hints.)
@@ -84,13 +161,13 @@ _logger = getComponentLogger(_component)						# Create the component logger.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# Top-level classes of this module.
-class	SettingsFacility_:		pass	# Abstract base class for settings facility.
+class	_SettingsFacility_:		pass	# Abstract base class for settings facility.
 class	TheSettingsFacility:	pass	# Singleton class to anchor this module.
 
 	# Classes for the settings hierarchy.
 class	Setting:				pass	# An individual setting.
 class	SettingsModule:			pass	# A directory of settings.
-class	TheRootSettingsModule:	pass	# Singleton: Root of the settings module hierarchy.
+class	_TheRootSettingsModule:	pass	# Singleton: Root of the settings module hierarchy.
 
 	# Setting type classes.
 class	SettingType_:			pass	# Abstract base class for setting types.
@@ -104,17 +181,29 @@ class	ContinuousType:			pass	# Setting types for continues number ranges.
 class	ValueList:				pass	# List of possible values, available for some types.
 
 
+	#|==========================================================================
+	#|
+	#| 	3. Class definitons. 							  		  [code section]
+	#|
+	#|		Here we define the classes that this module is providing.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 class	Setting:
+	"""
+	"""
 
 	def __init__(newSetting:Setting,
-			name:str=None,
-			settingType:SettingType_=None,
-			defaultValue:object=None,
+			name:str=None,					# This is a short identifier string that can be used to name this setting e.g. in a /set command line.
+			settingType:SettingType_=None,	
+			defaultValue:object=None,		# This is the default value that should be used for this setting.
 			description:str=None,
 			docstring:str=None,
 			inModule:SettingsModule=None,
-			updateMethod:Callable=None,
+			updateMethod:Callable=None,		# This method is called to cause the new setting value to actually take effect in the system.
 		):
+		"""
+		"""
 		newSetting._name 			= name
 		newSetting._type 			= settingType
 		newSetting._defaultValue	= defaultValue
@@ -122,6 +211,26 @@ class	Setting:
 		newSetting._docstring		= docstring
 		newSetting._inModule		= inModule
 		newSetting._updateMethod	= updateMethod
+		
+			# Initialize current value of setting.
+		newSetting._curValue		= defaultValue
+
+	def setValue(thisSetting:Setting, newValue:object):
+		"""Sets the value of the setting to the given value, then calls the 
+			setting's 'update' method to cause the new value to take effect."""
+		
+			# First, we make sure that the value is really changing.
+		if newValue != thisSetting._curValue:
+				# It really is a new value!  Store it and update the system.
+			thisSetting._curValue = newValue	# Remember the setting's new value.
+			thisSetting._updateMethod()			# Call this setting's update method.
+
+	def resetToDefault(thisSetting:Setting):
+		"""This causes the setting to reinitialize itself to its default
+			value, as specified in the relevant (system or AI) config file."""
+		thisSetting.setValue(thisSetting._defaultValue)
+		
+#__/ End class Setting.
 
 
 class	SettingsModule:
@@ -152,9 +261,9 @@ class	SettingsModule:
 
 
 @singleton
-class	TheRootSettingsModule(SettingsModule):
+class	_TheRootSettingsModule(SettingsModule):
 
-	def __init__(theRootSettingsModule:SettingsModule,
+	def __init__(theRootSettingsModule:_TheRootSettingsModule,
 			name:str='glados',
 			description:str="GLaDOS Settings",
 			docstring:str="""These are the top-level settings of the GLaDOS system.""",
@@ -192,7 +301,7 @@ class	TheRootSettingsModule(SettingsModule):
 
 			# Delegate completion of instance initialization to the 
 			# next class in the class resolution sequence.
-		super(TheRootSettingsModule, theRootSettingsModule).__init__(
+		super(_TheRootSettingsModule, theRootSettingsModule).__init__(
 				name=name, description=description, docstring=docstring,
 				inModule=None, settings=None, subModules=None
 			)
@@ -202,11 +311,22 @@ class	TheRootSettingsModule(SettingsModule):
 
 
 @singleton
-class	TheSettingsFacility(SettingsFacility_):
+class	TheSettingsFacility(_SettingsFacility_):
 
 	"""This singleton class anchors the settings module."""
 
 	def __init__(theSettingsFacility:TheSettingsFacility, *args, **kwargs):
 
-		theSettingsFacility._rootSettingsModule = TheRootSettingsModule()
+		_logger.debug("Settings facility: Initializing settings facility.")
+
+			# Call the constructor for the private singleton class 
+			# _TheRootSettingsModule, which initializes the root 
+			# setings module.  Link it from an instance attribute.
+		theSettingsFacility._rootSettingsModule = _TheRootSettingsModule()
+	
+	def addToplevelModule(theSettingsFacility:TheSettingsFacility,
+			settingsModule=SettingsModule	# The settings module to add at top level.
+		):
 		
+			# Install the provided module directly under the root module.
+		theSettingsFacility._rootSettingsModule.installSubmodule(settingsModule)
