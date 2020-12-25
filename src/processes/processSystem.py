@@ -23,5 +23,4 @@ class SubProcess:
 
 @singleton
 class TheProcessSystem: 
-	super(
 	pass
