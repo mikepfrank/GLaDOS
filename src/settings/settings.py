@@ -41,7 +41,8 @@
 		#|	1.1. Imports of standard python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from	collections.abc		import	Callable	# Type of settings update methods.
+from	collections.abc		import	Callable, Iterable
+	# Types for settings update methods, settings lists.
 
 from 	os			import	path	# For manipulating filesystem paths.
 
@@ -117,15 +118,87 @@ class	Setting:
 		newSetting._name 			= name
 		newSetting._type 			= settingType
 		newSetting._defaultValue	= defaultValue
+		newSetting._description		= description
+		newSetting._docstring		= docstring
+		newSetting._inModule		= inModule
+		newSetting._updateMethod	= updateMethod
 
 
 class	SettingsModule:
-	pass
+
+	def __init__(newSettingsModule:SettingsModule,
+			name:str=None,
+			description:str=None,
+			docstring:str=None,
+			inModule:SettingsModule=None,
+			settings:Iterable=None,
+			subModules:Iterable=None,
+		):
+		newSettingsModule._name			= name
+		newSettingsModule._description	= description
+		newSettingsModule._docstring	= docstring
+		newSettingsModule._inModule		= inModule
+		newSettingsModule._settings		= settings
+		newSettingsModule._subModules	= subModules
+
+
+	def installSubmodule(thisSettingsModule:SettingsModule,
+			subModule:SettingsModule):
+
+		if thisSettingsModule._subModules is None:
+			thisSettingsModule._subModules = []
+
+		thisSettingsModule._subModules = thisSettingsModule._subModules + [subModule]
 
 
 @singleton
 class	TheRootSettingsModule(SettingsModule):
-	pass
+
+	def __init__(theRootSettingsModule:SettingsModule,
+			name:str='glados',
+			description:str="GLaDOS Settings",
+			docstring:str="""These are the top-level settings of the GLaDOS system.""",
+			subModules:Iterable=None,
+		):
+
+		"""
+		"""
+
+		#/-----------------------------------------------------------
+		#| At this point, we could go ahead and create the list of 
+		#| top-level settings, but we're not quite ready to do that.
+		#\-----------------------------------------------------------
+
+		#/-----------------------------------------------------------
+		#| At this point, we could go ahead and create the list of 
+		#| top-level submodules, but we're not quite ready to do that.
+		#| The eventual list of installed submodules will include:
+		#|
+		#|		- TheFieldSettingsModule (for the receptive field)
+		#|			* Nominal field width.
+		#|
+		#|		- TheWindowSettingsModule (for the window system)
+		#|			* Do windows have side borders by default?
+		#|
+		#|		- TheAppSettingsModule (for app-specific settings)
+		#|
+		#|		- TheMindSettingsModule (for the cognitive system)
+		#|			* Includes e.g. autoskip settings.
+		#|			* What event format to use.
+		#|
+		#|		- TheAPISettingsModule (for the GPT-3 API)
+		#|
+		#\-----------------------------------------------------------
+
+			# Delegate completion of instance initialization to the 
+			# next class in the class resolution sequence.
+		super(TheRootSettingsModule, theRootSettingsModule).__init__(
+				name=name, description=description, docstring=docstring,
+				inModule=None, settings=None, subModules=None
+			)
+				# Note that in the above, we make sure that there is no
+				# parent settings module, and no settings or submodules
+				# initially.
 
 
 @singleton
