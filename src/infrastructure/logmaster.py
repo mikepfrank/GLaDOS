@@ -2767,9 +2767,10 @@ def getComponentLogger(component:str):
                     _component = path.basename(__path__[0])
                       
        Note that the name of the logger created by this call is
-       <sysName>.<component>, which is a hierarchical logger name.
-       Thus messages sent to this logger will also be passed up to
-       the higher-level system logger, named <sysName>."""
+       <sysName>.<appName>.<component>, which is a hierarchical logger 
+	   name.  Thus messages sent to this logger will also be passed up 
+	   to the application logger, named '<sysName>.<appName>' and to 
+	   the top-level system logger, named <sysName>."""
 
     # Could do some error checking here to make sure <component>
     # is really a string (or convert it to a string).

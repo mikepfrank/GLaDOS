@@ -139,13 +139,13 @@ Things to do on GLaDOS coding:
 	src/tokenizer subdirectory:
 	~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	
-	7.	[ ] tokenizer/tokenizer.py - Add an option to verify token counts.
+		[ ] tokenizer/tokenizer.py - Add an option to verify token counts.
 	
 	
 	src/windows subdirectory:
 	~~~~~~~~~~~~~~~~~~~~~~~~~
 	
-	7.	[ ] tokenizer/tokenizer.py - Add an option to verify token counts.
+		[ ] windows/windowSettings.py - Create this module.
 	
 
 	
