@@ -467,7 +467,7 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 		
 		self._activeCommands = Commands()
 	
-	def checkForCommand(self, action:Action_):
+	def checkForCommand(self, action:Action_):	# WARNING: Circularity here.
 	
 		"""Examine the provided action to see if we could interpret it 
 			as a command. (Generally this will only be the case for 

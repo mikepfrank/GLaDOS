@@ -204,10 +204,11 @@ def overwrite(botStr:str, pos:int, topStr:str, extend:bool=False):
 		with the given 'top string.'  The last argument specifies whether
 		to extend the total length of the string if needed."""
 		
-	botLen = len(bottomStr)
+	botLen = len(botStr)
 	topLen = len(topStr)
 	
-	res = botLen[:pos]
+	# Initialize result to first part of bottom string, before pos.
+	res = botStr[:pos]
 	
 	if pos + topLen > botLen:		# Doesn't fit
 		if extend:

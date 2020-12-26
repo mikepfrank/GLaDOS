@@ -105,6 +105,8 @@ class	History_Buffer:		pass	# This AI subsystem is a subsystem of the cognitive 
 class	System_Entity_:		pass
 class	Subsystem_Entity_:	pass
 
+class	The_GLaDOS_Entity:		pass
+
 class	The_SettingsFacility_Entity:	pass
 class	The_ConfigSystem_Entity:		pass
 class	The_Supervisor_Entity:			pass
@@ -198,6 +200,10 @@ class Entity_:
 		return Entity_
 	
 
+	@property
+	def name(thisEntity):
+		return thisEntity._name		# Set in instance initializer.
+
 	#/--------------------------------------------------------------------------
 	#|	Private instance data members.					   [class documentation]
 	#|
@@ -251,6 +257,8 @@ class AI_System_(AI_Entity_):
 class AI_Subsystem_(AI_Entity_):
 	"""An entity that is a subsystem of an AI system."""
 	_ENTITY_TYPE_NAME = "subsystem of an AI"
+
+
 	@classproperty
 	def entityType(dynamicClass):
 		return AI_Subsystem_
@@ -312,6 +320,11 @@ class System_Entity_(Entity_):
 		"""By default, just return System_Entity_.  Subclasses can override this."""
 		return System_Entity_
 
+@singleton
+class The_GLaDOS_Entity(System_Entity_):
+	_isAbstract = False
+	_ENTITY_NAME = "GLaDOS System"
+
 class Subsystem_Entity_(System_Entity_):
 
 	_ENTITY_TYPE_NAME = "subsystem of GLaDOS"	
@@ -328,36 +341,43 @@ class Subsystem_Entity_(System_Entity_):
 class The_SettingsFacility_Entity(Subsystem_Entity_):
 	_isAbstract = False
 	_ENTITY_NAME = "Settings Facility"
+	partOf = The_GLaDOS_Entity
 
 @singleton
 class The_ConfigSystem_Entity(Subsystem_Entity_):
 	_isAbstract = False
 	_ENTITY_NAME = "Configuration System"
+	partOf = The_GLaDOS_Entity
 
 @singleton
 class The_Supervisor_Entity(Subsystem_Entity_):
 	_isAbstract = False
 	_ENTITY_NAME = "Supervisor"
+	partOf = The_GLaDOS_Entity
 
 @singleton
 class The_CommandInterface_Entity(Subsystem_Entity_):
 	_isAbstract = False
 	_ENTITY_NAME = "Command Interface"
+	partOf = The_GLaDOS_Entity
 	
 @singleton
 class The_ProcessSystem_Entity(Subsystem_Entity_):
 	_isAbstract = False
 	_ENTITY_NAME = "Process System"
+	partOf = The_GLaDOS_Entity
 	
 @singleton
 class The_WindowSystem_Entity(Subsystem_Entity_):
 	_isAbstract = False
 	_ENTITY_NAME = "Window System"
+	partOf = The_GLaDOS_Entity
 	
 @singleton
 class The_AppSystem_Entity(Subsystem_Entity_):
 	_isAbstract = False
 	_ENTITY_NAME = "Applications System"
+	partOf = The_GLaDOS_Entity
 	
 
 #=====================================================================

@@ -1,7 +1,9 @@
 
 from	infrastructure.decorators	import	singleton
 from	entities.entity				import	AI_Entity_	# Abstract base class for AI entities.
-from	supervisor.action			import	Action_, CommandAction_, ActionChannel_
+from	supervisor.action			import	(
+		Action_, SpeechAction_, CommandAction_, ActionChannel_
+	)
 
 class	ActionByAI_:					pass
 class	AI_Speech_Action:				pass
@@ -22,7 +24,7 @@ class ActionByAI_(Action_):
 		super(ActionBySystem_, thisSystemAction).__init__(description, theAI)
 
 
-class AI_Speech_Action(ActionByAI_):
+class AI_Speech_Action(SpeechAction_, ActionByAI_):
 
 	"""Class for actions by the AI that consist of it producing some text output.
 		At the moment, all actions taken by the AI start out as this type of action,
@@ -53,12 +55,13 @@ class AI_Speech_Action(ActionByAI_):
 		this._aiTextOut = aiTextOut
 		
 			# Compose a description, pretty generic but that's fine for now. 
-		description = f"{aiStr} generated the text: [{aiTextOut}]"
+		description = f"AI {aiStr} generated the text: [{aiTextOut}]"
 			# (Later on, if this speech action ends up getting parsed as a command string,
 			# then this action may get transmuted into a command action of some sort.)
 			
-			# Dispatch to superclass to finish initialization.
-		super(AI_Speech_Action, this).__init__(description, theAI)
+			# Dispatch to next class in inheritance chain to finish initialization.
+		super(AI_Speech_Action, this).__init__(aiTextOut, description, theAI)
+			# Note dispatch order goes first to SpeechAction_, then to ActionByAI_.
 
 	# Note to self: Should we go ahead and add AI speech actions to the cognitive stream 
 	# immediately upon conception? Or wait until the command (if any) is interpreted?

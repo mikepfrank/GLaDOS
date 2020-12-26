@@ -440,7 +440,7 @@ class TheConfiguration:	# The GLaDOS server configuration.
 
 		pconf = pformat(conf, indent=4, width=224)
 
-		_logger.info(f"\tLoaded the following raw configuration structure:\n{pconf}")
+		_logger.debug(f"\tLoaded the following raw configuration structure:\n{pconf}")
 
 		theConfig._lastLoadedConf = conf
 
@@ -773,12 +773,12 @@ class	TheAIPersonaConfig:
 		
 		_logger.normal(f"Loading AI configuration from {_CONFIG_PATHNAME}...")
 
-		with open(_CONFIG_PATHNAME) as cf:
+		with open(_AI_CONFIG_PATHNAME) as cf:
 			conf = load(cf)			# Load structure from hjson file.
 
 		pconf = pformat(conf, indent=4, width=224)
 
-		_logger.info(f"\tLoaded the following raw configuration structure:\n{pconf}")
+		_logger.debug(f"\tLoaded the following raw configuration structure:\n{pconf}")
 
 		theAIConfig._lastLoadedConf = conf
 
@@ -804,7 +804,7 @@ class	TheAIPersonaConfig:
 		if 'model-family' in conf:
 			theAIConfig.modelFamily = modelFamily = conf['model-family']
 				# TODO: Make sure value given is valid.
-			_logger.normal("AI configuration:  The AI's model family is {modelFamily}.")
+			_logger.normal(f"    AI configuration: The AI's model family is {modelFamily}.")
 		else:
 			_logger.warn("parseConf(): The required model-family parameter "
 							"was not provided.")
@@ -817,7 +817,7 @@ class	TheAIPersonaConfig:
 		if 'model-version' in conf:
 			theAIConfig.modelVersion = modelVersion = conf['model-version']
 				# TODO: Make sure value given is valid.
-			_logger.normal("AI configuration:  The AI's model version is {modelVersion}.")
+			_logger.normal(f"    AI configuration: The AI's model version is {modelVersion}.")
 		else:
 			_logger.warn("parseConf(): The required model-version parameter "
 							"was not provided.")
@@ -830,7 +830,7 @@ class	TheAIPersonaConfig:
 		if 'max-visible-tokens' in conf:
 			theAIConfig.maxVisibleTokens = maxTok = conf['max-visible-tokens']
 				# TODO: Make sure value given is valid.
-			_logger.normal("AI configuration:  The AI's receptive field size is {maxTok}.")
+			_logger.normal(f"    AI configuration: The AI's receptive field size is {maxTok}.")
 		else:
 			_logger.warn("parseConf(): The required max-visible-tokens parameter "
 							"was not provided.")
@@ -843,7 +843,7 @@ class	TheAIPersonaConfig:
 		if 'sys-notification-threshold' in conf:
 			theAIConfig.sysNotifyThresh = sysNotifyThresh = conf['sys-notification-threshold']
 				# TODO: Make sure value given is valid.
-			_logger.normal("AI configuration:  The importance threshold for system notifications is {sysNotifyThresh}.")
+			_logger.normal(f"    AI configuration: The importance threshold for system notifications is {sysNotifyThresh}.")
 		else:
 			_logger.warn("parseConf(): The required sys-notification-threshold parameter "
 							"was not provided.")

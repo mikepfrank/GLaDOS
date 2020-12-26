@@ -609,7 +609,7 @@ global  NAME_FIELDWIDTH, THREADNAME_FIELDWIDTH, COMPONENT_FIELDWIDTH
 global  THREADROLE_FIELDWIDTH, MODULE_FIELDWIDTH, FUNCNAME_FIELDWIDTH
 global  LEVELNAME_FIELDWIDTH
 
-NAME_FIELDWIDTH         = 17    # Width of logger name field.
+NAME_FIELDWIDTH         = 24    # Width of logger name field.
 THREADNAME_FIELDWIDTH   = 10    # Width of thread name field.
 COMPONENT_FIELDWIDTH    = 13    # Width of component name field.
 THREADROLE_FIELDWIDTH   = 8     # Width of thread role field.
@@ -2775,7 +2775,7 @@ def getComponentLogger(component:str):
     # Could do some error checking here to make sure <component>
     # is really a string (or convert it to a string).
 
-    return getLogger(sysName + '.' + appName + '.' + component)
+    return getLogger(appName + '.' + component)
 
 #__/ End function getComponentLogger().
 
@@ -3263,9 +3263,9 @@ def configLogMaster(sysname:str = None, appname:str = None,
 
     with open(LOG_FILENAME,'a') as tmp_file:
      tmp_file.write(
-      "========================+===================+====================================+==================================================+===========================================================================================\n"
-      "YYYY-MM-DD hh:mm:ss,msc | SysName.appName   | ThreadName: Component     role     |     sourceModuleName.py:ln# : functionName()     | LGLEVEL: Message text\n"
-      "------------------------+-------------------+------------------------------------|--------------------------------------------------|-------------------------------------------------------------------------------------------\n")
+      "========================+==========================+====================================+==================================================+===========================================================================================\n"
+      "YYYY-MM-DD hh:mm:ss,msc | SysName.appName.pkgName  | ThreadName: Component     role     |     sourceModuleName.py:ln# : functionName()     | LGLEVEL: Message text\n"
+      "------------------------+--------------------------+------------------------------------|--------------------------------------------------|-------------------------------------------------------------------------------------------\n")
 
         # Figure out the file and console log levels based on user
         # selections.  (Verbose in this call is turned on for now,

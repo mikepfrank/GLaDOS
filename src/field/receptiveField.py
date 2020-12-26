@@ -79,6 +79,8 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 			#|	1.2.2. The following modules are specific to GLaDOS.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+from	text.buffer				import	TextBuffer
+
 from 	mind.aiActions			import 	ActionByAI_
 	# This is an abstract class for actions that we might want to take,
 	# which should then be automatically handled by the Supervisor.
@@ -95,8 +97,14 @@ from	.fieldSettings				import	TheFieldSettings, TheFieldSettingsModule
 	# TheFieldSettings - This uninstantiated class object holds our settings in class variables.
 	# TheFieldSettingsModule - A settings module for plugging into the settings facility.
 
-from	.fieldElement				import	FieldElement_
 	# Field elements are conceptually independent parts of the field display.
+from .fieldElement import (		
+	FieldElement_,
+	TheFieldHeader,
+	ThePromptSeparator,
+	TheInputArea,
+)
+	
 
 	#|==========================================================================
 	#|
@@ -129,6 +137,8 @@ class ReceptiveField_:		pass	# For use in type hints.
 class TheReceptiveField:	pass
 	# This singleton anchors the whole module.
 
+class _TheBaseFieldData:		pass
+	# Singleton for the core field data structure.
 
 	#|==========================================================================
 	#|
@@ -233,7 +243,7 @@ class FieldSlot:
 			field=TheReceptiveField()):
 		pass
 
-#	TheBaseFieldData		- The base data object containing everything that's 
+#	_TheBaseFieldData		- The base data object containing everything that's 
 #							intended to be viewed by the A.I. in its 
 #							receptive field.
 #
@@ -247,10 +257,10 @@ class FieldSlot:
 #	TheReceptiveField	- Singleton; the entire receptive field system as a whole.
 
 @singleton
-class TheBaseFieldData:
+class _TheBaseFieldData:
 	#---------------------------------------------------------------------------
 	"""
-	TheBaseFieldData 							 [module public singleton class]
+	_TheBaseFieldData 								   [private singleton class]
 	
 		This singleton class keeps track of the raw data that is currently
 		visible in the AI's receptive field.  This consists of a sequence 
@@ -267,11 +277,11 @@ class TheBaseFieldData:
 		slot can hold one object.
 	
 	"""
-	def __init__(theBaseFieldData:TheBaseFieldData, maxTokens:int):
-		inst._maxTokens = maxTokens
-		inst._slots = []
+	def __init__(theBaseFieldData:_TheBaseFieldData, maxTokens:int):
+		theBaseFieldData._maxTokens = maxTokens
+		theBaseFieldData._slots = []
 		
-	def addElement(theBaseFieldData:TheBaseFieldData, 
+	def addElement(theBaseFieldData:_TheBaseFieldData, 
 					element:FieldElement_,
 					location:Placement):
 		"""
@@ -439,21 +449,21 @@ class TheReceptiveField(ReceptiveField_):
 			TheFieldSettings.nominalWidth = nominalWidth
 			#TheFieldSettings.updateNominalWidth(nominalWidth)	# Don't need yet
 	
-		_logger.info("Receptive field:  Initializing with the following settings:")
-		_logger.info(		"\t   field size = {fieldSize} tokens.")
-		_logger.info(		"\tnominal width = {nominalWidth} characters.")
+		_logger.info("Receptive field: Initializing with the following settings:")
+		_logger.info(f"    field size = {fieldSize} tokens.")
+		_logger.info(f"    nominal width = {nominalWidth} characters.")
 	
 			# Stash the important settings in instance data members.
 		theReceptiveField._fieldSize		= fieldSize
 		theReceptiveField._nominalWidth		= nominalWidth
 	
 			# Create the base field data object & store it.
-		baseFieldData 						= BaseFieldData(fieldSize)
+		baseFieldData 						= _TheBaseFieldData(fieldSize)
 		theReceptiveField._baseFieldData	= baseFieldData
 		
 			# Create and store field views for the AI & for humans.
-		theReceptiveField._aiFieldView		= inst.TheAIFieldView(baseFieldData)
-		theReceptiveField._humanFieldView	= inst.HumanFieldView(baseFieldData)
+		theReceptiveField._aiFieldView		= TheAIFieldView(baseFieldData)
+		theReceptiveField._humanFieldView	= HumanFieldView(baseFieldData)
 
 			# Create the "field header" element, which automatically pins
 			# itself to the very top edge of the receptive field.

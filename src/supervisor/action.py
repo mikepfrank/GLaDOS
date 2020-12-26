@@ -156,11 +156,13 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 from config.configuration	import  TheAIPersonaConfig
 	# Import the AI persona's configuration.
 
-from entities.entity	import	Entity_, The_Supervisor_Entity
+from entities.entity	import	Entity_, The_GLaDOS_Entity, The_Supervisor_Entity
 	# This is the abstract base class for all entity objects.
 
-
-
+# Can't import this--circularity!!
+#from commands.commandInterface	import	TheCommandInterface
+	# We need to consult this when processing actions so that
+	# we can check to see if they're interpretable as commands.
 
 
 
@@ -270,10 +272,10 @@ class Action_:
 		
 		thisAction._conceivedAt = datetime.now()	# Use current time as conception time.
 		thisAction._description	= description
-		thisAction._conceivedBy	= actor
+		thisAction._conceivedBy	= conceiver
 		
 			# Report this action's conception on TheActionNewsNetwork.
-		thisAction.__reportConception()
+		thisAction._reportConception()
 		
 	#__/
 
@@ -313,12 +315,12 @@ class Action_:
 		
 			# Now, finally process the action.
 		
-		TheActionProcessor().process(self)		
+		TheActionProcessor().process(thisAction)		
 			# This handles reporting of initiation, possible execution scheduling work, 
 			# and all other general processing work that may be needed.
 			
 	def execute(thisAction, 
-			executor:Entity_ = The_Supervisor_Entity	# OPTIONAL, default to supervisor (us).
+			executor:Entity_ = The_Supervisor_Entity	# OPTIONAL, default to supervisor (us)
 		):
 		
 		thisAction._executedAt = datetime.now()		# Use current time as execution time.
@@ -326,28 +328,28 @@ class Action_:
 		thisAction._executedBy = executor	# Remember our executor.
 		
 			# Route to TheActionProcessor to handle the actual execution details.
-		TheActionProcessor().execute(self)				
+		TheActionProcessor().execute(thisAction)				
 
 	#|--------------------------------------------------------------------------
 	#|	Private instance methods.					  [class definition section]
 	#|
 	#|		The following private instance methods are defined for all 
 	#|		actions.  These are not intended to be overridden in derived
-	#|		classes (thus the double underscores).
+	#|		classes.
 	#|		
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	def __reportConception(thisAction):	
-		TheActionNewsNetwork.reportConception(thisAction)
+	def _reportConception(thisAction):
+		TheActionNewsNetwork().reportConception(thisAction)
 		
-	def __reportInitiation():	
-		TheActionNewsNetwork.reportInitiation(thisAction)
+	def _reportInitiation(thisAction):
+		TheActionNewsNetwork().reportInitiation(thisAction)
 		
-	def __reportExecuting():		
-		TheActionNewsNetwork.reportExecuting(thisAction)
+	def _reportExecuting(thisAction):
+		TheActionNewsNetwork().reportExecuting(thisAction)
 		
-	def __reportCompletion():	
-		TheActionNewsNetwork.reportCompletion(thisAction)
+	def _reportCompletion(thisAction):
+		TheActionNewsNetwork().reportCompletion(thisAction)
 	
 
 #__/ End module public abstract base class Action_.
@@ -359,6 +361,47 @@ class Action_:
 class CommandAction_(Action_):
 	pass
 	
+class SpeechAction_(Action_):
+
+	"""A speech action consists of some entity "saying something."
+		The important thing about speech actions is that they can
+		possibly sometimes be interpreted as commands to the system."""
+
+	def __init__(this,
+			speechText:str=None,	# Speech uttered by entity, as a text string.
+			description:str=None,	# Description of the speech act.
+			utterer:Entity_=None,	# The entity that is conceiving the speech act.
+		):
+
+			# Get a short string denoting the utterer.
+		this._entityString = entStr = str(utterer)
+
+			# Store the spoken/uttered text for later reference.
+		this._speechText = speechText
+		
+			# Compose a description, pretty generic but acceptable.
+		description = f"{entStr} says: \"{speechText}\""
+
+			# Dispatch to Action_ base class to finish initialization.
+		super(SpeechAction_, this).__init__(description, utterer)
+
+
+	def setInvocationAction(this, commandAction:CommandAction_):
+
+		"""Declares that when/if this speech act is committed (executed),
+			the given command action shall also be invoked."""
+
+			# Remember the command action to be invoked.
+		this._invokesAction = commandAction
+							
+
+	def invokesAction(this):
+		if hasattr(this, '_invokesAction'):
+			return this._invokesAction
+		else:
+			return None
+
+
 class ActionByHuman_(Action_):
 	pass
 	
@@ -366,7 +409,8 @@ class ActionBySystem_(Action_):
 	def __init__(thisSystemAction, 
 			description:str="A generic system action was taken.",
 				# REQUIRED. A description string. SUBCLASSES SHOULD OVERRIDE THIS VALUE.
-			conceiver:Entity_=None,		# The entity that conceived of taking this action.
+			conceiver:Entity_=The_GLaDOS_Entity,
+				# The entity that conceived of taking this action. Default to GLaDOS.
 			importance:int=0,			# Importance level (integer). Default is 0.
 		):
 	
@@ -375,39 +419,39 @@ class ActionBySystem_(Action_):
 	
 		super(ActionBySystem_, thisSystemAction).__init__(description, conceiver)
 
-class ActionBySupervisor_(ActionBySystem_):
-	def __init__(thisSupervisorAction,
-			description:str="The supervisor took a generic system action.",
-			importance:int=0,			# Importance level (integer). Default is 0.
-		):
+# class ActionBySupervisor_(ActionBySystem_):
+# 	def __init__(thisSupervisorAction,
+# 			description:str="The supervisor took a generic system action.",
+# 			importance:int=0,			# Importance level (integer). Default is 0.
+# 		):
 			
-		actor = The_Supervisor_Entity
+# 		actor = The_Supervisor_Entity
 		
-		super(ActionBySupervisor_, thisSupervisorAction).__init__(description, actor, importance)
+# 		super(ActionBySupervisor_, thisSupervisorAction).__init__(description, actor, importance)
 
-class SupervisorAnnouncementAction(ActionBySupervisor_):
-	def __init__(this,
-			announcementText:str="Generic accouncement.",
-			importance:int=0,			# Importance level (integer). Default is 0.
-		):
+# class AnnouncementAction(ActionBySupervisor_):
+# 	def __init__(this,
+# 			announcementText:str="Generic accouncement.",
+# 			importance:int=0,			# Importance level (integer). Default is 0.
+# 		):
 		
-			# Remember the announcement text for reference in case needed in later 
-			# inspection of this action object.
+# 			# Remember the announcement text for reference in case needed in later 
+# 			# inspection of this action object.
 		
-		this._announcementText = announcementText
+# 		this._announcementText = announcementText
 		
-			# Construct the action description text.
+# 			# Construct the action description text.
 		
-		description = "Supervisor announces: " + announcementText
+# 		description = "Supervisor announces: " + announcementText
 		
-		super(SupervisorAnnouncementAction, this).__init__(description, importance)
+# 		super(SupervisorAnnouncementAction, this).__init__(description, importance)
 		
-class StartupAnnouncementAction(SupervisorAnnouncementAction):
-	def __init__(this):
-		announcement = "System is starting up."
-		importance = 10		# A system startup event seems pretty important, right?
-			#(We could make this configurable, though.)
-		super(StartupAccouncement, this).__init__(announcement, importance)
+# class StartupAnnouncementAction(SupervisorAnnouncementAction):
+# 	def __init__(this):
+# 		announcement = "System is starting up."
+# 		importance = 10		# A system startup event seems pretty important, right?
+# 			#(We could make this configurable, though.)
+# 		super(StartupAccouncement, this).__init__(announcement, importance)
 
 class CommandByHuman_(ActionByHuman_, CommandAction_):
 	pass
@@ -525,12 +569,12 @@ class TheActionNewsNetwork:
 @singleton
 class TheActionProcessor:
 
-	def process(action:Action_):
+	def process(theActionProcessor:TheActionProcessor, action:Action_):
 		"""Process the initiation of the given action."""
 		
 			# First, report the news of this action's initiation to 
 			# TheActionNewsNetwork.
-		action.__reportInitiation()
+		action._reportInitiation()
 		
 		# At this point, we need to do other work, like giving the command 
 		# interface a chance to interpret the action, scheduling possible
@@ -543,7 +587,8 @@ class TheActionProcessor:
 			# automatically create a corresponding command action, and initiate it
 			# as well.  The resulting command action will have the same conceiver 
 			# and initiator as the action it was derived from.
-		TheCommandInterface.checkForCommand(action)
+		commandIface = theActionProcessor._commandInterface
+		commandIface.checkForCommand(action)
 		
 		# WRITE MORE CODE HERE
 		
@@ -552,12 +597,12 @@ class TheActionProcessor:
 		
 	#__/ End public instance method action.process().
 		
-	def execute(action:Action_):
+	def execute(theActionProcessor:TheActionProcessor, action:Action_):
 		"""Handle the actual execution of the given action."""
 		
 			# First, report the news of this action's execution to 
 			# TheActionNewsNetwork.
-		action.__reportExecuting()
+		action._reportExecuting()
 		
 		#------------------------------------------------------------------------
 		# At this point, we need to do other work, like performing any execution
@@ -568,25 +613,48 @@ class TheActionProcessor:
 			# its more specific execution method. (We don't need to second-guess 
 			# what else needs to be done.)
 		
-		if isinstance(action, SystemAction_):
+		if isinstance(action, ActionBySystem_):
 			action.executionDetails()
 			
-			# For speech actions taken by the AI, we need to run them through
-			# the command interface.
-		elif isinstance(action, AI_Speech_Action):
+			# For speech actions taken, we need to check whether committing
+			# (executing) the speech act automatically invokes another action
+			# (such as a command action).  If so, then execute that action too.
+		elif isinstance(action, Speech_Action_):
 		
-			ci = CommandInterface()		# Get the command interface.
-			isCommand = ci.isCommand
+				# Get the other action invoked by this speech act, if any.
+			invocation = action.invokesAction()
 			
-		
+				# If there is one, then execute that action as well.
+			if invocation is not None:
+				invocation.execute()
+
 			# Finally, report the news of this action's completion to
 			# TheActionNewsNetwork.
-		action.__reportCompletion()
+		action._reportCompletion()
 		
+	def commandInterfaceIs(inst, theCommandInterface):
+		inst._commandInterface = theCommandInterface
+		
+
 @singleton
 class TheActionSystem:
 
 	def __init__(inst):
-		TheActionNewsNetwork()	# Initialize the "Action News Network"
-		TheActionProcessor()	# Initialize the action processor.
+		
+		tann = TheActionNewsNetwork()	# Initialize the "Action News Network"
+		tap = TheActionProcessor()	# Initialize the action processor.
 
+			# Remember these guys.
+		inst._actionNewsNetwork = tann
+		inst._actionProcessor = tap
+
+	def commandInterfaceIs(inst, theCommandInterface):
+
+		"""After constructing all subsystems, call this method on the action
+			system to inform it of how to find the command interface.  Note 
+			that We can't just find it by importing the command interface
+			module, because the command interface needs to import this modole,
+			and so that would create an import circularity."""
+
+			# Relly, it's our action processor that needs this info.
+		inst._actionProcessor.commandInterfaceIs(theCommandInterface)

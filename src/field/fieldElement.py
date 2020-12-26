@@ -47,6 +47,8 @@
 
 
 from	infrastructure.decorators	import	singleton
+from	infrastructure.utils		import	overwrite			# Used for composing horizonal bars.
+from	.fieldSettings				import	TheFieldSettings
 from	.placement					import	Placement
 	
 global __all__
@@ -109,8 +111,8 @@ class TheFieldHeader(FieldElement_):
 		# associated language model.
 	fieldTitle = ' ' + fieldTitle + ' '		# Add some padding on both sides.
 			
-	headerWidth = _DEFAULT_NOMINAL_WIDTH
-		# Quick default for now.
+		# Set the header width to the current value of nominal field width setting.
+	headerWidth = TheFieldSettings.nominalWidth
 	
 		# Calculate where to place title string to (roughly) center it.
 	titlePos = int((headerWidth - len(fieldTitle))/2)
@@ -121,7 +123,9 @@ class TheFieldHeader(FieldElement_):
 	def __init__(theFieldHeader, *args, **kwargs):
 			# Mostly handled by FieldElement_ superclass, except that we specify
 			# the element placement.
-		super(TheFieldTopper, theFieldHeader).__init__(Placement.PINNED_TO_TOP, *args, **kwargs)
+		super(TheFieldHeader.__wrapped__, theFieldHeader).__init__(
+				Placement.PINNED_TO_TOP, *args, **kwargs
+			)
 			# NOTE: We always pin the field topper to the very top of the 
 			# receptive field, because that's where it's supposed to appear, 
 			# by definition.
@@ -147,11 +151,12 @@ class ThePromptSeparator(FieldElement_):
 		# associated language model.
 	sepInstrs = ' ' + sepInstrs + ' '		# Add some padding on both sides.
 		
-	sepBarWidth = _DEFAULT_NOMINAL_WIDTH
+		# Set the separator bar width to the current value of nominal field width setting.
+	sepBarWidth = TheFieldSettings.nominalWidth
 		# Quick default for now.
 	
 		# Calculate where to place title string to (roughly) center it.
-	instrPos = int((topperWidth - len(sepInstrs))/2)
+	instrPos = int((sepBarWidth - len(sepInstrs))/2)
 	
 		# Construct the full text string for the topper row.
 	sepBarStr = overwrite(bgChar*sepBarWidth, instrPos, sepInstrs) + '\n'
@@ -159,7 +164,9 @@ class ThePromptSeparator(FieldElement_):
 	def __init__(thePromptSeparator, *args, **kwargs):
 			# Mostly handled by FieldElement_ superclass, except that we specify
 			# the element placement.
-		super(ThePromptSeparator, thePromptSeparator).__init__(Placement.PINNED_TO_BOTTOM, *args, **kwargs)
+		super(ThePromptSeparator.__wrapped__, thePromptSeparator).__init__(
+				Placement.PINNED_TO_BOTTOM, *args, **kwargs
+			)
 			# NOTE: We always pin the prompt separator to the bottom of the 
 			# receptive field, except this will really end up being just above
 			# the actual prompt area, which should have been previously pinned.
@@ -169,3 +176,7 @@ class ThePromptSeparator(FieldElement_):
 		return sepBarStr
 		# NOTE: Later we might want to modify this to be able to be updated
 		# dynamically, like in the config file.  Not done yet.
+
+@singleton
+class TheInputArea(FieldElement_):
+	pass
