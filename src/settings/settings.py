@@ -327,7 +327,7 @@ class	_TheRootSettingsModule(SettingsModule):
 
 			# Delegate completion of instance initialization to the 
 			# next class in the class resolution sequence.
-		super(_TheRootSettingsModule, theRootSettingsModule).__init__(
+		super(_TheRootSettingsModule.__wrapped__, theRootSettingsModule).__init__(
 				name=name, description=description, docstring=docstring,
 				inModule=None, settings=None, subModules=None
 			)
@@ -348,7 +348,7 @@ class	TheSettingsFacility(_SettingsFacility_):
 			# Call the constructor for the private singleton class 
 			# _TheRootSettingsModule, which initializes the root 
 			# setings module.  Link it from an instance attribute.
-		theSettingsFacility._rootSettingsModule = _TheRootSettingsModule()
+		theSettingsFacility.rootSettingsModule = _TheRootSettingsModule()
 	
 	def addToplevelModule(theSettingsFacility:TheSettingsFacility,
 			settingsModule=SettingsModule	# The settings module to add at top level.

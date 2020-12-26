@@ -45,10 +45,12 @@
 #| End of module documentation string.
 #|------------------------------------------------------------------------------
 
+from	typing						import	ClassVar
+	# We use this for argument type hints in class methods.
+
 from	infrastructure.decorators	import	singleton
 
-from	settings.settings		import	(Setting, SettingsModule, 
-											TheRootSettingsModule)
+from	settings.settings		import	Setting, SettingsModule
 from	config.configuration	import	TheConfiguration, TheAIPersonaConfig
 
 class 	TheFieldSettings: 	pass
@@ -128,11 +130,11 @@ class TheFieldSettings():
 		#| change the current values of any settings.
 		
 	@classmethod
-	def config(theFieldSettingsClass:class):
+	def config(theFieldSettingsClass:ClassVar):
 		theFieldSettingsClass.reconfigure()		# Just a synonym.
 
 	@classmethod
-	def reconfigure(theFieldSettingsClass:class):
+	def reconfigure(theFieldSettingsClass:ClassVar):
 	
 		"""Reconfigure all of the default settings for this class."""
 
@@ -160,7 +162,7 @@ class TheFieldSettings():
 		#| parameters during configuration or reconfiguration.
 		
 	@classmethod
-	def configDefaultMaxSize(theFieldSettingsClass:class):
+	def configDefaultMaxSize(theFieldSettingsClass:ClassVar):
 
 		"""This method replaces the above hard-coded default value for
 			the maximum field size setting with the value loaded from
@@ -179,7 +181,7 @@ class TheFieldSettings():
 		
 	
 	@classmethod
-	def configDefaultNominalWidth(theFieldSettingsClass:class, 
+	def configDefaultNominalWidth(theFieldSettingsClass:ClassVar, 
 			fieldConf:dict	# This dict contains the field configuration.
 		):
 	
@@ -196,16 +198,26 @@ class TheFieldSettings():
 		#| Below are class methods for updating our current settings.
 
 	@classmethod
-	def updateMaximumSize(theFieldSettingsClass:class, 
-			maxSize:int=theFieldSettingsClass._DEFAULT_MAX_SIZE,
+	def updateMaximumSize(theFieldSettingsClass:ClassVar, 
+			maxSize:int=None,
 		):
+
+		# If maxSize is not specified, just set it to the default.
+		if maxSize is None:
+			maxSize = theFieldSettingsClass._DEFAULT_MAX_SIZE
+			
 			# Update our class variable
 		fieldSettingsClass.maxSize = maxSize
 
 	@classmethod
 	def updateNominalWidth(theFieldSettingsClass,
-			newWidth:int=theFieldSettingsClass._DEFAULT_NOMINAL_WIDTH,
+			newWidth:int=None,
 		):
+
+		# If newWidth is not specified, just set it to the default.
+		if newWidth is None:
+			newWidth = theFieldSettingsClass._DEFAULT_NOMINAL_WIDTH
+
 			# Update our class variable
 		fieldSettingsClass.nominalWidth = newWidth
 		# We should probably do more stuff here to propagate this change throughout the system.
@@ -226,8 +238,12 @@ class TheFieldSettingsModule(SettingsModule):
 			name='Field',
 			description="Receptive Field Settings",
 			docstring="""Settings for the display of input to the AI's receptive field.""",
-			inModule=TheRootSettingsModule()
+			inModule=None,
 		):
+
+		# Default module location: At top level.
+		if inModule is None:
+			inModule=TheSettingsFacility().rootSettingsModule
 
 		nominalWidthSetting = Setting(
 			name='nom_width',
