@@ -364,6 +364,9 @@ def _main():
 	
 	_logger.info("System initialization complete.")
 	
+	if doDebug:
+		pass
+
 	if doNorm:
 		_logger.normal("Starting the system...")
 		

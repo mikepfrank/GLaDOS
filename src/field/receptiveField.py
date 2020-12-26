@@ -376,9 +376,9 @@ class TheAIFieldView(FieldView_):
 		pass
 
 
-# Not a singleton because maybe we have several humans connected to the
-# system viewing the field and maybe they have their views configured 
-# slightly differently.
+# Not a singleton because maybe we have several different humans connected
+# to the system viewing the field and maybe they each have their views
+# configured slightly differently.
 
 class HumanFieldView(FieldView_):
 	"""Derived class for views of the receptive field to be shown to
