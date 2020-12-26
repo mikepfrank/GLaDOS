@@ -24,7 +24,9 @@
 
 {
 
-		/* The basic configuration structure for the receptive field. */
+		/* The basic configuration structure for the receptive field. 
+			Note that these settings can be overridden in the AI-specific
+			configuration file. */
 
 	field-conf:		{
 			

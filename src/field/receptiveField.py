@@ -91,6 +91,10 @@ from 	mind.aiActions			import 	ActionByAI_
 from	.placement					import	Placement		
 	# A placement specifies an initial location for new slots on the field.
 
+from	.fieldSettings				import	TheFieldSettings, TheFieldSettingsModule
+	# TheFieldSettings - This uninstantiated class object holds our settings in class variables.
+	# TheFieldSettingsModule - A settings module for plugging into the settings facility.
+
 from	.fieldElement				import	FieldElement_
 	# Field elements are conceptually independent parts of the field display.
 
@@ -401,32 +405,71 @@ class TheReceptiveField(ReceptiveField_):
 	
 	"""Singleton class for the entire receptive field management system."""
 	
-	def __init__(inst, fieldSize:int, 
-		nominalWidth:int):
+	def __init__(theReceptiveField:TheReceptiveField, 
+			fieldSize:int=None, 	# If supplied, this overrides config data.
+			nominalWidth:int=None,	# If supplied, this overrides config data.
+		):
+		
+		"""Arguments:
+		
+			fieldSize - Specifies the maximum size of the receptive field in tokens.
+			
+			nominalWidth - Specifies the nominal width of the receptive field in 
+				(assumed) fixed-width character columns.
+		
+		"""
 	
-		"""fieldSize - Specifies the nominal size of the receptive field in tokens."""
+			# First, configure all of the default settings for the field facility.
+		settings = TheFieldSettings.config()
+		
+			#---------------------------------------------------------
+			# For non-provided arguments, retrieve their values from 
+			# the current field settings; but for arguments that were 
+			# provided, use them to update the current field settings.
+			
+		if fieldSize is None:
+			fieldSize = TheFieldSettings.maxSize
+		else:	# Change the maxSize setting to the value provided.
+			TheFieldSettings.maxSize = fieldSize
+			#TheFieldSettings.updateMaximumSize(fieldSize)	# Don't need this yet.
+		
+		if nominalWidth is None:
+			nominalWidth = TheFieldSettings.nominalWidth
+		else:
+			TheFieldSettings.nominalWidth = nominalWidth
+			#TheFieldSettings.updateNominalWidth(nominalWidth)	# Don't need yet
 	
-		_logger.info("Receptive field:  Initializing with field size = {fieldSize} tokens.")
+		_logger.info("Receptive field:  Initializing with the following settings:")
+		_logger.info(		"\t   field size = {fieldSize} tokens.")
+		_logger.info(		"\tnominal width = {nominalWidth} characters.")
+	
+			# Stash the important settings in instance data members.
+		theReceptiveField._fieldSize		= fieldSize
+		theReceptiveField._nominalWidth		= nominalWidth
 	
 			# Create the base field data object & store it.
-		baseFieldData 			= BaseFieldData(fieldSize)
-		inst._baseFieldData		= baseFieldData
+		baseFieldData 						= BaseFieldData(fieldSize)
+		theReceptiveField._baseFieldData	= baseFieldData
 		
 			# Create and store field views for the AI & for humans.
-		inst._aiFieldView		= inst.TheAIFieldView(baseFieldData)
-		inst._humanFieldView	= inst.HumanFieldView(baseFieldData)
+		theReceptiveField._aiFieldView		= inst.TheAIFieldView(baseFieldData)
+		theReceptiveField._humanFieldView	= inst.HumanFieldView(baseFieldData)
 
-			# Create the "field topper" element, which automatically pins
+			# Create the "field header" element, which automatically pins
 			# itself to the very top edge of the receptive field.
-		TheFieldHeader()
+		theReceptiveField._fieldHeader		= TheFieldHeader()
 		
 			# Create the "input area" element, which automatically pins 
 			# itself to the very bottom edge of the receptive field.
-		TheInputArea()
+		theReceptiveField._inputArea		= TheInputArea()
 		
 			# Create the "prompt separator" element, which separates the
 			# "context" part of the receptive field (above the separator)
 			# from the "prompt" part of the receptive field (below the
 			# separator). It automaticaly pins itself to the bottom of the
 			# receptive field (just below the input box we just placed).
-		ThePromptSeparator()
+		theReceptiveField._promptSeparator	= ThePromptSeparator()
+
+	#__/ End singleton instance initializer theReceptiveField.__init__().
+
+#__/ End singleton class TheReceptiveField.

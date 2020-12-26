@@ -250,7 +250,6 @@ class	SettingsModule:
 		newSettingsModule._settings		= settings
 		newSettingsModule._subModules	= subModules
 
-
 	def installSubmodule(thisSettingsModule:SettingsModule,
 			subModule:SettingsModule):
 
@@ -259,6 +258,33 @@ class	SettingsModule:
 
 		thisSettingsModule._subModules = thisSettingsModule._subModules + [subModule]
 
+	def resetToDefaults(thisSettingsModule:SettingsModule, recursive:bool=False):
+	
+		"""This tells this settings module that all of our settings should be 
+			reset to their default values.  If recursive=True is specified, 
+			then all descendant modules in the hierarchy are also reset."""
+		
+			# First reset the top-level settings of this module.
+		settings = thisSettingsModule._settings
+		if settings != None:
+			for setting in settings:
+				setting.resetToDefault()
+				
+			# If we're in recursive mode, then recursively reset all submodules.
+		if recursive is True:
+			submodules = thisSettingsModule._subModules
+			for module in submodules:
+				module.resetToDefaults(recursive)
+
+	def reconfigure(thisSettingsModule:SettingsModule):
+		"""This tells the settings module to reconfigure itself, which means,
+			apply new configuration parameters obtained from the (system and/or 
+			AI) configuration file(s).  This could, for example, have the effect
+			of changing the default values of the settings in this module.  This
+			could be useful if the config file was changed since the system was
+			booted up, and we have reloaded the config file and want to apply the
+			changes and then reset the settings to the new defaults."""
+		pass
 
 @singleton
 class	_TheRootSettingsModule(SettingsModule):
@@ -330,3 +356,9 @@ class	TheSettingsFacility(_SettingsFacility_):
 		
 			# Install the provided module directly under the root module.
 		theSettingsFacility._rootSettingsModule.installSubmodule(settingsModule)
+
+	def resetAllToDefaults(theSettingsFacility:TheSettingsFacility):
+		"""Resets all settings in the system back to their default values."""
+		rootModule = theSettingsFacility._rootSettingsModule
+		rootModule.resetToDefaults(recurive=True)
+		
