@@ -23,6 +23,19 @@
 # The top-level config struct is a dict of attribute-value pairs.
 
 {
+		/* This is the default value for the separation between tab stops to
+			be assumed throughout the system.  That is, if 0 is the leftmost
+			column, tab stops would implicitly be located at all columns 
+			
+									n*<tab-width>
+									
+			where n>0 is any integer.  Mainly, this is only used for rendering
+			of HT (horizontal tab) characters on human-viewable displays, but,
+			note that there is no guarantee that the AI will interpret tabs 
+			according to the same convention.  The best we can do is give it
+			a hint (say in an info bar near the bottom of its main screen). */
+
+	tab-width:		4		# Typical modern value.  Would 8 be better?
 
 		/* The basic configuration structure for the receptive field. 
 			Note that these settings can be overridden in the AI-specific
