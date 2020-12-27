@@ -35,10 +35,12 @@ from curses import *
 from curses.textpad import rectangle, Textbox
 from curses.ascii import controlnames, iscntrl, isspace, isgraph
 
+
 #-------------------------------------
 # Imports of optional/custom packages.
 
 from infrastructure.decorators import singleton
+
 
 #-------------------------------------------------------------
 # Brightness values.
@@ -60,6 +62,7 @@ global DIM, NORMAL, BRIGHT
 DIM=Brightness.DIM
 NORMAL=Brightness.NORMAL
 BRIGHT=Brightness.BRIGHT
+
 
 #---------------------------------------------------------------------------------
 # A "color specifier" is a pseudo-type that actually just consists of an ordered
@@ -109,6 +112,7 @@ BRIGHT_CYAN	   = ColorSpec(COLOR_CYAN,	  BRIGHT)
 BRIGHT_MAGENTA = ColorSpec(COLOR_MAGENTA, BRIGHT)
 BRIGHT_YELLOW  = ColorSpec(COLOR_YELLOW,  BRIGHT)
 
+
 #---------------------------------------------------------------------------------------------
 # This function returns the curses display attributes for a given fg/bg pair of color specs.
 
@@ -146,6 +150,7 @@ def colors_attr(fgColorSpec, bgColorSpec):
 
 	return attrVal
 
+
 #------------------------------------------------------------------------------
 # Predefined rendering styles. Each of these selects a particular combination
 # of display attributes. So far we have available to choose from: Color, 
@@ -172,6 +177,7 @@ class RenderStyle(Enum):
 	# Use this style for rendering whitespace characters with 8th bit set.
 	META_WHITESPACE='meta-whitespace'
 
+
 # Put the render styles in shorter globals.
 global PLAIN, BORDER, CONTROL, WHITESP, METACTL, METAWSP
 PLAIN	=	RenderStyle.PLAIN
@@ -180,6 +186,7 @@ CONTROL	=	RenderStyle.CONTROL
 WHITESP	=	RenderStyle.WHITESPACE
 METACTL	=	RenderStyle.META_CONTROL
 METAWSP	=	RenderStyle.META_WHITESPACE
+
 
 _style_colors = {	# Maps render style to (fgcolor,bgcolor) pairs.
 	#STYLE:		(FOREG,		  BACKG ),
@@ -191,16 +198,18 @@ _style_colors = {	# Maps render style to (fgcolor,bgcolor) pairs.
 	METAWSP:	(BLUE,		  BLACK ),	# Meta-whitespace characters: Blue text on black background.
 }
 
+
 def style_to_attr(style):
 	"""Given a render style, convert it to a display attribute setting."""
 	(fgSpec, bgSpec) = _style_colors[style]
 	return colors_attr(fgSpec, bgSpec)
 
-#------------------------------------------------------------------
-# The idea of the below is that, on terminals without full Unicode
-# font support, we can render various (normally non-printable)
-# ASCII control and whitespace characters as a single 7-bit
-# character glyph using some alternate display attributes.
+
+	#------------------------------------------------------------------
+	# The idea of the below is that, on terminals without full Unicode
+	# font support, we can render various (normally non-printable)
+	# ASCII control and whitespace characters as a single 7-bit
+	# character glyph using some alternate display attributes.
 
 nonprint_7bit_glyphs = {	# Returns pair of (render style, printable character)
 	0:	(CONTROL, '_'),	# Null character.
@@ -239,6 +248,7 @@ nonprint_7bit_glyphs = {	# Returns pair of (render style, printable character)
 	127:(CONTROL, '#'), # Rubout/delete.
 }
 
+
 def isNonprinting(code):
 
 	# 7-bit ASCII x00-1F controls and space.
@@ -255,11 +265,13 @@ def isNonprinting(code):
 	# For everything else, assume it's printing.
 	return False
 
+
 def isMeta(code):
 	"""Retruns True if <code> is an 8-bit code point
 		with its high-order bit set (0x80-0xFF)."""
 	if code >= 128 and code <= 255:
 		return True
+
 
 # The following renders even nonprintable control/whiteplace characters
 # using substitute glyphs with alternate attributes.
@@ -290,6 +302,7 @@ def render_char(win, code, baseAttrs=0):
 	
 	# Now display, using those attributes.
 	win.addstr(glyph, attr)
+
 	
 def draw_rect(win, top, left, bottom, right, att):
 
@@ -313,6 +326,7 @@ def draw_rect(win, top, left, bottom, right, att):
 		
 	win.refresh()
 
+
 def keystr(k):
 	
 	if k==KEY_RESIZE:
@@ -325,46 +339,59 @@ def keystr(k):
 		except ValueError as e:
 			_logger.error(f"keystr(): {str(e)}: Received unknown key code {k}.")
 
+
 class Loc:
 	def __init__(thisloc, y=None, x=None):
 		thisloc.x = x
 		thisloc.y = y
 
+
 class DisplayClient:
+
 	"""A display client is an entity that uses the display as a server
 		to interact with the user.	Only one client may use the display
 		at a time."""
+
 
 	def __init__(thisClient):
 			# Connect us up with the display.
 		thisClient._display = display = TheDisplay()
 		display.setClient(thisClient)
 
+
 	def run(thisClient):
 		display = thisClient._display
 		display.run()
+
 
 	def addChar(thisClient, char:int, *args, **argv):
 		display = thisClient._display
 		display.renderChar(char)
 
+
 	def addText(thisClient, text:str, *args, **argv):
 		display = thisClient._display
 		display.add_str(text, *args, **argv)
 
+
 	def drawOuterBorder(thisClient):
+
+		"""Draw a border just inside the edge of the display screen."""
+
 		attr = style_to_attr(BORDER)
 		
 		client = thisClient
 		display = client._display
-		#(max_y, max_x) = display.get_max_yx()
 		
 			# Draw a border-style rectangle around the edges of the display screen.
+		#(max_y, max_x) = display.get_max_yx()
 		#draw_rect(thisClient._display.screen, 0, 0, max_y, max_x, attr)
+
 		display.screen.attrset(attr)
-		display.screen.border('>', '<', 'v', '^', '/', '\\', '\\', '/')
+		#display.screen.border('>', '<', 'v', '^', '/', '\\', '\\', '/')
+		display.screen.border('|', '|', '-', '-', '/', '\\', '\\', '/')
 		display.screen.attrset(0)
-		(client._lry, client._lrx) = getsyx()
+
 
 	def paint(thisClient):
 		"""Subclasses should override/extend this method to paint the display."""
@@ -377,6 +404,7 @@ class DisplayClient:
 
 		thisClient._display.refresh()
 		
+
 	def displayEvent(thisClient):
 
 		keyevent = thisClient._lastEvent
@@ -389,13 +417,11 @@ class DisplayClient:
 
 			# Default behavior: Display information about key code received.
 		client.addText(f"Screen size is {height} rows high x {width} columns wide.", Loc(1,2))
-		client.addText(f"LINES,COLS={curses.LINES},{curses.COLS}. [{client._lry},{client._lrx}]", Loc(2,2))
-		client.addText(f".getmaxyx() returns: {client._display.screen.getmaxyx()}", Loc(3,2))
-		client.addText(f"Received key code: #{keycode}.", Loc(4,2))
-		#client.addText(f"Wide char code: {widechar}.", Loc(3,2))
-		client.addText(f"Direct rendering is: ", Loc(5,2))
+		client.addText(f"Received key code: #{keycode}.", Loc(3,2))
+		client.addText(f"Direct rendering is: ", Loc(4,2))
 		client.addChar(keycode)		# What if we interpret keycode directly as a character?
-		client.addText(f"Key name string is: ({keyname})", Loc(6,2))
+		client.addText(f"Key name string is: ({keyname})", Loc(5,2))
+
 
 	def handle_event(thisClient, keyevent):
 		"""Subclasses should override this method with their own event handler."""
@@ -423,102 +449,49 @@ class RestartCurses(Exception):
 
 @singleton
 class TheDisplay:
+
 	"""
 	This is a singleton class.	Its sole instance represents a text display
 	screen, which is managed by the curses library.	 For now, it assumes
 	that the display is compatible with xterm/Putty.
 	"""
+
 	def __init__(theDisplay):
 		"""Initializes the display system."""
 		# Nothing to do here yet. Nothing happens until .run()
 		pass
 	
+
 	@property
 	def screen(theDisplay):
 		"""This handles getting theDisplay.screen attribute.
 			Note this is an error if the display isn't running."""
 		return theDisplay._screen
 
-	def _measure_terminal_size(theDisplay):
-		"""This measures the actual current size of the display
-			terminal. So far, the only way we've found to do this
-			is to try drawing characters at progressively greater
-			coordinates until we get an exception.	This seems
-			like an extremely hacky way to do it, but it works."""
-
-			# Say it's not OK for the cursor to leave the window.
-		theDisplay._screen.leaveok(False)
-
-		# Try progressively greater x coordinates.
-		sx = 0
-		while True:
-			try:
-				theDisplay.screen.addch(0,sx,'*')
-			except:
-				#	_logger.debug(f"In _measure_terminal_size(), sx loop: Got exception: {str(e)}")
-				break
-			sx = sx + 1
-		width = sx
-
-		# Try progressively greater y coordinates.
-		sy = 0
-		while True:
-			try:
-				theDisplay.screen.addch(sy,0,'*')
-			except:
-				#_logger.debug(f"In _measure_terminal_size(), sy loop: Got exception: {str(e)}")
-				break
-			sy = sy + 1
-		height = sy
-
-		_logger.debug(f"_measure_terminal_size(): Got height={height} lines and width={width} columns.")
-
-			# Now that we've measured the terminal size, make sure that the
-			# (possibly new) size gets recorded properly in several places.
-		theDisplay._record_terminal_size(height, width)
-		
-	def _record_terminal_size(theDisplay, term_height, term_width):
-		"""Records the specified terminal size in various data structures."""
-
-			# First, store it in our singleton instance data members.
-		theDisplay._width  = term_width
-		theDisplay._height = term_height
-
-			# Also set these derived members.
-		theDisplay._max_x = term_width - 1
-		theDisplay._max_y = term_height - 1
-
-			# Next, store width/height in some standard environment variables.
-		#environ['LINES'] = str(term_height)
-		#environ['COLUMNS'] = str(term_width)
-
-			# Next, tell curses to update its internal LINES,COLS attributes.
-		#update_lines_cols()
-
-	# def	_reinitScreen(theDisplay):
-	#	"""Re-initializes the top-level curses window or 'screen.'
-	#		This is necessary to pick up terminal size changes."""
-	#	theDisplay._screen = screen = initscr()
-	#	return screen
 
 	def setClient(theDisplay, displayClient):
 		theDisplay._client = displayClient
 	
+
 	def refresh(theDisplay):
 		screen = theDisplay._screen
+
 
 	def erase(theDisplay):
 		"""Erases the display.""" # Minimal
 		theDisplay._screen.erase()
 	
+
 	def clear(theDisplay):
 		"""Clears the display."""
 			# Dispatch to the underlying curses display.
 		theDisplay._screen.clear()
 
+
 	def renderChar(theDisplay, charcode):
 		screen = theDisplay._screen
 		render_char(screen, charcode)
+
 
 	def add_str(theDisplay, text:str, loc=None, attr=None):
 		screen = theDisplay._screen
@@ -533,18 +506,22 @@ class TheDisplay:
 			else:
 				screen.addstr(loc.y, loc.x, text, attr)
 	
+
 	def paint(theDisplay):
 		"""Paints the display; i.e., fills it with content."""
 		# Delegate this to the client.
 		theDisplay._client.paint()
 		theDisplay.screen.refresh()
 	
+
 	def get_max_yx(theDisplay):
 		return (theDisplay._max_y, theDisplay._max_x)
+
 
 	def get_size(theDisplay):
 		return (theDisplay._height, theDisplay._width)
 	
+
 	def _check_size(theDisplay):
 
 		"""Check the current size of the display screen."""
@@ -559,11 +536,6 @@ class TheDisplay:
 			# Calculate and store bottom,right coordinates as well.
 		theDisplay._max_x  = width - 1
 		theDisplay._max_y  = height - 1
-	#		# Next, store width/height in some standard environment variables.
-	#	environ['LINES'] = str(height)
-	#	environ['COLUMNS'] = str(width)
-	#		# Next, tell curses to update its internal LINES,COLS attributes.
-	#	update_lines_cols()		# Uses environment variables we just set.
 
 
 	def resize(theDisplay):
@@ -574,25 +546,16 @@ class TheDisplay:
 		theDisplay._check_size()
 		(height, width) = theDisplay.get_size()
 
-		#_logger.debug(f".resize(): Before resizing, .getmaxyx() returned {theDisplay._screen.getmaxyx()}.")
-
-		#theDisplay._measure_terminal_size()
-		#(height, width) = theDisplay.get_size()
-
-		#if is_term_resized(height, width):
+			# This has the effect of updating curses' idea of the terminal
+			# size in curses.{LINES,COLS}; note that this *only* works right
+			# if the environment variables LINES, COLUMNS are not set!  If 
+			# you ever call update_lines_cols(), this will break.
 		_logger.debug(f".resize(): Resizing terminal to {(height,width)}.")
 		resizeterm(height, width)
 
-		#_logger.debug(f".resize(): curses.LINES={curses.LINES}, curses.COLS={curses.COLS}.")
-
-		#theDisplay._measure_terminal_size()
-		#(height, width) = theDisplay.get_size()
-
-		#_logger.debug("Handling a resize event by restarting curses.")
-			# Only way to find out new size?
-		#raise RestartCurses
-
+			# Now that everything is consistent, repaint the display.
 		theDisplay.paint()
+
 
 	def _initColorPairs(theDisplay):
 		"""This initializes the color pairs, assuming 8 standard colors and 64 pairs."""
@@ -609,25 +572,15 @@ class TheDisplay:
 
 			init_pair(pair_index, fgcolor, bgcolor)
 
+
 	def _initDisplay(theDisplay):
 		"""Initializes the curses display."""
 
 			# Initialize the color pairs to be what we expect.
 		theDisplay._initColorPairs()
 		
-			# Say it's OK for the cursor to leave the window.
-		#theDisplay._screen.leaveok(False)
-
+			# This effectively just measures & paints the display.
 		theDisplay.resize()
-
-			# At this point, hopefully screen.getmaxyx() will pick up
-			# the correct values of screen height and width.
-#		theDisplay._check_size()
-#		height = theDisplay._height
-#		width = theDisplay._width
-
-			# Repaint the display.
-#		theDisplay.paint()
 	
 	
 	def _runMainloop(theDisplay):
@@ -638,19 +591,14 @@ class TheDisplay:
 		# Here's the actual main loop.
 		while True:	# Infinite loop; we just have to break out when done.
 			try:
-				#wide_ch = screen.get_wch()		# Wide instead of regular character.
-				#unget_wch(wide_ch)
 				ch = screen.getch()
 				if ch == ERR:
-					#_logger.error("_runMainLoop(): Received keycode ERR (-1).")
 					continue
 				keyevent = KeyEvent(keycode=ch) #, wide=wide_ch)
 				client.handle_event(keyevent)
 			except KeyboardInterrupt as e:
 				break
-			except RestartCurses as e:
-				theDisplay._restart = True
-				break
+
 	
 	def _displayDriver(theDisplay,
 			screen	# This is the top-level curses window for the whole terminal screen.
@@ -670,13 +618,10 @@ class TheDisplay:
 			in its own thread, so that other systems can asynchonously communicate
 			with it."""
 			
-		while True:
-			theDisplay._restart = False
 			# Call the standard curses wrapper on our private display driver method, above.
-			wrapper(theDisplay._displayDriver)
-			if not theDisplay._restart:
-				break
+		wrapper(theDisplay._displayDriver)
 		# If we get here, then the display driver has exited, and the display was torn down.
+
 	#__/ End method theDisplay.runDisplay().
 	
 #__/ End singleton class TheDisplay.
