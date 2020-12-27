@@ -167,7 +167,7 @@ from 	mind.mindSystem				import	TheCognitiveSystem
 	# passed to the Supervisor, which then tells the application system
 	# to please place all of its open windows on the field.
 
-from	console.console				import	TheSystemConsole
+#from	console.console				import	TheSystemConsole
 	# This singleton class manages and displays the main GLaDOS system
 	# console screen for benefit of human system operators.  Although
 	# most elements of GLaDOS are displays on the receptive field, which
