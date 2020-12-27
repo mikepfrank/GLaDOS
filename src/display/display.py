@@ -8,6 +8,12 @@
 
 from enum import Enum
 
+from os		import	path	# Manipulate filesystem path strings.
+from infrastructure.logmaster import getComponentLogger
+global _component, _logger		# Software component name, logger for component.
+_component = path.basename(path.dirname(__file__))	# Our package name.
+_logger = getComponentLogger(_component)			# Create the component logger.
+
 #------------------------------------------------------------
 # Here we obtain the default string encoding from the system.
 
@@ -320,6 +326,10 @@ class DisplayClient:
 		thisClient._display = display = TheDisplay()
 		display.setClient(thisClient)
 
+	def run(thisClient):
+		display = thisClient._display
+		display.run()
+
 	def addChar(thisClient, char:int, *args, **argv):
 		display = thisClient._display
 		display.renderChar(char)
@@ -441,7 +451,7 @@ class TheDisplay:
 	
 	def _initColorPairs(theDisplay):
 		"""This initializes the color pairs, assuming 8 standard colors and 64 pairs."""
-		for pair_index in range(0,63):		# Iterate over 6-bit color pair codes.
+		for pair_index in range(1,64):		# Iterate over 6-bit color pair codes.
 		
 				# Obtain the background color as the most-significant 3 bits.
 			bgcolor = int(pair_index / 8)
@@ -450,6 +460,8 @@ class TheDisplay:
 			fgcolor = (pair_index - 1) % 8	# The -1 (+7) here is needed because pair 0 has fg=white standardly.
 			
 				# Make sure that particular color pair is set up properly as we want it.
+			_logger.info(f"Creating color pair #{pair_index} = (fg: {fgcolor}, bg: {bgcolor}).")
+
 			init_pair(pair_index, fgcolor, bgcolor)
 
 	def _initDisplay(theDisplay):
@@ -487,7 +499,7 @@ class TheDisplay:
 		theDisplay._initDisplay()		# Initialize the display.
 		theDisplay._runMainloop()		# Run the main loop.
 
-	def runDisplay(theDisplay):
+	def run(theDisplay):
 		"""This method is responsible for bringing up and operating the entire
 			display, and bringing it down again when done.  It needs to be run 
 			in its own thread, so that other systems can asynchonously communicate
