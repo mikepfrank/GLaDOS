@@ -87,8 +87,11 @@ global RAW_DEBUG	# Raw debugging flag--controls low-level debug output for this 
 RAW_DEBUG = False	# Change this to True as needed during initial development.
 
 global CONS_DEBUG, LOG_DEBUG	# These control debug-level output to console & log file.
-CONS_DEBUG = False	# Tell logmaster: Don't diplay debug-level output on console.
-LOG_DEBUG = False	# Tell logmaster: Save debug-level output to log file.
+CONS_DEBUG = False	# Tell logmaster: Don't display debug-level output on console.
+LOG_DEBUG = True	# Tell logmaster: Do save debug-level output to log file.
+
+global CONS_INFO
+CONS_INFO = True	# Tell logmaster: Do display info-level output on console.
 
 		#|----------------------------------------------------------------------
 		#| Here we do a little bit more preliminary work, prior to starting the 
@@ -286,7 +289,8 @@ def _initLogging():
 			  "logging module...", file=stderr)
 
 		# NOTE: CONS_DEBUG and LOG_DEBUG are defined at the top of this file.
-	configLogMaster(consdebug = CONS_DEBUG, logdebug = LOG_DEBUG, role = 'startup', component = appName)
+	configLogMaster(consdebug = CONS_DEBUG, logdebug = LOG_DEBUG, consinfo = CONS_INFO,
+					role = 'startup', component = appName)
 		#	\
 		#	Configures the logger with default settings (NORMAL level
 		#	messages and higher output to console, INFO and higher to
