@@ -91,7 +91,7 @@ CONS_DEBUG = False	# Tell logmaster: Don't display debug-level output on console
 LOG_DEBUG = True	# Tell logmaster: Do save debug-level output to log file.
 
 global CONS_INFO
-CONS_INFO = True	# Tell logmaster: Do display info-level output on console.
+CONS_INFO = False	# Tell logmaster: Don't display info-level output on console.
 
 		#|----------------------------------------------------------------------
 		#| Here we do a little bit more preliminary work, prior to starting the 

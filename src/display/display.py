@@ -265,9 +265,9 @@ def ColorSpec(baseColor, intensity):
 	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		# Simply replace "dim white" with "bright black."
-	if (baseColor is COLOR_WHITE) and (intensity is DIM):
-		baseColor = COLOR_BLACK
-		brightness = BRIGHT
+	if (baseColor == COLOR_WHITE) and (intensity == DIM):
+		baseColor	= COLOR_BLACK
+		intensity	= BRIGHT
 	#__/
 		
 		# Return the resulting color/brightness pair we just constructed.
@@ -732,19 +732,23 @@ def render_char(win, code, baseAttrs=0):
 		#|	glyph to use to render it.
 	
 		# Special handling for rendering 8-bit non-printing characters.
-	if isMeta(code):	
+
+	meta = isMeta(code)
+	if meta:
 			# Use the same glyph for meta specials as for normal ones.
 		code = code - 128
-			# However, map the render styles to their meta equivalents.
+
+		# Render this non-printing character code as a styled glyph.
+	(style, glyph) = _nonprint_8bit_glyphs[code]	# Uses Western/LATIN-1.
+	#(style, glyph) = _nonprint_7bit_glyphs[code]	# Less pretty code
+
+		# If meta, map the render styles to their meta equivalents.
+	if meta:
 		if style is CONTROL:
 			style = METACTL
 		elif style is WHITESP:
 			style = METAWSP
 	
-		# Render this non-printing character code as a styled glyph.
-	(style, glyph) = _nonprint_8bit_glyphs[code]	# Uses Western/LATIN-1.
-	#(style, glyph) = _nonprint_7bit_glyphs[code]	# Less pretty code
-
 		# Convert the style to a display attribute setting.
 	attr = style_to_attr(style) | baseAttrs
 	
@@ -912,10 +916,20 @@ class DisplayClient:
 		screen = display.screen
 		
 		display.erase()
-		thisClient.drawOuterBorder()
+
+			# Draw a border just inside the edges of the screen.
+		client.drawOuterBorder()
 		
+			# Display information about the screen size.
+		(height, width) = display.get_size()
+		client.addText(f"Screen size is {height} rows high x {width} columns wide.", Loc(1,2))
+
+			# If we've received any events, display the last one received.
 		if hasattr(thisClient, '_lastEvent'):
 			thisClient.displayEvent()
+
+		#------------------------------
+		# Next, draw a character table.
 
 			# Iterate through all character codes in our displayable range.
 		for ch in range(0, 384):
@@ -928,21 +942,19 @@ class DisplayClient:
 			screen.move(y, x)
 			client.addChar(ch)
 
+			# This finally updates the actual display.
 		display.refresh()
 		
 
 	def displayEvent(thisClient):
 
-		keyevent = thisClient._lastEvent
-
-		client = thisClient
-		keycode = keyevent.keycode
-		keyname = keyevent.keyname
-
-		(height, width) = client._display.get_size()
+		client 		= thisClient
+		display		= client._display
+		keyevent	= client._lastEvent
+		keycode		= keyevent.keycode
+		keyname		= keyevent.keyname
 
 			# Default behavior: Display information about key code received.
-		client.addText(f"Screen size is {height} rows high x {width} columns wide.", Loc(1,2))
 		client.addText(f"Received key code: #{keycode}.", Loc(3,2))
 		client.addText(f"Direct rendering is: ", Loc(4,2))
 		client.addChar(keycode)		# What if we interpret keycode directly as a character?
