@@ -872,50 +872,146 @@ class DisplayClient:
 		to interact with the user.	Only one client may use the display
 		at a time."""
 
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	newClient.__init__()						  [instance initializer]
+		#|
+		#|		Currently, this initializer for new client instances 
+		#|		simply links up the client with the display (i.e., the 
+		#|		singleton instance of TheDisplay class).
+		#|
+		#|		Subclasses that need override this method to do application-
+		#|		specific initialization should extend this method, by first 
+		#|		calling their superclass initializer using the standard idiom,
+		#|
+		#|			super(SubClass, this).__init__(this, *args, **kwargs),
+		#|
+		#|		before doing their application-specific initialization work.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
 	def __init__(thisClient):
+		"""Initializes the client by linking it with the display."""
 			# Connect us up with the display.
 		thisClient._display = display = TheDisplay()
 		display.setClient(thisClient)
+	#__/ End instance initializer for class DisplayClient.
 
 
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	displayClient.display					  	  	   [public property]
+		#|
+		#|		This retrieves the display that the client is connected
+		#|		to (which should be the singleton instance of TheDisplay).
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+	@property
+	def display(thisClient):
+		return thisClient._display
+
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	displayClient.run()						  	[public instance method]
+		#|
+		#|		This is the method that should be called to start the 
+		#|		display client running.  It automatically starts up the
+		#|		entire display facility as well, paints the screen, and 
+		#|		starts up the main event loop.  It does not return until 
+		#|		there is an application abort or quit, so, users should
+		#|		probably create a new thread to run it in.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
 	def run(thisClient):
-		display = thisClient._display
+		display = thisClient.display
 		display.run()
 
 
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	displayClient.addChar()					  	[public instance method]
+		#|
+		#|		This method can be used to send a character to the 
+		#|		client's display, with special rendering features 
+		#|		available for (normally) non-printing characters.
+		#|
+		#|		TO DO: Implement processing of optional loc and 
+		#|		attr arguments (not yet supported).
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
 	def addChar(thisClient, char:int, *args, **argv):
-		display = thisClient._display
-		display.renderChar(char)
+		display = thisClient.display
+		display.renderChar(char, *args, **argv)
 
 
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	displayClient.addText()					  	[public instance method]
+		#|
+		#|		This method can be used to send plain text to the 
+		#|		client's display.  By "plain text," we mean that 
+		#|		non-printing characters are not handled specially.
+		#|
+		#|		TO DO: Add an option to enable special handling of
+		#|		non-printing characters.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
 	def addText(thisClient, text:str, *args, **argv):
 		display = thisClient._display
 		display.add_str(text, *args, **argv)
 
 
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	displayClient.drawOuterBorder()			  	[public instance method]
+		#|
+		#|		This method draws a border just inside the edge of the
+		#|		display screen, using the predefined BORDER render style.
+		#|
+		#|		Presently, this renders by default in a bright cyan text
+		#|		color on a black background.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
 	def drawOuterBorder(thisClient):
-
 		"""Draw a border just inside the edge of the display screen."""
 
-		attr = style_to_attr(BORDER)
+			# Use predefined render style for drawing borders.
+		attr = style_to_attr(BORDER)	
 		
 		client = thisClient
-		display = client._display
+		display = client.display
 		screen = display.screen
 		
 		screen.attrset(attr)
 		screen.border('|', '|', '-', '-', '/', '\\', '\\', '/')
 		screen.attrset(0)
 
+	#__/ End method displayClient.drawOuterBorder().
 
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	displayClient.paint()			[placeholder public instance method]
+		#|
+		#|		This is the main method that subclasses should override
+		#|		to draw their display contents.
+		#|
+		#|		The version defined here essentially implements a simple
+		#|		demo, which displays a border and some diagnostics of the
+		#|		window size, the last event received, and a character table.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
 	def paint(thisClient):
 		"""Subclasses should override/extend this method to paint the display."""
 
+			# Get some important guys.
 		client = thisClient
-		display = client._display
+		display = client.display
 		screen = display.screen
 		
-		display.erase()
+			# This is effectively a "lazy clear"--it waits until refresh to take effect.
+		display.erase()		# Marks all character cells as empty (and no attributes).
+				# (We do this so we don't have to worry about old text hanging around.)
 
 			# Draw a border just inside the edges of the screen.
 		client.drawOuterBorder()
@@ -924,15 +1020,15 @@ class DisplayClient:
 		(height, width) = display.get_size()
 		client.addText(f"Screen size is {height} rows high x {width} columns wide.", Loc(1,2))
 
-			# If we've received any events, display the last one received.
+			# If we've received any events yet, display the last one received.
 		if hasattr(thisClient, '_lastEvent'):
 			thisClient.displayEvent()
 
-		#------------------------------
-		# Next, draw a character table.
+		#|----------------------------------------------------------------
+		#| Next, draw a character table.  (Code points 0x0 through 0x17F.)
 
 			# Iterate through all character codes in our displayable range.
-		for ch in range(0, 384):
+		for ch in range(0, 384):	# This will fill 12 rows.
 		
 				# Calculate coordinates for this character.
 			y = 7 + int(ch/32)
@@ -940,16 +1036,30 @@ class DisplayClient:
 		
 				# Render the character at the given location.
 			screen.move(y, x)
-			client.addChar(ch)
+			client.addChar(ch)	# TODO: Add an optional loc argument.
+			
+		#__/ End loop over code points.
 
-			# This finally updates the actual display.
-		display.refresh()
-		
+		#/----------------------------------------------------------------------
+		#| 	TheDisplay handles refresh for us automatically, so we don't need 
+		#|	to do it here. So, we're done!
+		#\----------------------------------------------------------------------
+	
+	#__/ End method displayClient.paint().
 
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	displayClient.displayEvent()				[public instance method]
+		#|
+		#|		This is just here to support the demo application; it 
+		#|		displays some information about the last event received.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
 	def displayEvent(thisClient):
 
 		client 		= thisClient
-		display		= client._display
+		display		= client.display
 		keyevent	= client._lastEvent
 		keycode		= keyevent.keycode
 		keyname		= keyevent.keyname
@@ -960,38 +1070,91 @@ class DisplayClient:
 		client.addChar(keycode)		# What if we interpret keycode directly as a character?
 		client.addText(f"Key name string is: ({keyname})", Loc(5,2))
 
+	#__/ End method displayClient.displayEvent().
 
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	displayClient.handle_event()	[placeholder public instance method]
+		#|
+		#|		This is the main event handler method.
+		#|
+		#|		Subclasses may want to override this method as appropriate
+		#|		for their application.  The display (singleton instance of 
+		#|		TheDisplay) will call this method whenever a new event is 
+		#|		received.  The implementation of this method should then
+		#|		dispatch the event to sub-handlers as appropriate.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+			
 	def handle_event(thisClient, keyevent):
 		"""Subclasses should override this method with their own event handler."""
 
+			# Get some important guys.
 		client = thisClient
-		keycode = keyevent.keycode
-		keyname = keyevent.keyname
+		keycode = keyevent.keycode		# Numeric code for key or other event.
+		keyname = keyevent.keyname		# String name for key or event.
+		_logger.debug(f"Got a key with code={keycode}, name={keyname}.")
 		
+			# This next line is here to support our demo application, and may 
+			# not be needed in all subclasses' replacements for this method.
 		client._lastEvent = keyevent
 
-		_logger.debug(f"Got a key with code={keycode}, name={keyname}.")
-
+			# The following code block or similar will be in most applications.
 		if keycode == KEY_RESIZE:
 			client._display.resize()
 		else:
 			client.paint()
 
+	#__/ End method displayClient.handle_event().
+
+#__/ End class displayClient.
+
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	display.TheDisplay					   		[public singleton class]
+		#|
+		#|		This singleton class is the main class that anchors the 
+		#|		'display' module and manages the underlying curses display 
+		#|		interface.
+		#|
+		#|		Applications do not need to construct or use this directly,
+		#|		but can go through their application-specific subclass of
+		#|		the DisplayClient class, above.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 @singleton
 class TheDisplay:
+	"""This is a singleton class.  Its sole instance represents the text display
+		screen, which is managed by the curses library.	 For now, it assumes that 
+		the display is compatible with xterm/Putty (8 colors, Western script)."""
 
-	"""
-	This is a singleton class.	Its sole instance represents a text display
-	screen, which is managed by the curses library.	 For now, it assumes
-	that the display is compatible with xterm/Putty.
-	"""
 
 	def __init__(theDisplay):
 		"""Initializes the display system."""
 		# Nothing to do here yet. Nothing happens until .run()
 		pass
 	
+
+	def setClient(theDisplay, displayClient):
+		theDisplay._client = displayClient
+	
+
+	def run(theDisplay):
+	
+		"""This method is responsible for bringing up and operating the entire
+			display, and bringing it down again when done.	It needs to be run 
+			in its own thread, so that other systems can asynchonously communicate
+			with it.  Clients call it automatically from their .run() method."""
+			
+			# Call the standard curses wrapper on our private display driver method, below.
+		wrapper(theDisplay._displayDriver)
+		
+		# If we get here, then the display driver has exited, and the display was torn down.
+		theDisplay._screen = None	# It's no longer valid anyway.
+		
+	#__/ End singleton instance method theDisplay.run().
+
 
 	@property
 	def screen(theDisplay):
@@ -1000,28 +1163,27 @@ class TheDisplay:
 		return theDisplay._screen
 
 
-	def setClient(theDisplay, displayClient):
-		theDisplay._client = displayClient
-	
-
 	def refresh(theDisplay):
 		screen = theDisplay._screen
+		screen.refresh()
 
 
 	def erase(theDisplay):
-		"""Erases the display.""" # Minimal
-		theDisplay._screen.erase()
+		"""Erases the display.""" # "Lazy erase"; no effect until next refresh.
+		theDisplay.screen.erase()
 	
 
 	def clear(theDisplay):
 		"""Clears the display."""
 			# Dispatch to the underlying curses display.
-		theDisplay._screen.clear()
+		theDisplay.screen.clear()	# Equals erase+refresh.
 
 
-	def renderChar(theDisplay, charcode):
+	def renderChar(theDisplay, charcode):	# TODO: Add loc,attr support.
+		"""Puts the given character on the display; if it is not normally
+			a visible character, use special styles to render it visible."""
 		screen = theDisplay._screen
-		render_char(screen, charcode)
+		render_char(screen, charcode)	# Function defined earlier.
 
 
 	def add_str(theDisplay, text:str, loc=None, attr=None):
@@ -1036,57 +1198,70 @@ class TheDisplay:
 				screen.addstr(loc.y, loc.x, text)
 			else:
 				screen.addstr(loc.y, loc.x, text, attr)
+				
+	#__/ End singleton instance method theDisplay.add_str().
 	
 
 	def paint(theDisplay):
 		"""Paints the display; i.e., fills it with content."""
-		# Delegate this to the client.
-		theDisplay._client.paint()
-		theDisplay.screen.refresh()
+		
+			# Delegate the work (except for refresh) to the client.
+		theDisplay._client.paint()		
+				# Note this is all application-specific.
+		
+			#|-------------------------------------------------------------------
+			#| By the time we get here, the virtual display (background buffer) 
+			#| has been painted; now we update the real display (minimally) so
+			#| the user can see the changes.
+			
+		theDisplay.screen.refresh()		# So client doesn't have to.
 	
+	#__/ End singleton instance method theDisplay.paint().
+
 
 	def get_max_yx(theDisplay):
+		"""Returns a pair (y,x) giving the coordinates of the lower-right 
+			cell of the display."""
 		return (theDisplay._max_y, theDisplay._max_x)
 
 
 	def get_size(theDisplay):
+		"""Returns a pair (h,w) giving the height of the display in lines,
+			and the width of the display in columns (character cells).
+			Note this is only valid/current after calling .resize()."""
 		return (theDisplay._height, theDisplay._width)
 	
-
-	def _check_size(theDisplay):
-
-		"""Check the current size of the display screen."""
-
-		screen = theDisplay._screen
-
-		(height, width) = screen.getmaxyx()
-		_logger.debug(f"._check_size(): .getmaxyx() returned {(height,width)}.")
-
-		theDisplay._width  = width
-		theDisplay._height = height
-			# Calculate and store bottom,right coordinates as well.
-		theDisplay._max_x  = width - 1
-		theDisplay._max_y  = height - 1
-
 
 	def resize(theDisplay):
 		"""Call this method when you want to handle a resize event."""
 
-			# Now we potentially need to resize the window structures
-			# within curses, if the terminal size has actually changed.
+			# Find out the new dimensions of the window.
 		theDisplay._check_size()
 		(height, width) = theDisplay.get_size()
 
-			# This has the effect of updating curses' idea of the terminal
-			# size in curses.{LINES,COLS}; note that this *only* works right
-			# if the environment variables LINES, COLUMNS are not set!  If 
-			# you ever call update_lines_cols(), this will break.
+		#----------------------------------------------------------
+		# Now we potentially need to resize the window structures
+		# within curses, if the terminal size has actually changed.
+
 		_logger.debug(f".resize(): Resizing terminal to {(height,width)}.")
 		resizeterm(height, width)
+			# This has the effect of updating curses' idea of the terminal
+			# size in curses.{LINES,COLS}; note that this *only* works right
+			# if the environment variables LINES, COLUMNS are not set!  So
+			# e.g., if you ever call update_lines_cols(), this will break.
 
 			# Now that everything is consistent, repaint the display.
 		theDisplay.paint()
 
+	#__/ End singleton instance method theDisplay.resize().
+
+
+	#|==========================================================================
+	#|	Private methods.									[class code section]
+	#|
+	#|		The following methods should not normally need to be directly 
+	#|		called (or overridden) by applications.
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	def _initColorPairs(theDisplay):
 		"""This initializes the color pairs, assuming 8 standard colors and 64 pairs."""
@@ -1102,21 +1277,55 @@ class TheDisplay:
 			_logger.info(f"Creating color pair #{pair_index} = (fg: {fgcolor}, bg: {bgcolor}).")
 
 			init_pair(pair_index, fgcolor, bgcolor)
+			
+		#__/ End loop over all customizable color-pair indices.
+
+	#__/ End private singleton instance method theDisplay._initDisplay().
+	
+
+	def _check_size(theDisplay):
+		"""Check the current size of the display screen."""
+
+		screen = theDisplay._screen
+
+			#----------------------------------------------------------------
+			# It's important to note that .getmaxyx() will not work properly
+			# if either the LINES and/or COLUMNS environment variable is set;
+			# those values will override the current window size.  So please
+			# DO NOT SET THESE VARIABLES unless you really want your app to
+			# treat the window size as fixed instead of self-adjusting on 
+			# resize events.
+			
+		(height, width) = screen.getmaxyx()
+		_logger.debug(f"._check_size(): .getmaxyx() returned {(height,width)}.")
+
+			# Remember the new window size.
+		theDisplay._width  = width
+		theDisplay._height = height
+		
+			# Calculate and store bottom-right cell coordinates as well.
+		theDisplay._max_x  = width - 1
+		theDisplay._max_y  = height - 1
+
+	#__/ End private method theDisplay._check_size().
 
 
 	def _initDisplay(theDisplay):
-		"""Initializes the curses display."""
+		"""Initializes the curses display. Client should be attached first."""
 
-			# Initialize the color pairs to be what we expect.
+			# Initialize the color pairs to be set up like we want.
 		theDisplay._initColorPairs()
 		
-			# This effectively just measures & paints the display.
+			# This effectively just measures & then paints the display.
 		theDisplay.resize()
+	
+	#__/ End private singleton instance method theDisplay._initDisplay().
 	
 	
 	def _runMainloop(theDisplay):
+		"""This is the main event loop."""
 		
-		screen = theDisplay._screen
+		screen = theDisplay.screen
 		client = theDisplay._client
 		
 		# Here's the actual main loop.
@@ -1125,35 +1334,28 @@ class TheDisplay:
 				ch = screen.getch()
 				if ch == ERR:
 					continue
-				keyevent = KeyEvent(keycode=ch) #, wide=wide_ch)
+				keyevent = KeyEvent(keycode=ch)
 				client.handle_event(keyevent)
-			except KeyboardInterrupt as e:
-				break
+			except KeyboardInterrupt as e:		# User hits CTRL-C
+				break	# This terminates the curses session.
 
+	#__/ End private singleton instance method theDisplay._runMainloop().
+	
 	
 	def _displayDriver(theDisplay,
 			screen	# This is the top-level curses window for the whole terminal screen.
 		):		
+		
 		"""Private method to drive the curses display. It is called by 
-			theDisplay.runDisplay(), below.	 Note that when this driver 
-			method returns, the entire display will be torn down. So, it 
-			should not exit until we are completely done with using the 
-			display."""
+			theDisplay.run(), above.  Note that when this driver method 
+			returns, the entire display will be torn down. So, it should 
+			not exit until we are completely done with using the display."""
+			
 		theDisplay._screen = screen
 		theDisplay._initDisplay()		# Initialize the display.
 		theDisplay._runMainloop()		# Run the main loop.
 
-	def run(theDisplay):
-		"""This method is responsible for bringing up and operating the entire
-			display, and bringing it down again when done.	It needs to be run 
-			in its own thread, so that other systems can asynchonously communicate
-			with it."""
-			
-			# Call the standard curses wrapper on our private display driver method, above.
-		wrapper(theDisplay._displayDriver)
-		# If we get here, then the display driver has exited, and the display was torn down.
-
-	#__/ End method theDisplay.runDisplay().
+	#__/ End private singleton instance method theDisplay._displayDriver().
 	
 #__/ End singleton class TheDisplay.
 
