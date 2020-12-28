@@ -688,11 +688,11 @@ def isMeta(code):
 		#|			 B:		°  ±  ²  ³  ´  µ  ¶  ·  ¸  ¹  º  »  ¼  ½  ¾  ¿ 
 		#|			 C:		À  Á  Â  Ã  Ä  Å  Æ  Ç  È  É  Ê  Ë  Ì  Í  Î  Ï 
 		#|			 D:		Ð  Ñ  Ò  Ó  Ô  Õ  Ö  ×  Ø  Ù  Ú  Û  Ü  Ý  Þ  ß 
-		#|			 E:		à  á  â  ã  ä  å  æ  ç  è  é  ê  ë  ì  í  î  ï 
-		#|			 F:		ð  ñ  ò  ó  ô  õ  ö  ÷  ø  ù  ú  û  ü  ý  þ  ÿ
-		#|			
-		#|			10:		Ā  ā  Ă  ă  Ą  ą  Ć  ć  Ĉ  ĉ  Ċ  ċ  Č  č  Ď  ď 
-		#|			11:		Đ  đ  Ē  ē  Ĕ  ĕ  Ė  ė  Ę  ę  Ě  ě  Ĝ  ĝ  Ğ  ğ 
+		#|			 E:		à  á  â  ã  ä  å  æ  ç  è  é  ê  ë  ì  í  î  ï 		^
+		#|			 F:		ð  ñ  ò  ó  ô  õ  ö  ÷  ø  ù  ú  û  ü  ý  þ  ÿ		| 8-bit
+		#|					----------------------------------------------		+------
+		#|			10:		Ā  ā  Ă  ă  Ą  ą  Ć  ć  Ĉ  ĉ  Ċ  ċ  Č  č  Ď  ď 		| 9-bit
+		#|			11:		Đ  đ  Ē  ē  Ĕ  ĕ  Ė  ė  Ę  ę  Ě  ě  Ĝ  ĝ  Ğ  ğ 		V
 		#|			12:		Ġ  ġ  Ģ  ģ  Ĥ  ĥ  Ħ  ħ  Ĩ  ĩ  Ī  ī  Ĭ  ĭ  Į  į 
 		#|			13:		İ  ı  Ĳ  ĳ  Ĵ  ĵ  Ķ  ķ  ĸ  Ĺ  ĺ  Ļ  ļ  Ľ  ľ  Ŀ 
 		#|			14:		ŀ  Ł  ł  Ń  ń  Ņ  ņ  Ň  ň  ŉ  Ŋ  ŋ  Ō  ō  Ŏ  ŏ 
@@ -835,8 +835,9 @@ def keystr(k):
 		#|	display.DisplayClient					   [public extensible class]
 		#|
 		#|		This class, which can and should be further subclassed 
-		#|		by using modules, defines the detailed behavior of the 
-		#|		primary client process that is using the display.
+		#|		by other modules that are using this module, defines the 
+		#|		detailed behavior of the primary client process that is 
+		#|		using the display.
 		#|
 		#|		Key methods that subclasses should override include
 		#|		the following:
@@ -844,8 +845,8 @@ def keystr(k):
 		#|
 		#|			.paint() -
 		#|
-		#|				This should repaint the entire display with 
-		#|				client-specific content.
+		#|				This method should repaint the entire display 
+		#|				with (client-specific) content.
 		#|
 		#|
 		#|			.handle_event()	-
