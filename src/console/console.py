@@ -1,35 +1,67 @@
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#|					 TOP OF FILE:	 console/console.py
+#|------------------------------------------------------------------------------
+#|	 The below module documentation string will be displayed by pydoc3.
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+"""
+	FILE NAME:		console/console.py				 [Python module source file]
+		
+	MODULE NAME:	console.console
+	IN PACKAGE:		console
+	FULL PATH:		$GIT_ROOT/GLaDOS/src/console/console.py
+	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
+	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
+	APP NAME:		GLaDOS.server (Main GLaDOS server application)
+	SW COMPONENT:	GLaDOS.server.console (GLaDOS System Console)
+
+
+	MODULE DESCRIPTION:
+	===================
+
+		This module implements the main system console of the GLaDOS server.
+		This runs on the tty where the server process is started.  A human 
+		operator can use this console to monitor the system status, and enter
+		maintenance commands.
+"""
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#| End of module documentation string.
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+
 # console.py
 # Implements the main GLaDOS system console display
 
 # Here is a rough sketch of the display layout (not actual size or to scale):
 #
-#		/--------------------------------------------------+--------------------------------------------------\
-#		| [This area is used to display a human-readable   | [The receptive field display continues here.
-#		|  rendition of the AI's entire receptive field.   |  Lines are word-wrapped to the width of the display column, which is half of
-#		|  Any normally-nonprintable ASCII characters are  |
-#		|  rendered using special display codes & styles.  |
-#		|  E.g., whitespace characters are grayed-out      |
-#		|  regular characters: SP='.', HT='>' (followed by |
-#		|  0 or more spaces until we get to the next tab   |
-#		|  stop), VT='v' (followed by a downward cursor    |
-#		|  movement), CR='<' (followed by cursor movement  |
-#		|  to the start of the next line, if the next      |
-#		|  character is anything but LF), LF=',' followed  |
-#		|  by cursor movement to the start of the next     |
-#		|  line, FF='V' (acts same as LF).  Other ASCII    |
-#		|  characters are displayed using, say, black text |
-#		|  on a bright red background.
-#		|   
-#		|  the screen width, unless the screen width is 
-#		|  less than 120 columns, in which case we only
-#		|  display the receptive field in a single column.]
-#		|
-#		|
-#		+--------------------------------------------------+
-#		| (This area is for real-time display of detailed log lines being spooled to the system log file.
-#		|
-#		|
-#		\
+#		/---------------------------------------------------+---------------------------------------------------\
+#		| [This area is used to display a human-readable	| [The receptive field display flows around to		|
+#		|  rendition of the AI's entire receptive field.	|  this column, if it doesn't fit in the first		|
+#		|  Any normally-nonprintable ASCII characters are	|  column.											|
+#		|  rendered using special display codes & styles.	|
+#		|  The view of the receptive field is also word-	|
+#		|  wrapped to fit within the column.  The screen	|
+#		|  is divided into two roughly equal-size columns,	|
+#		|  unless the screen width is less than 120 char-	|
+#		|  acter cells, in which case we use only a single	|
+#		|  column.  If the receptive field doesn't fit in	|
+#		|  the allotted area, a scrollable curses "pad"		|
+#		|  larger than the visible area is utilized to		|
+#		|  allow the user to browse the entire field.]		+---------------------------------------------------|
+#		|													| [This area is used to display what would normally	|
+#		|  													|  be the STDOUT/STDERR streams from the server		|
+#		|   												|  process.  STDERR output is rendered in red.		|
+#		|   												|  STDOUT text comes out in green.					|
+#		|  													|
+#		|  													+---------------------------------------------------+
+#		|													| [This area is a text box that the human operator  |
+#		|													|  can use to input commands to the system.			|
+#		+---------------------------------------------------+---------------------------------------------------+
+#		| [This area is for real-time display of detailed log lines being spooled to the system log file.		|
+#		|																										|
+#		|																										|
+#		\-------------------------------------------------------------------------------------------------------+
 #
 #	Control character rendering:
 #
