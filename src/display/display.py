@@ -152,7 +152,8 @@ from infrastructure.logmaster import getComponentLogger # Used just below.
 global _component, _logger	# Software component name, logger for component.
 _component = path.basename(path.dirname(__file__))	# Our package name.
 _logger = getComponentLogger(_component)  # Create the component logger.
-
+global _sw_component
+_sw_component = sysName + '.' + _component
 
 	#|==========================================================================
 	#|	3.	Type definitions.							   [module code section]
@@ -333,6 +334,9 @@ class RenderStyle(Enum):
 		# Use this style for drawing window borders and separators.
 	BORDER='border'
 
+		# Use this style for displaying text headers that stand out.
+	HEADER='header'
+
 		# Use this style for rendering 7-bit ASCII control characters.
 	CONTROL='control'
 
@@ -344,18 +348,52 @@ class RenderStyle(Enum):
 
 		# Use this style for rendering whitespace characters with 8th bit set.
 	META_WHITESPACE='meta-whitespace'
+	
+		#|------------------------------------------------------------
+		#| The following styles were added for use by the log panel.
+		#| Error style is also used by the diagnostic panel.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+		# Use this style for rendering debug-level log output.
+	DEBUG_STYLE='debug-style'
+	
+		# Use this style for rendering info-level log output.
+	INFO_STYLE='info-style'
+	
+		# Use this style for rendering normal-level log output.
+	GOOD_STYLE='good-style'
+	
+		# Use this style for rendering warning-level log output.
+	WARNING_STYLE='warning-style'
+	
+		# Use this style for rendering error-level log output.
+	ERROR_STYLE='error-style'
+	
+		# Use this style for rendering critical-level log output.
+	CRITICAL_STYLE='critical-style'
 
 #__/ End enum RenderStyle.
 
 # Put the render styles in shorter globals.
-global PLAIN, BORDER, CONTROL, WHITESP, METACTL, METAWSP
+global PLAIN, BORDER, HEADER, CONTROL, WHITESP, METACTL, METAWSP
 
 PLAIN		=	RenderStyle.PLAIN
 BORDER		=	RenderStyle.BORDER
+HEADER		=	RenderStyle.HEADER
 CONTROL		=	RenderStyle.CONTROL
 WHITESP		=	RenderStyle.WHITESPACE
 METACTL		=	RenderStyle.META_CONTROL
 METAWSP		=	RenderStyle.META_WHITESPACE
+
+global DEBUG_STYLE, INFO_STYLE, GOOD_STYLE, WARNING_STYLE, ERROR_STYLE, CRITICAL_STYLE
+
+DEBUG_STYLE 	=	RenderStyle.DEBUG_STYLE
+INFO_STYLE		=	RenderStyle.INFO_STYLE
+GOOD_STYLE		=	RenderStyle.GOOD_STYLE
+WARNING_STYLE	=	RenderStyle.WARNING_STYLE
+ERROR_STYLE		=	RenderStyle.ERROR_STYLE
+CRITICAL_STYLE	=	RenderStyle.CRITICAL_STYLE
+FATAL_STYLE		=	CRITICAL_STYLE
 
 
 	#|==========================================================================
@@ -383,15 +421,25 @@ METAWSP		=	RenderStyle.META_WHITESPACE
 global _style_colors
 _style_colors = {		# Maps render style to (fgcolorspec, bgcolorspec) pairs.
 
-	#STYLE:		(FOREG,		  	BACKG ),
+	#STYLE:		(FOREGROUND,  	BACKGR),
 	#-------	-------------	--------
-	PLAIN:		(WHITE,		  	BLACK ),	# Normal characters: White text on black background.
-	BORDER:		(BRIGHT_CYAN, 	BLACK ),	# Border characters: Bright cyan text on a black background.
-	CONTROL:	(BLACK,		  	RED	  ),	# Control characters: Black text on red background.
-	WHITESP:	(GRAY,		  	BLACK ),	# Whitespace characters: Faded (gray) text on black background.
-	METACTL:	(BLACK,		  	BLUE  ),	# Meta-control characters: Black text on blue background.
-	METAWSP:	(BLUE,		  	BLACK ),	# Meta-whitespace characters: Blue text on black background.
+	PLAIN:		(WHITE,		  	BLACK ),	# Normal characters: 			Medium-white text on black background.
+	BORDER:		(BRIGHT_CYAN, 	BLACK ),	# Border characters: 			Bright cyan text on a black background.
+	HEADER:		(BRIGHT_WHITE,	BLACK ),	# Text headers:					Bright white on a black background.
+	CONTROL:	(BLACK,		  	RED	  ),	# Control characters: 			Black text on a red background.
+	WHITESP:	(GRAY,		  	BLACK ),	# Whitespace characters: 		Faded (gray) text on black background.
+	METACTL:	(BLACK,		  	BLUE  ),	# Meta-control characters: 		Black text on blue background.
+	METAWSP:	(BLUE,		  	BLACK ),	# Meta-whitespace characters: 	Blue text on black background.
 
+	#STYLE:			(FOREGROUND,  	BACKGR),
+	#-------------	-------------	--------
+	DEBUG_STYLE:	(BRIGHT_BLUE,	BLACK),		# Debug log messages: 		Bright blue on black.
+	INFO_STYLE:		(MAGENTA,		BLACK),		# Info log messages: 		Originally was white on black.
+	GOOD_STYLE:		(GREEN,			BLACK),		# Normal log messages: 		Green means all is good!
+	WARNING_STYLE:	(YELLOW,		BLACK),		# Warning log messages: 	Yellow is a warning color.
+	ERROR_STYLE:	(RED,			BLACK),		# Error log messages: 		Red denotes bad/wrong/error.
+	CRITICAL_STYLE:	(BRIGHT_YELLOW,	RED),		# Critical log messages:	Bright yellow on a red background.  Stands out the most.
+	
 }
 
 
@@ -772,6 +820,7 @@ def render_char(win, code, baseAttrs=0):
 def draw_rect(win, top, left, bottom, right, att):
 
 	"""Draws a rectangle with the given coordinates."""
+	# NOTE: Should be rewritten using .vline(), .hline().
 
 	_logger.info(f"Drawing rectangle from ({top},{left}) to ({bottom},{right})...")
 
@@ -835,6 +884,33 @@ def keystr(k):
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+
+		# Class to implement a thread that exists for the purpose
+		# of serializing curses operations. Whenever you want to 
+		# do something with the display, you can do it as follows:
+		#
+		#	displayDriver = TheDisplayDriver()
+		#	displayDriver(callable)
+
+@singleton
+class TheDisplayDriver(RPCWorker):
+	#_________________/         \__________________________________________
+	#| NOTE: By subclassing this class from RPCWorker instead of Worker, 
+	#| the overall effect is simply to serialize all of the normal display 
+	#| operations by having them wait for this single thread to do them.  
+	#| However, users can also delegate operations to the driver to do as
+	#| background activities without waiting for completion by calling the 
+	#| driver's .do() method.
+	#|---------------------------------------------------------------------
+	
+	def __init__(theDisplayDriver):
+		"""Initialize the display driver by setting up its role & component 
+			attributes appropriately for thread-specific logging purposes."""
+		super(TheDisplayDriver, theDisplayDriver).__init__(
+			role = 'DisplDrvr', component = _sw_component)
+
+#__/ End singleton class TheDisplayDriver.
+
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	display.DisplayClient					   [public extensible class]
 		#|
@@ -883,7 +959,7 @@ class DisplayClient:
 		#|		specific initialization should extend this method, by first 
 		#|		calling their superclass initializer using the standard idiom,
 		#|
-		#|			super(SubClass, this).__init__(this, *args, **kwargs),
+		#|			super(SubClassName, this).__init__(this, *args, **kwargs),
 		#|
 		#|		before doing their application-specific initialization work.
 		#|
@@ -910,6 +986,21 @@ class DisplayClient:
 		return thisClient._display
 
 
+	def start(thisClient, inBackground:bool=False):
+		# Note: We should change the default value of inBackground here to True 
+		# when we're ready to test the rest of the system more extensively.
+		
+		"""This starts up this display client, which implicitly also starts
+			up the underlying curses-based display infrastructure."""
+			
+		client  = thisClient
+		display = client.display
+		
+		display.start(inBackground = inBackground)
+		
+	#__/ End instance method displayClient.start().
+
+
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	displayClient.run()						  	[public instance method]
 		#|
@@ -926,6 +1017,19 @@ class DisplayClient:
 		display = thisClient.display
 		display.run()
 
+
+	@property
+	def dispRunning(thisPanelClient):
+		"""Returns Boolean 'True' if this client's display is currently running."""
+		return thisPanelClient.display.isRunning
+	
+
+	def redisplay(thisClient):
+		"""Tells the client's display it needs to update itself. This works 
+			through calling the display's .paint() method, which then dispatches
+			the detailed work back to the client."""
+		display = thisClient.display
+		display.paint()
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	displayClient.addChar()					  	[public instance method]
@@ -975,16 +1079,9 @@ class DisplayClient:
 	def drawOuterBorder(thisClient):
 		"""Draw a border just inside the edge of the display screen."""
 
-			# Use predefined render style for drawing borders.
-		attr = style_to_attr(BORDER)	
-		
 		client = thisClient
 		display = client.display
-		screen = display.screen
-		
-		screen.attrset(attr)
-		screen.border('|', '|', '-', '-', '/', '\\', '\\', '/')
-		screen.attrset(0)
+		display.drawOuterBorder()	# Let the display do the work.
 
 	#__/ End method displayClient.drawOuterBorder().
 
@@ -1009,12 +1106,17 @@ class DisplayClient:
 		display = client.display
 		screen = display.screen
 		
+			# First, if the display isn't even running, then there's nothing
+			# to do, so just exit early.
+		if not display.running:
+			return
+		
 			# This is effectively a "lazy clear"--it waits until refresh to take effect.
 		display.erase()		# Marks all character cells as empty (and no attributes).
 				# (We do this so we don't have to worry about old text hanging around.)
 
 			# Draw a border just inside the edges of the screen.
-		client.drawOuterBorder()
+		display.drawOuterBorder()
 		
 			# Display information about the screen size.
 		(height, width) = display.get_size()
@@ -1073,6 +1175,12 @@ class DisplayClient:
 	#__/ End method displayClient.displayEvent().
 
 
+	def handle_resize(thisClient):
+		"""When we have already figured out the new screen size, this method
+			is called by the display to let us do client-specific adjustments."""
+		# There is nothing to do here by default, but subclasses should override this.
+		pass
+
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	displayClient.handle_event()	[placeholder public instance method]
 		#|
@@ -1110,6 +1218,31 @@ class DisplayClient:
 #__/ End class displayClient.
 
 
+@singleton
+class The_TUI_Input_Thread(ThreadActor):
+	"""This thread exists for the sole purpose of executing the main
+		user input loop for the curses-based 'TUI' (Text User Interface).
+		It communicates with the display driver thread to carry out I/O.
+		"""
+		
+	defaultRole			= 'TUI_Input'
+	defaultComponent	= _sw_component 
+	
+	def __init__(newTuiInputThread):
+		thread = newTuiInputThread
+		thread.defaultTarget = thread.main	# Point at our .main() method.
+		thread.exitRequested = False		# Set this to True if you want this thread to quit.
+		super(The_TUI_Input_Thread, thread).__init__()	# ThreadActor initialization.
+
+	def main(theTuiInputThread):
+		"""This is the main routine of the newly-started TUI input thread.
+			It basically just reads lines from the log file tail and adds
+			them to the panel."""
+		pass
+
+#__/ End singleton class The_TUI_Input_Thread.
+
+
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	display.TheDisplay					   		[public singleton class]
 		#|
@@ -1132,20 +1265,67 @@ class TheDisplay:
 
 	def __init__(theDisplay):
 		"""Initializes the display system."""
-		# Nothing to do here yet. Nothing happens until .run()
-		pass
+			# Mark this display as not running yet, to make sure we don't try 
+			# to do anything with it until it's actually running.
+			
+		theDisplay._running = False
+		theDisplay._driver = TheDisplayDriver()		# Creates display driver thread.
+			# (This newly created thread is initially just waiting for work to do.)
+			
+		# Nothing else to do here yet. Nothing really happens until .start() is called.
 	
-
-	def setClient(theDisplay, displayClient):
+	
+	@property
+	def driver(theDisplay):
+		"""Returns a handle to the display's centralized driver thread."""
+		return theDisplay._driver
+	
+	
+	def setClient(theDisplay, displayClient:DisplayClient):
+	
+		"""Sets the display to be managed by the given client (which should be
+			an instance of DisplayClient or one of its subclasses)."""
+			
 		theDisplay._client = displayClient
 	
+	
+	def start(theDisplay, waitForExit:bool=False):
+	
+		"""This actually starts the display running.  If waitForExit is not
+			provided or is False, then the display's TUI input loop is started 
+			up in a background thread, and this .start() method returns 
+			immediately.  Otherwise, if waitForExit=True is provided, this 
+			method does not return until the input loop is terminated (either 
+			through a user interrupt, or because some other, un-handled 
+			exception occurred in it)."""
+		
+		display = theDisplay
+		
+			# First, we create the thread to manage the main input loop for the
+			# human user's TUI (text user interface).
+		tuiInputThread = The_TUI_Input_Thread(target=display.run)
+		display._tuiInputThread = tuiInputThread	# Remember it.
+		
+			# This starts the new thread in the background. This will bring up
+			# the curses interface.  Once it's up, however, all I/O to/from it 
+			# should be managed through the separate DisplayDriver thread.
+		tuiInputThread.start()
+			
+			# If the user didn't want the input loop to run in the background,
+			# this simply waits for the TUI input thread to terminate.
+		if waitForExit:
+			tuiInputThread.join()
 
+	#__/ End singleton instance method theDisplay.start().
+	
+	
 	def run(theDisplay):
 	
 		"""This method is responsible for bringing up and operating the entire
 			display, and bringing it down again when done.	It needs to be run 
 			in its own thread, so that other systems can asynchonously communicate
-			with it.  Clients call it automatically from their .run() method."""
+			with it if needed.  Clients call it automatically from their .run() 
+			method."""
 			
 			# Call the standard curses wrapper on our private display driver method, below.
 		wrapper(theDisplay._displayDriver)
@@ -1157,10 +1337,21 @@ class TheDisplay:
 
 
 	@property
+	def running(theDisplay):
+		"""Is the display currently running?"""
+		return theDisplay._running
+
+
+	@property
 	def screen(theDisplay):
 		"""This handles getting theDisplay.screen attribute.
 			Note this is an error if the display isn't running."""
 		return theDisplay._screen
+
+
+	@property
+	def width(theDisplay):
+		return theDisplay._width
 
 
 	def refresh(theDisplay):
@@ -1200,10 +1391,61 @@ class TheDisplay:
 				screen.addstr(loc.y, loc.x, text, attr)
 				
 	#__/ End singleton instance method theDisplay.add_str().
-	
 
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	theDisplay.drawOuterBorder()			  	[public instance method]
+		#|
+		#|		This method draws a border just inside the edge of the
+		#|		display screen, using the predefined BORDER render style.
+		#|
+		#|		Presently, this renders by default in a bright cyan text
+		#|		color on a black background.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+	def drawOuterBorder(theDisplay):
+		"""Draw a border just inside the edge of the display screen."""
+
+			# Use predefined render style for drawing borders.
+		attr = style_to_attr(BORDER)	
+		
+		display = thedisplay
+		screen = display.screen
+		
+		screen.attrset(attr)
+		screen.border('|', '|', '-', '-', '/', '\\', '\\', '/')
+		screen.attrset(0)
+
+	#__/ End method theDisplay.drawOuterBorder().
+
+
+	def drawCenter(theDisplay:TheDisplay=None, text:str="", row:int=None, lrpad:str=None, style:RenderStyle=None, extraAttr:int=0):
+		"""Draws the given text string centered on the given line with the given padding and attributes."""
+		
+		display = theDisplay
+		screen = display.screen
+		width = display.width
+
+			# Add the left/right padding, if any.
+		if lrpad is not None:
+			text = lrpad + text + lrpad
+			
+			# Calculate starting position for text.
+		startPos = int((width - len(text))/2)
+		
+			# Calculate display attributes.
+		attr = extraAttr	# Start with the extra-attrs, if any.
+		if style is not None:
+			attr = attr | style_to_attr(style)	# Add in the style attrs.
+		
+			# Go ahead and write the text to the screen.
+		screen.addstr(row, startPos, text, attr)
+	
+	
 	def paint(theDisplay):
-		"""Paints the display; i.e., fills it with content."""
+		"""Paints the display; i.e., fills it with content.
+			Does an automatic curses screen refresh when finished."""
 		
 			# Delegate the work (except for refresh) to the client.
 		theDisplay._client.paint()		
@@ -1214,7 +1456,7 @@ class TheDisplay:
 			#| has been painted; now we update the real display (minimally) so
 			#| the user can see the changes.
 			
-		theDisplay.screen.refresh()		# So client doesn't have to.
+		theDisplay.screen.refresh()		# Do it here so client doesn't have to.
 	
 	#__/ End singleton instance method theDisplay.paint().
 
@@ -1249,6 +1491,10 @@ class TheDisplay:
 			# size in curses.{LINES,COLS}; note that this *only* works right
 			# if the environment variables LINES, COLUMNS are not set!  So
 			# e.g., if you ever call update_lines_cols(), this will break.
+
+		# If we have a client attached, tell it to handle the resize internally.
+		if theDisplay._client != None:
+			theDisplay._client.handle_resize()
 
 			# Now that everything is consistent, repaint the display.
 		theDisplay.paint()
@@ -1323,22 +1569,55 @@ class TheDisplay:
 	
 	
 	def _runMainloop(theDisplay):
-		"""This is the main event loop."""
+		"""This is the main event loop.  It runs in the TUI input thread."""
 		
-		screen = theDisplay.screen
-		client = theDisplay._client
+		display = theDisplay
 		
-		# Here's the actual main loop.
-		while True:	# Infinite loop; we just have to break out when done.
+		driver = display.driver
+		screen = display.screen
+		client = display._client
+		thread = display._tuiInputThread
+		
+			# Here's the actual main loop. Keep going until requested to exit,
+			# or there is an exception.
+			
+		while not thread.exitRequested:
+		
+			# This try/except clause allows us to handle keyboard interrupts cleanly.
 			try:
-				ch = screen.getch()
-				if ch == ERR:
-					continue
-				keyevent = KeyEvent(keycode=ch)
-				client.handle_event(keyevent)
-			except KeyboardInterrupt as e:		# User hits CTRL-C
-				break	# This terminates the curses session.
+					#|----------------------------------------------------------
+					#| Note that the work of getting the character is actually
+					#| handled in the display driver thread.  (This is to make
+					#| sure that changes to data structures that could happen 
+					#| here if the window is resized don't interfere with use 
+					#| of the display from other threads.)
+					
+				ch = driver(screen.getch)	# Gets a 'character' (keycode) ch.
+				
+				if ch == ERR:	# This could happen in case of an input timeout.
+					continue	# In which case, we just ignore it and keep looping.
+					
+				event = KeyEvent(keycode=ch)				
+				
+			except KeyboardInterrupt as e:				# User hit CTRL-C?
+				event = KeyEvent(keycode = KEY_BREAK)	# Translate to BREAK key.
+			
+			#__/ End try/except clause for keyboard input loop.
+			
+				#|----------------------------------------------------------------------
+				#| Normally, we handle all events by handing them off to the display 
+				#| driver thread (which is a worker thread).  The advantage of doing 
+				#| things this way is that other threads (also going through the
+				#| centralized display driver thread) can asynchronously be doing other
+				#| stuff with the display (writing updates, etc.) and the handling of 
+				#| key events will be interleaved with that other work automatically in 
+				#| a thread-safe way.
 
+			driver(lambda: client.handle_event(event))
+				# Note this waits for the event handler to finish.
+				
+		#__/ End main user input loop.
+		
 	#__/ End private singleton instance method theDisplay._runMainloop().
 	
 	
@@ -1346,17 +1625,29 @@ class TheDisplay:
 			screen	# This is the top-level curses window for the whole terminal screen.
 		):		
 		
-		"""Private method to drive the curses display. It is called by 
+		"""Private method to 'drive' the curses display. It is called by 
 			theDisplay.run(), above.  Note that when this driver method 
 			returns, the entire display will be torn down. So, it should 
-			not exit until we are completely done with using the display."""
+			not exit until we are completely done with using the display.
 			
+			Note also this method does not directly run within the 
+			DisplayDriver thread. (I apologize if this is confusing.) This 
+			method actually runs in the TUI input loop thread, although it 
+			hands off input events to event handlers running in the 
+			DisplayDriver thread."""
+		
 		theDisplay._screen = screen
 		theDisplay._initDisplay()		# Initialize the display.
-		theDisplay._runMainloop()		# Run the main loop.
+
+		theDisplay._running = True			# Display is now running.
+		try:	# Cleanup properly in case of exception-driven exit.
+			theDisplay._runMainloop()		# Run the main loop.
+		finally:
+			theDisplay._running = False		# Display is no longer running.
 
 	#__/ End private singleton instance method theDisplay._displayDriver().
-	
+
+
 #__/ End singleton class TheDisplay.
 
 

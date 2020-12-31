@@ -369,8 +369,26 @@ def _main():
 
 	if doNorm:
 		_logger.normal("Starting the system...")
-		
-	supervisor.start()				# Tells the supervisor to start everything up.
+	
+		#|------------------------------------------------------------------------------
+		#| Before starting up the "real meat" of the major system components, first we 
+		#| start up our TUI-based "console" display.  "TUI" means "Text User Interface," 
+		#| more specifically an interface based on the curses library for interfacing 
+		#| with Unix-style text terminals.  This is organized into a "display" object 
+		#| which provides low-level display management, and a "client" object that gives
+		#| the application-specific functionality.  In particular, the console client 
+		#| organizes the display into panels showing various information that would be
+		#| of interest to a human operator looking at the GLaDOS system console.  
+		#| It also provides for human input (for commands, talking to the AI, etc.)
+	
+	display = TheDisplay()		# Initializes the curses display facility.
+	console = ConsoleClient()	# Initializes the system console client functionality.
+
+	console.start()
+		# Presently this waits for the console to exit; in future, it will just
+		# run it in the background.
+	
+	#supervisor.start()				# Tells the supervisor to start everything up.
 			# NOTE: This also starts up all of the other major subsystems.
 				
 			#---------------------------------------------------------------------
