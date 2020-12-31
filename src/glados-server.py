@@ -88,7 +88,7 @@ RAW_DEBUG = False	# Change this to True as needed during initial development.
 
 global CONS_DEBUG, LOG_DEBUG	# These control debug-level output to console & log file.
 CONS_DEBUG = False	# Tell logmaster: Don't diplay debug-level output on console.
-LOG_DEBUG = False	# Tell logmaster: Save debug-level output to log file.
+LOG_DEBUG = True	# Tell logmaster: Save debug-level output to log file.
 
 		#|----------------------------------------------------------------------
 		#| Here we do a little bit more preliminary work, prior to starting the 
@@ -159,6 +159,7 @@ from infrastructure.logmaster import (
 		doDebug,			# Boolean: Whether to display debug-level output.
 		doInfo,				# Boolean: Whether to display info-level output.
 		doNorm,				# Boolean: Whether to display normal output.
+		testLogging,		# Function to test logging facility.
 	)
 
 
@@ -292,6 +293,9 @@ def _initLogging():
 		#	set the thread component to "GLaDOS.server".  You can 
 		#	alternatively turn on CONS_DEBUG and/or LOG_DEBUG at the
 		#	top of this file to also get lower-level output messages.
+
+	# This is a test of different styles of log output.
+	testLogging()
 
 	_logger = appLogger	 # Sets this module's logger to be our application logger.
 	
