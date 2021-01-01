@@ -194,6 +194,8 @@ class LogFeeder(ThreadActor):
 		
 		feeder = thisLogFeeder
 		
+		_logger.debug("LogFeeder.main(): Creating 'tail -f' subprocess to feed log panel.")
+		
 		process = subprocess.Popen(
 			['tail', '-f', logFilename], 
 			stdout=subprocess.PIPE,
@@ -210,7 +212,7 @@ class LogFeeder(ThreadActor):
 			return_code = process.poll()
 			if return_code is not None:
 
-				_logger.warn(f"LogFeeder.main(): 'tail' process unexpectedly terminated with return code {return_code}.")
+				_logger.warn(f"LogFeeder.main(): 'tail -f' subprocess unexpectedly terminated with return code {return_code}.")
 
 					# In case there was output we didn't read yet, go ahead and display it. 
 				for logLine in process.stdout.readlines():
@@ -247,10 +249,16 @@ class LogPanel(Panel):
 		
 			# Create the log feeder thread.
 		panel._feeder = LogFeeder(panel=panel)
-
+			# Note this isn't started yet, but later in .launch().
+			
+	#__/ End instance initializer for class Panel.
 
 	def launch(thisLogPanel):
-		"""This starts up the feeder process needed to stream content to the panel."""
+	
+		"""This starts up the feeder process needed to stream content to the panel.
+			Note this gets called automatically in Panel's .drawContent method."""
+		
+		_logger.debug("logPanel.launch(): Starting the feeder thread.")
 		thisLogPanel._feeder.start()
 
 				
@@ -423,9 +431,14 @@ class LogPanel(Panel):
 		
 	def drawContent(thisLogPanel):
 		"""Fills in the content of a blank log panel."""
+		
 		panel = thisLogPanel
 		panel.drawHeader()
 		panel.drawData()
+		
+			# Call the original method in Panel, which does some general
+			# bookkeeping work needed for all panels.
+		super(LogPanel, panel).drawContent()
 	
 class InputPanel:
 	pass
