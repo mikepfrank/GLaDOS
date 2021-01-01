@@ -152,6 +152,7 @@ if __name__ == "__main__":
 								# little cleaner stylistically than "from ... import *".)
 
 from infrastructure.logmaster import (
+		sysName,			# Name of this system, 'GLaDOS'.
 		appLogger,			# Top-level logger for the application.
 		configLogMaster,	# Function to configure logmaster module.
 		setComponent,		# Dynamically sets the current software component.
@@ -176,6 +177,10 @@ from	settings.settings			import	TheSettingsFacility
 from 	config.configuration		import	TheConfiguration
 	# This singleton class will manage loading of the GLaDOS system 
 	# configuration from config files on system startup.
+
+from	console.console				import	ConsoleClient
+	# The "console client" starts up and manages a curses-based 
+	# display screen consisting of a number of user interface panels.
 
 from 	supervisor.supervisor		import	TheSupervisor
 	# This singleton class will manage startup of the Supervisor 
@@ -385,7 +390,6 @@ def _main():
 		#| of interest to a human operator looking at the GLaDOS system console.  
 		#| It also provides for human input (for commands, talking to the AI, etc.)
 	
-	display = TheDisplay()		# Initializes the curses display facility.
 	console = ConsoleClient()	# Initializes the system console client functionality.
 
 	console.start()
