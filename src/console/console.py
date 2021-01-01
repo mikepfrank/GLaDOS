@@ -108,7 +108,34 @@
 #	handle them is not really defined yet.  Maybe we just send them to the terminal, and just hope that they
 #	are supported.
 
-from display.display	import DisplayClient
+from threading	import	RLock
+from os 		import 	path, popen
+
+			#------------------------
+			# Logging-related stuff.
+
+from infrastructure.decorators import singleton
+
+from infrastructure.logmaster import (
+		sysName,			# Used just below.
+		ThreadActor,		# TUI input thread uses this.
+		getComponentLogger 	# Used just below.
+	)
+
+global _component, _logger	# Software component name, logger for component.
+_component = path.basename(path.dirname(__file__))	# Our package name.
+_logger = getComponentLogger(_component)  # Create the component logger.
+
+global _sw_component	# Full name of this software component.
+_sw_component = sysName + '.' + _component
+
+
+from display.display	import (
+		PLAIN, BORDER, HEADER,
+		DEBUG_STYLE, INFO_STYLE, GOOD_STYLE,
+		WARNING_STYLE, ERROR_STYLE, CRITICAL_STYLE,
+		style_to_attr
+	)
 
 # To implement the console, we draw an arrangement of borders and separators, within which are different "panels",
 # or curses sub-windows with specific functionality.  Each panel has a position and size.  In the event of a screen
@@ -157,8 +184,8 @@ class LogFeeder(ThreadActor):
 		
 		feeder._panel = panel
 		
-		feeder.defaultTarget = feeder.main		# Point at our .main() method.
-		super(LogFeeder, feeder).__init__()		# ThreadActor initialization.
+		feeder.defaultTarget = feeder.main				# Point at our .main() method.
+		super(LogFeeder, feeder).__init__(daemon=True)	# ThreadActor initialization.
 		
 	def main(thisLogFeeder):
 		"""This is the main routine of the newly-created LogFeeder thread.
@@ -182,13 +209,15 @@ class LogFeeder(ThreadActor):
 				# If subprocess terminated, check for & process any return code.
 			return_code = process.poll()
 			if return_code is not None:
-				_logger.warn(f"LogFeeder.main(): 'tail' process unexpectedly terminated with return code {return_code}."
+
+				_logger.warn(f"LogFeeder.main(): 'tail' process unexpectedly terminated with return code {return_code}.")
+
 					# In case there was output we didn't read yet, go ahead and display it. 
 				for logLine in process.stdout.readlines():
 					panel.addLogLine(logLine)
-				break
 
-@singleton
+				break	# Feeder thread can only terminate at this point.
+
 class LogPanel(Panel):
 	# This is a panel that displays lines from the log stream
 
@@ -234,12 +263,13 @@ class LogPanel(Panel):
 	
 			# First, we do general panel window configuration.
 		super(LogPanel, panel).configWin()
-		
 
 			# This gets the panel's top-level interior window.
 		win = panel.win
 			# Get the current size of the top-level panel window.
 		(height, width) = win.getmaxyx()			
+
+		_logger.debug(f"logPanel.configWin(): About to configure subwindows for interior size ({height}, {width}).")
 
 			# Create or resize our sub-windows, as appropriate.
 			
@@ -247,12 +277,12 @@ class LogPanel(Panel):
 				
 				# Now create our sub-windows.
 				
-			panel._header_subwin = win.subwin(3, width, 0, 0)
+			panel._header_subwin = win.derwin(3, width, 0, 0)			# NOTE: WHy do I need -1 here?
 				# This means: The header sub-window is 3 rows tall,
 				# same width as the top-level panel window, and begins
 				# at the upper-left corner of the top-level window.
 				
-			panel._data_subwin = win.subwin(3, 0)
+			panel._data_subwin = win.derwin(3, 0)
 				# This means: The data subwindow begins on row 3 (i.e.,
 				# the 4th row of the window, under the header), column 0,	
 				# and extends all the way to the lower-right corner of the
@@ -280,8 +310,8 @@ class LogPanel(Panel):
 				# on a Unix compatible system that provides the head (1) 
 				# command in the default command path.)
 				# Really here we should retrieve the filename from the logmaster module.
-			head_stream = os.popen(f"head -3 {logFilename}")
-			head_data = head_stream.read()
+			head_stream = popen(f"head -3 {logFilename}")
+			head_data = head_stream.read().strip()
 				# Do we need to close the stream here, or will GC do it?
 		#__/ End if no header data yet.
 		
@@ -397,7 +427,6 @@ class LogPanel(Panel):
 		panel.drawHeader()
 		panel.drawData()
 	
-	
 class InputPanel:
 	pass
 	
@@ -421,15 +450,15 @@ class ConsoleClient(PanelClient):
 		client = newClient
 		
 			# First, do general initialization for panel clients.
-		super(ConsoleClient, client).__init__(client, title=title)
+		super(ConsoleClient, client).__init__(title)
 		
 			# Next, we need to create all our panels.
 		
 		client._logPanel	= logPanel 			= LogPanel()
 		client._inputPanel	= inputPanel 		= InputPanel()
 		client._diagPanel	= diagnosticPanel	= DiagnosticPanel()
-		client._rFieldPanel	= rightFieldPanel 	= FieldPanel(column='right')
-		client._lFieldPanel = leftFieldPanel	= FieldPanel(column='left')
+		#client._rFieldPanel	= rightFieldPanel 	= FieldPanel(column='right')
+		#client._lFieldPanel = leftFieldPanel	= FieldPanel(column='left')
 		
 			# This installs all the panels in this PanelClient.
 			
@@ -451,4 +480,4 @@ class ConsoleClient(PanelClient):
 			# Note: We do this last, because it will never return if
 			# waitForExit is not False.
 		super(ConsoleClient, client).start(waitForExit=waitForExit)
-
+			# Calls DisplayClient's .start() method.

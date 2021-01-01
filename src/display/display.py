@@ -64,10 +64,7 @@ __all__ = [		# List of all public names exported from this module.
 			#|---------
 			#| Classes.
 		
-		'', 
-		'',
 		
-
 			#|-----------
 			#| Functions.
 		
@@ -143,12 +140,17 @@ from curses.ascii import controlnames, iscntrl, isspace, isgraph
 		#|		modules that we need.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from infrastructure.decorators import singleton		# Class decorator.
+from infrastructure.decorators	import	singleton	# Class decorator.
+from infrastructure.worklist	import	RPCWorker	# Display driver uses this.
 
 			#------------------------
 			# Logging-related stuff.
 
-from infrastructure.logmaster import getComponentLogger # Used just below.
+from infrastructure.logmaster import (
+		sysName,			# Used just below.
+		ThreadActor,		# TUI input thread uses this.
+		getComponentLogger 	# Used just below.
+	)
 global _component, _logger	# Software component name, logger for component.
 _component = path.basename(path.dirname(__file__))	# Our package name.
 _logger = getComponentLogger(_component)  # Create the component logger.
@@ -879,11 +881,14 @@ def keystr(k):
 	#|
 	#|	5.	Class definitions.						   	   [module code section]
 	#|
-	#|		In this section we define the various functions provided by 
+	#|		In this section we define the various classes provided by 
 	#|		this module.
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+
+# Forward declarations for type hints.
+class TheDisplay: pass
 
 		# Class to implement a thread that exists for the purpose
 		# of serializing curses operations. Whenever you want to 
@@ -906,7 +911,7 @@ class TheDisplayDriver(RPCWorker):
 	def __init__(theDisplayDriver):
 		"""Initialize the display driver by setting up its role & component 
 			attributes appropriately for thread-specific logging purposes."""
-		super(TheDisplayDriver, theDisplayDriver).__init__(
+		super(TheDisplayDriver.__wrapped__, theDisplayDriver).__init__(
 			role = 'DisplDrvr', component = _sw_component)
 
 #__/ End singleton class TheDisplayDriver.
@@ -986,9 +991,7 @@ class DisplayClient:
 		return thisClient._display
 
 
-	def start(thisClient, inBackground:bool=False):
-		# Note: We should change the default value of inBackground here to True 
-		# when we're ready to test the rest of the system more extensively.
+	def start(thisClient, waitForExit:bool=False):
 		
 		"""This starts up this display client, which implicitly also starts
 			up the underlying curses-based display infrastructure."""
@@ -996,7 +999,7 @@ class DisplayClient:
 		client  = thisClient
 		display = client.display
 		
-		display.start(inBackground = inBackground)
+		display.start(waitForExit = waitForExit)
 		
 	#__/ End instance method displayClient.start().
 
@@ -1218,8 +1221,7 @@ class DisplayClient:
 #__/ End class displayClient.
 
 
-@singleton
-class The_TUI_Input_Thread(ThreadActor):
+class TUI_Input_Thread(ThreadActor):
 	"""This thread exists for the sole purpose of executing the main
 		user input loop for the curses-based 'TUI' (Text User Interface).
 		It communicates with the display driver thread to carry out I/O.
@@ -1228,19 +1230,12 @@ class The_TUI_Input_Thread(ThreadActor):
 	defaultRole			= 'TUI_Input'
 	defaultComponent	= _sw_component 
 	
-	def __init__(newTuiInputThread):
+	def __init__(newTuiInputThread, *args, **kwargs):
 		thread = newTuiInputThread
-		thread.defaultTarget = thread.main	# Point at our .main() method.
 		thread.exitRequested = False		# Set this to True if you want this thread to quit.
-		super(The_TUI_Input_Thread, thread).__init__()	# ThreadActor initialization.
+		super(TUI_Input_Thread, thread).__init__(*args, **kwargs)	# ThreadActor initialization.
 
-	def main(theTuiInputThread):
-		"""This is the main routine of the newly-started TUI input thread.
-			It basically just reads lines from the log file tail and adds
-			them to the panel."""
-		pass
-
-#__/ End singleton class The_TUI_Input_Thread.
+#__/ End class TUI_Input_Thread.
 
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1268,13 +1263,21 @@ class TheDisplay:
 			# Mark this display as not running yet, to make sure we don't try 
 			# to do anything with it until it's actually running.
 			
-		theDisplay._running = False
+		theDisplay._running = False		# Display is not up and running yet.
+
+		theDisplay._screen = None		
+			# The actual display screen structure hasn't been created yet.
+
 		theDisplay._driver = TheDisplayDriver()		# Creates display driver thread.
 			# (This newly created thread is initially just waiting for work to do.)
 			
 		# Nothing else to do here yet. Nothing really happens until .start() is called.
 	
 	
+	@property
+	def isRunning(theDisplay):
+		return theDisplay._running
+
 	@property
 	def driver(theDisplay):
 		"""Returns a handle to the display's centralized driver thread."""
@@ -1303,7 +1306,7 @@ class TheDisplay:
 		
 			# First, we create the thread to manage the main input loop for the
 			# human user's TUI (text user interface).
-		tuiInputThread = The_TUI_Input_Thread(target=display.run)
+		tuiInputThread = TUI_Input_Thread(target=display.run)
 		display._tuiInputThread = tuiInputThread	# Remember it.
 		
 			# This starts the new thread in the background. This will bring up
@@ -1410,7 +1413,7 @@ class TheDisplay:
 			# Use predefined render style for drawing borders.
 		attr = style_to_attr(BORDER)	
 		
-		display = thedisplay
+		display = theDisplay
 		screen = display.screen
 		
 		screen.attrset(attr)
@@ -1446,9 +1449,13 @@ class TheDisplay:
 	def paint(theDisplay):
 		"""Paints the display; i.e., fills it with content.
 			Does an automatic curses screen refresh when finished."""
+
+		display = theDisplay
+		client = display._client
+		screen = display.screen
 		
 			# Delegate the work (except for refresh) to the client.
-		theDisplay._client.paint()		
+		client.paint()		
 				# Note this is all application-specific.
 		
 			#|-------------------------------------------------------------------
@@ -1456,7 +1463,9 @@ class TheDisplay:
 			#| has been painted; now we update the real display (minimally) so
 			#| the user can see the changes.
 			
-		theDisplay.screen.refresh()		# Do it here so client doesn't have to.
+		
+		if screen != None:
+			screen.refresh()		# Do it here so client doesn't have to.
 	
 	#__/ End singleton instance method theDisplay.paint().
 

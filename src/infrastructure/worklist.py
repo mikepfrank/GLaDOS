@@ -110,17 +110,17 @@ from numbers import Number      # Used in some argument type declarations.
     #-----------------------------------------
     # Import some of our own custom modules.
 
-from flag import *        # Waitable Boolean condition variables.
+from .flag import *        # Waitable Boolean condition variables.
 
-from desque import *   # Say "desk" - Double-ended synchronized queues.
+from .desque import *   # Say "desk" - Double-ended synchronized queues.
     #-We import the public names of desque because our Worklist
     # class effectively extends the Desque class.
 
-import logmaster            # For accessing logmaster.initialized
-from logmaster import *     # Our customized logging facility.
+import infrastructure.logmaster            # For accessing logmaster.initialized
+from .logmaster import *     # Our customized logging facility.
     # - Names imported for convenience.
 
-from utils import bind      # We use the bind() function in HireThread
+from .utils import bind      # We use the bind() function in HireThread
 
 logger = getLogger(appName + ".work")
 

@@ -12,7 +12,11 @@
 #		PanelClient		- Subclass of DisplayClient for panel-based clients.
 
 from enum import Enum					# Enumerated type support.
-from .display import DisplayClient		# We extend this to form panelclient.
+from .display import (
+		BORDER,
+		style_to_attr,		# Needed to use render styles.
+		DisplayClient		# We extend this to form panelclient.
+	)
 
 class PanelPlacement(Enum):
 	"""This enum lists the panel-placement specifiers presently supported."""
@@ -27,6 +31,8 @@ LOWER_RIGHT = PanelPlacement.LOWER_RIGHT
 FILL_RIGHT = PanelPlacement.FILL_RIGHT
 FILL_LEFT = PanelPlacement.FILL_LEFT	
 
+class PanelClient: pass
+
 class Panel:
 	"""A non-overlapping region of a panel client's display area."""
 	def __init__(newPanel, 
@@ -38,8 +44,17 @@ class Panel:
 		newPanel._placement = initPlacement
 		newPanel._height	= initHeight
 		newPanel._placed 	= False				# Panel has not actually been placed yet.
+		newPanel._client	= None				# It hasn't been placed in a client yet.
 		newPanel._win 		= None				# It has no internal sub-window yet.
 		newPanel._launched 	= None				# Any subsidiary processes have not been started yet.
+
+	@property
+	def client(thisPanel):
+		return thisPanel._client
+
+	@property
+	def height(thisPanel):
+		return thisPanel._height
 
 	@property
 	def win(thisPanel):
@@ -54,6 +69,9 @@ class Panel:
 			may extend this as needed to (re)configure any sub-windows."""
 		
 		panel = thisPanel
+		client = panel.client
+		display = client.display
+		screen = display.screen
 		
 		if panel._win == None:	# No sub-window yet; create one.
 			panel._win = screen.subwin(panel.height, panel.width, panel.top+1, panel.left+1)
@@ -65,8 +83,9 @@ class Panel:
 	
 	def replace(thisPanel):
 		"""Same as .place() but for previously placed panels."""
+		panel = thisPanel
 		panel._placed = False	# Needed for .place() to do anything.
-		thisPanel.place()
+		panel.place()
 		
 	def place(thisPanel, panelClient:PanelClient = None):
 		"""This does the actual work of placing the panel within the client display.
@@ -89,6 +108,8 @@ class Panel:
 		if panel._placed:
 			return
 	
+		display = client.display
+
 			# Get the coordinates of the bottom/right edges of the screen.
 		(scr_bot, scr_right) = display.get_max_yx()
 	
@@ -99,9 +120,9 @@ class Panel:
 		
 			panel.left = 0
 			panel.right = scr_right
-			panel.bottom = scr_bottom - client._botReserved
+			panel.bottom = scr_bot - client._botReserved
 			client.reserveBot(panel.height + 1) 	# One extra for bottom edge.
-			panel.top = scr_bottom - client._botReserved - 1	# One more for top edge.
+			panel.top = scr_bot - client._botReserved - 1	# One more for top edge.
 			
 		elif placement == LOWER_RIGHT:
 			
@@ -112,17 +133,17 @@ class Panel:
 			
 				panel.left = client.colSep
 				panel.right = scr_right
-				panel.bottom = scr_bottom - client._botReserved - client._brReserved
+				panel.bottom = scr_bot - client._botReserved - client._brReserved
 				client.reserveBotRight(panel.height + 1)
-				panel.top = scr_bottom - client._botReserved - client._brReserved - 1
+				panel.top = scr_bot - client._botReserved - client._brReserved - 1
 				
 			elif client.nColumns == 1:		# One-column mode.
 
 				panel.left = 0
 				panel.right = scr_right
-				panel.bottom = scr_bottom - client._botReserved - client._brReserved
+				panel.bottom = scr_bot - client._botReserved - client._brReserved
 				client.reserveBotRight(panel.height + 1)
-				panel.top = scr_bottom - client._botReserved - client._brReserved - 1
+				panel.top = scr_bot - client._botReserved - client._brReserved - 1
 				
 		elif placement == FILL_RIGHT and client.nColumns == 2:
 		
@@ -130,7 +151,7 @@ class Panel:
 		
 			panel.left = client.colSep
 			panel.right = scr_right
-			panel.bottom = scr_bottom - client._botReserved - client._brReserved
+			panel.bottom = scr_bot - client._botReserved - client._brReserved
 			panel.top = 0
 			panel.height = panel.bottom - panel.top - 1
 			
@@ -192,7 +213,9 @@ class Panel:
 		screen.addch(top, left, tlchar)
 		screen.addch(top, right, trchar)
 		screen.addch(bottom, left, blchar)
-		screen.addch(bottom, right, brchar)
+		if bottom != scr_bot or right != scr_right:		# Avoids an exception
+			screen.addch(bottom, right, brchar)
+
 		
 			# Draw the edges.
 		screen.hline(top, 	 left+1, '-', width)
@@ -208,6 +231,9 @@ class Panel:
 		"""This tells this panel to go ahead and paint itself on the display."""
 		
 		panel = thisPanel
+		client = panel.client
+		display = client.display
+		screen = display.screen
 		
 			# First, place it, if it's not placed already.
 		if not panel._placed:
@@ -244,7 +270,9 @@ class Panel:
 			
 		panel = thisPanel	# Shorter name for argument.
 
+
 class PanelClient(DisplayClient):
+
 	"""A type of DisplayClient that organizes the display into non-overlapping panels."""
 	
 	
@@ -254,7 +282,7 @@ class PanelClient(DisplayClient):
 		"""Initializer for newly-created PanelClient instances."""
 		
 			# We first call the default initialization method from DisplayClient.
-		super(PanelClient, newPanelClient).__init__(newPanelClient)
+		super(PanelClient, newPanelClient).__init__()
 		
 			# Stash our subclass-specific arguments.
 		newPanelClient._title = title	# Client title string.
@@ -314,7 +342,7 @@ class PanelClient(DisplayClient):
 		"""This paint method overrides the demo in DisplayClient."""
 
 			# Get some important guys.
-		client = thisClient
+		client = thisPanelClient
 		display = client.display
 		screen = display.screen
 		
@@ -342,13 +370,16 @@ class PanelClient(DisplayClient):
 	
 	def addPanel(thisPanelClient, panel:Panel):
 		"""Adds a panel to the set that is (or will be) displayed by this panel client."""
+
+		client = thisPanelClient
+
 		if panel != None:
 		
-			thisPanelClient._panels.add(panel)	# First, just add it to our list.
+			thisPanelClient._panels.append(panel)	# First, just add it to our list.
 			
 				# Tell the panel to go ahead and try to do the work needed to place 
 				# itself on our display. (This is needed if the display's already running.)
-			panel.place(panelClient)
+			panel.place(client)
 			
 				# Now tell the client to re-display itself (if the display is running).
 				# This is what actually causes the new panel to show up on the screen.
