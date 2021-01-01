@@ -877,6 +877,43 @@ def keystr(k):
 #__/ End function display.keystr().
 
 
+def addLineClipped(win, line:str, attrs:int, padRight:int=None:
+	"""Adds a line of text to a window, with clipping to fit in the window width.
+		Assumes <line> does not contain any newline characters."""
+	
+	if padRight is None:
+		padRight = 1		# Default padding to 1 character.
+	
+		# Get the current cursor position.
+	(curRow, curCol) = win.getyx()		
+	
+		# Get the width and height of the current window.
+	(winHeight, winWidth) = win.getmaxyx()
+	effWidth = winWidth - padRight
+	
+		# Get the length of the line.
+	lineLen = len(line)
+	
+		# Clip the line down to what we have room for.
+	if curCol + lineLen >= effWidth:
+		line = line[:effWidth - curCol]
+	
+	win.addstr(line, attrs)
+
+#__/ End function display.addLineClipped().
+
+
+def addTextClipped(win, text:str, attrs:int, padRight:int=None):
+	"""Adds the given text to the window, clipping each line
+		to fit within the window width."""
+		
+	lines = '\n'.split(text)
+	addLineClipped(win, lines[0], attrs, padRight)
+	for line in lines[1:]:
+		addStr(win, "\n", attrs)
+		addLineClipped(win, line, attrs, padRight)
+		
+
 	#|==========================================================================
 	#|
 	#|	5.	Class definitions.						   	   [module code section]
