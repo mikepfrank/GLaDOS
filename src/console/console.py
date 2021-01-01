@@ -134,7 +134,7 @@ from display.display	import (
 		PLAIN, BORDER, HEADER,
 		DEBUG_STYLE, INFO_STYLE, GOOD_STYLE,
 		WARNING_STYLE, ERROR_STYLE, CRITICAL_STYLE,
-		style_to_attr
+		style_to_attr, addLineClipped, addTextClipped
 	)
 
 # To implement the console, we draw an arrangement of borders and separators, within which are different "panels",
@@ -312,20 +312,23 @@ class LogPanel(Panel):
 		panel = thisLogPanel		# Get the panel.
 		win = panel._header_subwin	# Get the subwin.
 		
-		if panel._header_data is None:
+		attr = style_to_attr(HEADER)	# Get the attributes for the 'HEADER' rendering style. (Currently, bright white.)
+
+		head_data = panel._header_data
+		if head_data is None:
 				# Now we actually retrieve the first three lines from
 				# the log file.  (Note this implementation assumes we're
 				# on a Unix compatible system that provides the head (1) 
 				# command in the default command path.)
 				# Really here we should retrieve the filename from the logmaster module.
-			head_stream = popen(f"head -3 {logFilename}")
-			head_data = head_stream.read().strip()
+			head_stream = popen(f"head -3 {logFilename}")	
+			panel._header_data = head_data = head_stream.read().strip()
 				# Do we need to close the stream here, or will GC do it?
 		#__/ End if no header data yet.
 		
 			# OK, now we are finally ready to actually draw the header text.
-		attr = style_to_attr(HEADER)	# Get the attributes for the 'HEADER' rendering style. (Bright white.)
-		win.addstr(head_data, attr)		# Puts the header data string in the header window.
+		addTextClipped(win, head_data, attr)
+			# This clips each line to the width of the window.
 	
 	
 	def drawLogLine(thisLogPanel, logLine:str):
@@ -376,7 +379,8 @@ class LogPanel(Panel):
 		(posy, posx) = win.getyx()		# Cursor position in window.
 		if posx > 0:
 			win.addstr('\n')	# Newline.
-		win.addstr(logLine, attr)
+		
+		addLineClipped(win, logLine, attr)
 		
 	
 	def drawData(thisLogPanel):
