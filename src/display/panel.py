@@ -252,16 +252,28 @@ class Panel:
 	
 	
 	def drawContent(thisPanel):
+		"""Extend this method to draw actual content in the given panel.
+			This method should assume that the panel is initially erased,
+			and that it will be refreshed some time after it's finished.
+			Please note that extensions should use super() to call this 
+			method before they return."""
 	
 		panel = thisPanel
 	
-		# Before we can draw the panel's content for the first time, we need to launch
-		# any subsidiary processes that may be associated with this panel.
+		#/-----------------------------------------
+		#| EXTEND METHOD WITH ADDITIONAL CODE HERE.
+		#\-----------------------------------------
+	
+		# Now is a good time to launch any subsidiary threads/processes
+		# associated with the panel, if not already done..
 		
 		if not panel._launched:
 			panel.launch()
 			panel._launched = True
 			
+	#__/ End method panel.drawContent().
+	
+	
 	def launch(thisPanel):
 	
 		"""This starts up any subsidiary processes/threads that may be required
@@ -269,6 +281,10 @@ class Panel:
 			Subclasses should override this as needed."""
 			
 		panel = thisPanel	# Shorter name for argument.
+
+		# DO SOMETHING HERE
+		
+	#__/ End method panel.launch().
 
 
 class PanelClient(DisplayClient):
