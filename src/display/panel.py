@@ -290,7 +290,7 @@ class Panel:
 		#\-----------------------------------------
 	
 		# Now is a good time to launch any subsidiary threads/processes
-		# associated with the panel, if not already done..
+		# associated with the panel, if not already done.
 		
 		if not panel._launched:
 			panel.launch()
@@ -349,6 +349,8 @@ class PanelClient(DisplayClient):
 			is called by the display to let us do client-specific adjustments."""
 		
 		client = thisPanelClient
+
+		_logger.debug("panelClient.handle_resize(): Arranging paneled client display.")
 
 			# First, figure out how many columns we have and (if two columns)
 			# where the column separator should be positioned.
