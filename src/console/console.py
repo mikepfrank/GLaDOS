@@ -189,28 +189,44 @@ class LogFeeder(ThreadActor):
 			# The daemon=True tells Python not to let this thread keep the process alive.
 		
 	def main(thisLogFeeder):
+
 		"""This is the main routine of the newly-created LogFeeder thread.
 			It basically just reads lines from the log file tail and adds
 			them to the panel."""
 		
 		feeder = thisLogFeeder
 		panel = feeder._panel
+		client = panel.client
+		display = client.display
+		driver = display.driver
 		
-		_logger.debug("LogFeeder.main(): Creating 'tail -f' subprocess to feed log panel.")
+		_logger.debug("logFeeder.main(): Creating 'tail -f' subprocess to feed log panel.")
 		
+		command_words = ['tail', '-n', str(panel._content_height), '-f', logFilename]
+		command_string = ' '.join(command_words)
+		
+		_logger.debug(f"logFeeder.main(): Command words are: [{command_string}]")
+
 		process = subprocess.Popen(
-			['tail', '-f', logFilename], 
+			command_words, 
 			stdout=subprocess.PIPE,
 			universal_newlines=True)
-		
+
+		# This just keeps track of whether we have already sent subprocess data to the panel.
 		started = False
 
 		# Infinite loop, reading output of tail. The only way this will exit
 		# is if the tail process terminates, or we get an exception.
 		
-		while True:
+		exitRequested = False
+
+		while not exitRequested:
+
 			logLine = process.stdout.readline().strip()
 			panel.addLogLine(logLine)
+
+			# Request screen to update shortly after new line is added.
+			driver.do(display.update)
 
 			if not started:
 				_logger.debug("logFeeder.main(): Just added my very first line of log data to the panel.")
@@ -229,7 +245,11 @@ class LogFeeder(ThreadActor):
 
 					panel.addLogLine(logLine)
 
-				break	# Feeder thread can only terminate at this point.
+				driver.do(display.update)
+				exitRequested = True
+		
+		# Feeder thread can only terminate at this point.
+		_logger.info("logFeeder.main(): Log panel feeder thread is exiting.")
 
 class LogPanel(Panel):
 	# This is a panel that displays lines from the log stream
@@ -406,9 +426,33 @@ class LogPanel(Panel):
 			win.addstr('\n')	# Newline.
 		
 		addLineClipped(win, logLine, attr)
+
+		win.noutrefresh()	# Mark this window for updating.
 		
 	
+	def _init_data(thisLogPanel):
+
+		"""This makes sure that the panel data has been initialized.
+			Normally, we just initialize it to an initially-empty list."""
+
+		panel = thisLogPanel
+
+		with panel.lock:
+
+			data = panel._content_data
+
+			if data is None:
+				_logger.debug("panel._init_data(): Initializing panel content data to empty list.")
+				data = []
+
+			panel._content_data = data
+
+	
 	def drawData(thisLogPanel):
+
+		"""This fills in the actual log data within the data area
+			of the log panel.  Assumes area is already clear, and
+			that the display will be refreshed afterwards."""
 	
 		panel 	= thisLogPanel
 		win 	= panel._data_subwin
@@ -419,23 +463,14 @@ class LogPanel(Panel):
 		
 		with panel.lock:	# Grab ownership of ._content_data.
 		
-			data	= panel._content_data
-			
-			# First, if there's no data yet, initialize with right size.
-			if data is None:
-				data = [""] * height	# All rows are empty initially.
-				
-			# Or, if we have too much data, throw away the early bits.
-			elif len(data) > height:
-				data = data[len(data)-height:]	# Only preserves last <height> rows.
-				
-			# Finally, if we have too little data, then pad it out with blank lines.
-			while len(data) < height:
-				data.add("")
+				# First, make sure panel data has been initialized.
+			panel._init_data()
 
-				# Remember new data array.
-			panel._content_data = data
-		
+				# Extract just the last (at most) <height> rows of data.
+			data = panel._content_data
+			if len(data) > height:
+				data = data[-height:]
+
 				#|-------------------------------------
 				#| Add the log lines to the sub-window.
 			
@@ -443,6 +478,42 @@ class LogPanel(Panel):
 				panel.drawLogLine(logLine)
 
 		
+	def repaintDataArea(thisLogPanel):
+		panel = thisLogPanel
+		area = panel.data_win	# The data area (sub-window) within the log panel.
+		
+			# First, make sure panel data has been initialized.
+		panel._init_data()
+
+		#_logger.debug(f"Refreshing the {len(panel._content_data)}/{panel._content_height}-line data area within the log panel.")
+
+			# Erase the current data area contents.
+		area.erase()
+
+			# Redraw all the data within the data area.
+		panel.drawData()
+
+
+
+	def _trim_data(thisLogPanel):
+
+		"""Call this routine to keep the content data buffer from
+			growing indefinitely."""
+
+		panel = thisLogPanel
+
+		max_size = 200	# Really should make this a configurable parameter.
+		
+		with panel.lock:
+			
+			data = panel._content_data
+
+			if len(data) > max_size:
+				data = data[-max_size:]		# Keeps last <max_size> entries.
+
+			panel._content_data = data		# Remember the newly-trimmed dataset.
+
+
 	def addLogLine(thisLogPanel, logLine:str):
 		"""Adds the given (new) line of log file data to 
 			our content dataset, and display it in our 
@@ -455,22 +526,28 @@ class LogPanel(Panel):
 		win = panel.data_win
 
 		with panel.lock:
-			height = panel._content_height
+
+				# First, make sure panel data has been initialized.
+			panel._init_data()
+
+				# Add the new line to the dataset.
 			data = panel._content_data
 			data.append(logLine)
+			panel._content_data = data
 
-			# Scroll any excess data lines off the top.
-			while len(data) > height:
-				data = data[1:]
+				# Limit size of data buffer.
+			panel._trim_data()
 
-			# Repaint the sub-window.
-			display.driver.do(panel.drawData)
-			display.driver.do(lambda: win.refresh())
+				# Ask the display driver to (asynchronously)
+				# draw the new log line in the data area.
+			display.driver.do(lambda: panel.drawLogLine(logLine))
+				# This will run in the background to help avoid deadlocks.
+
+				# Repaint the sub-window.
+			#display.driver.do(panel.repaintDataArea)
 				# The only thing that changed as far as we're concerned is the data sub-window,
 				# so just refresh that one.
 
-			#display.driver.do(lambda: panel.drawLogLine(logLine))
-				# This will run in the background to help avoid deadlocks.
 
 		
 	def drawContent(thisLogPanel):
