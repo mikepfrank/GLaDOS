@@ -309,6 +309,7 @@ class LogPanel(Panel):
 
 			# This gets the panel's top-level interior window.
 		win = panel.win
+
 			# Get the current size of the top-level panel window.
 		(height, width) = win.getmaxyx()			
 
