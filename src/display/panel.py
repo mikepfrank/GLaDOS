@@ -51,10 +51,12 @@ class Panel:
 			title:str = "Untitled Panel",			# REQUIRED ARGUMENT. Panel title. CALLER MUST PROVIDE THIS.
 			initPlacement:PanelPlacement = None,	# REQUIRED ARGUMENT, panel placement specifier.
 			initHeight:int = 8,						# Initial internal panel height, in rows of text.
+			leftPad:int = 1,						# Internal padding at left side of panel (inside border).
 		):
 		newPanel._title		= title
 		newPanel._placement = initPlacement
 		newPanel._height	= initHeight		# This is our aspirational/initially-requested height.
+		newPanel._leftPad	= leftPad
 		newPanel._client	= None				# It hasn't been placed in a client yet.
 		newPanel._placed 	= False				# Panel has not actually been placed yet.
 		newPanel._win 		= None				# It has no internal sub-window yet.
@@ -89,13 +91,20 @@ class Panel:
 		display = client.display
 		screen = display.screen
 		
+		leftPad = panel._leftPad
+
+		int_width = panel.width - leftPad	# Width of interior window.
+
 		if panel._win == None:	# No sub-window yet; create one.
-			panel._win = screen.subwin(panel.height, panel.width, panel.top+1, panel.left+1)
+			panel._win = screen.subwin(panel.height, int_width, panel.top+1, panel.left+1 + leftPad)
+				# NOTE: <leftPad> gives a number of blank spaces to leave in between the panel's
+				# left border and its interior sub-window.
 		else:
 				# Move the window in case the panel's position changed.
 			panel._win.mvwin(panel.top+1, panel.left+1)
+
 				# Resize the window in case the panel's size changed.
-			panel._win.resize(panel.height, panel.width)
+			panel._win.resize(panel.height, int_width)
 	
 	def replace(thisPanel):
 		"""Same as .place() but for previously placed panels."""
@@ -189,7 +198,14 @@ class Panel:
 			
 			panel.height = panel.bottom - panel.top - 1
 
-			# Compute internal width of panel.
+		#__/ End placement cases.
+
+
+			# Compute internal width of panel (including pad but not border).
+			#
+			#	* Width including borders is right - left + 1
+			#	* width excluding borders is right - left - 1
+
 		panel.width = panel.right - panel.left - 1
 
 		panel.configWin()	# Creates/resizes panel's internal window(s) as needed.
