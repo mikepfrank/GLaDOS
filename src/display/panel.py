@@ -147,7 +147,7 @@ class Panel:
 			
 			if client.nColumns == 2:		# Two-column mode.
 			
-				panel.left = client.colSep
+				panel.left = client.colSepPos
 				panel.right = scr_right
 				panel.bottom = scr_bot - client._botReserved - client._brReserved
 				client.reserveBotRight(panel.height + 1)
@@ -165,7 +165,7 @@ class Panel:
 		
 			# NOTE: Still need to figure out how to handle FILL_RIGHT if there's only 1 column.
 		
-			panel.left = client.colSep
+			panel.left = client.colSepPos
 			panel.right = scr_right
 			panel.bottom = scr_bot - client._botReserved - client._brReserved
 			panel.top = 0
@@ -176,7 +176,7 @@ class Panel:
 			if client.nColumns == 2:
 			
 				panel.left = 0
-				panel.right = client.colSep
+				panel.right = client.colSepPos
 				panel.bottom = scr_bot - client._botReserved
 				panel.top = 0
 			
@@ -357,7 +357,7 @@ class PanelClient(DisplayClient):
 		
 		if width >= 123:			# Enough room for two 60-wide columns, plus framing.
 			client.nColumns = 2				# Two columns of panels.
-			client.colSep = int(width/2)	# Horizontal position of the column separator.
+			client.colSepPos = int(width/2)	# Horizontal position of the column separator.
 		else:
 			client.nColumns = 1				# One column of panels.
 
@@ -370,7 +370,20 @@ class PanelClient(DisplayClient):
 		client = thisPanelClient
 		client._brReserved = client._brReserved + nRows
 			
-	
+	def drawSeparator(thisPanelClient):
+		client = thisPanelClient
+		display = client.display
+		screen = display.screen
+		
+			# Calculate height of separator.
+		sep_height = display.int_height - client._botReserved
+		
+			# Use predefined render style for drawing borders.
+		attr = style_to_attr(BORDER)	
+		
+		screen.attrset(attr)
+		screen.vline(1, colSepPos, '|', sep_height)
+		screen.attrset(0)
 	
 	def paint(thisPanelClient):
 		"""This paint method overrides the demo in DisplayClient."""
@@ -399,6 +412,9 @@ class PanelClient(DisplayClient):
 				# Draw the title in the middle of the top border.
 			display.drawCenter(client._title, row=0, lrpad=' ', style=BORDER)
 				# (Pads it on the left and the right with a space.)
+	
+		if client.nColumns == 2:	# Two columns; need to draw separator.
+			client.drawSeparator()
 	
 			# At this point, we need to paint all of our installed panels.
 		for panel in client._panels:

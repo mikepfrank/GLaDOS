@@ -1473,6 +1473,14 @@ class TheDisplay:
 		#|		Presently, this renders by default in a bright cyan text
 		#|		color on a black background.
 		#|
+		#|		The following display attributes are also set up for the
+		#|		purpose of facilitating clients to draw within the 'interior'
+		#|		region within the outer border if they wish (however, a 
+		#|		sub-window is not created):
+		#|
+		#|			.int_width, .int_height, 
+		#|			.int_top, .int_bot, .int_left, .int_right
+		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
 	def drawOuterBorder(theDisplay):
@@ -1487,6 +1495,14 @@ class TheDisplay:
 		screen.attrset(attr)
 		screen.border('|', '|', '-', '-', '/', '\\', '\\', '/')
 		screen.attrset(0)
+		
+			# Set "interior" geometry attributes for just inside outer border.
+		display.int_width	= int_width		= display.width  - 2
+		display.int_height	= int_height	= display.height - 2
+		display.int_top		= int_top 		= 1
+		display.int_bot		= int_bot		= int_top + int_height - 1
+		display.int_left	= int_left		= 1
+		display.int_right	= int_right		= int_left + int_width - 1
 
 	#__/ End method theDisplay.drawOuterBorder().
 
