@@ -935,6 +935,11 @@ def addTextClipped(win, text:str, attrs:int, padRight:int=None):
 # Forward declarations for type hints.
 class TheDisplay: pass
 
+
+global _theDisplayDriver	# The display driver thread.
+_theDisplayDriver = None	# Thread not yet created.
+
+
 		# Class to implement a thread that exists for the purpose
 		# of serializing curses operations. Whenever you want to 
 		# do something with the display, you can do it as follows:
@@ -953,13 +958,22 @@ class DisplayDriver(RPCWorker):
 	#|---------------------------------------------------------------------
 	
 	def __init__(newDisplayDriver):
+		
 		"""Initialize the display driver by setting up its role & component 
 			attributes appropriately for thread-specific logging purposes."""
+			
 		super(DisplayDriver, newDisplayDriver).__init__(
 			role = 'DisplDrvr', component = _sw_component, daemon=True)
 			# daemon=True tells Python not to let this thread keep the process alive
+		
+		# Stash this new display driver instance in a module-level global.
+		global _theDisplayDriver
+		_theDisplayDriver = newDisplayDriver
 
-#__/ End singleton class DisplayDriver.
+#__/ End class DisplayDriver.
+
+def in_driver_thread():
+	return current_thread() == _theDisplayDriver
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	display.DisplayClient					   [public extensible class]
