@@ -1312,15 +1312,17 @@ class TheDisplay:
 
 	def __init__(theDisplay):
 		"""Initializes the display system."""
+
 			# Mark this display as not running yet, to make sure we don't try 
 			# to do anything with it until it's actually running.
-			
 		theDisplay._running = False		# Display is not up and running yet.
 
 		theDisplay._client = None		# Client is not yet attached.
 
 		theDisplay._screen = None		
 			# The actual display screen structure hasn't been created yet.
+		theDisplay._width  = None	# No width/height yet, because no screen
+		theDisplay._height = None
 
 		theDisplay._driver = DisplayDriver()		# Creates display driver thread.
 			# (This newly created thread is initially just waiting for work to do.)
@@ -1337,6 +1339,13 @@ class TheDisplay:
 		"""Is the display currently running?"""
 		return theDisplay.isRunning
 
+	@property
+	def width(theDisplay):
+		return theDisplay._width
+
+	@property
+	def height(theDisplay):
+		return theDisplay._height
 
 	@property
 	def driver(theDisplay):
