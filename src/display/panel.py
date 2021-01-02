@@ -12,6 +12,18 @@
 #		PanelClient		- Subclass of DisplayClient for panel-based clients.
 
 from enum import Enum					# Enumerated type support.
+from os import path
+
+from infrastructure.logmaster import (
+		sysName,			# Used just below.
+		getComponentLogger 	# Used just below.
+	)
+global _component, _logger	# Software component name, logger for component.
+_component = path.basename(path.dirname(__file__))	# Our package name.
+_logger = getComponentLogger(_component)  # Create the component logger.
+global _sw_component
+_sw_component = sysName + '.' + _component
+
 from .display import (
 		BORDER,
 		style_to_attr,		# Needed to use render styles.
@@ -42,19 +54,23 @@ class Panel:
 		):
 		newPanel._title		= title
 		newPanel._placement = initPlacement
-		newPanel._height	= initHeight
-		newPanel._placed 	= False				# Panel has not actually been placed yet.
+		newPanel._height	= initHeight		# This is our aspirational/initially-requested height.
 		newPanel._client	= None				# It hasn't been placed in a client yet.
+		newPanel._placed 	= False				# Panel has not actually been placed yet.
 		newPanel._win 		= None				# It has no internal sub-window yet.
 		newPanel._launched 	= None				# Any subsidiary processes have not been started yet.
 
 	@property
-	def client(thisPanel):
-		return thisPanel._client
+	def title(thisPanel):
+		return thisPanel._title
 
 	@property
 	def height(thisPanel):
 		return thisPanel._height
+
+	@property
+	def client(thisPanel):
+		return thisPanel._client
 
 	@property
 	def win(thisPanel):
@@ -122,7 +138,7 @@ class Panel:
 			panel.right = scr_right
 			panel.bottom = scr_bot - client._botReserved
 			client.reserveBot(panel.height + 1) 	# One extra for bottom edge.
-			panel.top = scr_bot - client._botReserved - 1	# One more for top edge.
+			panel.top = scr_bot - client._botReserved
 			
 		elif placement == LOWER_RIGHT:
 			
@@ -135,7 +151,7 @@ class Panel:
 				panel.right = scr_right
 				panel.bottom = scr_bot - client._botReserved - client._brReserved
 				client.reserveBotRight(panel.height + 1)
-				panel.top = scr_bot - client._botReserved - client._brReserved - 1
+				panel.top = scr_bot - client._botReserved - client._brReserved
 				
 			elif client.nColumns == 1:		# One-column mode.
 
@@ -143,7 +159,7 @@ class Panel:
 				panel.right = scr_right
 				panel.bottom = scr_bot - client._botReserved - client._brReserved
 				client.reserveBotRight(panel.height + 1)
-				panel.top = scr_bot - client._botReserved - client._brReserved - 1
+				panel.top = scr_bot - client._botReserved - client._brReserved
 				
 		elif placement == FILL_RIGHT and client.nColumns == 2:
 		
@@ -235,6 +251,8 @@ class Panel:
 		display = client.display
 		screen = display.screen
 		
+		_logger.debug(f"panel.paint(): Repainting panel '{panel.title}'.")
+
 			# First, place it, if it's not placed already.
 		if not panel._placed:
 			panel.place(panel._client)	# Assume this was set earlier at least.
@@ -357,6 +375,8 @@ class PanelClient(DisplayClient):
 	def paint(thisPanelClient):
 		"""This paint method overrides the demo in DisplayClient."""
 
+		_logger.debug("panelClient.paint(): Repainting panel client")
+
 			# Get some important guys.
 		client = thisPanelClient
 		display = client.display
@@ -364,7 +384,8 @@ class PanelClient(DisplayClient):
 		
 			# First, if the display isn't even running, then there's nothing
 			# to do, so just exit early.
-		if not display.running:
+		if not display.isRunning:
+			_logger.debug("panelClient.paint(): Display not yet running; exiting early.")
 			return
 		
 			# This is effectively a "lazy clear"--it waits until refresh to take effect.

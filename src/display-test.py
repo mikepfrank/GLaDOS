@@ -381,7 +381,7 @@ def _main():
 		# Create the console as an instance of a display client.
 	console = DisplayClient()	# Really we should subclass it first... (But just testing.)
 
-	console.run()
+	console.start()
 
 	#supervisor.start()				# Tells the supervisor to start everything up.
 			# NOTE: This also starts up all of the other major subsystems.
