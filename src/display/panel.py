@@ -232,13 +232,20 @@ class Panel:
 		if bottom != scr_bot or right != scr_right:		# Avoids an exception
 			screen.addch(bottom, right, brchar)
 
-		
 			# Draw the edges.
 		screen.hline(top, 	 left+1, '-', width)
 		screen.hline(bottom, left+1, '-', width)
 		screen.vline(top+1,  left,   '|', height)
 		screen.vline(top+1,  right,  '|', height)
 		
+			# Special case: For two-column-wide panels at top or bottom of screen, draw a '+' where column separator joins top or bottom edge.
+		colSepPos = client.colSepPos
+		if left < colSepPos and right > colSepPos:	# Spans column separator.
+			if top > 0: 
+				screen.addch(top, colSepPos, '+')
+			if bottom < scr_bot:
+				screen.addch(bottom, colSepPos, '+')
+
 			# Resume normal style.
 		screen.attrset(0)
 	
@@ -341,9 +348,15 @@ class PanelClient(DisplayClient):
 		"""When we have already figured out the new screen size, this method
 			is called by the display to let us do client-specific adjustments."""
 		
-			# Redo all panel placements. This recalculates all of their sizes
-			# and locations.
-		thisPanelClient.redoPlacements()
+		client = thisPanelClient
+
+			# First, figure out how many columns we have and (if two columns)
+			# where the column separator should be positioned.
+		client.setupColumns()
+
+			# Next, redo all panel placements. This recalculates all of their 
+			# sizes and locations.
+		client.redoPlacements()
 
 
 	def setupColumns(newPanelClient):
@@ -375,14 +388,16 @@ class PanelClient(DisplayClient):
 		display = client.display
 		screen = display.screen
 		
-			# Calculate height of separator.
-		sep_height = display.int_height - client._botReserved
+			# Calculate position & height of separator.
+		sep_pos		= client.colSepPos
+		sep_top		= display.int_top
+		sep_height  = display.int_height - client._botReserved
 		
 			# Use predefined render style for drawing borders.
 		attr = style_to_attr(BORDER)	
 		
 		screen.attrset(attr)
-		screen.vline(1, colSepPos, '|', sep_height)
+		screen.vline(sep_top, sep_pos, '|', sep_height)
 		screen.attrset(0)
 	
 	def paint(thisPanelClient):
