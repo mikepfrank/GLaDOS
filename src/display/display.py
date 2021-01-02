@@ -130,7 +130,7 @@ encoding = locale.getpreferredencoding()
 import curses
 from curses import *
 from curses.textpad import rectangle, Textbox
-from curses.ascii import controlnames, iscntrl, isspace, isgraph
+from curses.ascii import (controlnames, iscntrl, isspace, isgraph, DC4)
 
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -877,7 +877,7 @@ def keystr(k):
 #__/ End function display.keystr().
 
 
-def addLineClipped(win, line:str, attrs:int, padRight:int=None:
+def addLineClipped(win, line:str, attrs:int, padRight:int=None):
 	"""Adds a line of text to a window, with clipping to fit in the window width.
 		Assumes <line> does not contain any newline characters."""
 	
@@ -907,11 +907,19 @@ def addTextClipped(win, text:str, attrs:int, padRight:int=None):
 	"""Adds the given text to the window, clipping each line
 		to fit within the window width."""
 		
-	lines = '\n'.split(text)
-	addLineClipped(win, lines[0], attrs, padRight)
+	lines = text.split('\n')
+
+	#_logger.debug("addTextClipped(): About to add line:\n" + lines[0])
+
+	addLineClipped(win, lines[0], attrs, padRight=padRight)
+
 	for line in lines[1:]:
-		addStr(win, "\n", attrs)
-		addLineClipped(win, line, attrs, padRight)
+
+		win.addstr("\n", attrs)
+
+		#_logger.debug("addTextClipped(): About to add line:\n" + line)
+
+		addLineClipped(win, line, attrs, padRight=padRight)
 		
 
 	#|==========================================================================
@@ -931,12 +939,11 @@ class TheDisplay: pass
 		# of serializing curses operations. Whenever you want to 
 		# do something with the display, you can do it as follows:
 		#
-		#	displayDriver = TheDisplayDriver()
+		#	displayDriver = DisplayDriver()
 		#	displayDriver(callable)
 
-@singleton
-class TheDisplayDriver(RPCWorker):
-	#_________________/         \__________________________________________
+class DisplayDriver(RPCWorker):
+	#______________/         \_____________________________________________
 	#| NOTE: By subclassing this class from RPCWorker instead of Worker, 
 	#| the overall effect is simply to serialize all of the normal display 
 	#| operations by having them wait for this single thread to do them.  
@@ -945,13 +952,14 @@ class TheDisplayDriver(RPCWorker):
 	#| driver's .do() method.
 	#|---------------------------------------------------------------------
 	
-	def __init__(theDisplayDriver):
+	def __init__(newDisplayDriver):
 		"""Initialize the display driver by setting up its role & component 
 			attributes appropriately for thread-specific logging purposes."""
-		super(TheDisplayDriver.__wrapped__, theDisplayDriver).__init__(
-			role = 'DisplDrvr', component = _sw_component)
+		super(DisplayDriver, newDisplayDriver).__init__(
+			role = 'DisplDrvr', component = _sw_component, daemon=True)
+			# daemon=True tells Python not to let this thread keep the process alive
 
-#__/ End singleton class TheDisplayDriver.
+#__/ End singleton class DisplayDriver.
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	display.DisplayClient					   [public extensible class]
@@ -1033,10 +1041,14 @@ class DisplayClient:
 		"""This starts up this display client, which implicitly also starts
 			up the underlying curses-based display infrastructure."""
 			
+		_logger.debug(f"displayClient.start(): Starting with waitForExit={waitForExit}...")
+
 		client  = thisClient
 		display = client.display
 		
 		display.start(waitForExit = waitForExit)
+
+		_logger.debug("displayClient.start(): Returning.")
 		
 	#__/ End instance method displayClient.start().
 
@@ -1149,7 +1161,10 @@ class DisplayClient:
 			# First, if the display isn't even running, then there's nothing
 			# to do, so just exit early.
 		if not display.running:
+			_logger.debug("client.paint(): Display is not yet running; returning early.")
 			return
+
+		_logger.debug("client.paint(): Painting client display...")
 		
 			# This is effectively a "lazy clear"--it waits until refresh to take effect.
 		display.erase()		# Marks all character cells as empty (and no attributes).
@@ -1302,10 +1317,12 @@ class TheDisplay:
 			
 		theDisplay._running = False		# Display is not up and running yet.
 
+		theDisplay._client = None		# Client is not yet attached.
+
 		theDisplay._screen = None		
 			# The actual display screen structure hasn't been created yet.
 
-		theDisplay._driver = TheDisplayDriver()		# Creates display driver thread.
+		theDisplay._driver = DisplayDriver()		# Creates display driver thread.
 			# (This newly created thread is initially just waiting for work to do.)
 			
 		# Nothing else to do here yet. Nothing really happens until .start() is called.
@@ -1314,6 +1331,12 @@ class TheDisplay:
 	@property
 	def isRunning(theDisplay):
 		return theDisplay._running
+
+	@property
+	def running(theDisplay):
+		"""Is the display currently running?"""
+		return theDisplay.isRunning
+
 
 	@property
 	def driver(theDisplay):
@@ -1339,6 +1362,8 @@ class TheDisplay:
 			through a user interrupt, or because some other, un-handled 
 			exception occurred in it)."""
 		
+		_logger.debug(f"display.start(): Starting display with waitForExit={waitForExit}...")
+
 		display = theDisplay
 		
 			# First, we create the thread to manage the main input loop for the
@@ -1354,7 +1379,15 @@ class TheDisplay:
 			# If the user didn't want the input loop to run in the background,
 			# this simply waits for the TUI input thread to terminate.
 		if waitForExit:
-			tuiInputThread.join()
+			_logger.debug("display.start(): Waiting for TUI input thread to exit...")
+			try:
+				tuiInputThread.join()
+			except Exception as e:
+				_logger.FATAL("display.start(): Uncaught exception [{str(e)}] in TUI input thread.")
+				raise
+				
+
+		_logger.debug("display.start(): Returning.")
 
 	#__/ End singleton instance method theDisplay.start().
 	
@@ -1367,19 +1400,17 @@ class TheDisplay:
 			with it if needed.  Clients call it automatically from their .run() 
 			method."""
 			
+		_logger.debug("display.run(): Starting the display running.")
+
 			# Call the standard curses wrapper on our private display driver method, below.
-		wrapper(theDisplay._displayDriver)
+		wrapper(theDisplay._manage)
 		
 		# If we get here, then the display driver has exited, and the display was torn down.
 		theDisplay._screen = None	# It's no longer valid anyway.
 		
+		_logger.debug("display.run(): Finished running the display.")
+
 	#__/ End singleton instance method theDisplay.run().
-
-
-	@property
-	def running(theDisplay):
-		"""Is the display currently running?"""
-		return theDisplay._running
 
 
 	@property
@@ -1487,6 +1518,8 @@ class TheDisplay:
 		"""Paints the display; i.e., fills it with content.
 			Does an automatic curses screen refresh when finished."""
 
+		_logger.debug("display.paint(): Repainting display.")
+
 		display = theDisplay
 		client = display._client
 		screen = display.screen
@@ -1572,7 +1605,7 @@ class TheDisplay:
 			
 		#__/ End loop over all customizable color-pair indices.
 
-	#__/ End private singleton instance method theDisplay._initDisplay().
+	#__/ End private singleton instance method theDisplay._initColorPairs().
 	
 
 	def _check_size(theDisplay):
@@ -1602,8 +1635,10 @@ class TheDisplay:
 	#__/ End private method theDisplay._check_size().
 
 
-	def _initDisplay(theDisplay):
+	def _init(theDisplay):
 		"""Initializes the curses display. Client should be attached first."""
+
+		_logger.debug("display._init(): Initialziing the display.")
 
 			# Initialize the color pairs to be set up like we want.
 		theDisplay._initColorPairs()
@@ -1611,12 +1646,14 @@ class TheDisplay:
 			# This effectively just measures & then paints the display.
 		theDisplay.resize()
 	
-	#__/ End private singleton instance method theDisplay._initDisplay().
+	#__/ End private singleton instance method theDisplay._init().
 	
 	
 	def _runMainloop(theDisplay):
 		"""This is the main event loop.  It runs in the TUI input thread."""
 		
+		_logger.debug("display._runMainloop(): Starting main event loop.")
+
 		display = theDisplay
 		
 		driver = display.driver
@@ -1640,14 +1677,29 @@ class TheDisplay:
 					
 				ch = driver(screen.getch)	# Gets a 'character' (keycode) ch.
 				
+				_logger.debug(f"display._runMainloop(): Got character code {ch}.")
+
 				if ch == ERR:	# This could happen in case of an input timeout.
 					continue	# In which case, we just ignore it and keep looping.
+
+				elif ch == DC4:		# ^T = Device control 4, primary stop, terminate.
+					_logger.fatal("display._runMainloop(): Exiting due to ^T = terminate key.")
+					break
 					
 				event = KeyEvent(keycode=ch)				
 				
 			except KeyboardInterrupt as e:				# User hit CTRL-C?
-				event = KeyEvent(keycode = KEY_BREAK)	# Translate to BREAK key.
+
+				_logger.debug("display._runMainloop(): Caught a keyboard interrupt.")
+
+				#event = KeyEvent(keycode = KEY_BREAK)	# Translate to BREAK key.
+				break
 			
+			except Exception as e:
+
+				_logger.fatal(f"display._runmainloop(): Unknown exception: {str(e)}.")
+				raise e
+
 			#__/ End try/except clause for keyboard input loop.
 			
 				#|----------------------------------------------------------------------
@@ -1664,34 +1716,55 @@ class TheDisplay:
 				
 		#__/ End main user input loop.
 		
+		_logger.debug(f"display._runMainloop(): Exited main loop.")
+
 	#__/ End private singleton instance method theDisplay._runMainloop().
 	
 	
-	def _displayDriver(theDisplay,
+	def _manage(theDisplay,
 			screen	# This is the top-level curses window for the whole terminal screen.
 		):		
 		
-		"""Private method to 'drive' the curses display. It is called by 
-			theDisplay.run(), above.  Note that when this driver method 
+		"""Private method to 'manage' the curses display. It is called by 
+			theDisplay.run(), above.  Note that when this manager method 
 			returns, the entire display will be torn down. So, it should 
 			not exit until we are completely done with using the display.
 			
-			Note also this method does not directly run within the 
-			DisplayDriver thread. (I apologize if this is confusing.) This 
-			method actually runs in the TUI input loop thread, although it 
-			hands off input events to event handlers running in the 
-			DisplayDriver thread."""
+			Note also this method does not run within the DisplayDriver
+			thread. This method actually runs in the TUI input loop
+			thread, although it hands off input events to event handlers 
+			running in the DisplayDriver thread."""
 		
-		theDisplay._screen = screen
-		theDisplay._initDisplay()		# Initialize the display.
+		_logger.debug("display._manage(): Starting up.")
 
-		theDisplay._running = True			# Display is now running.
+		display = theDisplay
+		driver = display.driver		# Display driver thread.
+
+			# Store our top-level window (screen) for future reference.
+		display._screen = screen
+
+			#|-----------------------------------------------------------
+			#| Mark display as now being in the "running" state, where we
+			#| can do stuff with it. We need to do this now to make sure
+			#| that subsequent display operations won't suppress 
+			#| themselves because they think the display isn't running
+			#| yet.
+
+		display._running = True			# Display is now running.
+
+			# The very first thing we do with the display is to
+			# initialize it.
+		display.driver(display._init)
+
+
 		try:	# Cleanup properly in case of exception-driven exit.
-			theDisplay._runMainloop()		# Run the main loop.
+			display._runMainloop()		# Run the main loop.
 		finally:
-			theDisplay._running = False		# Display is no longer running.
+			display._running = False		# Display is no longer running.
 
-	#__/ End private singleton instance method theDisplay._displayDriver().
+		_logger.debug("display._manage(): Exiting.")
+
+	#__/ End private singleton instance method theDisplay._manage().
 
 
 #__/ End singleton class TheDisplay.

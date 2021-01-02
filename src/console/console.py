@@ -186,6 +186,7 @@ class LogFeeder(ThreadActor):
 		
 		feeder.defaultTarget = feeder.main				# Point at our .main() method.
 		super(LogFeeder, feeder).__init__(daemon=True)	# ThreadActor initialization.
+			# The daemon=True tells Python not to let this thread keep the process alive.
 		
 	def main(thisLogFeeder):
 		"""This is the main routine of the newly-created LogFeeder thread.
@@ -193,6 +194,7 @@ class LogFeeder(ThreadActor):
 			them to the panel."""
 		
 		feeder = thisLogFeeder
+		panel = feeder._panel
 		
 		_logger.debug("LogFeeder.main(): Creating 'tail -f' subprocess to feed log panel.")
 		
@@ -201,6 +203,8 @@ class LogFeeder(ThreadActor):
 			stdout=subprocess.PIPE,
 			universal_newlines=True)
 		
+		started = False
+
 		# Infinite loop, reading output of tail. The only way this will exit
 		# is if the tail process terminates, or we get an exception.
 		
@@ -208,14 +212,21 @@ class LogFeeder(ThreadActor):
 			logLine = process.stdout.readline().strip()
 			panel.addLogLine(logLine)
 
+			if not started:
+				_logger.debug("logFeeder.main(): Just added my very first line of log data to the panel.")
+				started=True
+
 				# If subprocess terminated, check for & process any return code.
 			return_code = process.poll()
 			if return_code is not None:
 
-				_logger.warn(f"LogFeeder.main(): 'tail -f' subprocess unexpectedly terminated with return code {return_code}.")
+				_logger.warn(f"logFeeder.main(): 'tail -f' subprocess unexpectedly terminated with return code {return_code}.")
 
 					# In case there was output we didn't read yet, go ahead and display it. 
 				for logLine in process.stdout.readlines():
+
+					logLine = logLine.strip()
+
 					panel.addLogLine(logLine)
 
 				break	# Feeder thread can only terminate at this point.
@@ -235,7 +246,7 @@ class LogPanel(Panel):
 		panel = newLogPanel
 		
 			# First we do general panel initialization.
-		super(LogPanel, panel).__init__("System Log", FILL_BOTTOM)
+		super(LogPanel, panel).__init__("System Log", FILL_BOTTOM, 15)
 			# Default height of 8 is fine.
 			
 			# Make a note that at this point, we have not yet configured our 
@@ -261,6 +272,10 @@ class LogPanel(Panel):
 		_logger.debug("logPanel.launch(): Starting the feeder thread.")
 		thisLogPanel._feeder.start()
 
+
+	@property
+	def data_win(thisLogPanel):
+		return thisLogPanel._data_subwin
 				
 		# Here, we extend the configWin() method to also configure 
 		# our LogPanel-specific sub-windows.
@@ -290,11 +305,12 @@ class LogPanel(Panel):
 				# same width as the top-level panel window, and begins
 				# at the upper-left corner of the top-level window.
 				
-			panel._data_subwin = win.derwin(3, 0)
+			panel._data_subwin = data_win = win.derwin(3, 0)
 				# This means: The data subwindow begins on row 3 (i.e.,
 				# the 4th row of the window, under the header), column 0,	
 				# and extends all the way to the lower-right corner of the
 				# top-level window.
+			data_win.scrollok(True)		# Allow window to scroll (for adding new lines at bottom)
 				
 		else:	# Panel windows already exist; at most, we may need to resize them.
 		
@@ -309,6 +325,8 @@ class LogPanel(Panel):
 	def drawHeader(thisLogPanel):
 		"""Fills in the content of the 'log header' sub-window."""
 		
+		_logger.debug("logPanel.drawHeader(): Drawing header sub-window of log panel...")
+
 		panel = thisLogPanel		# Get the panel.
 		win = panel._header_subwin	# Get the subwin.
 		
@@ -316,6 +334,7 @@ class LogPanel(Panel):
 
 		head_data = panel._header_data
 		if head_data is None:
+			_logger.debug("logPanel.drawHeader(): Reading log panel header data from file for first time.")
 				# Now we actually retrieve the first three lines from
 				# the log file.  (Note this implementation assumes we're
 				# on a Unix compatible system that provides the head (1) 
@@ -323,10 +342,15 @@ class LogPanel(Panel):
 				# Really here we should retrieve the filename from the logmaster module.
 			head_stream = popen(f"head -3 {logFilename}")	
 			panel._header_data = head_data = head_stream.read().strip()
+
+			#_logger.debug("logPanel.drawHeader(): Got the following header data: " + '\n' + head_data)
+
 				# Do we need to close the stream here, or will GC do it?
 		#__/ End if no header data yet.
 		
 			# OK, now we are finally ready to actually draw the header text.
+
+		win.move(0,0)	# Always start over at top-left corner.
 		addTextClipped(win, head_data, attr)
 			# This clips each line to the width of the window.
 	
@@ -343,9 +367,9 @@ class LogPanel(Panel):
 			# Attempt to parse the log level.  Really we should do something smarter
 			# here, like run a regex on the log line.
 			
-		if len(logLine) >= 149:
+		if len(logLine) >= 151:
 		
-			logLevel = logLine[141:149]		# Extracts field where we expect to see the log level printed.
+			logLevel = logLine[143:151]		# Extracts field where we expect to see the log level printed.
 			
 			# This is annoying due to the varying numbers of spaces.
 			if logLevel == "   DEBUG":
@@ -376,6 +400,7 @@ class LogPanel(Panel):
 					
 		attr = style_to_attr(style)
 		
+			# If we didn't do a newline yet, do it now.
 		(posy, posx) = win.getyx()		# Cursor position in window.
 		if posx > 0:
 			win.addstr('\n')	# Newline.
@@ -421,16 +446,31 @@ class LogPanel(Panel):
 	def addLogLine(thisLogPanel, logLine:str):
 		"""Adds the given (new) line of log file data to 
 			our content dataset, and display it in our 
-			content subwindow."""
+			content subwindow. NOTE: This runs within
+			some thread other than the display driver."""
+
 		panel = thisLogPanel
+		client = panel.client
+		display = client.display
+		win = panel.data_win
+
 		with panel.lock:
 			height = panel._content_height
 			data = panel._content_data
-			data.add(logLine)
+			data.append(logLine)
+
+			# Scroll any excess data lines off the top.
 			while len(data) > height:
 				data = data[1:]
-			display.driver.do(lambda: panel.drawLogLine(logLine))
-				# This will run in the background to avoid deadlocks.
+
+			# Repaint the sub-window.
+			display.driver.do(panel.drawData)
+			display.driver.do(lambda: win.refresh())
+				# The only thing that changed as far as we're concerned is the data sub-window,
+				# so just refresh that one.
+
+			#display.driver.do(lambda: panel.drawLogLine(logLine))
+				# This will run in the background to help avoid deadlocks.
 
 		
 	def drawContent(thisLogPanel):
@@ -471,6 +511,8 @@ class ConsoleClient(PanelClient):
 		
 			# Next, we need to create all our panels.
 		
+		_logger.debug("console.__init__(): Creating console panels.")
+
 		client._logPanel	= logPanel 			= LogPanel()
 		client._inputPanel	= inputPanel 		= InputPanel()
 		client._diagPanel	= diagnosticPanel	= DiagnosticPanel()
@@ -479,6 +521,8 @@ class ConsoleClient(PanelClient):
 		
 			# This installs all the panels in this PanelClient.
 			
+		_logger.debug("console.__init__(): Adding panels to console.")
+
 		client.addPanel(logPanel)			# Place this first, to occupy bottom of screen.
 		#client.addPanel(inputPanel)		# This goes next, at the bottom of the right column.
 		#client.addPanel(diagnosticPanel)	# This goes next, just above the input panel.
@@ -490,6 +534,8 @@ class ConsoleClient(PanelClient):
 		# while we're debugging basic console capabilities.
 		# We can remove this override once that's done.
 		
+		_logger.debug("console.start(): Starting the console client...")
+
 		client = thisClient
 		
 		# IS THERE ANYTHING WE NEED TO DO HERE TO PREP FOR STARTUP?
@@ -498,3 +544,5 @@ class ConsoleClient(PanelClient):
 			# waitForExit is not False.
 		super(ConsoleClient, client).start(waitForExit=waitForExit)
 			# Calls DisplayClient's .start() method.
+
+		_logger.debug("console.start(): Returning.")

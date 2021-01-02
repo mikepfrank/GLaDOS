@@ -991,12 +991,12 @@ class Worker(ThreadActor):
             #       called.  <onexit> specifies a callback to be run when the main
             #       loop is exiting.
     
-    def __init__(inst:Worker, worklist:Worklist=None, target=None, start=True,
+    def __init__(inst:Worker, worklist:Worklist=None, target=None, start=True, daemon=False,
                  onexit=None, role=None, component=None, waitByDefault=None):    # Defaulting these to None gives parent class the responsibility to apply appropriate defaults.
 
             # First, do whatever initialization all ThreadActors need.
         
-        ThreadActor.__init__(inst, target=target, role=role, component=component)
+        ThreadActor.__init__(inst, target=target, role=role, component=component, daemon=daemon)
 
             # Next, do Worker-class-specific initialization.
         

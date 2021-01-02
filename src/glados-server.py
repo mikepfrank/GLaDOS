@@ -178,6 +178,8 @@ from 	config.configuration		import	TheConfiguration
 	# This singleton class will manage loading of the GLaDOS system 
 	# configuration from config files on system startup.
 
+from	display.display				import	TheDisplay
+
 from	console.console				import	ConsoleClient
 	# The "console client" starts up and manages a curses-based 
 	# display screen consisting of a number of user interface panels.
@@ -371,13 +373,13 @@ def _main():
 	settings = TheSettingsFacility()	# Initializes the settings facility.
 	supervisor = TheSupervisor()		# Creates the main supervisory subsystem.
 	
-	_logger.info("System initialization complete.")
+	_logger.info("glados-server.py:_main(): System initialization complete.")
 	
 	if doDebug:
 		pass
 
 	if doNorm:
-		_logger.normal("Starting the system...")
+		_logger.normal("glados-server.py:_main(): Starting up the system...")
 	
 		#|------------------------------------------------------------------------------
 		#| Before starting up the "real meat" of the major system components, first we 
@@ -390,8 +392,13 @@ def _main():
 		#| of interest to a human operator looking at the GLaDOS system console.  
 		#| It also provides for human input (for commands, talking to the AI, etc.)
 	
+	_logger.info("glados-server.py:_main(): Creating display...")
+	display = TheDisplay()		# Initializes our curses display interface.
+
+	_logger.info("glados-server.py:_main(): Creating console client...")
 	console = ConsoleClient()	# Initializes the system console client functionality.
 
+	_logger.info("glados-server.py:_main(): Starting console client...")
 	console.start()
 		# Presently this waits for the console to exit; in future, it will just
 		# run it in the background.
