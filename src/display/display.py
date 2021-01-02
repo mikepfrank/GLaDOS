@@ -106,6 +106,7 @@ __all__ = [		# List of all public names exported from this module.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 from enum import Enum			# Support for enumerated types.
+from time import sleep
 from os	import environ, path 	
 	# Access environment variables, manipulate filesystem path strings.
 
@@ -129,6 +130,8 @@ encoding = locale.getpreferredencoding()
 
 import curses
 from curses import *
+	# At some point we should change this to an explicit list of the
+	# curses names that we actually use.
 from curses.textpad import rectangle, Textbox
 from curses.ascii import (controlnames, iscntrl, isspace, isgraph, DC4)
 
@@ -1265,8 +1268,12 @@ class DisplayClient:
 			# The following code block or similar will be in most applications.
 		if keycode == KEY_RESIZE:
 			client._display.resize()
-		else:
-			client.paint()
+
+		# The following is commented out because generally there's no need to
+		# repaint the entire display just because a key was pressed.
+
+		#else:
+		#	client.paint()
 
 	#__/ End method displayClient.handle_event().
 
@@ -1432,6 +1439,27 @@ class TheDisplay:
 	@property
 	def width(theDisplay):
 		return theDisplay._width
+
+
+	def update(theDisplay):
+
+		"""This method should only be called from within the display
+			driver thread, after the display is running.
+
+			It updates the physical state of the entire display screen
+			(or at least, as much of it as actually needs updating); this
+			updates all sub-windows that have been marked as needing
+			updating using win.noutrefresh()."""
+
+		#_logger.debug("display.update(): A display update was requested.")
+		if not theDisplay.isRunning:
+			_logger.debug("display.update(): The display isn't running yet; ignoring.")
+			return
+
+		# Check to make sure we're in the right thread.
+
+		doupdate()
+		
 
 
 	def refresh(theDisplay):
@@ -1686,6 +1714,15 @@ class TheDisplay:
 		client = display._client
 		thread = display._tuiInputThread
 		
+			# Here we put the terminal into "raw" mode; which does the following:
+			# 	* Turns off automatic processing of ^C/^S/^Q
+			#   * Turns off blocking on getch() operations. This is important
+			#		to prevent display updates from hanging in our input loop.
+
+		raw()
+		#cbreak()
+		#halfdelay(1)	# .getch() Returns ERR after 0.1 secs if no input seen.
+
 			# Here's the actual main loop. Keep going until requested to exit,
 			# or there is an exception.
 			
@@ -1693,6 +1730,19 @@ class TheDisplay:
 		
 			# This try/except clause allows us to handle keyboard interrupts cleanly.
 			try:
+
+					#|-----------------------------------------------------
+					#| Note that here we are doing .getch() in a different 
+					#| thread from the display driver thread that does all
+					#| of our other curses operations.  This risks the 
+					#| possibility of non-thread-safe concurrency issues,
+					#| but is important for us to gain the advantages of
+					#| doing multithreading in the first place; otherwise,
+					#| the display driver will get tied up whenever we are 
+					#| waiting for input.  This may or may not work.
+				
+				ch = screen.getch()
+
 					#|----------------------------------------------------------
 					#| Note that the work of getting the character is actually
 					#| handled in the display driver thread.  (This is to make
@@ -1700,14 +1750,27 @@ class TheDisplay:
 					#| here if the window is resized don't interfere with use 
 					#| of the display from other threads.)
 					
-				ch = driver(screen.getch)	# Gets a 'character' (keycode) ch.
+				#ch = driver(screen.getch)	# Gets a 'character' (keycode) ch.
 				
-				_logger.debug(f"display._runMainloop(): Got character code {ch}.")
-
 				if ch == ERR:	# This could happen in case of an input timeout.
+
+					_logger.debug(f"display._runMainloop(): Got an ERR from screen.getch.")
+
+						#---------------------------------------------------------
+						# This sleep is important to allow other threads to have
+						# a turn in between us checking for new inputs.  The time
+						# here is 100 milliseconds.  If the time is too long, the
+						# console will seem slow to respond to input.  If the time
+						# is too short, it will waste CPU time with repeated input
+						# polling.
+
+					sleep(0.1)	# Sleep for 0.1 second = 100 milliseconds.
+					
 					continue	# In which case, we just ignore it and keep looping.
 
-				elif ch == DC4:		# ^T = Device control 4, primary stop, terminate.
+				_logger.debug(f"display._runMainloop(): Got character code {ch}.")
+
+				if ch == DC4:		# ^T = Device control 4, primary stop, terminate.
 					_logger.fatal("display._runMainloop(): Exiting due to ^T = terminate key.")
 					break
 					
