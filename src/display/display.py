@@ -1599,7 +1599,6 @@ class TheDisplay:
 			#| By the time we get here, the virtual display (background buffer) 
 			#| has been painted; now we update the real display (minimally) so
 			#| the user can see the changes.
-			
 		
 		if screen != None:
 			screen.refresh()		# Do it here so client doesn't have to.
@@ -1641,6 +1640,8 @@ class TheDisplay:
 		# If we have a client attached, tell it to handle the resize internally.
 		if theDisplay._client != None:
 			theDisplay._client.handle_resize()
+
+		_logger.debug(".resize(): Repainting entire display after resize...")
 
 			# Now that everything is consistent, repaint the display.
 		theDisplay.paint()
