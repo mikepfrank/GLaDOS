@@ -106,6 +106,7 @@ __all__ = [		# List of all public names exported from this module.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 from enum import Enum			# Support for enumerated types.
+from threading import RLock		# Reentrant locks for concurrency control.
 from time import sleep
 from os	import environ, path 	
 	# Access environment variables, manipulate filesystem path strings.
