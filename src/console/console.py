@@ -27,98 +27,119 @@
 #| End of module documentation string.
 #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-# console.py
-# Implements the main GLaDOS system console display
 
-# Here is a rough sketch of the console display layout (not actual size or to scale):
-#
-#		/---------------------------------------- GLaDOS System Console ----------------------------------------\
-#		| [This area is used to display a human-readable	| [The receptive field display flows around to		|
-#		|  rendition of the AI's entire receptive field.	|  this column, if it doesn't fit in the first		|
-#		|  Any normally-nonprintable ASCII characters are	|  column.]											|
-#		|  rendered using special display codes & styles.	|													|
-#		|  The view of the receptive field is also word-	|													|
-#		|  wrapped to fit within the column.  The screen	|													|
-#		|  is divided into two roughly equal-size columns,	|													|
-#		|  unless the screen width is less than 120 char-	|													|
-#		|  acter cells, in which case we use only a single	|													|
-#		|  column.  If the receptive field doesn't fit in	|													|
-#		|  the allotted area, a scrollable curses "pad"		|													|
-#		|  larger than the visible area is utilized to		|													|
-#		|  allow the user to browse the entire field.]		+--- Diagnostic Output -----------------------------+
-#		|													| [This area is used to display what would norm-  	|
-#		|  													|  ally be the STDOUT/STDERR streams from the 	  	|
-#		|   												|  server process.  STDERR output is rendered	  	|
-#		|   												|  in red.  STDOUT text comes out in green.		  	|
-#		|  													|  Operator can scroll back in this window.			|
-#		|  													+--- Operator Input --------------------------------+
-#		|													| [This area is a text box that the human operator  |
-#		|													|  can use to input commands/text to the system.]	|
-#		+--- System Log ------------------------------------+---------------------------------------------------+
-#		| [This area is for real-time display of detailed log lines being spooled to the system log file.		|
-#		|																										|
-#		|																										|
-#		\-------------------------------------------------------------------------------------------------------+
-#
-#	Control character rendering:
-#
-#							Rendering as a single (usually black-on-red) 8-bit character.
-#							|
-#							|	Rendering as a single (usually black-on-red) 7-bit character.
-#							|	|
-# 	 	Dec	Hex	Abb CC		8	7	Full name / description.
-# 	 	---	--- ---	--		-	-	------------------------
-#		 0	x00	NUL	^@		_	_	Null character.
-#		 1	x01	SOH	^A		$	:	Start of heading (console interrupt?).
-#		 2	x02	STX	^B		«	[	Start of text.
-#		 3	x03	ETX	^C		»	]	End of text.
-#		 4	x04	EOT	^D		.	.	End of transmission.
-#		 5	x05	ENQ	^E		?	?	Enquiry (used with ACK).
-#		 6	x06	ACK	^F		!	Y	Acknowledgement (used with ENQ). ("Y" is for "Yes!")
-#		 7	x07	BEL	^G		¢	*	Bell.
-#		 8	x08	BS	^H		<	<	Backspace.
-#		 9	x09	HT	^I		>	>	Horizontal tabulation [Tab]. (Whitespace; render as gray on black.)
-#		10	x0A	LF	^J		/	/	Line feed [Enter]. (Whitespace; render as gray on black.)
-#		11	x0B	VT	^K		v	v	Vertical tabulation. (Whitespace; render as gray on black.)
-#		12	x0C FF	^L		§	V	Form feed. (Whitespace; render as gray on black.)
-#		13	x0D CR	^M		®	<	Carriage return [Return]. (Whitespace; render as gray on black)
-#		14	x0E SO	^N		(	(	Shift-out; begin alt. char. set.
-#		15	x0F SI	^O		)	)	Shift-in; resume default char. set.
-#		16	x10 DLE	^P		±	/	Data-link escape. (Like my command-line escape character.)
-#		17	x11 DC1	^Q		°	o	Device control 1 (XON), used with XOFF.  Turn on/resume.  ('o' is for "on.")
-#		18	x12 DC2	^R		©	@	Device control 2.  Special mode.
-#		19	x13 DC3	^S		=	=	Device control 3 (XOFF), used with XON.  Secondary stop (wait, pause, standby, halt).
-#		20	x14 DC4	^T		-	-	Device control 4.  Primary stop (interrupt, turn off).
-#		21	x15 NAK	^U		¬	N	Negative acknowledgement. (N is for "No!")
-#		22	x16	SYN	^V			~	~	Synchronous idle.	
-#		23	x17	ETB	^W		;	;	End transmission block.
-#		24	x18	CAN	^X		×	X	Cancel.
-#		25	x19	EM	^Y		|	|	End of medium.
-#		26	x1A	SUB	^Z		¿	$	Substitute.
-#		27	x1B	ESC	^[		^	^	Escape.
-#		28	x1C	FS	^\		¦	F	File separator.	(F is for "file.")
-#		29	x1D	GS	^]		÷	G	Group separator. (G is for "group.")
-#		30	x1E	RS	^^		¶	&	Record separator. (And, here's another record!  Or, 'P' looks like an end-paragraph marker.)
-#		31	x1F	US	^_		·	,	Unit separator. (In CSV, separates fields of a database row.)
-#		32	x20	SP	^`		_	_	Space. (Whitespace; render as gray on black.)
-#	   127	x7F	DEL	^?		#	#	Delete. (Looks like RUBOUT hash.)
-#
-#	For character codes from 128-255, we render them as above (but in a different color) if they are controls,
-#	and as themselves if they are printable Western font (Latin-1) characters.  For codes above 255, how we 
-#	handle them is not really defined yet.  Maybe we just send them to the terminal, and just hope that they
-#	are supported.
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|	This module implements the main GLaDOS system console display client,
+	#|	which provides the main user interface for the server application.
+	#|
+	#|	Here is a rough sketch of the console display layout (please note that
+	#|	this is not actual size, or to scale):
+	#|
+	#|		/---------------------------------------- GLaDOS System Console ----------------------------------------\
+	#|		| [This area is used to display a human-readable	| [The receptive field display flows around to		|
+	#|		|  rendition of the AI's entire receptive field.	|  this column, if it doesn't fit in the first		|
+	#|		|  Any normally-nonprintable ASCII characters are	|  column.]											|
+	#|		|  rendered using special display codes & styles.	|													|
+	#|		|  The view of the receptive field is also word-	|													|
+	#|		|  wrapped to fit within the column.  The screen	|													|
+	#|		|  is divided into two roughly equal-size columns,	|													|
+	#|		|  unless the screen width is less than 120 char-	|													|
+	#|		|  acter cells, in which case we use only a single	|													|
+	#|		|  column.  If the receptive field doesn't fit in	|													|
+	#|		|  the allotted area, a scrollable curses "pad"		|													|
+	#|		|  larger than the visible area is utilized to		|													|
+	#|		|  allow the user to browse the entire field.]		+--- Diagnostic Output -----------------------------+
+	#|		|													| [This area is used to display what would norm-  	|
+	#|		|  													|  ally be the STDOUT/STDERR streams from the 	  	|
+	#|		|   												|  server process.  STDERR output is rendered	  	|
+	#|		|   												|  in red.  STDOUT text comes out in green.		  	|
+	#|		|  													|  Operator can scroll back in this window.			|
+	#|		|  													+--- Operator Input --------------------------------+
+	#|		|													| [This area is a text box that the human operator  |
+	#|		|													|  can use to input commands/text to the system.]	|
+	#|		+--- System Log ------------------------------------+---------------------------------------------------+
+	#|		| [This area is for real-time display of detailed log lines being spooled to the system log file.		|
+	#|		|																										|
+	#|		|																										|
+	#|		\-------------------------------------------------------------------------------------------------------+
+	#|
+	#|
+	#|	Within the field display areas, we use a special character rendering method, so that we can see all of the 
+	#|  specific control and whitespace characters that the A.I. is seeing and producing.  The following table shows
+	#|	how this rendering is done:
+	#|
+	#|
+	#|							Rendering as a single (usually black-on-red) 8-bit character.
+	#|							|
+	#|							|	Rendering as a single (usually black-on-red) 7-bit character.
+	#|							|	|
+	#|	 	Dec	Hex	Abb CC		8	7	Full name / description.
+	#| 	 	---	--- ---	--		-	-	------------------------
+	#|		 0	x00	NUL	^@		_	_	Null character.
+	#|		 1	x01	SOH	^A		$	:	Start of heading (console interrupt?).
+	#|		 2	x02	STX	^B		«	[	Start of text.
+	#|		 3	x03	ETX	^C		»	]	End of text.
+	#|		 4	x04	EOT	^D		.	.	End of transmission.
+	#|		 5	x05	ENQ	^E		?	?	Enquiry (used with ACK).
+	#|		 6	x06	ACK	^F		!	Y	Acknowledgement (used with ENQ). ("Y" is for "Yes!")
+	#|		 7	x07	BEL	^G		¢	*	Bell.
+	#|		 8	x08	BS	^H		<	<	Backspace.
+	#|		 9	x09	HT	^I		>	>	Horizontal tabulation [Tab]. (Whitespace; render as gray on black.)
+	#|		10	x0A	LF	^J		/	/	Line feed [Enter]. (Whitespace; render as gray on black.)
+	#|		11	x0B	VT	^K		v	v	Vertical tabulation. (Whitespace; render as gray on black.)
+	#|		12	x0C FF	^L		§	V	Form feed. (Whitespace; render as gray on black.)
+	#|		13	x0D CR	^M		®	<	Carriage return [Return]. (Whitespace; render as gray on black)
+	#|		14	x0E SO	^N		(	(	Shift-out; begin alt. char. set.
+	#|		15	x0F SI	^O		)	)	Shift-in; resume default char. set.
+	#|		16	x10 DLE	^P		±	/	Data-link escape. (Like my command-line escape character.)
+	#|		17	x11 DC1	^Q		°	o	Device control 1 (XON), used with XOFF.  Turn on/resume.  ('o' is for "on.")
+	#|		18	x12 DC2	^R		©	@	Device control 2.  Special mode.
+	#|		19	x13 DC3	^S		=	=	Device control 3 (XOFF), used with XON.  Secondary stop (wait, pause, standby, halt).
+	#|		20	x14 DC4	^T		-	-	Device control 4.  Primary stop (interrupt, turn off).
+	#|		21	x15 NAK	^U		¬	N	Negative acknowledgement. (N is for "No!")
+	#|		22	x16	SYN	^V			~	~	Synchronous idle.	
+	#|		23	x17	ETB	^W		;	;	End transmission block.
+	#|		24	x18	CAN	^X		×	X	Cancel.
+	#|		25	x19	EM	^Y		|	|	End of medium.
+	#|		26	x1A	SUB	^Z		¿	$	Substitute.
+	#|		27	x1B	ESC	^[		^	^	Escape.
+	#|		28	x1C	FS	^\		¦	F	File separator.	(F is for "file.")
+	#|		29	x1D	GS	^]		÷	G	Group separator. (G is for "group.")
+	#|		30	x1E	RS	^^		¶	&	Record separator. (And, here's another record!  Or, 'P' looks like an end-paragraph marker.)
+	#|		31	x1F	US	^_		·	,	Unit separator. (In CSV, separates fields of a database row.)
+	#|		32	x20	SP	^`		_	_	Space. (Whitespace; render as gray on black.)
+	#|	   127	x7F	DEL	^?		#	#	Delete. (Looks like RUBOUT hash.)
+	#|
+	#|	For character codes from 128-255, we render them as above (but in a 
+	#|	different color) if they are controls, and as themselves if they are 
+	#|	printable Western font (Latin-1) characters.  For codes above 255, 
+	#|	how we handle them is not really defined yet.  Maybe we just send 
+	#|	them to the terminal unmodified, and just hope that they are 
+	#|	supported.  This seems to work for characters up to 383 (ſ) in most 
+	#|	fonts.
+	#|
+	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-from threading	import	RLock
-from os 		import 	path, popen
 
-			#------------------------
-			# Logging-related stuff.
+	#/==========================================================================
+	#|	1. Module imports.								   [module code section]
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from infrastructure.decorators import singleton
+from threading	import	RLock			# To maintain consistency of log data.
+from os 		import 	path, popen		# We use 'popen' to grab 'head' output.
+
+import subprocess	
+	# From this system module, we use 'Popen' and 'PIPE' for streaming log
+	# output data from a'tail' command.
+
+
+		#|----------------------------------------------------------------------
+		#|	Imports and related globals to support logging facility.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 from infrastructure.logmaster import (
 		sysName,			# Used just below.
-		ThreadActor,		# TUI input thread uses this.
+		ThreadActor,		# Log feeder thread is subclassed from this.
 		getComponentLogger 	# Used just below.
 	)
 
@@ -129,47 +150,88 @@ _logger = getComponentLogger(_component)  # Create the component logger.
 global _sw_component	# Full name of this software component.
 _sw_component = sysName + '.' + _component
 
-
-from display.display	import (
-		PLAIN, BORDER, HEADER,
-		DEBUG_STYLE, INFO_STYLE, GOOD_STYLE,
-		WARNING_STYLE, ERROR_STYLE, CRITICAL_STYLE,
-		style_to_attr, addLineClipped, addTextClipped
-	)
-
-# To implement the console, we draw an arrangement of borders and separators, within which are different "panels",
-# or curses sub-windows with specific functionality.  Each panel has a position and size.  In the event of a screen
-# resize, we redo the panel arrangement and refresh the display.
-
-# Classes include:
-# ----------------
-#
-#		ConsoleClient	- Subclass of PanelClient for setting up the console display specifically.
-#
-#
-#	Panel subclasses:
-#	.................
-#
-#		LogPanel		- This is the panel to display the system log at the bottom of the screen.
-#
-#		InputPanel		- This is the panel for gathering operator input.
-#
-#		DiagnosticPanel	- This is the panel for displaying STDOUT/STDERR streams.
-#
-#		FieldPanel		- This is the panel for displaying all or part of the AI's receptive field.
-#
-
-import subprocess	# Used for streaming output from 'tail'
-
-from display.panel import Panel, PanelClient, FILL_BOTTOM
-
-
 	# Maybe should move this to LogPanel initializer?
 global logFilename
 logFilename = path.join('log', 'GLaDOS.server.log')
+	# It would be cleaner to just retrieve this from the logmaster package.
 
 
-class LogPanel: pass
+		#|----------------------------------------------------------------------
+		#|	Import names we need from the display module.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from display.display	import (
+		HEADER,				# Render style we use for the log panel header area.
+		PLAIN,				# Render style we use for log lines of unknown level.
+		DEBUG_STYLE,		# Render style we use for debug-level log messages.
+		INFO_STYLE, 		# Render style we use for input-level log messages.
+		GOOD_STYLE,			# Render style we use for normal-level log messages.
+		WARNING_STYLE,		# Render style we use for warning-level log messages.
+		ERROR_STYLE,		# Render style we use for error-level log messages.
+		CRITICAL_STYLE,		# Render style we use for critical-level (or fatal) log messages.
+		style_to_attr,		# Converts render styles to display attributes.
+		addLineClipped, 	# Adds a line of text to a window, but with right-clipping.
+		addTextClipped		# Adds a body of text to a window, but with right-clipping.
+	)
+
+
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|	To implement the console, we will draw an arrangement of borders and 
+	#|	separators, within which are different "panels", or curses sub-windows 
+	#|	with specific functionality.  Each panel has a position and size.  In 
+	#|	the event of a screen resize, we redo the panel arrangement and refresh 
+	#|	the display.
+	#|	
+	#|	Most of the general infrastructure needed to implement a paneled display 
+	#|	like this is provided in the display.panels module, but code specific to 
+	#|	the console client in particular is gathered here in the console package.
+	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+from	display.panel	import (
+
+		Panel,			# This is the base class from which we derive various specific types of panels.
+		PanelClient,	# This is the base class from which we derive our specific client, ConsoleClient.
+		FILL_BOTTOM		# This is the panel placement specifier we use for the log panel.
+		
+	)
+
+
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|
+	#|	Classes provided by the current 'console' module include the following:
+	#| 	-----------------------------------------------------------------------
+	#|
+	#|		ConsoleClient	- Subclass of PanelClient for setting up the 
+	#|							console display specifically.
+	#|
+	#|
+	#|	Panel subclasses for specific panels:
+	#|	.....................................
+	#|
+	#|		LogPanel		- This is the panel to display the system log 
+	#|							across the bottom of the screen.
+	#|
+	#|		InputPanel		- This is the panel for gathering operator input.
+	#|
+	#|		DiagnosticPanel	- This is the panel for displaying STDOUT/STDERR 
+	#|							streams.
+	#|
+	#|		FieldPanel		- This is a class used for panels that display
+	#|							all or part of the AI's receptive field.
+	#|
+	#|
+	#|	Subordinate classes:
+	#|	....................
+	#|
+	#|		LogFeeder	- This is a thread that feeds log data to the LogPanel.
+	#|						(It and LogPanel could be moved out together to a
+	#|						new module 'logPanel'.)
+	#|
+	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+class LogPanel: pass	# Forward declaration for type hints.
 
 # A LogFeeder is a ThreadActor whose job it is to spool log file data
 # into the content area of the log panel.
@@ -549,8 +611,6 @@ class LogPanel(Panel):
 				# The only thing that changed as far as we're concerned is the data sub-window,
 				# so just refresh that one.
 
-
-		
 	def drawContent(thisLogPanel):
 		"""Fills in the content of a blank log panel."""
 		
