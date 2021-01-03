@@ -160,6 +160,8 @@ logFilename = path.join('log', 'GLaDOS.server.log')
 		#|	Import names we need from the display module.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+import curses
+
 from display.display	import (
 		HEADER,				# Render style we use for the log panel header area.
 		PLAIN,				# Render style we use for log lines of unknown level.
@@ -392,13 +394,20 @@ class LogPanel(Panel):
 				# This means: The data subwindow begins on row 3 (i.e.,
 				# the 4th row of the window, under the header), column 0,	
 				# and extends all the way to the lower-right corner of the
-				# top-level window.
+				# top-level interior window for the panel.
 			data_win.scrollok(True)		# Allow window to scroll (for adding new lines at bottom)
+			
+				# Remember that we already created our sub-windows.
+			panel._subWinsCreated = True
 				
 		else:	# Panel windows already exist; at most, we may need to resize them.
 		
 			# Header sub-window width may need adjusting.
-			panel._header_subwin.resize(3, width)	# Width might be new.
+			try:
+				panel._header_subwin.resize(3, width)	# Width might be new.
+				panel._data_subwin.resize(height-3, width)
+			except curses.error as e:
+				_logger.error(f"logPanel.configWin(): During sub-window resizing, got curses error: {str(e)}")
 	
 		# Make sure we know the size of our content window, and remember it.
 		(content_height, content_width) = panel._data_subwin.getmaxyx()
