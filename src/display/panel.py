@@ -24,6 +24,9 @@ _logger = getComponentLogger(_component)  # Create the component logger.
 global _sw_component
 _sw_component = sysName + '.' + _component
 
+import curses
+from curses import error, newwin
+
 from .display import (
 		BORDER,
 		style_to_attr,		# Needed to use render styles.
@@ -90,21 +93,36 @@ class Panel:
 		client = panel.client
 		display = client.display
 		screen = display.screen
+		win = panel._win
 		
 		leftPad = panel._leftPad
 
+		height = panel.height				# Panel AND interior window height.
 		int_width = panel.width - leftPad	# Width of interior window.
 
-		if panel._win == None:	# No sub-window yet; create one.
-			panel._win = screen.subwin(panel.height, int_width, panel.top+1, panel.left+1 + leftPad)
+		if win == None:	# No sub-window yet; create one.
+			panel._win = win = screen.subwin(panel.height, int_width, panel.top+1, panel.left+1 + leftPad)
 				# NOTE: <leftPad> gives a number of blank spaces to leave in between the panel's
 				# left border and its interior sub-window.
 		else:
 				# Move the window in case the panel's position changed.
-			panel._win.mvwin(panel.top+1, panel.left+1)
+			try:
+				win.mvwin(panel.top+1, panel.left+1)
+			except error as e:
+				_logger.error(f"panel.configWin(): Move attempt generated curses error: {str(e)}")
 
 				# Resize the window in case the panel's size changed.
-			panel._win.resize(panel.height, int_width)
+
+			_logger.debug(f"panel.configWin(): Resizing internal window to ({height}, {int_width}).")
+
+			win.clear()
+			try:
+				win.resize(height, int_width)
+			except error as e:
+				_logger.error(f"panel.configWin(): Resize attempt generated curses error: {str(e)}")
+
+			# Mark the sub-window as needing refreshing.
+		win.noutrefresh()
 	
 	def replace(thisPanel):
 		"""Same as .place() but for previously placed panels."""
@@ -355,10 +373,12 @@ class PanelClient(DisplayClient):
 
 	def redoPlacements(thisPanelClient):
 		"""Redo the placement of all panels on the display."""
+
 		client = thisPanelClient
+
 		for panel in client._panels:
 			panel.replace()		# Redo the placement of this single panel.
-
+		
 
 	def handle_resize(thisPanelClient):
 		"""When we have already figured out the new screen size, this method
@@ -438,20 +458,25 @@ class PanelClient(DisplayClient):
 		display.erase()		# Marks all character cells as empty (and no attributes).
 				# (We do this so we don't have to worry about old text hanging around.)
 
+		try:
+
 			# Draw a border just inside the edges of the screen.
-		display.drawOuterBorder()	# Uses BORDER style.
-		
-		if client._title is not None:
+			display.drawOuterBorder()	# Uses BORDER style.
+			
+			if client._title is not None:
 				# Draw the title in the middle of the top border.
-			display.drawCenter(client._title, row=0, lrpad=' ', style=BORDER)
+				display.drawCenter(client._title, row=0, lrpad=' ', style=BORDER)
 				# (Pads it on the left and the right with a space.)
-	
-		if client.nColumns == 2:	# Two columns; need to draw separator.
-			client.drawSeparator()
-	
+			
+			if client.nColumns == 2:	# Two columns; need to draw separator.
+				client.drawSeparator()
+			
 			# At this point, we need to paint all of our installed panels.
-		for panel in client._panels:
-			panel.paint()
+			for panel in client._panels:
+				panel.paint()
+
+		except error as e:
+			_logger.error("panelClient.paint(): Got a curses error: " + str(e))
 	
 	
 	def addPanel(thisPanelClient, panel:Panel):
