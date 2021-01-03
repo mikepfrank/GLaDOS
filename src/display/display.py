@@ -966,7 +966,7 @@ class DisplayDriver(RPCWorker):
 			callables that are handed to the display driver as tasks to be
 			executed. It simply grabs the display lock, so that we avoid 
 			conflicting with any other threads that may be using the 
-			display."""
+			display.  (We assume curses operations are not thread-safe.)"""
 		with TheDisplay().lock:
 			callable()				# Call the callable.
 	
@@ -1790,12 +1790,10 @@ class TheDisplay:
 		client = display._client
 		thread = display._tuiInputThread
 		
-			# Here we put the terminal into "raw" mode; which does the following:
-			# 	* Turns off automatic processing of ^C/^S/^Q
-			#   * Turns off blocking on getch() operations. This is important
-			#		to prevent display updates from hanging in our input loop.
+			# Set the input mode.
 
-		raw()
+		raw()			# Suppresses processing of ^C/^S/^Q
+		timeout(0)		# Non-blocking read on getch(), no delay.
 		#cbreak()
 		#halfdelay(1)	# .getch() Returns ERR after 0.1 secs if no input seen.
 
@@ -1826,8 +1824,9 @@ class TheDisplay:
 						#| the display lock acquired, however, to ensure thread-safe
 						#| operation and avoid concurrency hazards.
 					
-					with display.lock:
-						ch = screen.getch()
+					#with display.lock:
+					ch = display.driver(screen.getch)
+							# Earlier, we configured this to be nonblocking;
 
 						#|----------------------------------------------------------
 						#| Note that the work of getting the character is actually
