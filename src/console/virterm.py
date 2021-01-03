@@ -27,9 +27,9 @@
 #|		* In the main server application, a virterm is created
 #|			when the server first starts up, and stdout/stderr 
 #|			are redirected to it, as well being duplicated to 
-#|			the original streams; this allows early diagnostics
-#|			to be captured and then re-displayed in a console
-#|			sub-window after the server is started up.
+#|			the original streams; this allows early diagnostic
+#|			output to be captured and then re-displayed in a 
+#|			console panel after the server is started up.
 #|
 #|		
 
@@ -225,7 +225,7 @@ class VirTerm:	# Virtual-terminal class.
 	
 	def grab_stdio(thisVirTerm, tee:bool=True):
 		"""This tells the virTerm to grab control of STDIO, except
-			that if 'tee=False' is not provided, stdout/stderr data
+			that if 'tee=False' is not specified, stdout/stderr data
 			is also still echoed to the original stdout/stderr, in 
 			addition to being sent to the virTerm instance."""
 		
@@ -233,8 +233,8 @@ class VirTerm:	# Virtual-terminal class.
 		_preserve_orig_stdio()
 		
 			# Now grab the three streams.
-		thisVirTerm.grab_stdout()
-		thisVirTerm.grab_stderr()
+		thisVirTerm.grab_stdout(tee)
+		thisVirTerm.grab_stderr(tee)
 		thisVirTerm.grab_stdin()	# This does nothing yet.
 	
 	def release_stdio(thisVirTerm):
