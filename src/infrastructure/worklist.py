@@ -1,27 +1,62 @@
-#============================================================
-#   Worklist.py - A worklist module to help support
-#       multithreaded environments.
-#
-#       Often in a multithreaded environment, there is a piece
-#       of work (a task) that needs to be done within a certain
-#       predesignated thread (such as manipulating the state of
-#       a GUI), but there is some other, asynchronously running
-#       thread that is the one that is providing the work items,
-#       and ordering (triggering) the work to be done.
-#
-#       Or, a similar scenario, a certain thread (e.g. a GUI
-#       event handler) generates a sequence of tasks that need
-#       to get done (in a certain order), but the thread does
-#       not want to itself wait for the tasks to be completed
-#       before going on to other urgent tasks (like redrawing
-#       GUI elements).  So it would like to pass the tasks to
-#       some other, background thread whose job it is to
-#       accomplish them.
-#
-#       The idea of the Worklist class is that it makes it easy
-#       to pass bits of work from one thread to another, and get
-#       work done in the background.
-#
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#|					TOP OF FILE:	infrastructure/worklist.py
+#|------------------------------------------------------------------------------
+#|	 The below module documentation string will be displayed by pydoc3.
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+"""
+	FILE NAME:		infrastructure/worklist.py		 [Python module source file]
+		
+	MODULE NAME:	infrastructure.worklist
+	IN PACKAGE:		infrastructure
+	FULL PATH:		$GIT_ROOT/GLaDOS/src/infrastructure/worklist.py
+	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
+	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
+	APP NAME:		GLaDOS.server (Main GLaDOS server application)
+	SW COMPONENT:	GLaDOS.server.work (Multithreaded work management facility)
+
+
+	MODULE DESCRIPTION:
+	===================
+	
+		Originally developed as part of the COSMICi project, this module 
+		provides a "work-management facility" for use in multithreaded 
+		environments.
+		
+		Rationale: Often, in a multithreaded environment, there is a piece
+		of work (a task) that needs to be done within a certain predesignated 
+		thread to avoid concurrency issues (such as manipulating the state of 
+		a complex UI), but meanwhile there are other, asynchronously running 
+		threads that are providing the work items, and ordering (triggering) 
+		the work items (tasks) to be carried out.
+		
+		Or, a similar scenario, a certain thread (e.g. a UI event handler) 
+		generates a sequence of tasks that need to get done (in a certain 
+		order), but the thread does not want to itself wait for the tasks to 
+		be completed before going on to other urgent tasks (like redrawing UI 
+		elements).  So it would like to pass the tasks to some other, 
+		background thread whose job it is to accomplish them.
+		
+		The idea of the Worklist abstraction is that it makes it "easy" to pass 
+		bits of work from one thread to another, and get work done in the 
+		background.
+		
+		In the context of the GLaDOS server, the primary use of worklists is
+		to keep track of a queue of curses-associated tasks to be carried out,
+		where these tasks typically involving updating the curses display.  A
+		single thread called the "display driver" then executes these tasks.
+		This effectively serializes execution of these tasks, and ensures that 
+		the curses library itself always remains in a self-consistent state.
+		Other threads can submit tasks to the display driver's worklist for 
+		processing, including background processing, so that the other threads
+		don't have to wait for the display to finish updating to continue their
+		own work.
+
+"""
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#| End of module documentation string.
+#|------------------------------------------------------------------------------
+
+
 #   Classes provided:
 #
 #       Flag - A Boolean condition that can be waited on.
@@ -105,7 +140,7 @@ import sys, traceback   # To facilitate debugging.
 
 from threading import Thread, RLock, current_thread    # High-level threading module.
 
-from numbers import Number      # Used in some argument type declarations.
+from numbers import Number      # Used in some argument type hints.
 
     #-----------------------------------------
     # Import some of our own custom modules.
@@ -122,7 +157,7 @@ from .logmaster import *     # Our customized logging facility.
 
 from .utils import bind      # We use the bind() function in HireThread
 
-logger = getLogger(appName + ".work")
+_logger = getLogger(appName + ".work")
 
     #--------------------------------------------------------------------
     # Our public (exported) names.  These are the names that will get
@@ -149,7 +184,7 @@ __all__ = ['Empty', 'Full',     # Exceptions inherited from Desque.
         # module's logger.
 
 class WorklistModuleException(LoggedException):
-    defLogger = logger
+    defLogger = _logger
 
         #-----------------------------------------------------------------
         #   WorkItemException [module public class] - The superclass of
@@ -279,7 +314,7 @@ class Worklist(Desque): pass
     #       resumed later within the SAME worker thread by simply
     #       suspending the thread itself.
 
-class WorkItem():
+class WorkItem:
     
     #------------------------------------------------------------
     # Instance variables:
@@ -918,9 +953,11 @@ class Worker(ThreadActor):
     #   Class data members.
 
     defaultRole = 'Worker'
-#    defaultComponent = '(unset)'       # by not setting this, we inherit value from parent thread, or parent class
+	#defaultComponent = '(unset)'       # by not setting this, we inherit value from parent thread, or parent class
 
     defaultWaitByDefault = False        # By default, sending a task to a worker does not wait for a return value.
+
+	defaultWrapper = None	# By default, no wrapper is wrapped around bare callables.
 
     #---------------------------------------------------------------------------------
     #   Instance data members:
@@ -992,7 +1029,8 @@ class Worker(ThreadActor):
             #       loop is exiting.
     
     def __init__(inst:Worker, worklist:Worklist=None, target=None, start=True, daemon=False,
-                 onexit=None, role=None, component=None, waitByDefault=None):    # Defaulting these to None gives parent class the responsibility to apply appropriate defaults.
+                 onexit=None, role=None, component=None, waitByDefault=None, wrapper=None):    
+				 # Defaulting these to None gives parent class the responsibility to apply appropriate defaults.
 
             # First, do whatever initialization all ThreadActors need.
         
@@ -1000,31 +1038,37 @@ class Worker(ThreadActor):
 
             # Next, do Worker-class-specific initialization.
         
-        inst.init(worklist=worklist, start=start, onexit=onexit, waitByDefault=waitByDefault)
+        inst.init(worklist=worklist, start=start, onexit=onexit, waitByDefault=waitByDefault, wrapper=wrapper)
 
             #----------------------------------------------------------------------------
             #   init()                                      [external instance method]
             #
             #       Initialization specific to the Worker class.
 
-    def init(inst:Worker, worklist:Worklist=None, start:bool=False, onexit=None, waitByDefault=None):
+    def init(inst:Worker, worklist:Worklist=None, start:bool=False, onexit=None, waitByDefault=None, wrapper=None):
 
             # In case this method is called on something that isn't really a Worker class instance.
 
         if not hasattr(inst, 'defaultWaitByDefault'):
             inst.defaultWaitByDefault = False
+		if not hasattr(inst, 'defaultWrapper'):
+			inst.defaultWrapper = None
 
             # Inherent default behavior from class variable.
 
         if waitByDefault == None:
             waitByDefault = inst.defaultWaitByDefault
         
-        logger.debug("Initializing worker %s..." % inst)
+		if wrapper == None:
+			wrapper = inst.defaultWrapper
+		
+        _logger.debug("Initializing worker %s..." % inst)
         inst.lock = RLock()       # Create our reentrant mutex lock.
         with inst.lock:                     # Go ahead and use it, just in case.
 
             inst.waitByDefault    = waitByDefault   # Initialize this parameter, which determines whether we do .do() or .getResult() by default.
-            
+            inst.wrapper		  = wrapper			# Function to wrap around bare callables.
+			
             inst.started          = Flag()        # Create all of our waitable flags.
             inst.pauseRequested   = Flag()
             inst.paused           = Flag()
@@ -1092,7 +1136,7 @@ class Worker(ThreadActor):
                 # For this one, we can't use the logger because it can cause an
                 # infinite recursion.
 
-#            logger.warn("%s: Worker.do(): Request to do task %s ignored, because "
+#            _logger.warn("%s: Worker.do(): Request to do task %s ignored, because "
 #                        "we are already in the process of exiting..."%(current_thread(),task))
 
                 # We dispense with this plain printed warning as well, because
@@ -1116,7 +1160,13 @@ class Worker(ThreadActor):
         inst.ensure_worklist()      # First make sure we have a worklist.
 
         if not isinstance(task, WorkItem):      # Is the task just a plain callable (e.g. lambda)?
-            task = WorkItem(task, owner=inst)   # If so, then make a real WorkItem out of it.
+		
+			# First, if we have a wrapper function to apply to all tasks, wrap the callable in it.
+			wrapper = inst.wrapper
+			if wrapper is not None:
+				task = lambda *args, **kwargs: wrapper(lambda: task(*args, **kwargs))	# Wrap the task in the wrapper
+		
+            task = WorkItem(task, owner=inst)   # Now, make a real WorkItem out of it.
 
         inst.todo.addItem(task, block, timeout, front, override)  # Add it to the worker's queue.
 
@@ -1162,6 +1212,12 @@ class Worker(ThreadActor):
         inst.ensure_worklist()      # First make sure we have a worklist.
 
         if not isinstance(task, WorkItem):      # Is the task just a plain callable (e.g. function, lambda)?
+
+			# First, if we have a wrapper function to apply to all tasks, wrap the callable in it.
+			wrapper = inst.wrapper
+			if wrapper is not None:
+				task = lambda *args, **kwargs: wrapper(lambda: task(*args, **kwargs))	# Wrap the task in the wrapper
+		
             task = WorkItem(task, owner=inst)   # If so, then make a real WorkItem out of it.
 
         # Now we actually send the task, and then wait for & then reproduce the result.
@@ -1188,9 +1244,9 @@ class Worker(ThreadActor):
 
     def stopSoon(inst):
         if inst.exiting:
-            logger.warn("Worker.stopSoon(): [%s] worker is already exiting; nothing to do."%inst.role)
+            _logger.warn("Worker.stopSoon(): [%s] worker is already exiting; nothing to do."%inst.role)
             return
-        logger.debug("Worker.stopSoon(): Asking [%s] worker to exit after next task..."%inst.role)
+        _logger.debug("Worker.stopSoon(): Asking [%s] worker to exit after next task..."%inst.role)
         inst.exitRequested.rise()
 
             #---------------------------------------------------------------------------
@@ -1203,18 +1259,18 @@ class Worker(ThreadActor):
 
     def putStop(inst, front=False):
         if inst.exiting:
-            logger.warn("Worker.putStop(): [%s] worker is already exiting; nothing to do."%inst.role)
+            _logger.warn("Worker.putStop(): [%s] worker is already exiting; nothing to do."%inst.role)
             return
-        logger.debug("Worker.putStop(): About to acquire [%s] worker lock..."%inst.role)
+        _logger.debug("Worker.putStop(): About to acquire [%s] worker lock..."%inst.role)
         with inst.lock:
             if inst.todo == None:
-                logger.debug("Worker.putStop(): The [%s] worker has no worklist.  About to call stopSoon()..."%inst.role)
+                _logger.debug("Worker.putStop(): The [%s] worker has no worklist.  About to call stopSoon()..."%inst.role)
                 inst.stopSoon()
-        logger.debug("Worker.putStop(): Making sure [%s] worker has a worklist..."%inst.role)
+        _logger.debug("Worker.putStop(): Making sure [%s] worker has a worklist..."%inst.role)
         inst.ensure_worklist()  # Make sure we HAVE a worklist.
-        logger.debug("Worker.putStop(): About to close [%s] worker's worklist..."%inst.role)
+        _logger.debug("Worker.putStop(): About to close [%s] worker's worklist..."%inst.role)
         inst.todo.close()       # Close it so no new tasks can get onto it.
-        logger.debug("Worker.putStop(): Putting .exitByRequest() on front of [%s] worker's queue..."%inst.role)
+        _logger.debug("Worker.putStop(): Putting .exitByRequest() on front of [%s] worker's queue..."%inst.role)
         inst.do(inst.exitByRequest, front=front, override=True) # Put an item on this worker's
             # worklist to make him throw an exception and exit.
 
@@ -1228,7 +1284,7 @@ class Worker(ThreadActor):
 
     def stop(inst):
         if inst.exiting:
-            logger.warn("%s: Worker.stop(): %s is already exiting; nothing to do."%(current_thread(),inst))
+            _logger.warn("%s: Worker.stop(): %s is already exiting; nothing to do."%(current_thread(),inst))
             return
         inst.stopSoon()             # Even if the worker is currently busy,
             # make sure he'll stop as soon as he's done with his current work item.
@@ -1245,9 +1301,9 @@ class Worker(ThreadActor):
 
     def close(inst):    # Tells a worker to close out his worklist and go home when he's done.
         if inst.exiting:
-            logger.warn("%s: Worker.close(): %s is already exiting; nothing to do."%(current_thread(),inst))
+            _logger.warn("%s: Worker.close(): %s is already exiting; nothing to do."%(current_thread(),inst))
             return
-        logger.debug("Worker.close(): About to call putStop()...")
+        _logger.debug("Worker.close(): About to call putStop()...")
         inst.putStop()      # Puts a stop order at the back of the queue.
 
         #-------------------------------------------------------------------------
@@ -1274,7 +1330,7 @@ class Worker(ThreadActor):
     def exitByRequest(self):        # Use this to exit because it was requested.
         oldexiting = self.exiting.rise()             # Announce that we are working on exiting.
         if oldexiting:
-            logger.warn("%s: Worker.putStop(): %s is already exiting; nothing to do."%(current_thread(),self))
+            _logger.warn("%s: Worker.putStop(): %s is already exiting; nothing to do."%(current_thread(),self))
             return        
         raise ExitingByRequest("Worker.exitByRequest(): Exiting this worker thread by request.")
                 # Get out by raising this special exception.
@@ -1318,30 +1374,32 @@ class Worker(ThreadActor):
                 return task()    # Do the task. (Must be callable, as a WorkItem is.)
                     # Return any result to our caller.
                     
-            except (WorkAborted, EarlyCompletion):      # Early-termination workitem exception?
-                pass                                        # Just ignore it. (Don't re-raise.)
+            except (WorkAborted, EarlyCompletion) as e:      # Early-termination workitem exception?
+				_logger.warn(f"{str(current_thread)}: worker.do1job(): Task ended early: {str(e)}")
+                # Just ignore it. (Don't re-raise.)
 
             except ExitingByRequest:
-                logger.debug("%s: Worker.do1job(): Task exited by request..." % current_thread())
+                _logger.debug("%s: Worker.do1job(): Task exited by request..." % current_thread())
                 raise
                 # No need to print the full traceback in this case.
 
             except ExitException as e:
-                logger.warn("%s: Worker.do1job(): Task exited early due to ExitException [%s]; reraising..."
+                _logger.warn("%s: Worker.do1job(): Task exited early due to ExitException [%s]; reraising..."
                              % (current_thread(), e))
                 raise
 
             except InfoException:
-                logger.warn("%s: Worker.do1job(): Task exited by throwing an INFO-level exception.  Ignoring." % current_thread())
+                _logger.warn("%s: Worker.do1job(): Task exited by throwing an INFO-level exception.  Ignoring." % current_thread())
 
             except WarningException:
-                logger.warn("%s: Worker.do1job(): Task exited by throwing a WARNING-level exception.  Re-raising it in case caller wants to know about it." % current_thread())
+                _logger.warn("%s: Worker.do1job(): Task exited by throwing a WARNING-level exception.  Re-raising it in case caller wants to know about it." % current_thread())
                 raise
 
             except:
-                logger.exception("%s: Worker.do1job(): Task threw an exception; reraising..." % current_thread())
+                _logger.exception("%s: Worker.do1job(): Task threw an exception; reraising..." % current_thread())
                 raise   # Within guibot, I think TkInter just swallows this up silently.
-        finally:
+        
+		finally:
             self.todo.task_done()   # Tell the queue that we are done with this particular
                 # work item.  This is essential in case any other threads try to do join()
                 # on the queue (that is, wait for all items on the queue to be processed).
@@ -1366,20 +1424,20 @@ class Worker(ThreadActor):
         #       
 
     def run(self, *args, **kwargs):                      # Special run() method for worker threads.
-        logger.debug("Worker.run(): Starting %s thread's .run() method..." % self)
+        _logger.debug("Worker.run(): Starting %s thread's .run() method..." % self)
 
         if self._target:                    # Is there an alternate target? (Setup in start()'s 'target=' kwarg.)
-            logger.debug("%s: Worker.run(): Invoking alternate target method..." % self)
+            _logger.debug("%s: Worker.run(): Invoking alternate target method..." % self)
                 # Dispatch method call to parent class.
             logmaster.ThreadActor.run(self, *args, **kwargs)     # Let Thread.run() take care of targeting.
             return
 
         self.starting()                 # Do stuff needed when starting up (which ThreadActor.run() would normally do).
-        logger.debug("Worker.run(): Started %s thread's .run() method..." % self)
+        _logger.debug("Worker.run(): Started %s thread's .run() method..." % self)
 
-        logger.debug("Worker.run(): Entering %s worker's .work() method..." % self)
+        _logger.debug("Worker.run(): Entering %s worker's .work() method..." % self)
         self.work()                     # Otherwise, do our work() method.
-        logger.debug("Worker.run(): Returned from .work(); exiting .run() - This thread %s should go away now." % self)
+        _logger.debug("Worker.run(): Returned from .work(); exiting .run() - This thread %s should go away now." % self)
     # End Worker.run().
 
         #|---------------------------------------------------
@@ -1404,7 +1462,7 @@ class Worker(ThreadActor):
         try:
             self.do1job(block=block)            # Do just one task from our worklist queue.
         except WarningException:
-            logger.warn("Worker.work(): Job exited by throwing a "
+            _logger.warn("Worker.work(): Job exited by throwing a "
                         "WARNING-level exception; ignoring...")
                 # The idea here being that mere warning-level
                 # exceptions shouldn't prevent processing of
@@ -1436,7 +1494,7 @@ class Worker(ThreadActor):
                 self.work_cycle()               # Do one work cycle.
 
         except ExitingByRequest:                # If we're exiting because of the exitRequested flag,
-            logger.info("Worker.work(): Exiting worker thread %s by request."%current_thread())
+            _logger.info("Worker.work(): Exiting worker thread %s by request."%current_thread())
             self.exitedByRequest.rise()             # Raise a flag announcing this.
 
                 # Here, we don't want to re-raise the exception because then the threading
@@ -1449,13 +1507,13 @@ class Worker(ThreadActor):
 #            raise                                   # and re-raise the exception.
 
         except ExitException as e:
-            logger.warn("Worker.work(): Exiting worker thread %s early due to ExitException [%s]..."
+            _logger.warn("Worker.work(): Exiting worker thread %s early due to ExitException [%s]..."
                         % (current_thread(), e)
                         )
             # Don't re-raise, because we don't want to generate a traceback on thread exit.
             
         except:                                 # If we're exiting due to any other kind of exception,
-            logger.exception("Worker.work(): Exiting worker thread %s abnormally due to exception."%current_thread())
+            _logger.exception("Worker.work(): Exiting worker thread %s abnormally due to exception."%current_thread())
             self.exitedAbnormally.rise()            # Raise a flag annoucing that to other threads,
             raise                                   # and re-raise the exception.
         
@@ -1463,14 +1521,14 @@ class Worker(ThreadActor):
             self.exited.rise()                  # Raise the flag announcing we have exited.
             nItemsLeft = self.todo.qsize()
             if nItemsLeft > 0:
-                logger.warn("Worker.work(): %s is exiting even though there "
+                _logger.warn("Worker.work(): %s is exiting even though there "
                             "are still %d unfinished tasks on its worklist!"
                             % (current_thread(), nItemsLeft))
             if self.onexit:
-                logger.info("Worker.work(): Calling onexit callback: [%s]" % self.onexit)
+                _logger.info("Worker.work(): Calling onexit callback: [%s]" % self.onexit)
                 self.onexit.__call__()  # Call onexit callback, if specified.
 
-        logger.debug("Worker.work(): %s returning normally from its work() method; exiting..."%current_thread())
+        _logger.debug("Worker.work(): %s returning normally from its work() method; exiting..."%current_thread())
 
 # End class Worker.
 
@@ -1484,7 +1542,7 @@ class Worker(ThreadActor):
 
 def HireThread(thread:Thread()):
     if isinstance(thread, Worker):
-        logger.warn("HireCurThread(): Can't hire thread %s because it's already a worker!" % thread)
+        _logger.warn("HireCurThread(): Can't hire thread %s because it's already a worker!" % thread)
 
         # Give the current thread all the instance methods that a Worker
         # instance would have.  The purpose of the bind() calls is to fill

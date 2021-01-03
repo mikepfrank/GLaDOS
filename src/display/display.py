@@ -960,6 +960,18 @@ class DisplayDriver(RPCWorker):
 	#| driver's .do() method.
 	#|---------------------------------------------------------------------
 	
+	@staticmethod
+	def withLock(callable):
+		"""This is a wrapper function that is to be applied around all bare
+			callables that are handed to the display driver as tasks to be
+			executed. It simply grabs the display lock, so that we avoid 
+			conflicting with any other threads that may be using the 
+			display."""
+		with TheDisplay().lock:
+			callable()				# Call the callable.
+	
+	defaultWrapper = withLock
+	
 	def __init__(newDisplayDriver):
 		
 		"""Initialize the display driver by setting up its role & component 
@@ -1326,10 +1338,10 @@ class TUI_Input_Thread(ThreadActor):
 
 @singleton
 class TheDisplay:
+
 	"""This is a singleton class.  Its sole instance represents the text display
 		screen, which is managed by the curses library.	 For now, it assumes that 
 		the display is compatible with xterm/Putty (8 colors, Western script)."""
-
 
 	def __init__(theDisplay):
 		"""Initializes the display system."""
@@ -1345,11 +1357,49 @@ class TheDisplay:
 		theDisplay._width  = None	# No width/height yet, because no screen
 		theDisplay._height = None
 
+			#|------------------------------------------------------------------
+			#|	As a most basic measure to ensure that the state of the curses 
+			#|	library remains self-consistent across all threads within a 
+			#|	multithreaded environment, we here create a reentrant lock
+			#|	which threads can grab (using "with display.lock: ..." syntax)
+			#|	in order to atomically obtain ownership of the display for a 
+			#|	period of time.  Note: To prevent deadlocks, don't do a blocking
+			#|	RPC-style call to another thread which may also need the lock 
+			#|	while you have it.  Instead, you should send the other thread 
+			#|	requests to be executed asynchronously in the background, using
+			#|	syntax like "driver.do(...)".
+			
+		theDisplay._lock = RLock()		# Reentrant lock for concurrency control.
+
+			#|------------------------------------------------------------------
+			#|	As a secondary tool to facilitate multithreaded curses apps,
+			#|	we create this "display driver" thread, which is an RPCWorker
+			#|	(from the worklist module).  It can carry out display tasks 
+			#|	either synchronously ("driver(...)" syntax) or asynchronously
+			#|	("driver.do(...)" syntax).
+
 		theDisplay._driver = DisplayDriver()		# Creates display driver thread.
 			# (This newly created thread is initially just waiting for work to do.)
 			
 		# Nothing else to do here yet. Nothing really happens until .start() is called.
 	
+	#__/ End singleton instance initializer for class TheDisplay.
+	
+	@property
+	def lock(theDisplay):
+		"""
+			Reentrant lock for controlling concurrent access to the underlying 
+			curses library.  A thread should use the following syntax to grab
+			the lock within the dynamical scope of a lexical block of code:
+			
+					with display.lock: 
+						...(statements)...
+						
+			This will ensure that the lock is released when the code block is
+			exited, whether normally or via an exception.  This is important for
+			preventing deadlocks.
+		"""
+		return theDisplay._lock
 	
 	@property
 	def isRunning(theDisplay):
@@ -1429,11 +1479,22 @@ class TheDisplay:
 			in its own thread, so that other systems can asynchonously communicate
 			with it if needed.  Clients call it automatically from their .run() 
 			method."""
+
+		display = theDisplay
 			
 		_logger.debug("display.run(): Starting the display running.")
 
-			# Call the standard curses wrapper on our private display driver method, below.
-		wrapper(theDisplay._manage)
+		#|---------------------------------------------------------------------
+		#| NOTE: wrapper() is a curses function, so we acquire the display 
+		#| lock here to ensure thread-safety.  However, although we acquire 
+		#| the display lock while entering and exiting the wrapper function, 
+		#| internally to ._manage(), the lock is released whenever we're not 
+		#| actively using it.  This is needed to avoid deadlines.
+
+		with display.lock:
+			# Call the standard curses wrapper on our private display management method, below.
+			wrapper(theDisplay._manage)
+				# ._manage() sets up the display and runs our main input loop.
 		
 		# If we get here, then the display driver has exited, and the display was torn down.
 		theDisplay._screen = None	# It's no longer valid anyway.
@@ -1738,86 +1799,100 @@ class TheDisplay:
 		#cbreak()
 		#halfdelay(1)	# .getch() Returns ERR after 0.1 secs if no input seen.
 
-			# Here's the actual main loop. Keep going until requested to exit,
-			# or there is an exception.
+			#|------------------------------------------------------------------
+			#| This releases the display lock that we acquired earlier in the 
+			#| 'with' statement in the .run() method.  We do this so that other 
+			#| threads may access the display in between iterations of our 
+			#| main loop.
+	
+		try:
+			display.lock.release()
+
+				# Here's the actual main loop. Keep going until requested to exit,
+				# or there is an exception.
+				
+			while not thread.exitRequested:
 			
-		while not thread.exitRequested:
-		
-			# This try/except clause allows us to handle keyboard interrupts cleanly.
-			try:
+				# This try/except clause allows us to handle keyboard interrupts cleanly.
+				try:
 
-					#|-----------------------------------------------------
-					#| Note that here we are doing .getch() in a different 
-					#| thread from the display driver thread that does all
-					#| of our other curses operations.  This risks the 
-					#| possibility of non-thread-safe concurrency issues,
-					#| but is important for us to gain the advantages of
-					#| doing multithreading in the first place; otherwise,
-					#| the display driver will get tied up whenever we are 
-					#| waiting for input.  This may or may not work.
-				
-				ch = screen.getch()
-
-					#|----------------------------------------------------------
-					#| Note that the work of getting the character is actually
-					#| handled in the display driver thread.  (This is to make
-					#| sure that changes to data structures that could happen 
-					#| here if the window is resized don't interfere with use 
-					#| of the display from other threads.)
+						#|----------------------------------------------------------
+						#| Note that here we are doing .getch() in a different 
+						#| thread from the display driver thread that does all of 
+						#| our other curses operations.  This is important for us 
+						#| to gain the advantages of doing multithreading in the 
+						#| first place; otherwise, the display driver will get tied 
+						#| up whenever we are waiting for input.  We do this with
+						#| the display lock acquired, however, to ensure thread-safe
+						#| operation and avoid concurrency hazards.
 					
-				#ch = driver(screen.getch)	# Gets a 'character' (keycode) ch.
-				
-				if ch == ERR:	# This could happen in case of an input timeout.
+					with display.lock:
+						ch = screen.getch()
 
-					_logger.debug(f"display._runMainloop(): Got an ERR from screen.getch.")
-
-						#---------------------------------------------------------
-						# This sleep is important to allow other threads to have
-						# a turn in between us checking for new inputs.  The time
-						# here is 100 milliseconds.  If the time is too long, the
-						# console will seem slow to respond to input.  If the time
-						# is too short, it will waste CPU time with repeated input
-						# polling.
-
-					sleep(0.1)	# Sleep for 0.1 second = 100 milliseconds.
+						#|----------------------------------------------------------
+						#| Note that the work of getting the character is actually
+						#| handled in the display driver thread.  (This is to make
+						#| sure that changes to data structures that could happen 
+						#| here if the window is resized don't interfere with use 
+						#| of the display from other threads.)
+						
+					#ch = driver(screen.getch)	# Gets a 'character' (keycode) ch.
 					
-					continue	# In which case, we just ignore it and keep looping.
+					if ch == ERR:	# This could happen in case of an input timeout.
 
-				_logger.debug(f"display._runMainloop(): Got character code {ch}.")
+						_logger.debug(f"display._runMainloop(): Got an ERR from screen.getch.")
 
-				if ch == DC4:		# ^T = Device control 4, primary stop, terminate.
-					_logger.fatal("display._runMainloop(): Exiting due to ^T = terminate key.")
+							#---------------------------------------------------------
+							# This sleep is important to allow other threads to have
+							# a turn in between us checking for new inputs.  The time
+							# here is 100 milliseconds.  If the time is too long, the
+							# console will seem slow to respond to input.  If the time
+							# is too short, it will waste CPU time with repeated input
+							# polling.
+
+						sleep(0.1)	# Sleep for 0.1 second = 100 milliseconds.
+						
+						continue	# In which case, we just ignore it and keep looping.
+
+					_logger.debug(f"display._runMainloop(): Got character code {ch}.")
+
+					if ch == DC4:		# ^T = Device control 4, primary stop, terminate.
+						_logger.fatal("display._runMainloop(): Exiting due to ^T = terminate key.")
+						break
+						
+					event = KeyEvent(keycode=ch)				
+					
+				except KeyboardInterrupt as e:				# User hit CTRL-C?
+
+					_logger.debug("display._runMainloop(): Caught a keyboard interrupt.")
+
+					#event = KeyEvent(keycode = KEY_BREAK)	# Translate to BREAK key.
 					break
+				
+				except Exception as e:
+
+					_logger.fatal(f"display._runmainloop(): Unknown exception: {str(e)}.")
+					raise e
+
+				#__/ End try/except clause for keyboard input loop.
+				
+					#|----------------------------------------------------------------------
+					#| Normally, we handle all events by handing them off to the display 
+					#| driver thread (which is a worker thread).  The advantage of doing 
+					#| things this way is that other threads (also going through the
+					#| centralized display driver thread) can asynchronously be doing other
+					#| stuff with the display (writing updates, etc.) and the handling of 
+					#| key events will be interleaved with that other work automatically in 
+					#| a thread-safe way.
+
+				driver(lambda: client.handle_event(event))
+					# Note this waits for the event handler to finish.
 					
-				event = KeyEvent(keycode=ch)				
-				
-			except KeyboardInterrupt as e:				# User hit CTRL-C?
-
-				_logger.debug("display._runMainloop(): Caught a keyboard interrupt.")
-
-				#event = KeyEvent(keycode = KEY_BREAK)	# Translate to BREAK key.
-				break
-			
-			except Exception as e:
-
-				_logger.fatal(f"display._runmainloop(): Unknown exception: {str(e)}.")
-				raise e
-
-			#__/ End try/except clause for keyboard input loop.
-			
-				#|----------------------------------------------------------------------
-				#| Normally, we handle all events by handing them off to the display 
-				#| driver thread (which is a worker thread).  The advantage of doing 
-				#| things this way is that other threads (also going through the
-				#| centralized display driver thread) can asynchronously be doing other
-				#| stuff with the display (writing updates, etc.) and the handling of 
-				#| key events will be interleaved with that other work automatically in 
-				#| a thread-safe way.
-
-			driver(lambda: client.handle_event(event))
-				# Note this waits for the event handler to finish.
-				
-		#__/ End main user input loop.
+			#__/ End main user input loop.
+		finally:
+			# Before exiting this function, we need to re-aquire the display lock
+			# in preparation for curses tear-down as we exit the wrapper().
+			display.lock.acquire()
 		
 		_logger.debug(f"display._runMainloop(): Exited main loop.")
 
@@ -1858,7 +1933,6 @@ class TheDisplay:
 			# The very first thing we do with the display is to
 			# initialize it.
 		display.driver(display._init)
-
 
 		try:	# Cleanup properly in case of exception-driven exit.
 			display._runMainloop()		# Run the main loop.
