@@ -1164,7 +1164,8 @@ class Worker(ThreadActor):
 			# First, if we have a wrapper function to apply to all tasks, wrap the callable in it.
 			wrapper = inst.wrapper
 			if wrapper is not None:
-				task = lambda *args, **kwargs: wrapper(lambda: task(*args, **kwargs))	# Wrap the task in the wrapper
+				#task = lambda *args, **kwargs: wrapper(lambda: task(*args, **kwargs))	# Wrap the task in the wrapper
+				task = lambda: wrapper(task)
 		
 			task = WorkItem(task, owner=inst)	# Now, make a real WorkItem out of it.
 
@@ -1216,7 +1217,8 @@ class Worker(ThreadActor):
 			# First, if we have a wrapper function to apply to all tasks, wrap the callable in it.
 			wrapper = inst.wrapper
 			if wrapper is not None:
-				task = lambda *args, **kwargs: wrapper(lambda: task(*args, **kwargs))	# Wrap the task in the wrapper
+				#task = lambda *args, **kwargs: wrapper(lambda: task(*args, **kwargs))	# Wrap the task in the wrapper
+				task = lambda: wrapper(task)
 		
 			task = WorkItem(task, owner=inst)	# If so, then make a real WorkItem out of it.
 

@@ -1796,104 +1796,92 @@ class TheDisplay:
 			#   * Turns off blocking on getch() operations. This is important
 			#		to prevent display updates from hanging in our input loop.
 
-		raw()
+		with display.lock:
+			raw()
 		#cbreak()
 		#halfdelay(1)	# .getch() Returns ERR after 0.1 secs if no input seen.
-
-			#|------------------------------------------------------------------
-			#| This releases the display lock that we acquired earlier in the 
-			#| 'with' statement in the .run() method.  We do this so that other 
-			#| threads may access the display in between iterations of our 
-			#| main loop.
-	
-		try:
-			display.lock.release()
 
 				# Here's the actual main loop. Keep going until requested to exit,
 				# or there is an exception.
 				
-			while not thread.exitRequested:
+		while not thread.exitRequested:
 			
-				# This try/except clause allows us to handle keyboard interrupts cleanly.
-				try:
+			# This try/except clause allows us to handle keyboard interrupts cleanly.
+			try:
 
-						#|----------------------------------------------------------
-						#| Note that here we are doing .getch() in a different 
-						#| thread from the display driver thread that does all of 
-						#| our other curses operations.  This is important for us 
-						#| to gain the advantages of doing multithreading in the 
-						#| first place; otherwise, the display driver will get tied 
-						#| up whenever we are waiting for input.  We do this with
-						#| the display lock acquired, however, to ensure thread-safe
-						#| operation and avoid concurrency hazards.
-					
-					with display.lock:
-						ch = screen.getch()
+					#|----------------------------------------------------------
+					#| Note that here we are doing .getch() in a different 
+					#| thread from the display driver thread that does all of 
+					#| our other curses operations.  This is important for us 
+					#| to gain the advantages of doing multithreading in the 
+					#| first place; otherwise, the display driver will get tied 
+					#| up whenever we are waiting for input.  We do this with
+					#| the display lock acquired, however, to ensure thread-safe
+					#| operation and avoid concurrency hazards.
+				
+				with display.lock:
+					ch = screen.getch()
 
-						#|----------------------------------------------------------
-						#| Note that the work of getting the character is actually
-						#| handled in the display driver thread.  (This is to make
-						#| sure that changes to data structures that could happen 
-						#| here if the window is resized don't interfere with use 
-						#| of the display from other threads.)
+					#|----------------------------------------------------------
+					#| Note that the work of getting the character is actually
+					#| handled in the display driver thread.  (This is to make
+					#| sure that changes to data structures that could happen 
+					#| here if the window is resized don't interfere with use 
+					#| of the display from other threads.)
 						
-					#ch = driver(screen.getch)	# Gets a 'character' (keycode) ch.
+				#ch = driver(screen.getch)	# Gets a 'character' (keycode) ch.
 					
-					if ch == ERR:	# This could happen in case of an input timeout.
+				if ch == ERR:	# This could happen in case of an input timeout.
 
-						_logger.debug(f"display._runMainloop(): Got an ERR from screen.getch.")
+					_logger.debug(f"display._runMainloop(): Got an ERR from screen.getch.")
 
-							#---------------------------------------------------------
-							# This sleep is important to allow other threads to have
-							# a turn in between us checking for new inputs.  The time
-							# here is 100 milliseconds.  If the time is too long, the
-							# console will seem slow to respond to input.  If the time
-							# is too short, it will waste CPU time with repeated input
-							# polling.
+						#---------------------------------------------------------
+						# This sleep is important to allow other threads to have
+						# a turn in between us checking for new inputs.  The time
+						# here is 100 milliseconds.  If the time is too long, the
+						# console will seem slow to respond to input.  If the time
+						# is too short, it will waste CPU time with repeated input
+						# polling.
 
-						sleep(0.1)	# Sleep for 0.1 second = 100 milliseconds.
+					sleep(0.1)	# Sleep for 0.1 second = 100 milliseconds.
 						
-						continue	# In which case, we just ignore it and keep looping.
+					continue	# In which case, we just ignore it and keep looping.
 
-					_logger.debug(f"display._runMainloop(): Got character code {ch}.")
+				_logger.debug(f"display._runMainloop(): Got character code {ch}.")
 
-					if ch == DC4:		# ^T = Device control 4, primary stop, terminate.
-						_logger.fatal("display._runMainloop(): Exiting due to ^T = terminate key.")
-						break
-						
-					event = KeyEvent(keycode=ch)				
-					
-				except KeyboardInterrupt as e:				# User hit CTRL-C?
-
-					_logger.debug("display._runMainloop(): Caught a keyboard interrupt.")
-
-					#event = KeyEvent(keycode = KEY_BREAK)	# Translate to BREAK key.
+				if ch == DC4:		# ^T = Device control 4, primary stop, terminate.
+					_logger.fatal("display._runMainloop(): Exiting due to ^T = terminate key.")
 					break
-				
-				except Exception as e:
-
-					_logger.fatal(f"display._runmainloop(): Unknown exception: {str(e)}.")
-					raise e
-
-				#__/ End try/except clause for keyboard input loop.
-				
-					#|----------------------------------------------------------------------
-					#| Normally, we handle all events by handing them off to the display 
-					#| driver thread (which is a worker thread).  The advantage of doing 
-					#| things this way is that other threads (also going through the
-					#| centralized display driver thread) can asynchronously be doing other
-					#| stuff with the display (writing updates, etc.) and the handling of 
-					#| key events will be interleaved with that other work automatically in 
-					#| a thread-safe way.
-
-				driver(lambda: client.handle_event(event))
-					# Note this waits for the event handler to finish.
+						
+				event = KeyEvent(keycode=ch)				
 					
-			#__/ End main user input loop.
-		finally:
-			# Before exiting this function, we need to re-aquire the display lock
-			# in preparation for curses tear-down as we exit the wrapper().
-			display.lock.acquire()
+			except KeyboardInterrupt as e:				# User hit CTRL-C?
+
+				_logger.debug("display._runMainloop(): Caught a keyboard interrupt.")
+
+				#event = KeyEvent(keycode = KEY_BREAK)	# Translate to BREAK key.
+				break
+				
+			except Exception as e:
+
+				_logger.fatal(f"display._runmainloop(): Unknown exception: {str(e)}.")
+				raise e
+
+			#__/ End try/except clause for keyboard input loop.
+				
+				#|----------------------------------------------------------------------
+				#| Normally, we handle all events by handing them off to the display 
+				#| driver thread (which is a worker thread).  The advantage of doing 
+				#| things this way is that other threads (also going through the
+				#| centralized display driver thread) can asynchronously be doing other
+				#| stuff with the display (writing updates, etc.) and the handling of 
+				#| key events will be interleaved with that other work automatically in 
+				#| a thread-safe way.
+
+			driver(lambda: client.handle_event(event))
+				# Note this waits for the event handler to finish.
+					
+		#__/ End main user input loop.
 		
 		_logger.debug(f"display._runMainloop(): Exited main loop.")
 
@@ -1929,16 +1917,31 @@ class TheDisplay:
 			#| themselves because they think the display isn't running
 			#| yet.
 
-		display._running = True			# Display is now running.
-
-			# The very first thing we do with the display is to
-			# initialize it.
-		display.driver(display._init)
-
 		try:	# Cleanup properly in case of exception-driven exit.
+
+			display._running = True			# Display is now running.
+
+				#|------------------------------------------------------------------
+				#| This releases the display lock that we acquired earlier in the 
+				#| 'with' statement in the .run() method.  We have to do this now
+				#| because the display driver is about to need it.
+
+			display.lock.release()
+	
+				# The very first thing we do with the display is to
+				# initialize it. We let the display driver thread do this.
+			display.driver(display._init)
+				# Note this call waits for initialization to be completed.
+
+				# Now we can start the main loop.
 			display._runMainloop()		# Run the main loop.
+
 		finally:
 			display._running = False		# Display is no longer running.
+			# Now we have to re-acquire the lock because we're about to
+			# tear down the display when we exit the wrapper.
+			display.lock.acquire()
+
 
 		_logger.debug("display._manage(): Exiting.")
 
