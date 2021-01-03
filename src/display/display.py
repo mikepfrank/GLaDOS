@@ -153,7 +153,8 @@ from infrastructure.worklist	import	RPCWorker	# Display driver uses this.
 from infrastructure.logmaster import (
 		sysName,			# Used just below.
 		ThreadActor,		# TUI input thread uses this.
-		getComponentLogger 	# Used just below.
+		getComponentLogger,	# Used just below.
+		FatalException		# We derive TerminateServer() from this.
 	)
 global _component, _logger	# Software component name, logger for component.
 _component = path.basename(path.dirname(__file__))	# Our package name.
@@ -1330,6 +1331,9 @@ class TUI_Input_Thread(ThreadActor):
 #__/ End class TUI_Input_Thread.
 
 
+class TerminateServer(FatalException): pass
+
+
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	display.TheDisplay					   		[public singleton class]
 		#|
@@ -1690,9 +1694,12 @@ class TheDisplay:
 	def resize(theDisplay):
 		"""Call this method when you want to handle a resize event."""
 
+		display = theDisplay
+		client = display.client
+
 			# Find out the new dimensions of the window.
-		theDisplay._check_size()
-		(height, width) = theDisplay.get_size()
+		display._check_size()
+		(height, width) = display.get_size()
 
 		#----------------------------------------------------------
 		# Now we potentially need to resize the window structures
@@ -1705,14 +1712,22 @@ class TheDisplay:
 			# if the environment variables LINES, COLUMNS are not set!  So
 			# e.g., if you ever call update_lines_cols(), this will break.
 
+		#/----------------------------------------------------------------------
+		#| At this point, it would be nice if we could just handle the resize
+		#| event gracefully, *but* we haven't yet figured out how to get that
+		#| working.  So instead, at this point we just tear down and rebuild 
+		#| the entire display.
+		
+		# display.teardownAndRebuild()	# This raises a RequestRestart exception.
+
 		# If we have a client attached, tell it to handle the resize internally.
-		if theDisplay._client != None:
-			theDisplay._client.handle_resize()
+		if client != None:
+			client.handle_resize()
 
 		_logger.debug(".resize(): Repainting entire display after resize...")
 
 			# Now that everything is consistent, repaint the display.
-		theDisplay.paint()
+		display.paint()
 
 	#__/ End singleton instance method theDisplay.resize().
 
@@ -1785,7 +1800,146 @@ class TheDisplay:
 	#__/ End private singleton instance method theDisplay._init().
 	
 	
+	def _do1iteration(theDisplay):
+	
+		"""This method executes just a single iteration of the main event 
+			loop.  It runs in the TUI input thread."""
+			
+		_logger.debug("Doing one main-loop iteration...")
+		
+		display = theDisplay
+		
+		dispDrv = display.driver
+		screen = display.screen
+		client = display._client
+		thread = display._tuiInputThread
+		
+			#/------------------------------------------------------------------
+			#|	OK, now the following code implements a pattern of display 
+			#|	lock/unlock actions that deserves some explanation.  We lock 
+			#|	the display before getting an event.  If the key is a 
+			#|	high-priority event, such as a window resize event, then we 
+			#|	handle it right away, in one atomic process, that is, without 
+			#|	releasing the lock in between.  This is important to allow the 
+			#|	effects of e.g., a window resize to finish playing out before 
+			#|	we try to do anything else with the display.  However, for 
+			#|	less-critical events, like ordinary keypresses, we go ahead 
+			#|	and release the lock before processing them, less urgently, 
+			#|	in the display driver thread.
+			
+		with display.lock:		# Lock the display temporarily in this TUI input thread.
+		
+			#/----------------------------------------------------------------
+			#| This try/except clause allows us to handle keyboard interrupts
+			#| and other exceptions cleanly; however, please note that we have
+			#| turned on raw() mode, so, we don't expect keyboard interrupts
+			#| to actually occur.
+			
+			try:
+			
+				ch = screen.getch()		# Gets a 'character' (keycode) ch.
+					# Note earlier, we configured .getch() to be nonblocking.
+
+			except KeyboardInterrupt as e:				# User hit CTRL-C?
+				# Note that currently, we should not get these events anyway, since
+				# earlier, we put the terminal in raw() mode.
+
+				_logger.debug("display._do1iteration(): Caught a keyboard interrupt during screen.getch().")
+
+				event = KeyEvent(keycode = KEY_BREAK)	# Translate to BREAK key.
+				
+			except Exception as e:
+
+				_logger.fatal(f"display._do1iteration(): Unknown exception during screen.getch(): {str(e)}.")
+				raise e
+				
+			else:
+
+				_logger.debug(f"display._do1iteration(): Got character code {ch}.")
+
+				event = KeyEvent(keycode = ch)		# Just pass the raw keycode.
+
+			#__/ End try/except clause for keyboard input (.getch()) call.
+			
+			#/------------------------------------------------------------------
+			#|	OK, if we get here, there were no un-handleable exceptions 
+			#|	during .getch(), and now we just need to figure out if there
+			#|	was a high-priority event that we need to handle before we 
+			#|	exit the 'with' clause and release the display lock.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+			
+				#/--------------------------------------------------------------
+				#| First case: If the user pressed control-T, then this is a 
+				#| command to immediately terminate the entire GLaDOS server 
+				#| application process.
+			
+			if ch == DC4:		# ^T = Device control 4, primary stop, terminate.
+				_logger.fatal("display._do1iteration(): Exiting due to ^T = terminate key.")
+				raise TerminateServer("Terminating server because user pressed ^T.")
+			
+				#/--------------------------------------------------------------
+				#| Second case: If we received a Resize event, then we need 
+				#| to try to handle it as best we can before we try to do 
+				#| anything else with the display. (Because, handling resize 
+				#| properly is difficult enough without having to worry that 
+				#| other threads might try to interfere with what we're doing.)
+			
+			if ch == KEY_RESIZE:
+				_logger.info("display._do1iteration(): Got a resize event; handling at high priority.")
+				display.resize()
+				return	# Complete this main loop iteration normally.
+				
+		#__/ End with display locked.
+
+		#/----------------------------------------------------------------------
+		#| If we get here, then we did not get a high-priority event, and the
+		#| display is now unlocked.  So now, figure out what to do next.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		if ch == ERR:
+			# If we're in nonblocking or half-delay mode, getting an error 
+			# return just means that no new characters have been typed yet.
+
+			# This is commented out to avoid excessive log messages.
+			#_logger.debug(f"display._runMainloop(): Got an ERR from screen.getch().")
+
+				#|--------------------------------------------------------------
+				#| This sleep is important to allow other threads using the 
+				#| display to have a sufficient opportunity to run in between 
+				#| our checking for new inputs, and reduce CPU time wasted in 
+				#| polling.  The time here is 50 milliseconds or 1/20th of a 
+				#| second.  If the time given here was too long, the console 
+				#| would seem slow to respond to input.  If the time was too 
+				#| short, the main loop will waste too much CPU time with 
+				#| repeated input polling and display updates will be slower.
+
+			sleep(0.05)		# Sleep for 0.05 second = 50 milliseconds.
+					
+			return		# I.e., complete this main-loop iteration normally.
+		
+		#/----------------------------------------------------------------------
+		#| Normally, we handle all events by handing them off to the display 
+		#| driver thread (which is a worker thread).  The advantage of doing 
+		#| things this way is that other threads (also going through the
+		#| centralized display driver thread) can asynchronously be doing other
+		#| stuff with the display (writing updates, etc.) and the handling of 
+		#| key events will be interleaved with that other work automatically in 
+		#| a thread-safe way.  Also there is some automated logging work done.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		dispDrv(lambda: client.handle_event(event), desc="Handle event")
+			# Note this waits for the event handler to finish before we get another
+			# key. This helps prevent the input loop from "getting ahead" of the
+			# display, and building up a big backlog of input-processing work to 
+			# do in the display queue.  However, if we preferred, we could also 
+			# change this to kick off the handler work to be done in the 
+			# background using dispDrv.do().
+			
+	#__/ End private singleton instance method display._do1iteration().
+	
+	
 	def _runMainloop(theDisplay):
+	
 		"""This is the main event loop.  It runs in the TUI input thread."""
 		
 		_logger.debug("display._runMainloop(): Starting main event loop.")
@@ -1794,7 +1948,7 @@ class TheDisplay:
 		
 		dispDrv = display.driver
 		screen = display.screen
-		client = display._client
+		#client = display._client
 		thread = display._tuiInputThread
 		
 			#--------------------
@@ -1815,79 +1969,8 @@ class TheDisplay:
 				
 		while not thread.exitRequested:
 			
-			# This try/except clause allows us to handle keyboard interrupts
-			# and other exceptions cleanly.
-			try:
+			display._do1iteration()		# Does one iteration of the main loop.
 
-					#|----------------------------------------------------------
-					#| Since we made .getch() nonblocking earlier, we can hand
-					#| this call to the display driver without worrying that
-					#| we're tying it up.  Doing this work in the display driver
-					#| thread helps to ensure that changes to data structures 
-					#| that could happen here if the window is resized don't 
-					#| interfere with use of the display from other threads.
-				
-				ch = dispDrv(screen.getch, desc="Get character")	# Gets a 'character' (keycode) ch.
-					# Note earlier, we configured .getch() to be nonblocking.
-
-				# The following implementation is also possible:
-				# with display.lock:
-				#	ch = screen.getch()
-
-				if ch == ERR:
-					# If nonblocking or half-delay mode, this means no character has been typed yet.
-
-					#_logger.debug(f"display._runMainloop(): Got an ERR from screen.getch().")
-
-						#|---------------------------------------------------------
-						#| This sleep is important to allow other threads to have
-						#| a turn in between us checking for new inputs.  The time
-						#| here is 50 milliseconds.  If the time is too long, the
-						#| console will seem slow to respond to input.  If the time
-						#| is too short, it will waste CPU time with repeated input
-						#| polling.
-
-					sleep(0.05)	# Sleep for 0.05 second = 50 milliseconds.
-						
-					continue	# In which case, we just ignore it and keep looping.
-
-				_logger.debug(f"display._runMainloop(): Got character code {ch}.")
-
-				if ch == DC4:		# ^T = Device control 4, primary stop, terminate.
-					_logger.fatal("display._runMainloop(): Exiting due to ^T = terminate key.")
-					break
-						
-				event = KeyEvent(keycode=ch)				
-					
-			except KeyboardInterrupt as e:				# User hit CTRL-C?
-				# Note that currently, we should not get these events anyway, since
-				# earlier, we put the terminal in raw() mode.
-
-				_logger.debug("display._runMainloop(): Caught a keyboard interrupt.")
-
-				event = KeyEvent(keycode = KEY_BREAK)	# Translate to BREAK key.
-				
-			except Exception as e:
-
-				_logger.fatal(f"display._runmainloop(): Unknown exception: {str(e)}.")
-				raise e
-
-			#__/ End try/except clause for keyboard input loop.
-				
-				#|----------------------------------------------------------------------
-				#| Normally, we handle all events by handing them off to the display 
-				#| driver thread (which is a worker thread).  The advantage of doing 
-				#| things this way is that other threads (also going through the
-				#| centralized display driver thread) can asynchronously be doing other
-				#| stuff with the display (writing updates, etc.) and the handling of 
-				#| key events will be interleaved with that other work automatically in 
-				#| a thread-safe way.
-
-			dispDrv(lambda: client.handle_event(event), desc="Handle event")
-				# Note this waits for the event handler to finish before we get another
-				# key. This helps prevent the input loop from "getting ahead" of the
-				# display, and building up a big backlog of work to do.
-					
 		#__/ End main user input loop.
 		
 		_logger.debug(f"display._runMainloop(): Exited main loop.")
