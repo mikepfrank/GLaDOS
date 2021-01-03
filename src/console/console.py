@@ -262,7 +262,7 @@ class LogFeeder(ThreadActor):
 		panel = feeder._panel
 		client = panel.client
 		display = client.display
-		driver = display.driver
+		dispDrv = display.driver
 		
 		_logger.debug("logFeeder.main(): Creating 'tail -f' subprocess to feed log panel.")
 		
@@ -290,7 +290,7 @@ class LogFeeder(ThreadActor):
 			panel.addLogLine(logLine)
 
 			# Request screen to update shortly after new line is added.
-			driver.do(display.update)
+			dispDrv.do(display.update, desc="Update display after adding log line")
 
 			if not started:
 				_logger.debug("logFeeder.main(): Just added my very first line of log data to the panel.")
@@ -309,7 +309,7 @@ class LogFeeder(ThreadActor):
 
 					panel.addLogLine(logLine)
 
-				driver.do(display.update)
+				dispDrv.do(display.update, desc="Update display after flushing log lines")
 				exitRequested = True
 		
 		# Feeder thread can only terminate at this point.
@@ -595,6 +595,7 @@ class LogPanel(Panel):
 		panel = thisLogPanel
 		client = panel.client
 		display = client.display
+		dispDrv = display.driver
 		win = panel.data_win
 
 		with panel.lock:
@@ -612,11 +613,11 @@ class LogPanel(Panel):
 
 				# Ask the display driver to (asynchronously)
 				# draw the new log line in the data area.
-			display.driver.do(lambda: panel.drawLogLine(logLine))
+			dispDrv.do(lambda: panel.drawLogLine(logLine), desc="Draw new log line")
 				# This will run in the background to help avoid deadlocks.
 
 				# Repaint the sub-window.
-			#display.driver.do(panel.repaintDataArea)
+			#dispDrv.do(panel.repaintDataArea)
 				# The only thing that changed as far as we're concerned is the data sub-window,
 				# so just refresh that one.
 

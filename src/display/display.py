@@ -872,6 +872,8 @@ def keystr(k):
 		return "Resize"
 	elif k == ERR:
 		return "<ERROR>"
+	elif k == None:
+		return "(None)"
 	else:
 		try:
 			return keyname(k).decode(encoding)
@@ -968,8 +970,12 @@ class DisplayDriver(RPCWorker):
 			executed. It simply grabs the display lock, so that we avoid 
 			conflicting with any other threads that may be using the 
 			display.  (We assume curses operations are not thread-safe.)"""
+		#_logger.debug("About to grab display lock...")
 		with TheDisplay().lock:
-			callable()				# Call the callable.
+			#_logger.debug("About to call wrapped callable...")
+			return callable()				# Call the callable, return any result.
+			#_logger.debug("Returned from wrapped callable...")
+		#_logger.debug("Released display lock.")
 	
 	defaultWrapper = withLock
 	
@@ -1786,20 +1792,24 @@ class TheDisplay:
 
 		display = theDisplay
 		
-		driver = display.driver
+		dispDrv = display.driver
 		screen = display.screen
 		client = display._client
 		thread = display._tuiInputThread
 		
+			#--------------------
 			# Set the input mode.
 
+		# We could put this in a method and send it to the driver, but
+		# just grabbing the lock instead here 'cuz it's easier.
 		with display.lock:
-			raw()			# Suppresses processing of ^C/^S/^Q
-			timeout(0)		# Non-blocking read on getch(), no delay.
-			#cbreak()		# Not doing this because it doesn't suppress ^C/^S/^Q.
-			#halfdelay(1)	# .getch() Returns ERR after 0.1 secs if no input seen.
+			raw()					# Suppresses processing of ^C/^S/^Q/^Z
+			screen.timeout(0)		# Non-blocking read on getch(), zero delay.
+			#cbreak()				# Not doing this because it doesn't suppress ^C/^S/^Q.
+			#halfdelay(2)			# .getch() Returns ERR after 0.1 secs if no input seen.
 				# Not doing that because it wastes time to have a timeout.
 
+			#-----------------------------------------------------------------
 			# Here's the actual main loop. Keep going until requested to exit,
 			# or there is an exception.
 				
@@ -1817,12 +1827,17 @@ class TheDisplay:
 					#| that could happen here if the window is resized don't 
 					#| interfere with use of the display from other threads.
 				
-				ch = driver(screen.getch)	# Gets a 'character' (keycode) ch.
+				ch = dispDrv(screen.getch, desc="Get character")	# Gets a 'character' (keycode) ch.
 					# Note earlier, we configured .getch() to be nonblocking.
-				
-				if ch == ERR:	# This just means no character has been typed yet.
 
-					_logger.debug(f"display._runMainloop(): Got an ERR from screen.getch.")
+				# The following implementation is also possible:
+				# with display.lock:
+				#	ch = screen.getch()
+
+				if ch == ERR:
+					# If nonblocking or half-delay mode, this means no character has been typed yet.
+
+					#_logger.debug(f"display._runMainloop(): Got an ERR from screen.getch().")
 
 						#|---------------------------------------------------------
 						#| This sleep is important to allow other threads to have
@@ -1868,7 +1883,7 @@ class TheDisplay:
 				#| key events will be interleaved with that other work automatically in 
 				#| a thread-safe way.
 
-			driver(lambda: client.handle_event(event))
+			dispDrv(lambda: client.handle_event(event), desc="Handle event")
 				# Note this waits for the event handler to finish before we get another
 				# key. This helps prevent the input loop from "getting ahead" of the
 				# display, and building up a big backlog of work to do.
@@ -1897,7 +1912,7 @@ class TheDisplay:
 		_logger.debug("display._manage(): Starting up.")
 
 		display = theDisplay
-		driver = display.driver		# Display driver thread.
+		dispDrv = display.driver		# Display driver thread.
 
 			# Store our top-level window (screen) for future reference.
 		display._screen = screen
@@ -1922,7 +1937,7 @@ class TheDisplay:
 	
 				# The very first thing we do with the display is to
 				# initialize it. We let the display driver thread do this.
-			display.driver(display._init)
+			dispDrv(display._init, desc="Initialize display")
 				# Note this call waits for initialization to be completed.
 
 				# Now we can start the main loop.

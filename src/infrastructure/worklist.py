@@ -361,7 +361,7 @@ class WorkItem:
 	#		onWorklist:Flag - Declares that this task is on
 	#				some worklist or other.
 	#
-	#		started:Flag - Declares that some thread has started
+	#		inProgress:Flag - Declares that some thread has started
 	#				to work on this particular task.
 	#
 	#		pauseRequested:Flag - Declares that somebody wants
@@ -398,7 +398,7 @@ class WorkItem:
 	#
 	#---------------------------------------------------------------
 	
-	def __init__(self, callable=None, owner=None):
+	def __init__(self, callable=None, owner=None, desc=None):
 		self.lock = RLock()				# Reentrant lock for thread-safe access to class and instance variables.
 		with self.lock:					# Go ahead and use it, just in case.
 			self.maker = current_thread()
@@ -406,13 +406,14 @@ class WorkItem:
 			self.task = callable			# Callable object for carrying out this task.
 			self.worklist = None			# Worklist this task is on.	 At creation, this task is not on any worklists yet.  It may be put on one later.
 			self.owner = owner				# Worker assigned this task.  By default, this task has no owner initially (one may be assigned later).
+			self.desc = desc				# Description of this task.  None by default.
 			self.result = None				# Result returned by this task.	 Initially, none yet.
 			self.exception = None			# Exception raised by this task.  Initially, none yet.
 
 				# Waitable flags for announcing various conditions.
 			self.owned			= Flag(owner)	# That this task is owned.	Raise flag initially if owner is not None.
 			self.onWorklist		= Flag()	# That this task is on a worklist.
-			self.started		= Flag()	# That work on this task has started.
+			self.inProgress		= Flag()	# That work on this task has started.
 			self.pauseRequested = Flag()	# That someone requested that work on this task be suspended.
 			self.paused			= Flag()	# That work on this task has been suspended.
 			self.abortRequested = Flag()	# That someone requested that work on this task be aborted.
@@ -421,6 +422,8 @@ class WorkItem:
 			self.stopped		= Flag()	# That sork on this task has stopped.
 			self.done			= Flag()	# That this task is done.
 			self.failed			= Flag()	# That this task failed.
+
+			#_logger.debug(f"Created work item '{desc}' with 'inProgress' flag state = '{self.inProgress()}'")
 
 		# In the below, methods starting in underscore (_) may ONLY be called
 		# by the thread that owns (is tasked with) this work item.	Use the
@@ -440,10 +443,10 @@ class WorkItem:
 
 	def _start(self):			# Announce the start of work on the task.
 		self._verifyOwnership()		# Only the owner thread of this task can do this.
-		self.started.rise()			# Raise the flag announcing that we have started working on the task.
+		self.inProgress.rise()		# Raise the flag announcing that we have started working on the task.
 
 	def waitStart(self):	# Wait for some thread to start doing the task.
-		self.started.wait()		# Wait for the "started" flag to be raised.
+		self.inProgress.wait()		# Wait for the "started" flag to be raised.
 
 		# Methods associated with suspending work on a task.
 
@@ -534,7 +537,7 @@ class WorkItem:
 
 	def setOwner(self, worker:Thread):		# Set the owner of this WorkItem to the given (worker) thread.
 		with self.lock:							 # Thread-safely,
-			if self.started():						# If work on this task has already been started,
+			if self.inProgress():						# If work on this task has already been started,
 				raise AlreadyStarted("WorkItem.setOwner(): Can't change owner "
 									 "of this work item b/c work on it has "
 									 "already started!")
@@ -557,18 +560,27 @@ class WorkItem:
 								   "work item because its .task attribute is "
 								   "null (None).")
 					# complain about that.
-			elif self.started():		  # If some other thread has already started doing this task,
-				raise AlreadyStarted("WorkItem.__call__(): Can't perform this "
-									 "work item because someone has already "
-									 "started working on it!")
+			elif self.inProgress():		  # If some other thread has already started doing this task,
+
+				desc = self.desc
+				if desc is None:
+					descstr = "this work item"
+				else:
+					descstr = f"work item \"{desc}\""
+
+				raise AlreadyStarted(
+					f"WorkItem.__call__(): Can't perform {descstr} because "
+					"someone has already started working on it!")
 					# Raise an exception to warn user about that.
 			else:						# Otherwise,
 				try:						# We'll try doing the task.
+					#_logger.debug(f"Starting work on task '{self.desc}'...")
 					self._start()				 # First, announce that we're starting to work on the task.
 					self._checkAbortReq()		 # Go ahead and check for any early abort requests.
 					self._checkPauseReq()		 # Go ahead and check for any early pause requests.
 					try:
 #						 print("worklist.WorkItem.__call__(): I'm trying to call this task: ", self.task)
+						#_logger.debug(f"About to call internal callable of task '{self.desc}'...")
 						self.result = self.task.__call__()	 # Then, actually do the task (it must be callable).
 						self.haveResult.rise()			# Announce that we have a result.
 					except BaseException as e:		# If it raises any kind of exception whatsoever,
@@ -1114,12 +1126,12 @@ class Worker(ThreadActor):
 			#		Optional arguments specify nonblocking mode, timeout values, and front
 			#		(LIFO) mode.
 	
-	def __call__(inst, task, block:bool=True, timeout:Number=None, front:bool=False, override:bool=False):
+	def __call__(inst, task, block:bool=True, timeout:Number=None, front:bool=False, override:bool=False, desc:str=None):
 
 		if inst.waitByDefault:
-			return inst.getResult(task, block=block, timeout=timeout, front=front)
+			return inst.getResult(task, block=block, timeout=timeout, front=front, desc=desc)
 		else:
-			inst.do(task, block, timeout, front, override)
+			inst.do(task, block, timeout, front, override, desc)
 
 
 			#----------------------------------------------------------------------------------
@@ -1130,7 +1142,7 @@ class Worker(ThreadActor):
 			#		and front (LIFO) mode.	This routine does not return a result - it exits
 			#		as soon as the work item is added to the worker's queue.
 
-	def do(inst, task, block:bool=True, timeout:Number=None, front:bool=False, override:bool=False):
+	def do(inst, task, block:bool=True, timeout:Number=None, front:bool=False, override:bool=False, desc:str=None):
 		if inst.exiting:			# If we are already in the process of exiting,
 
 				# For this one, we can't use the logger because it can cause an
@@ -1161,13 +1173,22 @@ class Worker(ThreadActor):
 
 		if not isinstance(task, WorkItem):		# Is the task just a plain callable (e.g. lambda)?
 		
+			#_logger.debug(f"Task '{desc}' is not already a WorkItem, so let's make it into one.")
+
+			bareCallable = task
+
 			# First, if we have a wrapper function to apply to all tasks, wrap the callable in it.
 			wrapper = inst.wrapper
-			if wrapper is not None:
+			if wrapper is None:
+				theCallable = bareCallable
+			else:
+				#_logger.debug(f"First, wrapping task '{desc}' in a wrapper...")
 				#task = lambda *args, **kwargs: wrapper(lambda: task(*args, **kwargs))	# Wrap the task in the wrapper
-				task = lambda: wrapper(task)
+				wrappedCallable = lambda: wrapper(bareCallable)
+				theCallable = wrappedCallable
 		
-			task = WorkItem(task, owner=inst)	# Now, make a real WorkItem out of it.
+			task = WorkItem(theCallable, owner=inst, desc=desc)	# Now, make a real WorkItem out of it.
+			#_logger.debug(f"Just created a new background work item with description \"{desc}\"")
 
 		inst.todo.addItem(task, block, timeout, front, override)  # Add it to the worker's queue.
 
@@ -1185,7 +1206,7 @@ class Worker(ThreadActor):
 			#
 			#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	def getResult(inst, task, block:bool=True, timeout:Number=None, front:bool=False):
+	def getResult(inst, task, block:bool=True, timeout:Number=None, front:bool=False, desc:str=None):
 
 			# Ignore tasks being sent to workers that are in the process of exiting.
 		
@@ -1214,13 +1235,22 @@ class Worker(ThreadActor):
 
 		if not isinstance(task, WorkItem):		# Is the task just a plain callable (e.g. function, lambda)?
 
+			#_logger.debug(f"Task '{desc}' is not already a WorkItem, so let's make it into one.")
+
+			bareCallable = task
+
 			# First, if we have a wrapper function to apply to all tasks, wrap the callable in it.
 			wrapper = inst.wrapper
-			if wrapper is not None:
+			if wrapper is None:
+				theCallable = bareCallable
+			else:
+				#_logger.debug(f"First, wrapping task '{desc}' in a wrapper...")
 				#task = lambda *args, **kwargs: wrapper(lambda: task(*args, **kwargs))	# Wrap the task in the wrapper
-				task = lambda: wrapper(task)
+				wrappedCallable = lambda: wrapper(bareCallable)
+				theCallable = wrappedCallable
 		
-			task = WorkItem(task, owner=inst)	# If so, then make a real WorkItem out of it.
+			task = WorkItem(theCallable, owner=inst, desc=desc)	# If so, then make a real WorkItem out of it.
+			#_logger.debug(f"Just created a new waitable work item with description \"{desc}\"")
 
 		# Now we actually send the task, and then wait for & then reproduce the result.
 
