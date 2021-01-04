@@ -92,6 +92,9 @@ __all__ = [		# List of all public names exported from this module.
 
 from enum import Enum			# Support for enumerated types.
 
+from curses import *
+	# At some point we should change this to an explicit list of the
+	# curses names that we actually use.
 
 	#|==========================================================================
 	#|	3.	Type definitions.							   [module code section]
