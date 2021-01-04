@@ -154,7 +154,8 @@ from infrastructure.logmaster import (
 		sysName,			# Used just below.
 		ThreadActor,		# TUI input thread uses this.
 		getComponentLogger,	# Used just below.
-		FatalException		# We derive TerminateServer() from this.
+		LoggedException,	# DisplayException inherits from this.
+		FatalException		# We derive TerminateServer from this.
 	)
 global _component, _logger	# Software component name, logger for component.
 _component = path.basename(path.dirname(__file__))	# Our package name.
@@ -438,14 +439,14 @@ _style_colors = {		# Maps render style to (fgcolorspec, bgcolorspec) pairs.
 	METACTL:	(BLACK,		  	BLUE  ),	# Meta-control characters: 		Black text on blue background.
 	METAWSP:	(BLUE,		  	BLACK ),	# Meta-whitespace characters: 	Blue text on black background.
 
-	#STYLE:			(FOREGROUND,  	BACKGR),
-	#-------------	-------------	--------
-	DEBUG_STYLE:	(BRIGHT_BLUE,	BLACK),		# Debug log messages: 		Bright blue on black.
-	INFO_STYLE:		(MAGENTA,		BLACK),		# Info log messages: 		Originally was white on black.
-	GOOD_STYLE:		(GREEN,			BLACK),		# Normal log messages: 		Green means all is good!
-	WARNING_STYLE:	(YELLOW,		BLACK),		# Warning log messages: 	Yellow is a warning color.
-	ERROR_STYLE:	(RED,			BLACK),		# Error log messages: 		Red denotes bad/wrong/error.
-	CRITICAL_STYLE:	(BRIGHT_YELLOW,	RED),		# Critical log messages:	Bright yellow on a red background.  Stands out the most.
+	#STYLE:			(FOREGROUND,  		BACKGR),
+	#-------------	-------------		--------
+	DEBUG_STYLE:	(BRIGHT_BLUE,		BLACK),		# Debug log messages: 		Bright blue on black.
+	INFO_STYLE:		(BRIGHT_MAGENTA,	BLACK),		# Info log messages: 		Originally was white on black.
+	GOOD_STYLE:		(GREEN,				BLACK),		# Normal log messages: 		Green means all is good!
+	WARNING_STYLE:	(YELLOW,			BLACK),		# Warning log messages: 	Yellow is a warning color.
+	ERROR_STYLE:	(RED,				BLACK),		# Error log messages: 		Red denotes bad/wrong/error.
+	CRITICAL_STYLE:	(BRIGHT_YELLOW,		RED),		# Critical log messages:	Bright yellow on a red background.  Stands out the most.
 	
 }
 
@@ -1073,6 +1074,21 @@ class DisplayClient:
 		return thisClient._display
 
 
+	@property
+	def screen(thisClient):
+		return thisClient.display.screen
+
+	def requestRefresh(thisClient):
+
+		"""This method tells the client to request the display to 
+			refresh the client's screen on the next display update."""
+
+			# Do a delayed (i.e., no-output) internal refresh of the entire screen.
+		thisClient.screen.noutrefresh()
+			# The actual (physical) external refresh of the display terminal will
+			# occur on the next call to display.update().
+
+
 	def start(thisClient, waitForExit:bool=False):
 		
 		"""This starts up this display client, which implicitly also starts
@@ -1331,7 +1347,21 @@ class TUI_Input_Thread(ThreadActor):
 #__/ End class TUI_Input_Thread.
 
 
-class TerminateServer(FatalException): pass
+class DisplayException(LoggedException):
+	
+	"""This is an abstract base class for all exception types generated
+		by the text display facility."""
+	
+	defLogger = _logger		# Use the display package's logger.
+
+class TerminateServer(DisplayException, FatalException):
+
+	"""This is an exception type that is thrown when the display facility
+		is requesting the entire GLaDOS server process to shut down.  This
+		generally happens because we caught a ^T (terminate) keystroke
+		that was typed by the system operator."""
+
+	pass
 
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1412,6 +1442,10 @@ class TheDisplay:
 		"""
 		return theDisplay._lock
 	
+	@property
+	def client(theDisplay):
+		return theDisplay._client
+
 	@property
 	def isRunning(theDisplay):
 		return theDisplay._running
@@ -1530,7 +1564,7 @@ class TheDisplay:
 	def update(theDisplay):
 
 		"""This method should only be called from within the display
-			driver thread, after the display is running.
+			driver thread, when the display is running.
 
 			It updates the physical state of the entire display screen
 			(or at least, as much of it as actually needs updating); this
@@ -1544,7 +1578,7 @@ class TheDisplay:
 
 		# Check to make sure we're in the right thread.
 
-		doupdate()
+		doupdate()	# This actually causes the physical display to be updated.
 		
 
 
@@ -1705,7 +1739,7 @@ class TheDisplay:
 		# Now we potentially need to resize the window structures
 		# within curses, if the terminal size has actually changed.
 
-		_logger.debug(f".resize(): Resizing terminal to {(height,width)}.")
+		_logger.debug(f"display.resize(): Resizing terminal to {(height,width)}.")
 		resizeterm(height, width)
 			# This has the effect of updating curses' idea of the terminal
 			# size in curses.{LINES,COLS}; note that this *only* works right
@@ -1724,9 +1758,9 @@ class TheDisplay:
 		if client != None:
 			client.handle_resize()
 
-		_logger.debug(".resize(): Repainting entire display after resize...")
+		_logger.debug("display.resize(): Repainting entire display after resize...")
 
-			# Now that everything is consistent, repaint the display.
+			# Now that everything is consistent, repaint the entire display.
 		display.paint()
 
 	#__/ End singleton instance method theDisplay.resize().
@@ -1805,7 +1839,9 @@ class TheDisplay:
 		"""This method executes just a single iteration of the main event 
 			loop.  It runs in the TUI input thread."""
 			
-		_logger.debug("Doing one main-loop iteration...")
+		# Suppress this to prevent excessive logging since this loops
+		# runs 20 times per second.
+		#_logger.debug("Doing one main-loop iteration...")
 		
 		display = theDisplay
 		
@@ -1829,9 +1865,14 @@ class TheDisplay:
 			
 		with display.lock:		# Lock the display temporarily in this TUI input thread.
 		
+				# First, we make sure the display is up-to-date before asking for
+				# anything from the user (how's he supposed to respond otherwise?)
+			display.update()
+		
 			#/----------------------------------------------------------------
 			#| This try/except clause allows us to handle keyboard interrupts
-			#| and other exceptions cleanly; however, please note that we have
+			#| (i.e., interrupts caused by the user hitting ^C) and other
+			#| exceptions cleanly; however, please note that we previously
 			#| turned on raw() mode, so, we don't expect keyboard interrupts
 			#| to actually occur.
 			
@@ -1855,7 +1896,13 @@ class TheDisplay:
 				
 			else:
 
-				_logger.debug(f"display._do1iteration(): Got character code {ch}.")
+					# Note we suppress debug output if the keycode is ERR (= none yet) to
+					# prevent excessive logging.
+
+				if ch != ERR:
+					_logger.debug(f"display._do1iteration(): Got character code {ch}.")
+
+					# Here, we package up the keycode into a KeyEvent object.
 
 				event = KeyEvent(keycode = ch)		# Just pass the raw keycode.
 

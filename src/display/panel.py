@@ -85,6 +85,7 @@ class Panel:
 		return thisPanel._win
 
 	def configWin(thisPanel):
+
 		"""Assuming the panel already has a placement, make sure it has
 			an internal window, and that it's the correct size.  Subclasses
 			may extend this as needed to (re)configure any sub-windows."""
@@ -101,21 +102,30 @@ class Panel:
 		int_width = panel.width - leftPad	# Width of interior window.
 
 		if win == None:	# No sub-window yet; create one.
-			panel._win = win = screen.subwin(panel.height, int_width, panel.top+1, panel.left+1 + leftPad)
+
+			panel._win = win = screen.derwin(panel.height, int_width, panel.top+1, panel.left+1 + leftPad)
 				# NOTE: <leftPad> gives a number of blank spaces to leave in between the panel's
 				# left border and its interior sub-window.
 		else:
-				# Move the window in case the panel's position changed.
+
+			win.clear()		# Clear anything that was left over in the window's old geometry.
+
+				# Move the existing window in case the panel's position changed.
+
+			new_winy = panel.top + 1
+			new_winx = panel.left + 1 + leftPad
+
+			_logger.debug(f"panel.configWin(): Moving internal window to ({new_winy},{new_winx}).")
+
 			try:
-				win.mvwin(panel.top+1, panel.left+1)
+				win.mvderwin(new_winy, new_winx)
 			except error as e:
 				_logger.error(f"panel.configWin(): Move attempt generated curses error: {str(e)}")
 
-				# Resize the window in case the panel's size changed.
+				# Also, resize the window in case the panel's size changed.
 
 			_logger.debug(f"panel.configWin(): Resizing internal window to ({height}, {int_width}).")
 
-			win.clear()
 			try:
 				win.resize(height, int_width)
 			except error as e:
@@ -137,7 +147,7 @@ class Panel:
 
 		panel = thisPanel
 
-		# If panel's client is being provided, then store it.
+		# If panel's client is being provided in an argument, then store it.
 		if panelClient is not None:
 			panel._client = panelClient
 			
@@ -147,11 +157,11 @@ class Panel:
 		if not client.dispRunning:
 			return
 	
-		# Also, if the panel is already placed, we don't need to do anything.
+		# Also, if the panel is already placed, we don't need to do anything here.
 		if panel._placed:
 			return
 	
-		display = client.display
+		display = client.display	# Get the display.
 
 			# Get the coordinates of the bottom/right edges of the screen.
 		(scr_bot, scr_right) = display.get_max_yx()
@@ -161,10 +171,14 @@ class Panel:
 		# Here we process the placement and figure out panel coordinates.
 		if placement == FILL_BOTTOM:
 		
-			panel.left = 0
-			panel.right = scr_right
+			panel.left = 0	# Left side of panel = left side of screen.
+			panel.right = scr_right	# Right side of panel = right side of screen.
 			panel.bottom = scr_bot - client._botReserved
-			client.reserveBot(panel.height + 1) 	# One extra for bottom edge.
+
+				# This reserves enough space at the bottom of the screen for
+				# this panel and its top border/separator.
+			client.reserveBot(panel.height + 1) 	# One extra for top edge.
+
 			panel.top = scr_bot - client._botReserved
 			
 		elif placement == LOWER_RIGHT:
@@ -356,19 +370,31 @@ class PanelClient(DisplayClient):
 		):
 		"""Initializer for newly-created PanelClient instances."""
 		
+		client = newPanelClient
+
 			# We first call the default initialization method from DisplayClient.
-		super(PanelClient, newPanelClient).__init__()
+		super(PanelClient, client).__init__()
 		
 			# Stash our subclass-specific arguments.
-		newPanelClient._title = title	# Client title string.
+		client._title = title	# Client title string.
 
 			# Initialize some subclass-specific data structures.
-		newPanelClient._panels = []		# Initially empty list of panels.
+		client._panels = []		# Initially empty list of panels.
+		
+			# Initialize the layout constraints.
+		client._resetLayout()
+
+	def _resetLayout(thisPanelClient):
+
+		"""This private method resets all of our internal panel-layout constraints,
+			in preparation for panel placement."""
+
+		client = thisPanelClient
 		
 			# These instance variables keep track of how much of the screen is reserved currently.
-		newPanelClient._botReserved = 0		# Rows reserved across entire screen bottom.
-		newPanelClient._brReserved = 0		# Rows reserved across bottom of right column.
-		newPanelClient._blReserved = 0		# Rows reserved across bottom of left column.
+		client._botReserved = 0		# Rows reserved across entire screen bottom.
+		client._brReserved = 0		# Rows reserved across bottom of right column.
+		client._blReserved = 0		# Rows reserved across bottom of left column.
 
 
 	def redoPlacements(thisPanelClient):
@@ -376,9 +402,15 @@ class PanelClient(DisplayClient):
 
 		client = thisPanelClient
 
+			# Re-initialize all of the layout constraints.
+		client._resetLayout()
+
 		for panel in client._panels:
 			panel.replace()		# Redo the placement of this single panel.
 		
+			# Tell the client to tell its screen that, after all that, it needs refreshing.
+		client.requestRefresh()
+
 
 	def handle_resize(thisPanelClient):
 		"""When we have already figured out the new screen size, this method
