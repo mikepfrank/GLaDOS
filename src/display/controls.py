@@ -1,8 +1,91 @@
-# controls.py - Definitions for working with non-printing characters (control and whitespace characters).
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#|					 TOP OF FILE:	 display/controls.py
+#|------------------------------------------------------------------------------
+#|	 The below module documentation string will be displayed by pydoc3.
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+"""
+	FILE NAME:		display/controls.py				 [Python module source file]
+	
+	MODULE NAME:	display.controls
+	IN PACKAGE:		display
+	FULL PATH:		$GIT_ROOT/GLaDOS/src/display/controls.py
+	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
+	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
+	APP NAME:		GLaDOS.server (Main GLaDOS server application)
+	SW COMPONENT:	GLaDOS.display (Display screen management)
+
+
+	MODULE DESCRIPTION:
+	===================
+	
+		This module provides definitions to facilitate the rendering of
+		normally-nonprinting characters (such as control characters and
+		whitespace characters from the Basic Latin, a.k.a. 7-bit ASCII, 
+		and Latin-1 Supplement, a.k.a. ISO/IEC 8859-1, code blocks).
+		
+		The reason for including this capability in GLaDOS is so that, 
+		if/when the AI produces such characters, they can be seen visually 
+		on the display, so as to see exactly what the AI is doing.
+		
+"""
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#| End of module documentation string.
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|
+	#|	1.  Exported name list. 		   				   [module code section]
+	#|
+	#|			Here we list all of the public names that are standardly
+	#|			exported from this module, if the using module does:
+	#|
+	#|						from display import *
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+global __all__ 
+__all__ = [		# List of all public names exported from this module.
+
+			#|-----------
+			#| Functions.
+		
+		'isNonprinting', 'isMeta', 'render_char', 	# Control-related functions.
+		
+	]
+
+
+	#|==========================================================================
+	#| 	2.	Imports.									   [module code section]
+	#|
+	#|		2.1.  Standard Python modules imported into this module.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	2.1.  Custom imports.						[module code subsection]
+		#|
+		#|		Here we import various local/application-specific 
+		#|		modules that we need.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+			#|----------------------------------------------------------------
+			#| Import sibling modules we need from within the display package.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from .colors import *		# All color-related definitions.
+
+
+	#|==========================================================================
+	#|	3.	Static data structures.					   	   [module code section]
+	#|
+	#|		In this section, we define various static data structures
+	#|		(such as arrays, tables, and dictionaries) that we need.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			#|	display._nonprint_7bit_glyphs	[private global data structures]
-			#|	display._nonprint_8bit_glyphs
+			#|	controls._nonprint_7bit_glyphs	[private global data structures]
+			#|	controls._nonprint_8bit_glyphs
 			#|
 			#|		This is a lookup table that maps the code point for 
 			#|		each non-printing 7-bit ASCII character (including 
@@ -142,7 +225,7 @@ _nonprint_8bit_glyphs = {	# Returns pair of (render style, printable character)
 
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	display.isNonprinting()							   [public function]
+		#|	(controls).isNonprinting()						   [public function]
 		#|
 		#|		Given a character code point, returns True if this is a
 		#|		(normally) non-printing character in the range 0-255.
@@ -171,11 +254,11 @@ def isNonprinting(code):
 	# For everything else, assume it's printing.
 	return False
 
-#__/ End function display.isNonprinting().
+#__/ End function controls.isNonprinting().
 
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	display.isMeta()								   [public function]
+		#|	(controls.)isMeta()								   [public function]
 		#|
 		#|		Given a character code point, returns True if this is an
 		#|		8-bit code point that does not also fit in 7 bits.
@@ -188,11 +271,11 @@ def isMeta(code):
 	if code >= 128 and code <= 255:
 		return True
 
-#__/ End function display.isMeta().
+#__/ End function controls.isMeta().
 	
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	display.render_char()							   [public function]
+		#|	(controls.)render_char()						   [public function]
 		#|
 		#|		Given a window and a single character code point, render
 		#|		this character at the current location in the window, even
@@ -220,9 +303,9 @@ def isMeta(code):
 		#|			 C:		À  Á  Â  Ã  Ä  Å  Æ  Ç  È  É  Ê  Ë  Ì  Í  Î  Ï 
 		#|			 D:		Ð  Ñ  Ò  Ó  Ô  Õ  Ö  ×  Ø  Ù  Ú  Û  Ü  Ý  Þ  ß 
 		#|			 E:		à  á  â  ã  ä  å  æ  ç  è  é  ê  ë  ì  í  î  ï 		^
-		#|			 F:		ð  ñ  ò  ó  ô  õ  ö  ÷  ø  ù  ú  û  ü  ý  þ  ÿ		| 8-bit
+		#|			 F:		ð  ñ  ò  ó  ô  õ  ö  ÷  ø  ù  ú  û  ü  ý  þ  ÿ		| 8-bit (Latin-1 Supplement)
 		#|					----------------------------------------------		+------
-		#|			10:		Ā  ā  Ă  ă  Ą  ą  Ć  ć  Ĉ  ĉ  Ċ  ċ  Č  č  Ď  ď 		| 9-bit
+		#|			10:		Ā  ā  Ă  ă  Ą  ą  Ć  ć  Ĉ  ĉ  Ċ  ċ  Č  č  Ď  ď 		| 9-bit (Latin Extended-A)
 		#|			11:		Đ  đ  Ē  ē  Ĕ  ĕ  Ė  ė  Ę  ę  Ě  ě  Ĝ  ĝ  Ğ  ğ 		V
 		#|			12:		Ġ  ġ  Ģ  ģ  Ĥ  ĥ  Ħ  ħ  Ĩ  ĩ  Ī  ī  Ĭ  ĭ  Į  į 
 		#|			13:		İ  ı  Ĳ  ĳ  Ĵ  ĵ  Ķ  ķ  ĸ  Ĺ  ĺ  Ļ  ļ  Ľ  ľ  Ŀ 
@@ -270,8 +353,8 @@ def render_char(win, code, baseAttrs=0):
 		code = code - 128
 
 		# Render this non-printing character code as a styled glyph.
-	(style, glyph) = _nonprint_8bit_glyphs[code]	# Uses Western/LATIN-1.
-	#(style, glyph) = _nonprint_7bit_glyphs[code]	# Less pretty code
+	(style, glyph) = _nonprint_8bit_glyphs[code]	# Uses Western/LATIN-1 characters.
+	#(style, glyph) = _nonprint_7bit_glyphs[code]	# Less pretty code, uses 7-bit ASCII only.
 
 		# If meta, map the render styles to their meta equivalents.
 	if meta:
@@ -289,3 +372,6 @@ def render_char(win, code, baseAttrs=0):
 #__/ End function display.render_char().
 
 
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#|						END OF FILE:	display/controls.py
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
