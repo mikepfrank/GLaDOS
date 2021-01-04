@@ -613,7 +613,7 @@ NAME_FIELDWIDTH         = 24    # Width of logger name field.
 THREADNAME_FIELDWIDTH   = 10    # Width of thread name field.
 COMPONENT_FIELDWIDTH    = 14    # Width of component name field.
 THREADROLE_FIELDWIDTH   = 9     # Width of thread role field.
-MODULE_FIELDWIDTH       = 20    # Width of module filename field.
+MODULE_FIELDWIDTH       = 13    # Width of module filename field.
 FUNCNAME_FIELDWIDTH     = 18    # Width of function name field.
 LEVELNAME_FIELDWIDTH    = 8     # Width of logging level name field.
 
@@ -3266,9 +3266,9 @@ def configLogMaster(sysname:str = None, appname:str = None,
 
     with open(LOG_FILENAME,'a') as tmp_file:
      tmp_file.write(
-      "========================+==========================+======================================+==================================================+===========================================================================================\n"
-      "YYYY-MM-DD hh:mm:ss,msc | SysName.appName.pkgName  | ThreadName: Component      role      |     sourceModuleName.py:ln# : functionName()     | LOGLEVEL: Message text\n"
-      "------------------------+--------------------------+--------------------------------------+--------------------------------------------------+-------------------------------------------------------------------------------------------\n")
+      "========================+==========================+======================================+===========================================+===========================================================================================\n"
+      "YYYY-MM-DD hh:mm:ss,msc | SysName.appName.pkgName  | ThreadName: Component      role      | srcModuleName.py:ln# : functionName()     | LOGLEVEL: Message text\n"
+      "------------------------+--------------------------+--------------------------------------+-------------------------------------------+-------------------------------------------------------------------------------------------\n")
 
         # Figure out the file and console log levels based on user
         # selections.  (Verbose in this call is turned on for now,

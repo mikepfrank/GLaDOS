@@ -402,10 +402,20 @@ class LogPanel(Panel):
 				
 		else:	# Panel windows already exist; at most, we may need to resize them.
 		
+				# Clear everything that used to be in these guys before move/resize.
+			panel._header_subwin.clear()
+			panel._data_subwin.clear()
+
 			# Header sub-window width may need adjusting.
 			try:
+				# Reset both the position and size, just to make sure.
+				
+				panel._header_subwin.mvderwin(0, 0)
 				panel._header_subwin.resize(3, width)	# Width might be new.
+
+				panel._data_subwin.mvderwin(3, 0)
 				panel._data_subwin.resize(height-3, width)
+
 			except curses.error as e:
 				_logger.error(f"logPanel.configWin(): During sub-window resizing, got curses error: {str(e)}")
 	
@@ -456,12 +466,19 @@ class LogPanel(Panel):
 			
 		style = PLAIN
 	
+			# The following needs to be adjusted whenever you change the
+			# format of log lines.
+
+		levelFieldPos = 136
+		levelFieldWidth = 8
+
 			# Attempt to parse the log level.  Really we should do something smarter
 			# here, like run a regex on the log line.
 			
-		if len(logLine) >= 151:
+		if len(logLine) >= levelFieldPos + levelFieldWidth:
 		
-			logLevel = logLine[143:151]		# Extracts field where we expect to see the log level printed.
+			logLevel = logLine[levelFieldPos:levelFieldPos+levelFieldWidth]
+				# Extracts field where we expect to see the log level printed.
 			
 			# This is annoying due to the varying numbers of spaces.
 			if logLevel == "   DEBUG":
