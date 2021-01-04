@@ -78,7 +78,8 @@ __all__ = [		# List of all public names exported from this module.
 				# Rendering style designators.
 		'PLAIN', 'BORDER', 'HEADER', 'CONTROL', 'WHITESP', 'METACTL', 'METAWSP',
 				# Logging-related rendering styles (move to console package?)
-		'DEBUG_STYLE', 'INFO_STYLE', 'GOOD_STYLE', 'WARNING_STYLE', 'CRITICAL_STYLE', 'FATAL_STYLE'
+		'DEBUG_STYLE', 'INFO_STYLE', 'GOOD_STYLE', 'WARNING_STYLE', 
+		'ERROR_STYLE', 'CRITICAL_STYLE', 'FATAL_STYLE'
 	]
 	
 #__/ End definition of module-level special global constant array, __all__.
