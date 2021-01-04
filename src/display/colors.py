@@ -26,9 +26,11 @@
 	DEPENDENCIES:
 	-------------
 	
-		* The colors module uses the (standard) 'enum' module.
+		* The colors module references the (standard) 'enum' module, and the
+			curses package.
 		
-		* The colors module is used by the '.display' module and...
+		* The colors module is referenced by the '.controls' module and the 
+			'.display' module and...
 		
 """
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -98,6 +100,7 @@ from curses import *
 	# At some point we should change this to an explicit list of the
 	# curses names that we actually use.
 
+
 	#|==========================================================================
 	#|	3.	Type definitions.							   [module code section]
 	#|
@@ -108,7 +111,7 @@ from curses import *
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	(display.)Brightness						[public enumerated type]
+		#|	(colors.)Brightness						[public enumerated type]
 		#|
 		#| 		Below we define an enum type and some associated global 
 		#|		constants for designating brightness values.  In addition 
@@ -309,7 +312,7 @@ FATAL_STYLE		=	CRITICAL_STYLE
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			#|	display._style_colors			 [private global data structure]
+			#|	colors._style_colors			 [private global data structure]
 			#|
 			#|		This private lookup table maps each display style 
 			#|		designator to the corresponding foreground/background
@@ -357,7 +360,7 @@ _style_colors = {		# Maps render style to (fgcolorspec, bgcolorspec) pairs.
 
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	display.colors_attr()							   [public function]
+		#|	(colors.)colors_attr()							   [public function]
 		#|
 		#|		Turns a pair of color specs into a correspending setting
 		#|		of display attributes (which is a non-negative integer 
@@ -413,7 +416,7 @@ def colors_attr(fgColorSpec, bgColorSpec):
 
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	display.style_to_attr()							   [public function]
+		#|	(colors.)style_to_attr()						   [public function]
 		#|
 		#|		This function maps a render style designator to the 
 		#|		correspending display attribute setting (bit-vector).
