@@ -76,7 +76,7 @@ __all__ = [		# List of all public names exported from this module.
 		'BRIGHT_CYAN', 'BRIGHT_MAGENTA', 'BRIGHT_YELLOW',
 
 				# Rendering style designators.
-		'PLAIN', 'BORDER', 'CONTROL', 'WHITESP', 'METACTL', 'METAWSP'
+		'PLAIN', 'BORDER', 'HEADER', 'CONTROL', 'WHITESP', 'METACTL', 'METAWSP'
 		
 	]
 	
