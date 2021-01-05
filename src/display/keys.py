@@ -26,13 +26,20 @@
 		
 			* Numeric keypad keys, named 'Num_Lock', 'KP_0'-'KP_9', 
 				'KP_DIVIDE', 'KP_TIMES', 'KP_MINUS', 'KP_PLUS', 'KP_DOT',
-				and 'KEY_ENTER'.
+				and 'KEY_ENTER' (that one already existed).
 				
 			* Control-arrow keys, named 'Ctrl-Up', 'Ctrl-Down', 'Ctrl-Left',
 				'Ctrl-Right'.
 			
+			* Shifted function keys, 'Shift-F3' through 'Shift-F10'.
+
+			* New keycodes for all of the above keys.
+
 			* 'Home', 'End', and F1-F4 keys.  These also have the corresponding
-				keycodes 
+				(already existing) keycodes. 
+
+			* "Alt" or "Meta" versions of almost all keys; named "Alt-<keyname>"
+				and with keycodes identical to the originals, but with bit 7 set.
 	
 """
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -157,9 +164,9 @@ from infrastructure.decorators	import	singleton	# Class decorator.  Used by TheD
 	#--------------
 	# Key pad keys.
 
-global (KEY_NUM_LOCK, KEY_PAD_PLUS, KEY_PAD_DOT, KEY_PAD_0, KEY_PAD_1, KEY_PAD_2, 
-	KEY_PAD_3, KEY_PAD_4, KEY_PAD_5, KEY_PAD_6, KEY_PAD_7, KEY_PAD_8, KEY_PAD_9, 
-	KEY_PAD_DIVIDE, KEY_PAD_TIMES, KEY_PAD_MINUS)
+global KEY_NUM_LOCK, KEY_PAD_PLUS, KEY_PAD_DOT, KEY_PAD_0, KEY_PAD_1, KEY_PAD_2
+global KEY_PAD_3, KEY_PAD_4, KEY_PAD_5, KEY_PAD_6, KEY_PAD_7, KEY_PAD_8
+global KEY_PAD_9, KEY_PAD_DIVIDE, KEY_PAD_TIMES, KEY_PAD_MINUS
 		
 KEY_NUM_LOCK	= KEY_MAX + 0
 KEY_PAD_PLUS	= KEY_MAX + 1		# Above normal range of curses key codes.
@@ -182,7 +189,7 @@ KEY_PAD_MINUS	= KEY_MAX + 15
 	#--------------------
 	# Control-arrow keys.
 	
-global (KEY_CTRL_UP, KEY_CTRL_DOWN, KEY_CTRL_RIGHT, KEY_CTRL_LEFT)
+global KEY_CTRL_UP, KEY_CTRL_DOWN, KEY_CTRL_RIGHT, KEY_CTRL_LEFT
 
 KEY_CTRL_UP		= KEY_MAX + 16
 KEY_CTRL_DOWN	= KEY_MAX + 17
@@ -193,8 +200,8 @@ KEY_CTRL_LEFT	= KEY_MAX + 19
 	#-----------------------
 	# Shifted function keys.
 
-global (KEY_SHIFT_F3, KEY_SHIFT_F4, KEY_SHIFT_F5, KEY_SHIFT_F6, KEY_SHIFT_F7,
-	KEY_SHIFT_F8, KEY_SHIFT_F9, KEY_SHIFT_F10)
+global KEY_SHIFT_F3, KEY_SHIFT_F4, KEY_SHIFT_F5, KEY_SHIFT_F6, KEY_SHIFT_F7
+global KEY_SHIFT_F8, KEY_SHIFT_F9, KEY_SHIFT_F10
 
 KEY_SHIFT_F3	= KEY_MAX + 20
 KEY_SHIFT_F4	= KEY_MAX + 21
@@ -349,6 +356,11 @@ class KeyEvent:
 	
 		if keyname is None:
 			keyname = _keystr(keycode)		# Convert to string name.
+
+		# If we have a replacement keycode in the _name_codes lookup table,
+		# let it override whatever keycode we were given.
+		if keyname in _name_codes:
+			keycode = _name_codes[keyname]
 
 		event._keycode = keycode
 		event._keyname = keyname
@@ -537,7 +549,7 @@ class TheKeyBuffer:
 
 		kb = thisKeyBuffer
 
-		win.timeout(1000)	# Set timeout to 1000 ms = 1 second
+		win.timeout(500)	# Set timeout to 500 ms = 0.5 second
 
 		ch = kb._get_next_rawkey(win)	# Get first char after escape.
 
@@ -586,15 +598,20 @@ class TheKeyBuffer:
 			# after the ESC back, getting the new next key name, and then
 			# prepending 'Alt-' to it.  Then return that name
 			
-		kb._pushback_keys(after)
-		nextEvent = kb.get_next_key(win)
+		if after == "":		# All we had was ESC by itself.
+			return seq		# Return that.
 
-		code = alt(nextEvent.keycode)
-		name = 'Alt-' + nextEvent.keyname
+		else:
+		
+			kb._pushback_keys(after)
+			nextEvent = kb.get_next_key(win)
 
-		event = KeyEvent(keycode = code, keyname = name)
+			code = alt(nextEvent.keycode)
+			name = 'Alt-' + nextEvent.keyname
 
-		return event
+			event = KeyEvent(keycode = code, keyname = name)
+
+			return event
 
 			# Otherwise, return it as a raw, untranslated string.
 			# The application can just process the characters individually.
