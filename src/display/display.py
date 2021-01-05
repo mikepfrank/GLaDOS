@@ -416,413 +416,9 @@ def _keystr(k):
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
-# Forward declarations for type hints.
-class TheDisplay: pass
-
-
-global _theDisplayDriver	# The display driver thread.
-_theDisplayDriver = None	# Thread not yet created.
-
-
-		# Class to implement a thread that exists for the purpose
-		# of serializing curses operations. Whenever you want to 
-		# do something with the display, you can do it as follows:
-		#
-		#	displayDriver = DisplayDriver()
-		#	displayDriver(callable)
-
-class DisplayDriver(RPCWorker):
-	#______________/         \_____________________________________________
-	#| NOTE: By subclassing this class from RPCWorker instead of Worker, 
-	#| the overall effect is simply to serialize all of the normal display 
-	#| operations by having them wait for this single thread to do them.  
-	#| However, users can also delegate operations to the driver to do as
-	#| background activities without waiting for completion by calling the 
-	#| driver's .do() method.
-	#|---------------------------------------------------------------------
-	
-	@staticmethod
-	def withLock(callable):
-		"""This is a wrapper function that is to be applied around all bare
-			callables that are handed to the display driver as tasks to be
-			executed. It simply grabs the display lock, so that we avoid 
-			conflicting with any other threads that may be using the 
-			display.  (We assume curses operations are not thread-safe.)"""
-		#_logger.debug("About to grab display lock...")
-		with TheDisplay().lock:
-			#_logger.debug("About to call wrapped callable...")
-			return callable()				# Call the callable, return any result.
-			#_logger.debug("Returned from wrapped callable...")
-		#_logger.debug("Released display lock.")
-	
-	defaultWrapper = withLock
-	
-	def __init__(newDisplayDriver):
-		
-		"""Initialize the display driver by setting up its role & component 
-			attributes appropriately for thread-specific logging purposes."""
-			
-		super(DisplayDriver, newDisplayDriver).__init__(
-			role = 'DisplDrvr', component = _sw_component, daemon=True)
-			# daemon=True tells Python not to let this thread keep the process alive
-		
-		# Stash this new display driver instance in a module-level global.
-		global _theDisplayDriver
-		_theDisplayDriver = newDisplayDriver
-
-#__/ End class DisplayDriver.
-
-def in_driver_thread():
-	return current_thread() == _theDisplayDriver
-
-
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	display.DisplayClient					   [public extensible class]
-		#|
-		#|		This class, which can and should be further subclassed 
-		#|		by other modules that are using this module, defines the 
-		#|		detailed behavior of the primary client process that is 
-		#|		using the display.
-		#|
-		#|		Key methods that subclasses should override include
-		#|		the following:
-		#|
-		#|
-		#|			.paint() -
-		#|
-		#|				This method should repaint the entire display 
-		#|				with (client-specific) content.
-		#|
-		#|
-		#|			.handle_event()	-
-		#|
-		#|				This method is called by the display for each
-		#|				input event that occurs.
-		#|
-		#|		
-		#|		If this class is instantiated directly, the resulting
-		#|		client just provides some simple demo functionality, 
-		#|		displaying information about the window size, input
-		#|		events, and a simple character table.
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-class DisplayClient:
-
-	"""A display client is an entity that uses the display as a server
-		to interact with the user.	Only one client may use the display
-		at a time."""
-
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	newClient.__init__()						  [instance initializer]
-		#|
-		#|		Currently, this initializer for new client instances 
-		#|		simply links up the client with the display (i.e., the 
-		#|		singleton instance of TheDisplay class).
-		#|
-		#|		Subclasses that need override this method to do application-
-		#|		specific initialization should extend this method, by first 
-		#|		calling their superclass initializer using the standard idiom,
-		#|
-		#|			super(SubClassName, this).__init__(this, *args, **kwargs),
-		#|
-		#|		before doing their application-specific initialization work.
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-	
-	def __init__(thisClient):
-		"""Initializes the client by linking it with the display."""
-			# Connect us up with the display.
-		thisClient._display = display = TheDisplay()
-		display.setClient(thisClient)
-	#__/ End instance initializer for class DisplayClient.
-
-
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	displayClient.display					  	  	   [public property]
-		#|
-		#|		This retrieves the display that the client is connected
-		#|		to (which should be the singleton instance of TheDisplay).
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-	
-	@property
-	def display(thisClient):
-		return thisClient._display
-
-
-	@property
-	def screen(thisClient):
-		return thisClient.display.screen
-
-	def requestRefresh(thisClient):
-
-		"""This method tells the client to request the display to 
-			refresh the client's screen on the next display update."""
-
-			# Do a delayed (i.e., no-output) internal refresh of the entire screen.
-		thisClient.screen.noutrefresh()
-			# The actual (physical) external refresh of the display terminal will
-			# occur on the next call to display.update().
-
-
-	def start(thisClient, waitForExit:bool=False):
-		
-		"""This starts up this display client, which implicitly also starts
-			up the underlying curses-based display infrastructure."""
-			
-		_logger.debug(f"displayClient.start(): Starting with waitForExit={waitForExit}...")
-
-		client  = thisClient
-		display = client.display
-		
-		display.start(waitForExit = waitForExit)
-
-		_logger.debug("displayClient.start(): Returning.")
-		
-	#__/ End instance method displayClient.start().
-
-
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	displayClient.run()						  	[public instance method]
-		#|
-		#|		This is the method that should be called to start the 
-		#|		display client running.  It automatically starts up the
-		#|		entire display facility as well, paints the screen, and 
-		#|		starts up the main event loop.  It does not return until 
-		#|		there is an application abort or quit, so, users should
-		#|		probably create a new thread to run it in.
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-	
-	def run(thisClient):
-		display = thisClient.display
-		display.run()
-
-
-	@property
-	def dispRunning(thisPanelClient):
-		"""Returns Boolean 'True' if this client's display is currently running."""
-		return thisPanelClient.display.isRunning
-	
-
-	def redisplay(thisClient):
-		"""Tells the client's display it needs to update itself. This works 
-			through calling the display's .paint() method, which then dispatches
-			the detailed work back to the client."""
-		display = thisClient.display
-		display.paint()
-
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	displayClient.addChar()					  	[public instance method]
-		#|
-		#|		This method can be used to send a character to the 
-		#|		client's display, with special rendering features 
-		#|		available for (normally) non-printing characters.
-		#|
-		#|		TO DO: Implement processing of optional loc and 
-		#|		attr arguments (not yet supported).
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-	
-	def addChar(thisClient, char:int, *args, **argv):
-		display = thisClient.display
-		display.renderChar(char, *args, **argv)
-
-
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	displayClient.addText()					  	[public instance method]
-		#|
-		#|		This method can be used to send plain text to the 
-		#|		client's display.  By "plain text," we mean that 
-		#|		non-printing characters are not handled specially.
-		#|
-		#|		TO DO: Add an option to enable special handling of
-		#|		non-printing characters.
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-	
-	def addText(thisClient, text:str, *args, **argv):
-		display = thisClient._display
-		display.add_str(text, *args, **argv)
-
-
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	displayClient.drawOuterBorder()			  	[public instance method]
-		#|
-		#|		This method draws a border just inside the edge of the
-		#|		display screen, using the predefined BORDER render style.
-		#|
-		#|		Presently, this renders by default in a bright cyan text
-		#|		color on a black background.
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-	
-	def drawOuterBorder(thisClient):
-		"""Draw a border just inside the edge of the display screen."""
-
-		client = thisClient
-		display = client.display
-		display.drawOuterBorder()	# Let the display do the work.
-
-	#__/ End method displayClient.drawOuterBorder().
-
-
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	displayClient.paint()			[placeholder public instance method]
-		#|
-		#|		This is the main method that subclasses should override
-		#|		to draw their display contents.
-		#|
-		#|		The version defined here essentially implements a simple
-		#|		demo, which displays a border and some diagnostics of the
-		#|		window size, the last event received, and a character table.
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-	
-	def paint(thisClient):
-		"""Subclasses should override/extend this method to paint the display."""
-
-			# Get some important guys.
-		client = thisClient
-		display = client.display
-		screen = display.screen
-		
-			# First, if the display isn't even running, then there's nothing
-			# to do, so just exit early.
-		if not display.running:
-			_logger.debug("client.paint(): Display is not yet running; returning early.")
-			return
-
-		_logger.debug("client.paint(): Painting client display...")
-		
-			# This is effectively a "lazy clear"--it waits until refresh to take effect.
-		display.erase()		# Marks all character cells as empty (and no attributes).
-				# (We do this so we don't have to worry about old text hanging around.)
-
-			# Draw a border just inside the edges of the screen.
-		display.drawOuterBorder()
-		
-			# Display information about the screen size.
-		(height, width) = display.get_size()
-		client.addText(f"Screen size is {height} rows high x {width} columns wide.", Loc(1,2))
-
-			# If we've received any events yet, display the last one received.
-		if hasattr(thisClient, '_lastEvent'):
-			thisClient.displayEvent()
-
-		#|----------------------------------------------------------------
-		#| Next, draw a character table.  (Code points 0x0 through 0x17F.)
-
-			# Iterate through all character codes in our displayable range.
-		for ch in range(0, 384):	# This will fill 12 rows.
-		
-				# Calculate coordinates for this character.
-			y = 7 + int(ch/32)
-			x = 2 + 2*int(ch%32)
-		
-				# Render the character at the given location.
-			screen.move(y, x)
-			client.addChar(ch)	# TODO: Add an optional loc argument.
-			
-		#__/ End loop over code points.
-
-		#/----------------------------------------------------------------------
-		#| 	TheDisplay handles refresh for us automatically, so we don't need 
-		#|	to do it here. So, we're done!
-		#\----------------------------------------------------------------------
-	
-	#__/ End method displayClient.paint().
-
-
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	displayClient.displayEvent()				[public instance method]
-		#|
-		#|		This is just here to support the demo application; it 
-		#|		displays some information about the last event received.
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-	
-	def displayEvent(thisClient):
-
-		client 		= thisClient
-		display		= client.display
-		keyevent	= client._lastEvent
-		keycode		= keyevent.keycode
-		keyname		= keyevent.keyname
-
-			# Default behavior: Display information about key code received.
-		client.addText(f"Received key code: #{keycode}.", Loc(3,2))
-		client.addText(f"Direct rendering is: ", Loc(4,2))
-		client.addChar(keycode)		# What if we interpret keycode directly as a character?
-		client.addText(f"Key name string is: ({keyname})", Loc(5,2))
-
-	#__/ End method displayClient.displayEvent().
-
-
-	def handle_resize(thisClient):
-		"""When we have already figured out the new screen size, this method
-			is called by the display to let us do client-specific adjustments."""
-		# There is nothing to do here by default, but subclasses should override this.
-		pass
-
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	displayClient.handle_event()	[placeholder public instance method]
-		#|
-		#|		This is the main event handler method.
-		#|
-		#|		Subclasses may want to override this method as appropriate
-		#|		for their application.  The display (singleton instance of 
-		#|		TheDisplay) will call this method whenever a new event is 
-		#|		received.  The implementation of this method should then
-		#|		dispatch the event to sub-handlers as appropriate.
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-			
-	def handle_event(thisClient, keyevent):
-		"""Subclasses should override this method with their own event handler."""
-
-			# Get some important guys.
-		client = thisClient
-		keycode = keyevent.keycode		# Numeric code for key or other event.
-		keyname = keyevent.keyname		# String name for key or event.
-		_logger.debug(f"Got a key with code={keycode}, name={keyname}.")
-		
-			# This next line is here to support our demo application, and may 
-			# not be needed in all subclasses' replacements for this method.
-		client._lastEvent = keyevent
-
-			# The following code block or similar will be in most applications.
-		if keycode == KEY_RESIZE:
-			client._display.resize()
-
-		# The following is commented out because generally there's no need to
-		# repaint the entire display just because a key was pressed.
-
-		#else:
-		#	client.paint()
-
-	#__/ End method displayClient.handle_event().
-
-#__/ End class displayClient.
-
-
-class TUI_Input_Thread(ThreadActor):
-	"""This thread exists for the sole purpose of executing the main
-		user input loop for the curses-based 'TUI' (Text User Interface).
-		It communicates with the display driver thread to carry out I/O.
-		"""
-		
-	defaultRole			= 'TUI_Input'
-	defaultComponent	= _sw_component 
-	
-	def __init__(newTuiInputThread, *args, **kwargs):
-		thread = newTuiInputThread
-		thread.exitRequested = False		# Set this to True if you want this thread to quit.
-		super(TUI_Input_Thread, thread).__init__(*args, **kwargs)	# ThreadActor initialization.
-
-#__/ End class TUI_Input_Thread.
-
+		#|===========================================
+		#| Exception classes provided by this module.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 class DisplayException(LoggedException):
 	
@@ -830,6 +426,7 @@ class DisplayException(LoggedException):
 		by the text display facility."""
 	
 	defLogger = _logger		# Use the display package's logger.
+
 
 class TerminateServer(DisplayException, FatalException):
 
@@ -864,16 +461,18 @@ class TheDisplay:
 	def __init__(theDisplay):
 		"""Initializes the display system."""
 
+		display = theDisplay
+
 			# Mark this display as not running yet, to make sure we don't try 
 			# to do anything with it until it's actually running.
-		theDisplay._running = False		# Display is not up and running yet.
+		display._running = False		# Display is not up and running yet.
 
-		theDisplay._client = None		# Client is not yet attached.
+		display._client = None		# Client is not yet attached.
 
-		theDisplay._screen = None		
+		display._screen = None		
 			# The actual display screen structure hasn't been created yet.
-		theDisplay._width  = None	# No width/height yet, because no screen
-		theDisplay._height = None
+		display._width  = None	# No width/height yet, because no screen
+		display._height = None
 
 			#|------------------------------------------------------------------
 			#|	As a most basic measure to ensure that the state of the curses 
@@ -887,7 +486,7 @@ class TheDisplay:
 			#|	requests to be executed asynchronously in the background, using
 			#|	syntax like "driver.do(...)".
 			
-		theDisplay._lock = RLock()		# Reentrant lock for concurrency control.
+		display._lock = RLock()		# Reentrant lock for concurrency control.
 
 			#|------------------------------------------------------------------
 			#|	As a secondary tool to facilitate multithreaded curses apps,
@@ -896,7 +495,7 @@ class TheDisplay:
 			#|	either synchronously ("driver(...)" syntax) or asynchronously
 			#|	("driver.do(...)" syntax).
 
-		theDisplay._driver = DisplayDriver()		# Creates display driver thread.
+		display._driver = DisplayDriver(display)		# Creates display driver thread.
 			# (This newly created thread is initially just waiting for work to do.)
 			
 		# Nothing else to do here yet. Nothing really happens until .start() is called.
@@ -997,10 +596,11 @@ class TheDisplay:
 	def run(theDisplay):
 	
 		"""This method is responsible for bringing up and operating the entire
-			display, and bringing it down again when done.	It needs to be run 
-			in its own thread, so that other systems can asynchonously communicate
-			with it if needed.  Clients call it automatically from their .run() 
-			method."""
+			display, and bringing it down again when done.	It ought to be run 
+			in its own thread (specifically, TUI_Input_Thread), so that other 
+			subsystems can asynchonously communicate with it if needed.  The
+			display.start() method automatically arranges for this method to 
+			be executed by the TUI_Input_Thread."""
 
 		display = theDisplay
 			

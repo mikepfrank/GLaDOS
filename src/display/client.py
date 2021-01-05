@@ -1,5 +1,7 @@
 # client.py - Base class for display clients. Includes a demo.
 
+from .display import TheDisplay
+
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	display.DisplayClient					   [public extensible class]
 		#|
@@ -55,7 +57,9 @@ class DisplayClient:
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
 	def __init__(thisClient):
+		
 		"""Initializes the client by linking it with the display."""
+		
 			# Connect us up with the display.
 		thisClient._display = display = TheDisplay()
 		display.setClient(thisClient)
@@ -308,8 +312,11 @@ class DisplayClient:
 
 			# Get some important guys.
 		client = thisClient
+		display = client.display
+		
 		keycode = keyevent.keycode		# Numeric code for key or other event.
 		keyname = keyevent.keyname		# String name for key or event.
+		
 		_logger.debug(f"Got a key with code={keycode}, name={keyname}.")
 		
 			# This next line is here to support our demo application, and may 
@@ -317,8 +324,9 @@ class DisplayClient:
 		client._lastEvent = keyevent
 
 			# The following code block or similar will be in most applications.
+			# We call back to the display to tell it to resize itself.
 		if keycode == KEY_RESIZE:
-			client._display.resize()
+			display.resize()
 
 		# The following is commented out because generally there's no need to
 		# repaint the entire display just because a key was pressed.
