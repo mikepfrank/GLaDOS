@@ -27,10 +27,13 @@ _sw_component = sysName + '.' + _component
 import curses
 from curses import error, newwin
 
-from .display import (
-		BORDER,
+from .colors import (
+		BORDER,				# Render style for panel borders.
 		style_to_attr,		# Needed to use render styles.
-		DisplayClient		# We extend this to form panelclient.
+	)
+
+from .client import (
+		DisplayClient,		# We extend this to form panelclient.
 	)
 
 class PanelPlacement(Enum):

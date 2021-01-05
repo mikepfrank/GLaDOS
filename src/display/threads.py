@@ -210,7 +210,7 @@ class DisplayDriver(RPCWorker):
 			curses operations are not thread-safe.)"""
 		
 		driver = thisDriver
-		display = driver.display
+		display = driver._display
 		
 		if not display.running:
 			_logger.warn("displayDriver.withLock(): Display not running; ignoring task.")
