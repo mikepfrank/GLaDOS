@@ -37,6 +37,7 @@ from infrastructure.logmaster import (
 		LoggedException,	# DisplayException inherits from this.
 		WarningException,	# DisplayNotRunning inherits from this.
 		ErrorException,		# DisplayDied inherits from this.
+		CriticalException,	# RequestRestart inherits from this.
 		FatalException		# We derive TerminateServer from this.
 	)
 global _component, _logger	# Software component name, logger for component.

@@ -223,7 +223,7 @@ class DisplayDriver(RPCWorker):
 			# Note we grab the lock before checking the running state, since 
 			# asynchronous operations might affect the running state of the display.
 			if not display.running:
-				_logger.warn("displayDriver.withLock(): Display not running; ignoring task.")
+				#_logger.warn("displayDriver.withLock(): Display not running; ignoring task.")
 				return DisplayNotRunning("displayDriver.withLock(): Display not running; task ignored.")
 				# Note: Callers who obtain a result should be prepared to handle results of this type.
 
