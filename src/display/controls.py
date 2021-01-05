@@ -46,10 +46,17 @@
 global __all__ 
 __all__ = [		# List of all public names exported from this module.
 
-			#|-----------
+			#|~~~~~~~~~~~
 			#| Functions.
 		
-		'isNonprinting', 'isMeta', 'render_char', 	# Control-related functions.
+				#---------------------------
+				# Control-related functions.
+			
+		'render_char', 		# Renders any 7/8-bit character in a curses window.
+		
+			# These next two aren't actually used outside this module yet; should they be made private?
+		'isNonprinting',	# Returns True for nonprinting (control or whitespace) 7/8-bit code points.
+		'isMeta', 			# Returns True for 'Meta' (8th bit set) 7/8-bit code points.
 		
 	]
 
@@ -232,6 +239,7 @@ _nonprint_8bit_glyphs = {	# Returns pair of (render style, printable character)
 		#|
 		#|		Note that by "non-printing" characters, we include the
 		#|		various whitespace characters, as well as control codes.
+		#|		Also, meta-controls and nonbreaking space are included.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -240,15 +248,15 @@ def isNonprinting(code):
 	"""Returns true if the given code point is a 7- or 8-bit whitespace
 		or control character, which normally would not be visible."""
 
-	# 7-bit ASCII x00-1F controls and space.
+	# 7-bit ASCII x00-1F controls and space (32).
 	if code >=0 and code <= 32:
 		return True
 
-	if code == 127:		# Delete charater.
+	if code == 127:		# Delete/RUBOUT charater.
 		return True
 
 	# Controls/whitespace in 8-bit ASCII/Unicode
-	if code >= 128 and code <= 160:
+	if code >= 128 and code <= 160:		# 160 is nonbreaking space
 		return True
 
 	# For everything else, assume it's printing.

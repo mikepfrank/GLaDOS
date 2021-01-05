@@ -162,7 +162,8 @@ logFilename = path.join('log', 'GLaDOS.server.log')
 
 import curses
 
-from display.display	import (
+from display.colors		import (
+
 		HEADER,				# Render style we use for the log panel header area.
 		PLAIN,				# Render style we use for log lines of unknown level.
 		DEBUG_STYLE,		# Render style we use for debug-level log messages.
@@ -172,10 +173,15 @@ from display.display	import (
 		ERROR_STYLE,		# Render style we use for error-level log messages.
 		CRITICAL_STYLE,		# Render style we use for critical-level (or fatal) log messages.
 		style_to_attr,		# Converts render styles to display attributes.
+
+	)
+	
+from display.drawing	import (
+
 		addLineClipped, 	# Adds a line of text to a window, but with right-clipping.
 		addTextClipped		# Adds a body of text to a window, but with right-clipping.
-	)
 
+	)
 
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#|	To implement the console, we will draw an arrangement of borders and 
@@ -188,7 +194,6 @@ from display.display	import (
 	#|	like this is provided in the display.panels module, but code specific to 
 	#|	the console client in particular is gathered here in the console package.
 	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 
 from	display.panel	import (
 

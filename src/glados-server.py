@@ -178,10 +178,6 @@ from 	config.configuration		import	TheConfiguration
 	# This singleton class will manage loading of the GLaDOS system 
 	# configuration from config files on system startup.
 
-#from	display.display				import	TheDisplay
-	# The "display" facility provides a more user-friendly wrapper
-	# around the bare underlying curses (text terminal) display.
-
 from	console.console				import	ConsoleClient
 	# The "console client" starts up and manages a curses-based 
 	# display screen consisting of a number of user interface panels.
