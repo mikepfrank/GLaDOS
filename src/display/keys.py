@@ -1,3 +1,100 @@
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#|					 TOP OF FILE:	 display/keys.py
+#|------------------------------------------------------------------------------
+#|	 The below module documentation string will be displayed by pydoc3.
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+"""
+	FILE NAME:		display/keys.py				 [Python module source file]
+	
+	MODULE NAME:	display.keys
+	IN PACKAGE:		display
+	FULL PATH:		$GIT_ROOT/GLaDOS/src/display/keys.py
+	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
+	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
+	APP NAME:		GLaDOS.server (Main GLaDOS server application)
+	SW COMPONENT:	GLaDOS.display (Display screen management)
+
+
+	MODULE DESCRIPTION:
+	===================
+	
+		This module provides for keyboard input processing that is
+		considerably more sophisticated than what is built into curses--
+		at least for use with Windows/Putty terminals.
+		
+		Features include support for:
+		
+			* Numeric keypad keys, named 'Num_Lock', 'KP_0'-'KP_9', 
+				'KP_DIVIDE', 'KP_TIMES', 'KP_MINUS', 'KP_PLUS', 'KP_DOT',
+				and 'KEY_ENTER'.
+				
+			* Control-arrow keys, named 'Ctrl-Up', 'Ctrl-Down', 'Ctrl-Left',
+				'Ctrl-Right'.
+			
+			* 'Home', 'End', and F1-F4 keys.  These also have the corresponding
+				keycodes 
+	
+"""
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#| End of module documentation string.
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|
+	#|	1.  Exported name list. 		   				   [module code section]
+	#|
+	#|			Here we list all of the public names that are standardly
+	#|			exported from this module, if the using module does:
+	#|
+	#|						from display import *
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+global __all__ 
+__all__ = [		# List of all public names exported from this module.
+
+			#|---------
+			#| Classes.
+		
+		'TheKeyBuffer',		# Singleton class; anchor for key processing.
+		
+			#|--------------------
+			#| "Type" definitions.
+		
+		'KeyEvent',		# An event caused by a keypress. 		   [simple type]
+			
+			#|-----------
+			#| Constants.
+		
+				# Numeric keypad keycodes.
+				
+		'KEY_NUM_LOCK', 'KEY_PAD_PLUS', 'KEY_PAD_DOT', 'KEY_PAD_0', 'KEY_PAD_1',
+		'KEY_PAD_2', 'KEY_PAD_3', 'KEY_PAD_4', 'KEY_PAD_5', 'KEY_PAD_6', 
+		'KEY_PAD_7', 'KEY_PAD_8', 'KEY_PAD_9', 'KEY_PAD_DIVIDE', 'KEY_PAD_TIMES',
+		'KEY_PAD_MINUS',
+		
+				# Control-arrow keycodes.
+				
+		'KEY_CTRL_UP', 'KEY_CTRL_DOWN', 'KEY_CTRL_RIGHT', 'KEY_CTRL_LEFT',
+		
+				# Shift-function keycodes.
+		
+		'KEY_SHIFT_F3', 'KEY_SHIFT_F4', 'KEY_SHIFT_F5', 'KEY_SHIFT_F6', 
+		'KEY_SHIFT_F7', 'KEY_SHIFT_F8', 'KEY_SHIFT_F9', 'KEY_SHIFT_F10'
+		
+	]
+
+
+	#|==========================================================================
+	#| 	2.	Imports.									   [module code section]
+	#|
+	#|		2.1.  Standard Python modules imported into this module.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
 		#|======================================================================
 		#| 	Locale setup. Here we obtain the system's default string encoding.
 		#|	Used in _keystr().
@@ -28,6 +125,7 @@ from curses import (
 		keyname,
 		ERR, KEY_HOME, KEY_END, KEY_RESIZE,
 		KEY_F1, KEY_F2, KEY_F3, KEY_F4, 
+		KEY_MAX
 	)
 
 from curses.ascii import (
@@ -41,6 +139,71 @@ from curses.ascii import (
 
 
 from infrastructure.decorators	import	singleton	# Class decorator.  Used by TheDisplay.
+
+
+	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|	3. Globals.										   [module code section]
+	#|
+	#|		This section defines various global constants, variables, and
+	#|		arrays provided and/or used by this module.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		#|======================================================================
+		#|	New key codes.  Note this extends the standard list of key codes
+		#|	that ships with curses.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	#--------------
+	# Key pad keys.
+
+global (KEY_NUM_LOCK, KEY_PAD_PLUS, KEY_PAD_DOT, KEY_PAD_0, KEY_PAD_1, KEY_PAD_2, 
+	KEY_PAD_3, KEY_PAD_4, KEY_PAD_5, KEY_PAD_6, KEY_PAD_7, KEY_PAD_8, KEY_PAD_9, 
+	KEY_PAD_DIVIDE, KEY_PAD_TIMES, KEY_PAD_MINUS)
+		
+KEY_NUM_LOCK	= KEY_MAX + 0
+KEY_PAD_PLUS	= KEY_MAX + 1		# Above normal range of curses key codes.
+KEY_PAD_DOT		= KEY_MAX + 2
+KEY_PAD_0		= KEY_MAX + 3
+KEY_PAD_1		= KEY_MAX + 4
+KEY_PAD_2		= KEY_MAX + 5
+KEY_PAD_3		= KEY_MAX + 6
+KEY_PAD_4		= KEY_MAX + 7
+KEY_PAD_5		= KEY_MAX + 8
+KEY_PAD_6		= KEY_MAX + 9
+KEY_PAD_7		= KEY_MAX + 10
+KEY_PAD_8		= KEY_MAX + 11
+KEY_PAD_9		= KEY_MAX + 12
+KEY_PAD_DIVIDE	= KEY_MAX + 13
+KEY_PAD_TIMES	= KEY_MAX + 14
+KEY_PAD_MINUS	= KEY_MAX + 15
+
+
+	#--------------------
+	# Control-arrow keys.
+	
+global (KEY_CTRL_UP, KEY_CTRL_DOWN, KEY_CTRL_RIGHT, KEY_CTRL_LEFT)
+
+KEY_CTRL_UP		= KEY_MAX + 16
+KEY_CTRL_DOWN	= KEY_MAX + 17
+KEY_CTRL_RIGHT	= KEY_MAX + 18
+KEY_CTRL_LEFT	= KEY_MAX + 19
+
+
+	#-----------------------
+	# Shifted function keys.
+
+global (KEY_SHIFT_F3, KEY_SHIFT_F4, KEY_SHIFT_F5, KEY_SHIFT_F6, KEY_SHIFT_F7,
+	KEY_SHIFT_F8, KEY_SHIFT_F9, KEY_SHIFT_F10)
+
+KEY_SHIFT_F3	= KEY_MAX + 20
+KEY_SHIFT_F4	= KEY_MAX + 21
+KEY_SHIFT_F5	= KEY_MAX + 22
+KEY_SHIFT_F6	= KEY_MAX + 23
+KEY_SHIFT_F7	= KEY_MAX + 24
+KEY_SHIFT_F8	= KEY_MAX + 25
+KEY_SHIFT_F9	= KEY_MAX + 26
+KEY_SHIFT_F10	= KEY_MAX + 27
 
 
 _esc_map = {	# Map from escape sequences to key names.
@@ -84,14 +247,50 @@ _esc_map = {	# Map from escape sequences to key names.
 # This maps our own names to corresponding keycodes.
 _name_codes = {
 
-		'Home':		KEY_HOME,
-		'End':		KEY_END,
+			# Home and end keys.
+		'Home':			KEY_HOME,
+		'End':			KEY_END,
 
-		'F1':		KEY_F1,
-		'F2':		KEY_F2,
-		'F3':		KEY_F3,
-		'F4':		KEY_F4,
+			# True function keys 1-4.
+		'F1':			KEY_F1,
+		'F2':			KEY_F2,
+		'F3':			KEY_F3,
+		'F4':			KEY_F4,
 
+			# Numeric keypad keys.
+		'Num_Lock':		KEY_NUM_LOCK,
+		'KP_PLUS':		KEY_PAD_PLUS,
+		'KP_DOT':		KEY_PAD_DOT,
+		'KP_0':			KEY_PAD_0,
+		'KP_1':			KEY_PAD_1,
+		'KP_2':			KEY_PAD_2,
+		'KP_3':			KEY_PAD_3,
+		'KP_4':			KEY_PAD_4,
+		'KP_5':			KEY_PAD_5,
+		'KP_6':			KEY_PAD_6,
+		'KP_7':			KEY_PAD_7,
+		'KP_8':			KEY_PAD_8,
+		'KP_9':			KEY_PAD_9,
+		'KP_DIVIDE':	KEY_PAD_DIVIDE,
+		'KP_TIMES':		KEY_PAD_TIMES,
+		'KP_MINUS':		KEY_PAD_MINUS,
+		
+			# Control-arrow keys.
+		'Ctrl-Up':		KEY_CTRL_UP,
+		'Ctrl-Down':	KEY_CTRL_DOWN,
+		'Ctrl-Right':	KEY_CTRL_RIGHT,
+		'Ctrl-Left':	KEY_CTRL_LEFT,
+		
+			# Shifted function keys.
+		'Shift-F3':		KEY_SHIFT_F3,
+		'Shift-F4':		KEY_SHIFT_F4,
+		'Shift-F5':		KEY_SHIFT_F5,
+		'Shift-F6':		KEY_SHIFT_F6,
+		'Shift-F7':		KEY_SHIFT_F7,
+		'Shift-F8':		KEY_SHIFT_F8,
+		'Shift-F9':		KEY_SHIFT_F9,
+		'Shift-F10':	KEY_SHIFT_F10
+		
 	}
 
 _code_map = {	# Map from curses' key codes to better key names.
@@ -250,6 +449,15 @@ def _alt_string(keycode):
 	else:
 		return None
 
+
+	#|==========================================================================
+	#|
+	#|	5.	Class definitions.						   	   [module code section]
+	#|
+	#|		In this section we define the various classes provided by 
+	#|		this module.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 @singleton
 class TheKeyBuffer:
@@ -468,3 +676,7 @@ class TheKeyBuffer:
 	#__/ End public singleton instance method keyBuffer.get_next_key().
 
 #__/ End public singleton class TheKeyBuffer.
+
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#|						END OF FILE:	display/keys.py
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
