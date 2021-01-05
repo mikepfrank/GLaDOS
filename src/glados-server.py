@@ -178,7 +178,9 @@ from 	config.configuration		import	TheConfiguration
 	# This singleton class will manage loading of the GLaDOS system 
 	# configuration from config files on system startup.
 
-from	display.display				import	TheDisplay
+#from	display.display				import	TheDisplay
+	# The "display" facility provides a more user-friendly wrapper
+	# around the bare underlying curses (text terminal) display.
 
 from	console.console				import	ConsoleClient
 	# The "console client" starts up and manages a curses-based 
@@ -392,9 +394,6 @@ def _main():
 		#| of interest to a human operator looking at the GLaDOS system console.  
 		#| It also provides for human input (for commands, talking to the AI, etc.)
 	
-	_logger.info("glados-server.py:_main(): Creating display...")
-	display = TheDisplay()		# Initializes our curses display interface.
-
 	_logger.info("glados-server.py:_main(): Creating console client...")
 	console = ConsoleClient()	# Initializes the system console client functionality.
 
