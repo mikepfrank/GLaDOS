@@ -1,6 +1,49 @@
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#|					 TOP OF FILE:	 display/display.py
+#|------------------------------------------------------------------------------
+#|	 The below module documentation string will be displayed by pydoc3.
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 # client.py - Base class for display clients. Includes a demo.
 
+	#|==========================================================================
+	#| 	2.	Imports.									   [module code section]
+	#|
+	#|		2.1.  Standard Python modules imported into this module.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from os import path	# Manipulate filesystem path strings.
+
+import curses
+from curses import *
+	# At some point we should change this to an explicit list of the
+	# curses names that we actually use.
+
 from .display import TheDisplay
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	2.2.  Custom imports.						[module code subsection]
+		#|
+		#|		Here we import various local/application-specific 
+		#|		modules that we need.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+			#|------------------------
+			#| Logging-related stuff.
+
+from infrastructure.logmaster import (
+		sysName,			# Used just below.
+		getComponentLogger,	# Used just below.
+	)
+global _component, _logger	# Software component name, logger for component.
+_component = path.basename(path.dirname(__file__))	# Our package name.
+_logger = getComponentLogger(_component)  # Create the component logger.
+global _sw_component
+_sw_component = sysName + '.' + _component
+
+
+
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	display.DisplayClient					   [public extensible class]
@@ -129,9 +172,9 @@ class DisplayClient:
 
 
 	@property
-	def dispRunning(thisPanelClient):
+	def dispRunning(thisClient):
 		"""Returns Boolean 'True' if this client's display is currently running."""
-		return thisPanelClient.display.isRunning
+		return thisClient.display.isRunning
 	
 
 	def redisplay(thisClient):

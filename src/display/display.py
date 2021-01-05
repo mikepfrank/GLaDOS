@@ -147,8 +147,10 @@ import curses
 from curses import *
 	# At some point we should change this to an explicit list of the
 	# curses names that we actually use.
+
 from curses.textpad import rectangle, Textbox
 from curses.ascii import (controlnames, iscntrl, isspace, isgraph, DC4)
+	# Same here, remove the imports we're not using currently.
 
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -158,8 +160,9 @@ from curses.ascii import (controlnames, iscntrl, isspace, isgraph, DC4)
 		#|		modules that we need.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+
 from infrastructure.decorators	import	singleton	# Class decorator.
-from infrastructure.worklist	import	RPCWorker	# Display driver uses this.
+
 
 			#|------------------------
 			#| Logging-related stuff.
@@ -184,11 +187,17 @@ _sw_component = sysName + '.' + _component
 
 from .colors import *		# All color-related definitions.
 
-	# Imports related to 
+	# Imports related to rendering of control/whitespace characters.
 from .controls import (
 		isNonprinting,		# Returns True for nonprinting 7/8-bit code points.
 		isMeta,				# Returns True for 'Meta' (8th bit set) 7/8-bit code points.
 		render_char			# Renders any 7/8-bit character in a curses window.
+	)
+
+	# Imports relating to display-specific threads.
+from .threads import (
+		TUI_Input_Thread,	# Thread for running the text UI main loop.
+		DisplayDriver,		# Thread for coordinating display output tasks.
 	)
 
 
@@ -450,6 +459,9 @@ class TerminateServer(DisplayException, FatalException):
 		#|		the DisplayClient class, above.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+class TheDisplay:		pass	# Forward declaration for type hints.
+class DisplayClient: 	pass	# Dummy declaration for type hints.
 
 @singleton
 class TheDisplay:
