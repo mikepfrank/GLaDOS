@@ -96,6 +96,10 @@ global _sw_component
 _sw_component = sysName + '.' + _component
 
 
+from .exceptions import (
+		DisplayNotRunning,	# Returned by display driver if display is not running.
+	)
+
 	#|==========================================================================
 	#|	3. Thread definitions.							   [module code section]
 	#|
@@ -212,12 +216,17 @@ class DisplayDriver(RPCWorker):
 		driver = thisDriver
 		display = driver._display
 		
-		if not display.running:
-			_logger.warn("displayDriver.withLock(): Display not running; ignoring task.")
-			return	# Note this returns 'None' to caller even if they expected a result.
-		
+		# NOTE: Debug messages are suppressed currently to avoid excessive logging.
 		#_logger.debug("About to grab display lock...")
 		with display.lock:
+
+			# Note we grab the lock before checking the running state, since 
+			# asynchronous operations might affect the running state of the display.
+			if not display.running:
+				_logger.warn("displayDriver.withLock(): Display not running; ignoring task.")
+				return DisplayNotRunning("displayDriver.withLock(): Display not running; task ignored.")
+				# Note: Callers who obtain a result should be prepared to handle results of this type.
+
 			#_logger.debug("About to call wrapped callable...")
 			return callable()				# Call the callable, return any result.
 			#_logger.debug("Returned from wrapped callable...")
