@@ -173,6 +173,15 @@ _sw_component = sysName + '.' + _component
 			#| Import sibling modules we need from within the display package.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+from .exceptions import (	# Display-related exception classes.
+
+		DisplayNotRunning,		# We handle this return from driver().
+		DisplayDied,			# display._do1iteration() can throw this.
+		RequestRestart,			# display.resize() might throw this.
+		TerminateServer,		# display._do1iteration() can throw this.
+	
+	) 	
+
 from .colors import *		# All color-related definitions.
 
 	# Imports related to rendering of control/whitespace characters.
@@ -181,8 +190,10 @@ from .controls import (
 	)
 
 from .keys import (
+
 		KeyEvent,			# Simple type for holding key information.
-		TheKeyBuffer,		# Facility for sophisticated key input processing.
+		TheKeyBuffer,		# Facility for sophisticated keyboard input processing.
+	
 	)
 
 	# Imports relating to display-specific threads.
@@ -245,61 +256,152 @@ class Loc:
 class TheDisplay:		pass	# Forward declaration for type hints.
 class DisplayClient: 	pass	# Dummy declaration for type hints.
 
-		#|===========================================
-		#| Exception classes provided by this module.
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-class DisplayException(LoggedException):
-	
-	"""This is an abstract base class for all exception types generated
-		by the text display facility."""
-	
-	defLogger = _logger		# Use the display package's logger.
-
-
-class TerminateServer(DisplayException, FatalException):
-
-	"""This is an exception type that is thrown when the display facility
-		is requesting the entire GLaDOS server process to shut down.  This
-		generally happens because we caught a ^T (terminate) keystroke
-		that was typed by the system operator."""
-
-	pass
-
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	display.TheDisplay					   		[public singleton class]
 		#|
 		#|		This singleton class is the main class that anchors the 
-		#|		'display' module and manages the underlying curses display 
+		#|		'display' module, and manages the underlying curses display 
 		#|		interface.
 		#|
-		#|		Applications do not need to construct or use this directly,
-		#|		but can go through their application-specific subclass of
-		#|		the DisplayClient class, above.
+		#|		Applications usually do not need to construct or use this 
+		#|		singleton directly, but can go through their application-
+		#|		specific subclass of the DisplayClient class, which can be 
+		#|		found in client.py.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 @singleton
 class TheDisplay:
 
-	"""This is a singleton class.  Its sole instance represents the text display
-		screen, which is managed by the curses library.	 For now, it assumes that 
-		the display is compatible with xterm/Putty (8 colors, Western script)."""
+	"""
+		TheDisplay										   [public anchor class]
+		
+			This is a singleton class which also serves as the public anchor
+			point for the display module.
+			
+			Its sole instance represents the text display screen, which is 
+			managed by the curses library.	 For now, it assumes that the 
+			display is compatible with xterm/Putty (8 colors, Western script).
+	
+	
+		Public data attributes (implemented as properties):
+		----------------------
+			
+			display.{running, isRunning}							   [boolean]
+			
+				True if the display is currently running (i.e., curses is
+				in control of the text terminal).  Clients should not try
+				to perform any display operations if the display is not in
+				the running state (they will typically fail, or be ignored).
+			
+			display.client										 [DisplayClient]
+			
+				This is a handle to the currently active client (display-
+				based application) that presently owns & controls the 
+				display.  If it is None, no client is currently connected.
+			
+			display.screen							   [curses top-level window]
+			
+				If the display is currently running, this is a handle to
+				to the "screen" or top-level window of the curses display.
+			
+			display.{width, height}									  [integers]
+			
+				These attributes return the current width (in assumed-
+				fixed-with character columns) and height (in text rows) 
+				of the text display.
+			
+			display.lock												 [RLock]
+			
+				This is a reentrant mutex lock, from the Python threading
+				library, which controls access to sensitive data structures
+				associated with the display (in particular, the state of 
+				the curses library).  Before performing any operations that
+				might affect the state of the display, one should grab this 
+				lock using syntax like:
+				
+						with display.lock:
+							...(do sensitive operations)...
+				
+				Note that this syntax will automatically take care of 
+				releasing the lock when the code block is exited, even if
+				this occurs via an exception.
+				
+			display.driver										 [DisplayDriver]
+			
+				An alternative method for performing thread-safe display 
+				operations is to package the desired procedure into a 
+				callable (e.g., a function, method, or anonymous delegate)
+				and pass it to the display driver using any of the 
+				following syntax patterns:
+				
+							
+						dispDrvr(callable)
+							# This form waits for completion, but discards 
+							# any result.
+				
+						result = dispDrvr(callable)	
+							# This form waits for completion and gets a result.
+							
+						dispDrvr.do(callable)
+							# This runs the callable in the background by
+							# adding it onto a queue of tasks to be executed
+							# asynchonously by the display driver.
+			
+				Note that, behind the scenes, the display driver is imple-
+				mented as an RPC- style Worker thread (from the infrastruc-
+				ture.worklist module) whose assigned role is to interleave  
+				and execute display-related operations coming from various
+				source.  Before executing each task, the display driver 
+				grabs the display.lock and makes sure that the display is
+				actually running.  If not, the requested task is discarded.
+				
+				
+			
+			[To be continued...]
+	"""
 
 	def __init__(theDisplay):
-		"""Initializes the display system."""
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		"""
+			theDisplay.__init__()					   [special instance method]
+			
+				This is the instance initializer for the sole instance of 
+				the singleton class TheDisplay.  It is normally called for
+				the first time by display.client.displayClient.__init__(), 
+				when the first active client instance is created.
+		
+				The effect of this method is to initialize the display 
+				system for later use.  However, not much can be done yet.
+				We note that the display is not running yet, and initialize
+				some private data members to null values to show that they
+				are uninitialized.
+				
+				However, we do go ahead and create the display driver thread 
+				(defined in the display.threads module) for later use.  But,
+				when first created, it is just sitting idle and does nothing.
+				It is a worker thread, so won't do anything until given work.
+		"""
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		
+		display = theDisplay	# Get a shorter name for the display.
 
-		display = theDisplay
-
+			#----------------------------------------------------------------
 			# Mark this display as not running yet, to make sure we don't try 
 			# to do anything with it until it's actually running.
+			
 		display._running = False		# Display is not up and running yet.
+
+			#-----------------------------------------------------------------
+			# Initialize various other private data members to None, to make
+			# explicit that they have not been initialized yet.
 
 		display._client = None		# Client is not yet attached.
 
 		display._screen = None		
 			# The actual display screen structure hasn't been created yet.
+			
 		display._width  = None	# No width/height yet, because no screen
 		display._height = None
 
@@ -330,6 +432,19 @@ class TheDisplay:
 		# Nothing else to do here yet. Nothing really happens until .start() is called.
 	
 	#__/ End singleton instance initializer for class TheDisplay.
+
+		#|======================================================================
+		#|	Public instance properties.						[class code section]
+		#|
+		#|		Below we define public properties which provide gated 
+		#|		access to certain instance attributes.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+	@property
+	def driver(theDisplay):
+		"""Returns a handle to the display's centralized driver thread."""
+		return theDisplay._driver
 	
 	@property
 	def lock(theDisplay):
@@ -348,7 +463,25 @@ class TheDisplay:
 		return theDisplay._lock
 	
 	@property
+	def width(theDisplay):
+		"""Returns the current width of the display screen, in (assumed 
+			fixed-width) character cells."""
+		return theDisplay._width
+
+	@property
+	def height(theDisplay):
+		"""Returns the current height of the display screen, in rows of text."""
+		return theDisplay._height
+	
+	@property
+	def screen(theDisplay):
+		"""This handles getting theDisplay.screen attribute.
+			Note this is an error if the display isn't running."""
+		return theDisplay._screen
+
+	@property
 	def client(theDisplay):
+		"""Returns a handle to the currently active client that owns the display."""
 		return theDisplay._client
 
 	@property
@@ -359,21 +492,7 @@ class TheDisplay:
 	def running(theDisplay):
 		"""Is the display currently running?"""
 		return theDisplay.isRunning
-
-	@property
-	def width(theDisplay):
-		return theDisplay._width
-
-	@property
-	def height(theDisplay):
-		return theDisplay._height
-
-	@property
-	def driver(theDisplay):
-		"""Returns a handle to the display's centralized driver thread."""
-		return theDisplay._driver
-	
-	
+		
 	def setClient(theDisplay, displayClient:DisplayClient):
 	
 		"""Sets the display to be managed by the given client (which should be
@@ -455,16 +574,7 @@ class TheDisplay:
 	#__/ End singleton instance method theDisplay.run().
 
 
-	@property
-	def screen(theDisplay):
-		"""This handles getting theDisplay.screen attribute.
-			Note this is an error if the display isn't running."""
-		return theDisplay._screen
 
-
-	@property
-	def width(theDisplay):
-		return theDisplay._width
 
 
 	def update(theDisplay):
@@ -660,6 +770,7 @@ class TheDisplay:
 		#| working.  So instead, at this point we just tear down and rebuild 
 		#| the entire display.
 		
+		# Commented out because not quite resorting to this yet.
 		# display.teardownAndRebuild()	# This raises a RequestRestart exception.
 
 		# If we have a client attached, tell it to handle the resize internally.
@@ -920,13 +1031,25 @@ class TheDisplay:
 		#| a thread-safe way.  Also there is some automated logging work done.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		dispDrv(lambda: client.handle_event(event), desc="Handle event")
+		result = dispDrv(lambda: client.handle_event(event), desc="Handle event")
 			# Note this waits for the event handler to finish before we get another
 			# key. This helps prevent the input loop from "getting ahead" of the
 			# display, and building up a big backlog of input-processing work to 
 			# do in the display queue.  However, if we preferred, we could also 
 			# change this to kick off the handler work to be done in the 
 			# background using dispDrv.do().
+		
+		# Now we process any result.
+		
+			#--------------------------------------------------------------------
+			# If the display driver returned a "display not running" warning
+			# exception, this is an unexpected event which means that the display
+			# was somehow unexpectedly terminated before we got here.  If this 
+			# happens, we don't really know how to respond except by raising an
+			# exception.
+			
+		if isinstance(result, DisplayNotRunning):
+			raise DisplayDied("display._do1iteration(): Display unexpectedly quit.")
 			
 	#__/ End private singleton instance method display._do1iteration().
 	
