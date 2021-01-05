@@ -126,28 +126,6 @@ from os			import path 		# Manipulate filesystem path strings.  Used in logger se
 
 
 		#|======================================================================
-		#| 	Locale setup. Here we obtain the system's default string encoding.
-		#|	Used in _keystr().
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-from locale import (setlocale, LC_ALL, getpreferredencoding)
-
-	#-----------------------------------------------------------------------
-	# This sets the locale for all categories to the user's default setting, 
-	# e.g., from the LANG environment variable, if that is specified.
-	
-setlocale(LC_ALL, '')
-
-	#--------------------------------------------------------------------
-	# This gets the preferred encoding configured by the user preferences 
-	# (the exact method for this is system-dependent).
-	
-global _encoding	
-_encoding = getpreferredencoding()
-	# We'll use this wherever we need to encode/decode strings to bytes.
-
-
-		#|======================================================================
 		#| Import a bunch of stuff that we need from the curses package.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -202,6 +180,11 @@ from .controls import (
 		render_char			# Renders any 7/8-bit character in a curses window.
 	)
 
+from .keys import (
+		KeyEvent,			# Simple type for holding key information.
+		TheKeyBuffer,		# Facility for sophisticated key input processing.
+	)
+
 	# Imports relating to display-specific threads.
 from .threads import (
 		TUI_Input_Thread,	# Thread for running the text UI main loop.
@@ -244,115 +227,6 @@ class Loc:
 		thisloc.y = y
 
 #__/ End struct type Loc.
-
-
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	(display.)KeyEvent								[public simple type]
-		#|
-		#|		An instance of this class is a simple struct that
-		#|		represents a "key event" received from curses.  The 
-		#|		quotation marks here allude to the fact that some of 
-		#|		these events may not correspond to actual keypresses; 
-		#|		for example, window resize events.
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-class KeyEvent:
-
-	"""
-		Simple-type-like class for events received from the input terminal.
-		
-			Properties of a keyEvent instance include:
-			------------------------------------------
-			
-				.keycode [int]	- Numeric code for key pressed.
-				
-				.keyname [str]	- String name for key pressed.
-				
-				.ctlname [str]	- Mnemonic name for key if a 7-bit control or
-									whitespace character, else None.
-	"""
-	
-	def __init__(thisKeyEvent, keycode=None):
-	
-		event = thisKeyEvent
-	
-		event._keycode = keycode
-		event._keyname = _keystr(keycode)		# Convert to string name.
-
-			#|--------------------------------------------------------------------
-			#| The following code translates the nonprinting ASCII characters 0-33 
-			#| and 127 (Delete), and the 8-bit character 160 (Nonbreaking Space) to 
-			#| their corresponding (2-3 letter) mnemonics.
-			
-		if (iscntrl(keycode) and keycode <= 0x1f) or keycode == 0x20:
-			ctlname = controlnames[keycode]
-		elif keycode == 0x7f:
-			ctlname = 'DEL'		# Special case; 'delete' not in controlnames array.
-		elif keycode = 0xa0:
-			ctlname = 'NBSP'	# Special case; 'nonbreaking space' not in controlnames array.
-		else:
-			ctlname = None
-
-		event._ctlname = ctlname
-
-	#__/ End instance initializer for simple type class KeyEvent.
-
-
-	@property
-	def keycode(thisKeyEvent):
-		return thisKeyEvent._keycode
-		
-	@property
-	def keyname(thisKeyEvent):
-		return thisKeyEvent._keyname
-		
-	@property
-	def ctlname(thisKeyEvent):
-		return thisKeyEvent._ctlname
-	
-#__/ End simple type KeyEvent.
-
-
-	#|==========================================================================
-	#|	4.	Function definitions.						   [module code section]
-	#|
-	#|		In this section we define the various functions provided by 
-	#|		this module.
-	#|
-	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	_keystr()								   		  [private function]
-		#|
-		#|		Given a numeric keycode, returns a string representation
-		#|		of the key.  This may be an escape sequence or a key name.
-		#|
-		#|		The special KEY_RESIZE 'key code' (which is really a signal 
-		#|		that the terminal window has been resized by the user) is 
-		#|		mapped to the string "Resize".  The error code ERR (= -1)
-		#|		is mapped to the string "<ERROR>".
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-def _keystr(k):
-
-	"""Returns a string representation of the given numeric keycode."""
-	
-	if k == KEY_RESIZE:
-		return "Resize"
-	elif k == ERR:
-		return "<ERROR>"
-	elif k == None:
-		return "(None)"
-	else:
-		try:
-			return keyname(k).decode(_encoding)
-		except ValueError as e:
-			_logger.error(f"keystr(): {str(e)}: Received unknown key code {k}.")
-
-#__/ End module private function _keystr().
 
 
 	#|==========================================================================
@@ -696,8 +570,10 @@ class TheDisplay:
 	#__/ End method theDisplay.drawOuterBorder().
 
 
-	def drawCenter(theDisplay:TheDisplay=None, text:str="", row:int=None, lrpad:str=None, style:RenderStyle=None, extraAttr:int=0):
-		"""Draws the given text string centered on the given line with the given padding and attributes."""
+	def drawCenter(theDisplay:TheDisplay=None, text:str="", row:int=None,
+				   lrpad:str=None, style:RenderStyle=None, extraAttr:int=0):
+		"""Draws the given text string centered on the given line with the
+			given padding and attributes."""
 		
 		display = theDisplay
 		screen = display.screen
@@ -813,7 +689,8 @@ class TheDisplay:
 			bgcolor = int(pair_index / 8)
 			
 				# Obtain the foreground color from the least-significant 3 bits.
-			fgcolor = (pair_index - 1) % 8	# The -1 (+7) here is needed because pair 0 has fg=white standardly.
+			fgcolor = (pair_index - 1) % 8
+				# The -1 (+7) here is needed because pair 0 has fg=white standardly.
 			
 				# Make sure that particular color pair is set up properly as we want it.
 			_logger.info(f"Creating color pair #{pair_index} = (fg: {fgcolor}, bg: {bgcolor}).")
@@ -866,6 +743,22 @@ class TheDisplay:
 	#__/ End private singleton instance method theDisplay._init().
 	
 	
+	def _has_buffered_keys(theDisplay):
+
+		if not hasattr(display, '_bufferedKeys'):
+			return False
+
+		keybuf = display._bufferedKeys
+
+		if keybuf is None:
+			return False
+
+		if keybuf == "":
+			return False
+
+		return True
+
+
 	def _do1iteration(theDisplay):
 	
 		"""This method executes just a single iteration of the main event 
@@ -908,38 +801,58 @@ class TheDisplay:
 			#| turned on raw() mode, so, we don't expect keyboard interrupts
 			#| to actually occur.
 			
+				# Initialize these key-related variables to None until we have 'em.
+			ch = None; event = None
+
 			try:
 			
-				ch = screen.getch()		# Gets a 'character' (keycode) ch.
+					# Get the next key event from our input processing system in keys.py.
+				event = TheKeyBuffer().get_next_key(screen)
+				ch = event.keycode
+
+				#ch = screen.getch()		# Gets a 'character' (keycode) ch.
 					# Note earlier, we configured .getch() to be nonblocking.
+
+				# Commented out because wide characters don't seem very useful.
+				#wch = screen.get_wch()
+				#_logger.debug(f"display._do1iteration(): Got a wide character: [{wch}]")
+
+			except curses.error as e:	# If get_wch() was used, this means no input was received yet.
+
+				ch = ERR
 
 			except KeyboardInterrupt as e:				# User hit CTRL-C?
 				# Note that currently, we should not get these events anyway, since
 				# earlier, we put the terminal in raw() mode.
 
-				_logger.debug("display._do1iteration(): Caught a keyboard interrupt during screen.getch().")
+				_logger.debug("display._do1iteration(): Caught a keyboard "
+							  "interrupt during screen.getch().")
 
-				event = KeyEvent(keycode = KEY_BREAK)	# Translate to BREAK key.
-				
+				ch = KEY_BREAK		# Translate to BREAK key.
+
 			except Exception as e:
 
-				_logger.fatal(f"display._do1iteration(): Unknown exception during screen.getch(): {str(e)}.")
+				_logger.fatal("display._do1iteration(): Unknown exception "
+							  f"during screen.getch(): {str(e)}.")
 				raise e
 				
 			else:
-
 					# Note we suppress debug output if the keycode is ERR (= none yet) to
 					# prevent excessive logging.
 
 				if ch != ERR:
 					_logger.debug(f"display._do1iteration(): Got character code {ch}.")
 
-					# Here, we package up the keycode into a KeyEvent object.
-
-				event = KeyEvent(keycode = ch)		# Just pass the raw keycode.
-
 			#__/ End try/except clause for keyboard input (.getch()) call.
 			
+				#|------------------------------------------------------------
+				#| If we don't have an event by now, make one.  Generally this
+				#| only happens in the KEY_BREAK case above.
+
+			if event is None:
+				event = KeyEvent(keycode = ch)
+
+
 			#/------------------------------------------------------------------
 			#|	OK, if we get here, there were no un-handleable exceptions 
 			#|	during .getch(), and now we just need to figure out if there
@@ -993,6 +906,7 @@ class TheDisplay:
 				#| repeated input polling and display updates will be slower.
 
 			sleep(0.05)		# Sleep for 0.05 second = 50 milliseconds.
+			#sleep(1)
 					
 			return		# I.e., complete this main-loop iteration normally.
 		
@@ -1038,6 +952,7 @@ class TheDisplay:
 		with display.lock:
 			raw()					# Suppresses processing of ^C/^S/^Q/^Z
 			screen.timeout(0)		# Non-blocking read on getch(), zero delay.
+			screen.keypad(True)		# Interpret keypad escape sequences.
 			#cbreak()				# Not doing this because it doesn't suppress ^C/^S/^Q.
 			#halfdelay(2)			# .getch() Returns ERR after 0.1 secs if no input seen.
 				# Not doing that because it wastes time to have a timeout.
