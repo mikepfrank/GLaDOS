@@ -120,37 +120,47 @@ __all__ = [		# List of all public names exported from this module.
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from threading import RLock		# Reentrant locks for concurrency control.
-from time import sleep
-from os	import environ, path 	
-	# Access environment variables, manipulate filesystem path strings.
+from threading 	import RLock		# Reentrant locks for concurrency control.  Used in theDisplay.__init__().
+from time		import sleep		# Causes thread to give up control for a period.  Used in theDisplay.do1iteration().
+from os			import path 		# Manipulate filesystem path strings.  Used in logger setup.
 
 
-		#-------------------------------------------------------------------
-		# Locale setup. Here we obtain the system's default string encoding.
+		#|======================================================================
+		#| 	Locale setup. Here we obtain the system's default string encoding.
+		#|	Used in _keystr().
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-import locale
+from locale import (setlocale, LC_ALL, getpreferredencoding)
+
+	#-----------------------------------------------------------------------
 	# This sets the locale for all categories to the user's default setting, 
 	# e.g., from the LANG environment variable, if that is specified.
-locale.setlocale(locale.LC_ALL, '')
+	
+setlocale(LC_ALL, '')
+
+	#--------------------------------------------------------------------
 	# This gets the preferred encoding configured by the user preferences 
 	# (the exact method for this is system-dependent).
-global encoding	
-encoding = locale.getpreferredencoding()
+	
+global _encoding	
+_encoding = getpreferredencoding()
 	# We'll use this wherever we need to encode/decode strings to bytes.
 
 
-		#--------------------------------------------------------------
-		# Import a bunch of stuff that we need from the curses package.
+		#|======================================================================
+		#| Import a bunch of stuff that we need from the curses package.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 import curses
 from curses import *
-	# At some point we should change this to an explicit list of the
-	# curses names that we actually use.
+	# At some point we should change this '*' to an explicit list of the
+	# curses names that we actually use in this module.
 
-from curses.textpad import rectangle, Textbox
-from curses.ascii import (controlnames, iscntrl, isspace, isgraph, DC4)
-	# Same here, remove the imports we're not using currently.
+from curses.ascii import (
+		controlnames, 	# Array: Names of characters 0-33, used in KeyEvent.
+		iscntrl, 		# Function: Is this code a 7-bit ASCII control? Used in KeyEvent.
+		DC4				# Constant: Code point for Device Control 4 (control-T).  Used in theDisplay.do1iteration().
+	)
 
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -161,15 +171,15 @@ from curses.ascii import (controlnames, iscntrl, isspace, isgraph, DC4)
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
-from infrastructure.decorators	import	singleton	# Class decorator.
+from infrastructure.decorators	import	singleton	# Class decorator.  Used by TheDisplay.
 
 
 			#|------------------------
 			#| Logging-related stuff.
+			#|vvvvvvvvvvvvvvvvvvvvvvvv
 
 from infrastructure.logmaster import (
 		sysName,			# Used just below.
-		ThreadActor,		# TUI input thread uses this.
 		getComponentLogger,	# Used just below.
 		LoggedException,	# DisplayException inherits from this.
 		FatalException		# We derive TerminateServer from this.
@@ -181,16 +191,14 @@ global _sw_component
 _sw_component = sysName + '.' + _component
 
 
-			#|----------------------------------------------------------------
+			#|------------------------------------------------------------------
 			#| Import sibling modules we need from within the display package.
-			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 from .colors import *		# All color-related definitions.
 
 	# Imports related to rendering of control/whitespace characters.
 from .controls import (
-		isNonprinting,		# Returns True for nonprinting 7/8-bit code points.
-		isMeta,				# Returns True for 'Meta' (8th bit set) 7/8-bit code points.
 		render_char			# Renders any 7/8-bit character in a curses window.
 	)
 
@@ -219,8 +227,9 @@ from .threads import (
 		#|		that represent a pair of character coordinates within 
 		#|		a screen or window.
 		#|
-		#|		Note that in the constructor call, the y coordinate is 
-		#|		specified first, as is standard within curses.
+		#|		Note that in the constructor call, if argument names
+		#|		aren't given, then the y coordinate is specified first, 
+		#|		as is standard within curses.
 		#|
 		#|		This type is used for the 'loc' argument to (e.g.) the 
 		#|		display.add_str() instance method.
@@ -250,12 +259,58 @@ class Loc:
 
 class KeyEvent:
 
-	"""Class of simple events received from the input terminal."""
+	"""
+		Simple-type-like class for events received from the input terminal.
+		
+			Properties of a keyEvent instance include:
+			------------------------------------------
+			
+				.keycode [int]	- Numeric code for key pressed.
+				
+				.keyname [str]	- String name for key pressed.
+				
+				.ctlname [str]	- Mnemonic name for key if a 7-bit control or
+									whitespace character, else None.
+	"""
 	
 	def __init__(thisKeyEvent, keycode=None):
-		thisKeyEvent.keycode = keycode
-		thisKeyEvent.keyname = _keystr(keycode)		# Convert to string name.
+	
+		event = thisKeyEvent
+	
+		event._keycode = keycode
+		event._keyname = _keystr(keycode)		# Convert to string name.
 
+			#|--------------------------------------------------------------------
+			#| The following code translates the nonprinting ASCII characters 0-33 
+			#| and 127 (Delete), and the 8-bit character 160 (Nonbreaking Space) to 
+			#| their corresponding (2-3 letter) mnemonics.
+			
+		if (iscntrl(keycode) and keycode <= 0x1f) or keycode == 0x20:
+			ctlname = controlnames[keycode]
+		elif keycode == 0x7f:
+			ctlname = 'DEL'		# Special case; 'delete' not in controlnames array.
+		elif keycode = 0xa0:
+			ctlname = 'NBSP'	# Special case; 'nonbreaking space' not in controlnames array.
+		else:
+			ctlname = None
+
+		event._ctlname = ctlname
+
+	#__/ End instance initializer for simple type class KeyEvent.
+
+
+	@property
+	def keycode(thisKeyEvent):
+		return thisKeyEvent._keycode
+		
+	@property
+	def keyname(thisKeyEvent):
+		return thisKeyEvent._keyname
+		
+	@property
+	def ctlname(thisKeyEvent):
+		return thisKeyEvent._ctlname
+	
 #__/ End simple type KeyEvent.
 
 
@@ -266,121 +321,6 @@ class KeyEvent:
 	#|		this module.
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-
-			# NOTE: The following are all drawing-related functions.  
-			# Should they be moved out to form a new module 'drawing.py'?
-
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	(display.)draw_rect()								   [public function]
-		#|
-		#|		Draws a rectangular box on the given window using the
-		#|		specified attribute settings.
-		#|
-		#|		NOTE: Needs a bug-fix to work on the right or bottom
-		#|		edge of the display (turn on leaveok temporarily).
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-def draw_rect(win, top, left, bottom, right, att):
-
-	"""Draws a rectangle with the given coordinates."""
-	# NOTE: Should be rewritten using .vline(), .hline().
-
-	_logger.info(f"Drawing rectangle from ({top},{left}) to ({bottom},{right})...")
-
-		# Draw the corner characters.
-	win.addstr(top,		left,  '/',	 att) 
-	win.addstr(bottom,	right, '/',	 att)
-	win.addstr(top,		right, '\\', att)
-	win.addstr(bottom,	left,  '\\', att)
-	
-		# Draw the horizontal edges.
-	for x in range(left+1, right):
-		win.addstr(top,	   x, '-', att)
-		win.addstr(bottom, x, '-', att)
-		
-		# Draw the vertical edges.
-	for y in range(top+1, bottom):
-		win.addstr(y, left,	 '|', att)
-		win.addstr(y, right, '|', att)
-		
-	win.refresh()
-
-#__/ End function display.draw_rect().
-
-
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	(display.)addLineClipped()						   [public function]
-		#|
-		#|		Adds the given line of text to the given curses window,
-		#|		with clipping to fit within the window width.  If the
-		#|		optional keyword argument <padRight> is provided, it is
-		#|		taken as a number of blanks to pad with on the right.
-		#|		If it is not specified, the default pad is 1 character.
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-def addLineClipped(win, line:str, attrs:int, padRight:int=None):
-	"""Adds a line of text to a window, with clipping to fit in the window width.
-		Assumes <line> does not contain any newline characters."""
-	
-	if padRight is None:
-		padRight = 1		# Default padding to 1 character.
-	
-		# Get the current cursor position.
-	(curRow, curCol) = win.getyx()		
-	
-		# Get the width and height of the current window.
-	(winHeight, winWidth) = win.getmaxyx()
-	effWidth = winWidth - padRight
-	
-		# Get the length of the line.
-	lineLen = len(line)
-	
-		# Clip the line down to what we have room for.
-	if curCol + lineLen >= effWidth:
-		line = line[:effWidth - curCol]
-	
-	win.addstr(line, attrs)
-
-#__/ End module public function display.addLineClipped().
-
-
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	(display.)addTextClipped()						   [public function]
-		#|
-		#|		Adds the given (possibly multi-line) block of text to 
-		#|		the given curses window, with clipping of each line to 
-		#|		fit within the window width.  If the optional keyword 
-		#|		argument <padRight> is provided, it is taken as a number 
-		#|		of blanks to pad with on the right.  If it is not 
-		#|		specified, the default pad is 1 character.
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-def addTextClipped(win, text:str, attrs:int, padRight:int=None):
-	"""Adds the given text to the window, clipping each line
-		to fit within the window width."""
-		
-	lines = text.split('\n')	# Break the text into lines.
-
-	#_logger.debug("addTextClipped(): About to add line:\n" + lines[0])
-
-		# Add the first line (without terminating it with newline).
-	addLineClipped(win, lines[0], attrs, padRight=padRight)
-
-		# If there are more lines, add them, with newlines in between.
-	for line in lines[1:]:
-		win.addstr("\n", attrs)		# Add a newline.
-
-		#_logger.debug("addTextClipped(): About to add line:\n" + line)
-
-		addLineClipped(win, line, attrs, padRight=padRight)
-	
-	#__/ End loop over lines.
-	
-#__/ End module public function display.addLineClipped().
 
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -408,7 +348,7 @@ def _keystr(k):
 		return "(None)"
 	else:
 		try:
-			return keyname(k).decode(encoding)
+			return keyname(k).decode(_encoding)
 		except ValueError as e:
 			_logger.error(f"keystr(): {str(e)}: Received unknown key code {k}.")
 
@@ -424,6 +364,12 @@ def _keystr(k):
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+		#|---------------------------------------------------
+		#| Forward class declarations, for use in type hints.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+class TheDisplay:		pass	# Forward declaration for type hints.
+class DisplayClient: 	pass	# Dummy declaration for type hints.
 
 		#|===========================================
 		#| Exception classes provided by this module.
@@ -459,9 +405,6 @@ class TerminateServer(DisplayException, FatalException):
 		#|		the DisplayClient class, above.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-class TheDisplay:		pass	# Forward declaration for type hints.
-class DisplayClient: 	pass	# Dummy declaration for type hints.
 
 @singleton
 class TheDisplay:
