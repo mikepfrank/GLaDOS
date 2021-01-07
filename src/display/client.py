@@ -368,8 +368,8 @@ class DisplayClient:
 
 			# The following code block or similar will be in most applications.
 			# We call back to the display to tell it to resize itself.
-		if keycode == KEY_RESIZE:
-			display.resize()
+		#if keycode == KEY_RESIZE:
+		#	display.resize()
 
 		# The following is commented out because generally there's no need to
 		# repaint the entire display just because a key was pressed.
