@@ -194,6 +194,7 @@ from .threads import (
 
 		TUI_Input_Thread,	# Thread for running the text UI main loop.
 		DisplayDriver,		# Thread for coordinating display output tasks.
+		#in_driver_thread,	# Function for verifying we're in the driver thread.
 
 	)
 
@@ -246,6 +247,8 @@ class Loc:
 			
 		print(loc.x, loc.y)													 """
 	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	def __init__(thisloc, y=None, x=None):
 		"""loc.__init__()							   [special instance method]
 		
@@ -443,10 +446,19 @@ class TheDisplay:
 				threads (see the threads module) to handle display I/O.
 		
 		
+		Sensitive public methods:
+		-------------------------
+		
+			display.paint()								 [display driver method]
+			
+				Re-paints the entire display.
+		
+			[...CONTINUE...]
+		
 	"""
 
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	def __init__(theDisplay):
+	def __init__(theDisplay:TheDisplay):
 		"""
 			theDisplay.__init__()					   [special instance method]
 			
@@ -527,45 +539,39 @@ class TheDisplay:
 	
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	@property
-	def running(theDisplay):
+	def running(theDisplay:TheDisplay):
 		"""Is the display currently running?"""
 		return theDisplay.isRunning
-	
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	@property
-	def isRunning(theDisplay):
+	def isRunning(theDisplay:TheDisplay):
 		"""Synonymous with the .running() method."""
 		return theDisplay._running
-
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	@property
-	def client(theDisplay):
+	def client(theDisplay:TheDisplay):
 		"""Returns a handle to the currently active client that owns the display."""
 		return theDisplay._client
-
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	@property
-	def screen(theDisplay):
+	def screen(theDisplay:TheDisplay):
 		"""This handles getting theDisplay.screen attribute.
 			Note this is an error if the display isn't running."""
 		return theDisplay._screen
-
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	@property
-	def height(theDisplay):
+	def height(theDisplay:TheDisplay):
 		"""Returns the current height of the display screen, in rows of text."""
 		return theDisplay._height
-	
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	@property
-	def width(theDisplay):
+	def width(theDisplay:TheDisplay):
 		"""Returns the current width of the display screen, in (assumed 
 			fixed-width) character cells."""
 		return theDisplay._width
-
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	@property
-	def lock(theDisplay):
+	def lock(theDisplay:TheDisplay):
 	
 		"""Reentrant lock for controlling concurrent access to the underlying 
 			curses library.  A thread should use the following syntax to grab
@@ -579,12 +585,12 @@ class TheDisplay:
 			for preventing deadlocks.										 """
 			
 		return theDisplay._lock
-	
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	@property
-	def driver(theDisplay):
+	def driver(theDisplay:TheDisplay):
 		"""Returns a handle to the display's centralized driver thread."""
 		return theDisplay._driver
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	
 
 	#|==========================================================================
@@ -611,7 +617,7 @@ class TheDisplay:
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
-	def get_size(theDisplay):
+	def get_size(theDisplay:TheDisplay):
 	
 		"""Returns a pair (h,w) giving the height of the display in lines,
 			and the width of the display in columns (character cells).
@@ -623,7 +629,7 @@ class TheDisplay:
 		return (theDisplay._height, theDisplay._width)	
 
 
-	def get_max_yx(theDisplay):
+	def get_max_yx(theDisplay:TheDisplay):
 	
 		"""Returns a pair (y,x) giving the coordinates of the lower-right 
 			cell of the display.
@@ -647,7 +653,7 @@ class TheDisplay:
 	
 	
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	def setClient(theDisplay, displayClient:DisplayClient):
+	def setClient(theDisplay:TheDisplay, displayClient:DisplayClient):
 		"""display.setClient()				  			[public instance method]
 			
 				Calling this method configures the display to be managed by 
@@ -663,11 +669,11 @@ class TheDisplay:
 		
 		theDisplay._client = displayClient		# Store the client.
 
-	#__/ End public singleton instance method display.setClient().
+	#__/ End public instance method display.setClient().
 	
 	
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	def start(theDisplay, waitForExit:bool=False):
+	def start(theDisplay:TheDisplay, waitForExit:bool=False):
 		"""display.start()					  			[public instance method]
 			
 				Calling this method is what actually causes the display to
@@ -731,7 +737,7 @@ class TheDisplay:
 				
 		_logger.debug("display.start(): Returning.")
 
-	#__/ End singleton instance method theDisplay.start().
+	#__/ End public instance method theDisplay.start().
 	
 	
 	#|==========================================================================
@@ -749,8 +755,8 @@ class TheDisplay:
 	
 	
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	def _main(theDisplay):
-		"""display._main()					 [private singleton instance method]
+	def _main(theDisplay:TheDisplay):
+		"""display._main()					 		   [private instance method]
 		
 				This method provides the main body of the TUI_Input_Thread
 				execution, after that thread is started by display.start().
@@ -777,6 +783,7 @@ class TheDisplay:
 			#| actively using it.  This is needed to avoid deadlocks.
 
 		with display.lock:
+		
 			# Call the standard curses wrapper on our private display management 
 			# method, below.
 			wrapper(theDisplay._manage)
@@ -784,16 +791,16 @@ class TheDisplay:
 		
 		_logger.debug("display._main(): Finished running the display.")
 
-	#__/ End singleton instance method theDisplay._main().
+	#__/ End private instance method theDisplay._main().
 
 
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	def _manage(theDisplay, screen):
+	def _manage(theDisplay:TheDisplay, screen):
 		#| Note 'screen' is the top-level curses window for the entire 
 		#| terminal screen; it is passed into this method by the curses 
 		#| wrapper() function.
 		#\-------------------------------------------------------------
-		"""display._manage()						   [private instance method]
+		"""display._manage()				 [sensitive private instance method]
 			
 				This is a private method that does all the work of 'mana-
 				ging' the curses display once it has been created.  It is 
@@ -891,12 +898,12 @@ class TheDisplay:
 
 		# Now, when we exit from this method, we also exit from curses' wrapper() function.
 
-	#__/ End private singleton instance method theDisplay._manage().
+	#__/ End sensitive private singleton instance method theDisplay._manage().
 
 
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	def _runMainloop(theDisplay):
-		"""display._runMainloop()					   [private instance method]
+	def _runMainloop(theDisplay:TheDisplay):
+		"""display._runMainloop()			 		   [private instance method]
 			
 				This private method contains the main user-interface event
 				loop for the entire display facility.  It runs within the 
@@ -919,9 +926,9 @@ class TheDisplay:
 		dispDrv = display.driver
 		thread = display._tuiInputThread
 		
-			#-----------------------------------------------------------------
-			# Here's the actual main loop. Keep going until requested to exit,
-			# or there is an exception.
+			#|-----------------------------------------------------------------
+			#| Here's the actual main loop. Keep going until requested to exit,
+			#| or there is an exception.
 				
 		while not thread.exitRequested:
 			
@@ -931,11 +938,11 @@ class TheDisplay:
 		
 		_logger.debug(f"display._runMainloop(): Exited main loop.")
 
-	#__/ End private singleton instance method theDisplay._runMainloop().
+	#__/ End private instance method theDisplay._runMainloop().
 
 
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	def _do1iteration(theDisplay):	
+	def _do1iteration(theDisplay:TheDisplay):	
 		"""display._do1iteration()					   [private instance method]
 			
 				This method simply executes just a single iteration of the 
@@ -1150,7 +1157,7 @@ class TheDisplay:
 		if isinstance(result, DisplayNotRunning):
 			raise DisplayDied("display._do1iteration(): Display unexpectedly quit.")
 			
-	#__/ End private singleton instance method display._do1iteration().
+	#__/ End private instance method display._do1iteration().
 	
 	
 	#|==========================================================================
@@ -1164,8 +1171,12 @@ class TheDisplay:
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	def _init(theDisplay):
-		"""Initializes the curses display. Client should be attached first."""
+	def _init(theDisplay:TheDisplay):
+		"""display._init()					 [sensitive private instance method]
+		
+			This private instance method initializes the curses display. 
+			The client should be attached first.  							 """
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		_logger.debug("display._init(): Initialziing the display.")
 
@@ -1253,7 +1264,7 @@ class TheDisplay:
 			
 		theDisplay._resize()		# Sizes/paints display.
 	
-	#__/ End private singleton instance method theDisplay._init().
+	#__/ End sensitive private instance method theDisplay._init().
 
 
 	#|==========================================================================
@@ -1264,7 +1275,7 @@ class TheDisplay:
 	#|		before calling them, since they affect the state of the 
 	#|		curses display.
 	#|
-	#|		Note that currently, resize is called from both of the
+	#|		Note that currently, ._resize() is called from both of the
 	#|		following display threads:
 	#|
 	#|			* The displayDriver thread calls it from display._init()
@@ -1277,9 +1288,10 @@ class TheDisplay:
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
+	
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	def _resize(theDisplay):
-		"""display._resize()					   [private instance method]
+	def _resize(theDisplay:TheDisplay):
+		"""display._resize()				 [sensitive private instance method]
 		
 				This private method is used internally by the display 
 				facility to update its idea of the display's size.
@@ -1328,47 +1340,60 @@ class TheDisplay:
 			# Now that everything is consistent, repaint the entire display.
 		display.paint()
 
-	#__/ End singleton instance method display._resize().
+	#__/ End sensitive private instance method display._resize().
 
 
-	def _check_size(theDisplay):
-		"""Check the current size of the display screen."""
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	def _check_size(theDisplay:TheDisplay):
+		"""display._check_size()			 [sensitive private instance method]
+		
+				Checks the current size of the display screen after the
+				user resizes his terminal window.  Sets the following 
+				instance properties/functions accordingly:
+				
+					.width, .height, .get_size(), get_max_yx().				 """
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		screen = theDisplay._screen
 
-			#----------------------------------------------------------------
-			# It's important to note that .getmaxyx() will not work properly
-			# if either the LINES and/or COLUMNS environment variable is set;
-			# those values will override the current window size.  So please
-			# DO NOT SET THESE VARIABLES unless you really want your app to
-			# treat the window size as fixed instead of self-adjusting on 
-			# resize events.
+			#|----------------------------------------------------------------
+			#| It's important to note that .getmaxyx() will not work properly
+			#| if either the LINES and/or COLUMNS environment variable is set;
+			#| if so, those values will override the current window size.  So,
+			#| please DO NOT SET THESE VARIABLES at all unless you really want 
+			#| the app to treat the window size as fixed instead of self-
+			#| adjusting on resize events.
 			
 		(height, width) = screen.getmaxyx()
 		_logger.debug(f"._check_size(): .getmaxyx() returned {(height,width)}.")
 
-			# Remember the new window size.
+			# Remember the new window size.  This affects the .width and .height
+			# properties, and the return value of the display.get_size() method.
 		theDisplay._width  = width
 		theDisplay._height = height
 		
-			# Calculate and store bottom-right cell coordinates as well.
+			# Calculate and store bottom-right cell coordinates as well.  This 
+			# affects the value that will be returned by display.get_max_yx().
 		theDisplay._max_x  = width - 1
 		theDisplay._max_y  = height - 1
 
 	#__/ End private method theDisplay._check_size().
 
 
-	def paint(theDisplay):
-		"""Paints the display; i.e., fills it with content.
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	def paint(theDisplay:TheDisplay):
+		"""display.paint()					  [sensitive public instance method]
+		
+			Paints the display; i.e., fills it with content.
 			Does an automatic curses screen refresh when finished."""
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		_logger.debug("display.paint(): Repainting display.")
 
 		display = theDisplay
-		client = display._client
-		screen = display.screen
+		client = display.client
 		
-			# Delegate the real work (except for refresh) to the client.
+			# Delegate all of the real work (except for refresh) to the client.
 		client.paint()		
 				# Note that this is all application-specific.
 		
@@ -1379,12 +1404,16 @@ class TheDisplay:
 		
 		display.refresh()		# Do it here so client doesn't have to.
 	
-	#__/ End singleton instance method display.paint().
+	#__/ End sensitive instance method display.paint().
+
 
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	def refresh(theDisplay):
-		"""Refreshes the display, based on any accumulated changes to the screen
-			that are not yet visible."""
+	def refresh(theDisplay:TheDisplay):
+		"""display.refresh()				  [sensitive public instance method]
+		
+			Refreshes the display, based on any accumulated changes to 
+			the screen that are not yet visible.							 """
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
 		display = theDisplay
 		screen = display.screen
@@ -1392,28 +1421,34 @@ class TheDisplay:
 		if screen is not None:
 			screen.refresh()
 
+	#__/ End sensitive public instance method display.refresh().
+	
 
-	def update(theDisplay):
-
-		"""This method should only be called from within the display
-			driver thread, when the display is running; or in a similarly
-			safe context, with display.lock grabbed.
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	def update(theDisplay:TheDisplay):
+		"""display.update()					  [sensitive public instance method]
+		
+			Like other sensitive methods, this method should only be 
+			called from within the display driver thread, when the 
+			display is running; or in a similarly safe context, with 
+			display.lock grabbed.
 
 			It updates the physical state of the entire display screen
-			(or at least, as much of it as actually needs updating); this
-			updates all sub-windows that have been marked as needing
-			updating using win.noutrefresh()."""
+			(or at least, as much of it as actually needs updating); 
+			this updates all sub-windows that have been previously 
+			marked as needing updating using win.noutrefresh().				 """
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		#_logger.debug("display.update(): A display update was requested.")
 		if not theDisplay.isRunning:
-			_logger.debug("display.update(): The display isn't running yet; ignoring.")
+			_logger.debug("display.update(): The display isn't running; ignoring.")
 			return
 
-		# Check to make sure we're in the right thread here?
+			# Also check to make sure we're in the right thread here?
 
 		doupdate()	# This actually causes the physical display to be updated.
 		
-	#__/ End public instance method display.update().
+	#__/ End sensitive public instance method display.update().
 
 
 	#|==========================================================================
@@ -1425,32 +1460,45 @@ class TheDisplay:
 	#|		The following public methods may be called from any thread,
 	#|		*but* the caller must ensure that he has grabbed display.lock
 	#|		before calling them, since they affect the state of the 
-	#|		curses display.
+	#|		curses display.  Ideally, this should be done by passing them
+	#|		to the display.driver thread for execution.
 	#|
-	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
 	
-	def clear(theDisplay):
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	def erase(theDisplay:TheDisplay):
+		"""display.erase()					  [sensitive public instance method]
+		
+				Erases the entire display screen (delayed effect).  That 
+				is, this and subsequent drawing operations will take place 
+				in the curses display buffer, and the full physical display 
+				will be updated on the next display.refresh() operation.	 """ 
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		
+		theDisplay.screen.erase()
+			# This does a "lazy erase"; i.e., no effect until next refresh.
+		
+	#__/ End sensitive public instance method display.erase().
 
-		"""Clears the display.  Does not require a subsequent refresh()."""
+
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	def clear(theDisplay:TheDisplay):
+		"""display.clear()					  [sensitive public instance method]
+		
+				Immediately clears the entire display.  Note that this 
+				does not require a subsequent .update() or .refresh() 
+				in order to take effect.									 """
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
 			# Dispatch to the underlying curses display.
 		theDisplay.screen.clear()	# Equals erase+refresh.
 		
-	#__/ End singleton instance method display.clear().
+	#__/ End sensitive public instance method display.clear().
 	
 
-	def erase(theDisplay):
-		
-		"""Erases the display.""" # "Lazy erase"; no effect until next refresh.
-		
-		theDisplay.screen.erase()
-		
-	#__/ End singleton instance method display.erase().
-
-
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	theDisplay.drawOuterBorder()			  	[public instance method]
+		#|	theDisplay.drawOuterBorder()	  [sensitive public instance method]
 		#|
 		#|		This method draws a border just inside the edge of the
 		#|		display screen, using the predefined BORDER render style.
@@ -1459,23 +1507,28 @@ class TheDisplay:
 		#|		color on a black background.
 		#|
 		#|		The following display attributes are also set up for the
-		#|		purpose of facilitating clients to draw within the 'interior'
-		#|		region within the outer border if they wish (however, a 
-		#|		sub-window is not created):
+		#|		purpose of making it easier for clients to confine their 
+		#|		drawing operations within the 'interior' region within the 
+		#|		outer border if they wish (however, a sub-window for this
+		#|		purpose is not automatically created by this method):
 		#|
 		#|			.int_width, .int_height, 
 		#|			.int_top, .int_bot, .int_left, .int_right
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
-	def drawOuterBorder(theDisplay):
-		"""Draw a border just inside the edge of the display screen."""
-
-			# Use predefined render style for drawing borders.
-		attr = style_to_attr(BORDER)	
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	def drawOuterBorder(theDisplay:TheDisplay):
+		"""theDisplay.drawOuterBorder()		  [sensitive public instance method]
 		
+				Draws a border just inside the edge of the display screen.	 """
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 		display = theDisplay
 		screen = display.screen
+		
+			# Use predefined render style for drawing borders.
+		attr = style_to_attr(BORDER)	
 		
 		screen.attrset(attr)
 		screen.border('|', '|', '-', '-', '/', '\\', '\\', '/')
@@ -1489,14 +1542,19 @@ class TheDisplay:
 		display.int_left	= int_left		= 1
 		display.int_right	= int_right		= int_left + int_width - 1
 
-	#__/ End method theDisplay.drawOuterBorder().
+	#__/ End sensitive public instance method theDisplay.drawOuterBorder().
 
 
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	def drawCenter(theDisplay:TheDisplay=None, text:str="", row:int=None,
 				   lrpad:str=None, style:RenderStyle=None, extraAttr:int=0):
-		"""Draws the given text string centered on the given line with the
-			given padding and attributes."""
+				   
+		"""display.drawCenter()				  [sensitive public instance method]
 		
+				Draws the given text string centered on the given line 
+				with the given padding and attributes.						 """
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
 		display = theDisplay
 		screen = display.screen
 		width = display.width
@@ -1515,14 +1573,21 @@ class TheDisplay:
 		
 			# Go ahead and write the text to the screen.
 		screen.addstr(row, startPos, text, attr)
+		
+	#__/ End sensitive public instance method display.drawCenter().
 	
 	
-	def add_str(theDisplay, text:str, loc:Loc=None, attr=None):
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	def add_str(theDisplay:TheDisplay, text:str, loc:Loc=None, attr=None):
 	
-		"""Puts the given text string onto the display starting at the given
-			location, with the given attributes."""
+		"""display.add_str() 				  [sensitive public instance method]
+		
+				Puts the given text string onto the display starting at 
+				the given location, with the given attributes.				 """
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
 		screen = theDisplay._screen
+		
 		if loc is None:
 			if attr is None:
 				screen.addstr(text)
@@ -1534,18 +1599,24 @@ class TheDisplay:
 			else:
 				screen.addstr(loc.y, loc.x, text, attr)
 				
-	#__/ End singleton instance method theDisplay.add_str().
+	#__/ End sensitive public instance method display.add_str().
 
 
-	def renderChar(theDisplay, charcode):	# TODO: Add loc,attr support.
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	def renderChar(theDisplay:TheDisplay, charcode:int):	# TODO: Add loc,attr support.
 	
-		"""Puts the given character on the display; if it is not normally
-			a visible character, use special styles to render it visible."""
-			
+		"""display.renderChar()				  [sensitive public instance method]
+		
+				Puts the given character on the display; if it is not 
+				normally a visible character, use special styles to 
+				render it visible.	 										 """
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		
 		screen = theDisplay._screen
-		render_char(screen, charcode)	# Function defined earlier.
+		
+		render_char(screen, charcode)		# Function defined in .controls module.
 
-	#__/ End singleton instance method display.renderChar().
+	#__/ End sensitive public instance method display.renderChar().
 
 
 	#|==========================================================================
