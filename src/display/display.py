@@ -56,23 +56,18 @@
 				TheDisplay
 				
 		
-			Functions:
-			----------
-		
 			Types:
 			------
 			
 				Loc [struct]	- An x,y location in a screen or window.
 				
 			
-			Globals:
-			--------
-			
-	
 	Dependencies:
 	-------------
 	
-		This module references...
+		This module references the following sister modules within the
+		display package:  .exceptions, .colors, .controls, .keys, and 
+		.threads.
 		
 		This module is referenced by...										 """
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -87,7 +82,7 @@
 	#|			Here we list all of the public names that are standardly
 	#|			exported from this module, if the using module does:
 	#|
-	#|						from display import *
+	#|						from display.display import *
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 global __all__ 
@@ -1333,7 +1328,7 @@ class TheDisplay:
 
 		# If we have a client attached, tell it to handle the resize internally.
 		if client != None:
-			client.handle_resize()
+			client.handle_resize()		# Clients should implement this.
 
 		_logger.debug("display._resize(): Repainting entire display after resize...")
 

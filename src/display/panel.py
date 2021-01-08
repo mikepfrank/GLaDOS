@@ -1,15 +1,50 @@
-# panel.py
-#
-# Module to support applications using a "panel" abstraction to manage the display.
-# The idea behind panels is that they are non-overlapping windows with clear separators
-# between them, and clearly-defined placement rules and geometry constraints that determine
-# what happens to them when the screen is resized.
-#
-#	Classes defined in this module include:
-#
-#		PanelPlacement	- Enum of supported panel placement modes.
-#		Panel 			- Main class for panels.
-#		PanelClient		- Subclass of DisplayClient for panel-based clients.
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#|					 TOP OF FILE:	 display/panel.py
+#|------------------------------------------------------------------------------
+#|	 The below module documentation string will be displayed by pydoc3.
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+"""	FILE NAME:		display/panel.py				 [Python module source file]
+	
+	MODULE NAME:	display.panel
+	IN PACKAGE:		display
+	FULL PATH:		$GIT_ROOT/GLaDOS/src/display/panel.py
+	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
+	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
+	APP NAME:		GLaDOS.server (Main GLaDOS server application)
+	SW COMPONENT:	GLaDOS.display (Display screen management)
+
+
+	MODULE DESCRIPTION:
+	===================
+
+		This module defines a base class PanelClient for a category of 
+		display clients called "panel clients"; more specific panel clients 
+		should inherit from this class.
+		
+		A panel client is distinguished by organizing the display screen 
+		into a set of "panels", or non-overlapping sub-windows for displaying
+		different information.
+"""
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#| End of module documentation string.
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#| Original header comment:
+#|
+#|	This is a module to support applications using a "panel" abstraction 
+#|	to manage the display.  The idea behind panels is that they are non-
+#|	overlapping windows with clear separators between them, and clearly-
+#|	defined placement rules and geometry constraints that determine what 
+#|	happens to them when the screen is resized.
+#|
+#|	Classes defined in this module include:
+#|
+#|		PanelPlacement	- Enum of supported panel placement modes.
+#|		Panel 			- Main class for panels.
+#|		PanelClient		- Subclass of DisplayClient for panel-based clients.
+#|
+#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 from enum import Enum					# Enumerated type support.
 from os import path
@@ -38,10 +73,10 @@ from .client import (
 
 class PanelPlacement(Enum):
 	"""This enum lists the panel-placement specifiers presently supported."""
-	FILL_BOTTOM = 'fill-bottom',	# Occupy full width of display, at the bottom. Place this before columnar panels.
-	LOWER_RIGHT	= 'lower-right',	# Place this panel at the bottom of the right-hand column (but after previous LOWER_RIGHT panels).
-	FILL_RIGHT	= 'fill-right',		# This panel expands to fill all remaining space in the right-hand column.
-	FILL_LEFT	= 'fill-left',		# This panel expands to fill all remaining space in the left-hand column.
+	FILL_BOTTOM = 'fill-bottom'		# Occupy full width of display, at the bottom. Place this before columnar panels.
+	LOWER_RIGHT	= 'lower-right'		# Place this panel at the bottom of the right-hand column (but after previous LOWER_RIGHT panels).
+	FILL_RIGHT	= 'fill-right'		# This panel expands to fill all remaining space in the right-hand column.
+	FILL_LEFT	= 'fill-left'		# This panel expands to fill all remaining space in the left-hand column.
 
 global FILL_BOTTOM, LOWER_RIGHT, FILL_RIGHT, FILL_LEFT
 FILL_BOTTOM = PanelPlacement.FILL_BOTTOM
@@ -52,7 +87,9 @@ FILL_LEFT = PanelPlacement.FILL_LEFT
 class PanelClient: pass
 
 class Panel:
+
 	"""A non-overlapping region of a panel client's display area."""
+	
 	def __init__(newPanel, 
 			title:str = "Untitled Panel",			# REQUIRED ARGUMENT. Panel title. CALLER MUST PROVIDE THIS.
 			initPlacement:PanelPlacement = None,	# REQUIRED ARGUMENT, panel placement specifier.
@@ -93,30 +130,30 @@ class Panel:
 			an internal window, and that it's the correct size.  Subclasses
 			may extend this as needed to (re)configure any sub-windows."""
 		
-		panel = thisPanel
-		client = panel.client
-		display = client.display
-		screen = display.screen
-		win = panel._win
+		panel	= thisPanel
+		client	= panel.client
+		display	= client.display
+		screen	= display.screen
+		win		= panel._win
 		
-		leftPad = panel._leftPad
+		leftPad = panel._leftPad	# Number of spaces to pad with inside left edge.
 
 		height = panel.height				# Panel AND interior window height.
 		int_width = panel.width - leftPad	# Width of interior window.
 
 		if win == None:	# No sub-window yet; create one.
 
-			panel._win = win = screen.derwin(panel.height, int_width, panel.top+1, panel.left+1 + leftPad)
+			panel._win = win = screen.derwin(panel.height, int_width, panel.top + 1, (panel.left + 1) + leftPad)
 				# NOTE: <leftPad> gives a number of blank spaces to leave in between the panel's
 				# left border and its interior sub-window.
 		else:
 
-			win.clear()		# Clear anything that was left over in the window's old geometry.
+			win.erase()		# Erase anything that was left over in the window's old geometry.
 
 				# Move the existing window in case the panel's position changed.
 
 			new_winy = panel.top + 1
-			new_winx = panel.left + 1 + leftPad
+			new_winx = (panel.left + 1) + leftPad
 
 			_logger.debug(f"panel.configWin(): Moving internal window to ({new_winy},{new_winx}).")
 
@@ -144,6 +181,7 @@ class Panel:
 		panel.place()
 		
 	def place(thisPanel, panelClient:PanelClient = None):
+	
 		"""This does the actual work of placing the panel within the client display.
 			This figures out the panel's size and location on the display, and 
 			creates the sub-window object for its contents (within its frame)."""
@@ -173,15 +211,19 @@ class Panel:
 	
 		# Here we process the placement and figure out panel coordinates.
 		if placement == FILL_BOTTOM:
+			# This places the panel across the bottom of the screen (both columns).
 		
-			panel.left = 0	# Left side of panel = left side of screen.
-			panel.right = scr_right	# Right side of panel = right side of screen.
+			panel.left = 0				# Left side of panel = left side of screen.
+			panel.right = scr_right		# Right side of panel = right side of screen.
+			
+				# This places the panel above any previously placed FILL_BOTTOM panels.
 			panel.bottom = scr_bot - client._botReserved
 
 				# This reserves enough space at the bottom of the screen for
 				# this panel and its top border/separator.
 			client.reserveBot(panel.height + 1) 	# One extra for top edge.
 
+				# This just calculates the panel's top edge.
 			panel.top = scr_bot - client._botReserved
 			
 		elif placement == LOWER_RIGHT:
@@ -238,8 +280,8 @@ class Panel:
 
 			# Compute internal width of panel (including pad but not border).
 			#
-			#	* Width including borders is right - left + 1
-			#	* width excluding borders is right - left - 1
+			#	* Width *including* both left/right borders is right - left + 1
+			#	* width *excluding* borders is right - left - 1
 
 		panel.width = panel.right - panel.left - 1
 
@@ -249,6 +291,7 @@ class Panel:
 
 	
 	def drawFrame(thisPanel):
+	
 		"""This draws a frame or outer border around the edge of the panel."""
 		
 		panel = thisPanel
@@ -290,12 +333,13 @@ class Panel:
 		screen.vline(top+1,  right,  '|', height)
 		
 			# Special case: For two-column-wide panels at top or bottom of screen, draw a '+' where column separator joins top or bottom edge.
-		colSepPos = client.colSepPos
-		if left < colSepPos and right > colSepPos:	# Spans column separator.
-			if top > 0: 
-				screen.addch(top, colSepPos, '+')
-			if bottom < scr_bot:
-				screen.addch(bottom, colSepPos, '+')
+		if client.nColumns == 2:
+			colSepPos = client.colSepPos
+			if left < colSepPos and right > colSepPos:	# Spans column separator.
+				if top > 0: 
+					screen.addch(top, colSepPos, '+')
+				if bottom < scr_bot:
+					screen.addch(bottom, colSepPos, '+')
 
 			# Resume normal style.
 		screen.attrset(0)
@@ -323,11 +367,12 @@ class Panel:
 			paddedTitle = ' ' + panel._title + ' '
 			screen.addstr(panel.top, panel.left + 4, paddedTitle, style_to_attr(BORDER))
 		
-			# Now paint the panel's contents.  This is implemented by its subclass.
+			# Now paint the panel's contents.  This method is implemented by its subclass.
 		panel.drawContent()
 	
 	
 	def drawContent(thisPanel):
+	
 		"""Extend this method to draw actual content in the given panel.
 			This method should assume that the panel is initially erased,
 			and that it will be refreshed some time after it's finished.
@@ -362,6 +407,8 @@ class Panel:
 		
 	#__/ End method panel.launch().
 
+#__/ End class Panel.
+
 
 class PanelClient(DisplayClient):
 
@@ -387,6 +434,7 @@ class PanelClient(DisplayClient):
 			# Initialize the layout constraints.
 		client._resetLayout()
 
+
 	def _resetLayout(thisPanelClient):
 
 		"""This private method resets all of our internal panel-layout constraints,
@@ -408,7 +456,7 @@ class PanelClient(DisplayClient):
 			# Re-initialize all of the layout constraints.
 		client._resetLayout()
 
-		for panel in client._panels:
+		for panel in client._panels:	# For each panel in our list,
 			panel.replace()		# Redo the placement of this single panel.
 		
 			# Tell the client to tell its screen that, after all that, it needs refreshing.
@@ -433,6 +481,7 @@ class PanelClient(DisplayClient):
 
 
 	def setupColumns(newPanelClient):
+	
 		"""Call this on display startup, and after each resize, to configure
 			the display columns.  We currently support either 1 or 2
 			columns depending on the screen width."""
@@ -491,7 +540,7 @@ class PanelClient(DisplayClient):
 		
 			# This is effectively a "lazy clear"--it waits until refresh to take effect.
 		display.erase()		# Marks all character cells as empty (and no attributes).
-				# (We do this so we don't have to worry about old text hanging around.)
+				# (We do this so we don't have to worry about old junk hanging around.)
 
 		try:
 
@@ -521,12 +570,16 @@ class PanelClient(DisplayClient):
 
 		if panel != None:
 		
-			thisPanelClient._panels.append(panel)	# First, just add it to our list.
+			client._panels.append(panel)	# First, just add it to our list.
 			
 				# Tell the panel to go ahead and try to do the work needed to place 
 				# itself on our display. (This is needed if the display's already running.)
 			panel.place(client)
 			
-				# Now tell the client to re-display itself (if the display is running).
-				# This is what actually causes the new panel to show up on the screen.
-			thisPanelClient.redisplay()
+				# Now tell the client to inform the display that the screen needs
+				# repainting.
+			#client.requestRepaint()
+
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#|						END OF FILE:	display/panel.py
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
