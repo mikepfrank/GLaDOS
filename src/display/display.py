@@ -286,6 +286,9 @@ class BlinkTimer: 		pass
 
 class BlinkTimer(ThreadActor):
 	
+	"""The purpose of this thread is to actively blink the display cursor.
+		The blink cycle is 1 second (1/2 second "on", 1/2 second "off")."""
+	
 	defaultRole = 'BlinkTimr'
 	defaultComponent = _sw_component
 	
@@ -1620,8 +1623,9 @@ class TheDisplay:
 
 
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	def drawCenter(theDisplay:TheDisplay=None, text:str="", row:int=None,
-				   lrpad:str=None, style:RenderStyle=None, extraAttr:int=0):
+	def drawCenter(theDisplay:TheDisplay, text:str="", row:int=None,
+				   lrpad:str=None, style:RenderStyle=None, extraAttr:int=0,
+				   win=None):
 				   
 		"""display.drawCenter()				  [sensitive public instance method]
 		
@@ -1631,7 +1635,17 @@ class TheDisplay:
 	
 		display = theDisplay
 		screen = display.screen
-		width = display.width
+
+			# Default the window to the top-level screen if not given.
+		if win is None:
+			win = screen
+
+		(width, height) = win.getmaxyx()
+
+			# If the row is not specified, use current cursor row.
+		if row is None:
+			(cy, cx) = win.getyx()
+			row = cy
 
 			# Add the left/right padding, if any.
 		if lrpad is not None:
@@ -1645,8 +1659,8 @@ class TheDisplay:
 		if style is not None:
 			attr = attr | style_to_attr(style)	# Add in the style attrs.
 		
-			# Go ahead and write the text to the screen.
-		screen.addstr(row, startPos, text, attr)
+			# Go ahead and write the text to the screen or window.
+		win.addstr(row, startPos, text, attr)
 		
 	#__/ End sensitive public instance method display.drawCenter().
 	
@@ -1677,21 +1691,166 @@ class TheDisplay:
 
 
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	def renderChar(theDisplay:TheDisplay, charcode:int):	# TODO: Add loc,attr support.
+	def renderChar(theDisplay:TheDisplay, charcode:int, win=None):	
+		# TODO: Also add loc,attr support.
 	
 		"""display.renderChar()				  [sensitive public instance method]
 		
-				Puts the given character on the display; if it is not 
-				normally a visible character, use special styles to 
-				render it visible.	 										 """
+				Puts the given character (specified by its ordinal 
+				character code point integer) on the display screen 
+				(or into a specified sub-window); if the given char-
+				acter is not normally a visible character, use 
+				special styles to render it visible.	 		 			 """
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
-		screen = theDisplay._screen
+		display = theDisplay
+		screen = display.screen
 		
-		render_char(screen, charcode)		# Function defined in .controls module.
+		if win is None:
+			win = screen	# Use the display's top-level window by default.
+		
+		render_char(win, charcode)		# Function defined in .controls module.
 
 	#__/ End sensitive public instance method display.renderChar().
 
+
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	def renderText(theDisplay:TheDisplay, text:str="", win=None):
+		"""display.renderText()				  [sensitive public instance method]
+		
+				This method renders the given text to the given curses
+				window, using special styles as needed to render 
+				control characters.  If the window is not specified,
+				the top-level screen is used.  If the width of the 
+				window is reached, we display a grayed-out backslash 
+				('\') character at the end of the line, and wrap around 
+				to the next line.  Various whitespace characters are also
+				handled appropriately."""
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		display = theDisplay
+		screen = display.screen
+		
+		if win is None:
+			win = screen
+
+			# Get dimensions of selected window.
+		(height, width) = win.getmaxyx()
+
+			# We need to keep track of whether the last character output
+			# was a carriage return, because we treat LF after CR as null.
+		lastCharWasCR = False
+		
+		for char in text:
+		
+			ch = ord(char)
+			
+			# Next, if we are already at the right margin, then
+			# before rendering the character, add a grayed-out '\'
+			# character to call attention to the line-wrapping.
+			# Exception: If the character is already a line break
+			# character (CR or LF), then it will take care of 
+			# wrapping itself.
+			
+			if ch != CR and ch != LF:
+			
+					# Get current cursor position within window.
+				(cy, cx) = win.getyx()
+				
+					# Are we already at the right margin?
+				if cx >= width - 2:
+					# Note: width-1 is the actual rightmost column.
+					# but, we want to avoid displaying there anyway
+					# to avoid triggering a curses exception on the
+					# last line of the window.  So instead, we see 
+					# if we are already at width-2.  This results in
+					# an effective 1-character pad on the right side.
+				
+					attr = style_to_attr(WHITESP)
+					win.addstr('\\', attr)	
+						# Note this is actually a single blackslash character.
+						
+					win.addstr('\n')
+						# And this actually goes to the next line.
+
+			#__/ End if possible automatic line-wrap.
+		
+				# This actually displays the current character.
+			display.renderChar(ch, win=win)
+			
+			#/------------------------------------------------------------------
+			#|	Non-space whitespace characters need to be handled specially 
+			#|	here. Specifically:
+			#|
+			#|		HT (TAB) - If we're not already at a tab stop,
+			#|			then move forward to the next tab stop.
+			#|
+			#|		VT (vertical tab) - Move cursor straight downwards 
+			#|			into next line.
+			#|
+			#|		LF (line feed) - We interpret a bare LF the same as
+			#|			a CR/LF sequence; that is, we put the cursor at
+			#|			the start of the next line.
+			#|
+			#|		CR (carriage return) - Put the cursor at the start 
+			#|			of the next line.
+			#|
+			#|		FF (form feed) - Go down two lines and to start of
+			#|			line; also display a form separator in between.
+			#|
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+			
+			if ch == TAB:	# Move forward to next tab stop, if needed.
+			
+				tabsize = get_tabsize()		# Get current tab size.
+				
+					# Get current cursor position within window.
+				(cy, cx) = win.getyx()
+				
+					# If we're already at a tab stop, this is 
+					# because we were just left of it and then
+					# displayed a gray '>'. So now we don't need
+					# to move at all.  Otherwise, we output a
+					# real tab char to go to the next tab stop.
+				if cx % tabsize != 0:
+					win.addstr('\t')
+			
+			elif ch == VT:	# Move down one line, without CR.
+			
+				# Note that here, we are actually one column to the right of 
+				# where we were due to having displayed one gray 'v' to show
+				# the vertical tab.  So, we move one position down and to the
+				# left, to implement the straight-down motion.
+			
+					# Get current cursor position within window.
+				(cy, cx) = win.getyx()
+				
+					# Move one cell down and to the left.
+				win.move(cy + 1, cx - 1)
+				
+			elif ch == LF:	# Line feed: Suppress if we just output CR; otherwise just do a newline.
+			
+				if not lastCharWasCR:
+					win.addstr('\n')	# Output newline.
+			
+			elif ch == CR:	# Carriage return:  Output newline, and remember last char was CR.
+				win.addstr('\n')		# Output newline.
+					# Now remember we already did this, in case next character is NL.
+				lastCharWasCR = True	
+				
+			elif ch == FF:	# Newline, centered page separator, newline.
+				win.addstr('\n')
+				display.drawCenter("* * *", win=win)
+				win.addstr('\n')
+			
+			#__/ End if/elif for handling whitespace characters.
+			
+			# Remember to reset lastCharWasCR after non-CR characters.
+			if ch != CR:
+				lastCharWasCR = False
+	
+	#__/ End sensitive public instance method display.renderText().
+	
 
 	def setBlinkOn(theDisplay:TheDisplay):
 		

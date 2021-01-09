@@ -148,28 +148,39 @@ class Panel:
 				# left border and its interior sub-window.
 		else:
 
-			win.erase()		# Erase anything that was left over in the window's old geometry.
+			#win.erase()		# Erase anything that was left over in the window's old geometry.
+
+				# Get the window's current size and position relative to its parent.
+
+			(cur_height, cur_width) = win.getmaxyx()
+			(cur_winy, cur_winx) = win.getparyx()
 
 				# Move the existing window in case the panel's position changed.
 
 			new_winy = panel.top + 1
 			new_winx = (panel.left + 1) + leftPad
 
-			_logger.debug(f"panel.configWin(): Moving internal window to ({new_winy},{new_winx}).")
+				# Before we try to move it, make sure it's needed.
 
-			try:
-				win.mvwin(new_winy, new_winx)
-			except error as e:
-				_logger.error(f"panel.configWin(): Move attempt generated curses error: {str(e)}")
+			if (new_winy != cur_winy) or (new_winx != cur_winx):
+
+				_logger.debug(f"panel.configWin(): Moving internal window to ({new_winy},{new_winx}).")
+
+				try:
+					win.mvwin(new_winy, new_winx)
+				except error as e:
+					_logger.error(f"panel.configWin(): Move attempt generated curses error: {str(e)}")
 
 				# Also, resize the window in case the panel's size changed.
 
-			_logger.debug(f"panel.configWin(): Resizing internal window to ({height}, {int_width}).")
+			if (height != cur_height) or (int_width != cur_width):
 
-			try:
-				win.resize(height, int_width)
-			except error as e:
-				_logger.error(f"panel.configWin(): Resize attempt generated curses error: {str(e)}")
+				_logger.debug(f"panel.configWin(): Resizing internal window to ({height}, {int_width}).")
+
+				try:
+					win.resize(height, int_width)
+				except error as e:
+					_logger.error(f"panel.configWin(): Resize attempt generated curses error: {str(e)}")
 
 			# Mark the sub-window as needing refreshing.
 		win.noutrefresh()
@@ -380,10 +391,14 @@ class Panel:
 			method before they return."""
 	
 		panel = thisPanel
+		win = panel.win
 	
 		#/-----------------------------------------
 		#| EXTEND METHOD WITH ADDITIONAL CODE HERE.
 		#\-----------------------------------------
+	
+			# Tell the display the panel's window needs refreshing now.
+		win.noutrefresh()
 	
 		# Now is a good time to launch any subsidiary threads/processes
 		# associated with the panel, if not already done.
@@ -393,7 +408,27 @@ class Panel:
 			panel._launched = True
 			
 	#__/ End method panel.drawContent().
+
+
+	def redisplayContent(thisPanel):
 	
+		"""This repaints and refreshes the display of just this panel's 
+			content, leaving the rest of the screen untouched."""
+			
+		panel 	= thisPanel
+		client	= panel.client
+		display	= client.display
+		win		= panel.win			# The panel's internal sub-window.
+		
+			# Erase whatever is presently in the panel's subwin.
+		win.erase()
+		
+			# Fill in panel contents.
+		thisPanel.drawContent()
+		
+			# Tell curses to update the physical display.
+		display.update()
+		
 	
 	def launch(thisPanel):
 	
@@ -523,7 +558,15 @@ class PanelClient(DisplayClient):
 		screen.attrset(0)
 	
 	def paint(thisPanelClient):
-		"""This paint method overrides the demo in DisplayClient."""
+		"""This paint method overrides the demo in DisplayClient.
+			
+			Context reminders: When this is called, all we know is that
+			a complete re-painting of the display screen has been requested.
+			The display buffer has not yet been erased.  The job of this 
+			method is to do all of the display operations required to fill
+			out the client's display.  After this returns, the display will 
+			automatically be refreshed from its buffer in display.paint().
+		"""
 
 		_logger.debug("panelClient.paint(): Repainting panel client")
 

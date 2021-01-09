@@ -6,11 +6,12 @@
 	DESCRIPTION:
 	
 		This is the core module of the "events" package; it provides the
-		definition of a class Event, which keeps track of information such
-		as the date/time and source of the event.  There are also classes
-		for working with event formats, which determine how Event objects
-		are translated to text.  The AI can select how events that it is
-		viewing in its receptive field will be formatted.
+		definition of a class TextEvent, which keeps track of information 
+		such as the date/time and source of an event consisting of a piece
+		of text.  There are also classes for working with event formats, 
+		which determine how TextEvent objects are translated to actual 
+		displayed text.  The AI can select how events that it is viewing 
+		in its receptive field will be formatted.
 		
 
 """
@@ -37,14 +38,14 @@ from entities.entity import Entity_	# Abstract superclass for entity objects.
 	#| section gets large, we could move it to a separate file EventFormat.py.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-class Event: pass	# Forward declaration just so we can use it as a type descriptor.
+class TextEvent: pass	# Forward declaration just so we can use it as a type descriptor.
 
-class EventFormat:
+class TextEventFormat:
 	"""Abstract superclass for event formats."""
 	# Subclasses should implement the display(event) class method.
 	pass
 	
-class PlainEventFormat:
+class PlainEventFormat(TextEventFormat):
 	
 	"""A plain event format that only shows the raw text of the event, nothing else."""
 
@@ -52,7 +53,7 @@ class PlainEventFormat:
 	def display(thisClass,event):
 		return event.text
 
-class PromptedEventFormat:		# Abstract class for event formats that begin with a prompt-like structure
+class PromptedEventFormat(TextEventFormat):		# Abstract class for event formats that begin with a prompt-like structure
 
 	"""Abstract superclass for event formats that begin with a prompt-like prefix.
 		The .prompt() class method in these formats is useful for prompting the AI."""
@@ -87,11 +88,11 @@ class BriefEventFormat(PromptedEventFormat):
 	def prompt(thisClass,event):
 		return f"{event.author}> "
 		
-class FullEventFormat:
+class FullEventFormat(PromptedEventFormat):
 
 	@classmethod
 	def prompt(thisClass, event):
-		return f"{event.creationTime.strftime('%Y-%m-%d %H:%M:%S')} | {event.author}> "
+		return f"{event.creationTime.strftime('%Y-%m-%d %H:%M:%S')} ({event.author})> "
 
 	
 	#|--------------------------------------------------------------------------
@@ -102,7 +103,7 @@ class FullEventFormat:
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
-class Event:
+class TextEvent:
 	
 	"""Class for objects that track the date, time, and creator of a 
 		given chunk of text stored in the AI's history or memory."""
@@ -116,7 +117,8 @@ class Event:
 	#|
 	#\--------------------------------------------------------------------------
 
-	def __init__(inst, text:str=None, when:datetime=None, author:Entity_=None):
+	def __init__(inst, text:str=None, when:datetime=None, author:Entity_=None,
+		defaultFormat=None):
 	
 			# Default the creation time to right now if not provided.
 			
@@ -126,10 +128,18 @@ class Event:
 		inst.creationTime	= when
 		inst.creator		= author
 		inst.text			= text
+		inst.defaultFormat	= defaultFormat
 	
 	def updateTime(thisEvent):
 		thisEvent.creationTime	= datetime.now()
 	
-	def display(inst, format:EventFormat):
-		format.display(inst)
+	def display(inst, format:EventFormat=None):
 	
+		"""Returns a complete string for displaying the event, using
+			the given format, or the event's default format if the
+			format is not specified."""
+	
+		if format is None:
+			format = inst.defaultFormat
+	
+		return format.display(inst)
