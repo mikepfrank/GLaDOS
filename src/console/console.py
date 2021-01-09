@@ -173,6 +173,13 @@ from .logPanel 			import (
 		
 	)
 
+from .inputPanel   		import (
+
+		InputPanel			# Panel for prompting for and accepting input from the operator.
+
+	)
+	
+
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#|
 	#|	Classes provided by the current 'console' module include the following:
@@ -200,10 +207,6 @@ from .logPanel 			import (
 
 # The following need to be moved out to their own modules once written.
 
-class InputPanel(Panel):
-	"""Panel for prompting for and accepting input from the operator."""
-	pass
-	
 class DiagnosticPanel(Panel):
 	"""Panel to display text that would normally go to sydtem stdout/stderr:
 		Normal, info, warning, error messages etc."""

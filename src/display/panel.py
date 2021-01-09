@@ -110,6 +110,10 @@ class Panel:
 		return thisPanel._title
 
 	@property
+	def name(thisPanel):
+		return thisPanel.title	# Maybe someday have a separate 'name' ID.
+
+	@property
 	def height(thisPanel):
 		return thisPanel._height
 
@@ -220,6 +224,8 @@ class Panel:
 	
 		placement = panel._placement	# Get the panel's placement specifier.
 	
+		_logger.debug(f"panel.place(): About to place panel '{panel.name}' with placement {placement}.")
+
 		# Here we process the placement and figure out panel coordinates.
 		if placement == FILL_BOTTOM:
 			# This places the panel across the bottom of the screen (both columns).
@@ -244,6 +250,8 @@ class Panel:
 			
 			if client.nColumns == 2:		# Two-column mode.
 			
+				_logger.debug("panel.place(): Doing LOWER_RIGHT placement for 2 columns.")
+
 				panel.left = client.colSepPos
 				panel.right = scr_right
 				panel.bottom = scr_bot - client._botReserved - client._brReserved

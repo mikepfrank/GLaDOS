@@ -80,19 +80,19 @@ class PromptedEventFormat(TextEventFormat):		# Abstract class for event formats 
 
 	@classmethod
 	def display(thisClass, event):
-		return thisClass.prompt() + event.text;
+		return thisClass.prompt(event) + event.text;
 
 class BriefEventFormat(PromptedEventFormat):
 
 	@classmethod
 	def prompt(thisClass,event):
-		return f"{event.author}> "
+		return f"{event.creator}> "
 		
 class FullEventFormat(PromptedEventFormat):
 
 	@classmethod
 	def prompt(thisClass, event):
-		return f"{event.creationTime.strftime('%Y-%m-%d %H:%M:%S')} ({event.author})> "
+		return f"{event.creationTime.strftime('%Y-%m-%d %H:%M:%S')} ({event.creator})> "
 
 	
 	#|--------------------------------------------------------------------------
@@ -122,7 +122,7 @@ class TextEvent:
 	
 			# Default the creation time to right now if not provided.
 			
-		if when=None:
+		if when is None:
 			when = datetime.now()
 		
 		inst.creationTime	= when
@@ -133,7 +133,7 @@ class TextEvent:
 	def updateTime(thisEvent):
 		thisEvent.creationTime	= datetime.now()
 	
-	def display(inst, format:EventFormat=None):
+	def display(inst, format:TextEventFormat=None):
 	
 		"""Returns a complete string for displaying the event, using
 			the given format, or the event's default format if the
