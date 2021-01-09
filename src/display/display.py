@@ -276,6 +276,58 @@ class Loc:
 
 class TheDisplay:		pass	# Forward declaration for type hints.
 class DisplayClient: 	pass	# Dummy declaration for type hints.
+class BlinkTimer: 		pass
+
+class BlinkTimer(ThreadActor):
+	
+	defaultRole = 'BlinkTmr'
+	defaultComponent = _sw_component
+	
+	def __init__(newBlinkTimer:BlinkTimer, display:TheDisplay):
+	
+		_logger.debug("blinkTimer.__init__(): Initializing blink timer.")
+	
+		timer = newBlinkTimer
+		timer._display = display
+		timer._defaultTarget = timer._main
+		timer._exitRequested = False
+		super(BlinkTimer, timer).__init__(daemon=True)	# ThreadActor initialization.
+			# The daemon=True tells Python not to let this thread keep the process alive.
+	
+	@property
+	def display(newBlinkTimer:BlinkTimer):
+		timer = newBlinkTimer
+		return timer._display
+	
+	def _main(thisBlinkTimer:BlinkTimer):
+		
+		_logger.debug("blinkTimer._main(): Blink timer starting.")
+		
+		timer = thisBlinkTimer
+
+		while not timer._exitRequested:
+
+			# The full blink cycle is 1 second.  Blink on, wait half abs
+			# second, blink off, wait half a second.
+		
+			timer.blinkOn()		# Turn cursor A_BLINK attribute on.
+			sleep(0.5)			# Sleep half a second.
+			timer.blinkOff()	# Turn cursor A_BLINK attribute off.
+			sleep(0.5)			# Sleep half a second.
+			
+	def blinkOn(thisBlinkTimer:BlinkTimer):
+		timer = thisBlinkTimer
+		display = timer.display
+		driver = display.driver
+		driver(display.setBlinkOn)
+			# Wait for return so we don't get ahead of driver
+		
+	def blinkOff(thisBlinkTimer:BlinkTimer)
+		timer = thisBlinkTimer
+		display = timer.display
+		driver = display.driver
+		driver(display.setBlinkOff)
+			# Wait for return so we don't get ahead of driver
 
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -518,7 +570,12 @@ class TheDisplay:
 
 		display._driver = DisplayDriver(display)		# Creates display driver thread.
 			# (This newly created thread is initially just waiting for work to do.)
-			
+	
+			#|---------------------------------------------------------------------
+			#| Create the cursor blink timer thread. This will be started after the
+			#| display is started up.
+		display._blinker = BlinkTimer(display)
+	
 		# Nothing else to do here yet. Nothing really happens until .start() is called.
 	
 	#__/ End singleton instance initializer for class TheDisplay.
@@ -1257,8 +1314,14 @@ class TheDisplay:
 			#| This effectively first measures the size of the display, & then 
 			#| automatically paints its entire contents, for the first time.
 			
-		theDisplay._resize()		# Sizes/paints display.
+		display._resize()		# Sizes/paints display.
 	
+			#|------------------------------------------------------------------
+			#| This starts the blinker thread going in the background, which 
+			#| makes the cursor blink.
+		
+		display._blinker.start()	# Starts blinker thread running in background.
+		
 	#__/ End sensitive private instance method theDisplay._init().
 
 
@@ -1613,6 +1676,29 @@ class TheDisplay:
 
 	#__/ End sensitive public instance method display.renderChar().
 
+
+	def setBlinkOn(theDisplay:TheDisplay):
+		
+		display = theDisplay
+		screen = display.screen
+		
+		(sy, sx) = getsyx()					# Get cursor screen coordinates.
+		cursdata = screen.inch(sy, sx)		# Fetch data from screen at cursor loc.
+		attrs = cursdata >> 8				# Get just the attrs part.
+		attrs = attrs | A_BLINK				# Make sure A_BLINK (bright background) attribute is on.
+		screen.chgat(1, attrs)				# Change attributes of 1 character at that loc.
+		
+	def setBlinkOff(theDisplay:TheDisplay):
+
+		display = theDisplay
+		screen = display.screen
+		
+		(sy, sx) = getsyx()					# Get cursor screen coordinates.
+		cursdata = screen.inch(sy, sx)		# Fetch data from screen at cursor loc.
+		attrs = cursdata >> 8				# Get just the attrs part.
+		attrs = attrs & ~A_BLINK			# Make sure A_BLINK (bright background) attribute is off.
+		screen.chgat(1, attrs)				# Change attributes of 1 character at that loc.
+		
 
 	#|==========================================================================
 	#|	Code scraps.										[class code section]

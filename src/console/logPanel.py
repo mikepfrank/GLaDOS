@@ -100,7 +100,7 @@ logFilename = path.join('log', 'GLaDOS.server.log')
 		#|	Import names we need from the display module.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-import curses
+import curses	# We use curses.error from here.
 
 from display.colors		import (
 

@@ -133,6 +133,7 @@ class	The_CommsApp_Entity:		pass
 
 class	External_Entity_:		pass
 class	Human_Entity_:			pass
+class	Operator_Entity:		pass
 
 #-------------Class definitions.
 
@@ -153,6 +154,7 @@ class Entity_:
 
 	_ENTITY_TYPE_NAME = "entity"	# Entity type name, if not overridden.
 	_ENTITY_NAME = None		# Instances of an abstract class don't have names.
+	_ENTITY_ID = None		# No ID's either
 
 		#|----------------------------------------------------------------------
 		#|	Entity_._isAbstract						 [private class data member]
@@ -212,9 +214,11 @@ class Entity_:
 	#|
 	#|			._name -	Proper name of this entity instance.
 	#|
+	#|			._id - 		Short name of entity for use in prompts.
+	#|
 	#\--------------------------------------------------------------------------
 	
-	def __init__(inst, name=_ENTITY_NAME):
+	def __init__(inst, name=_ENTITY_NAME, id=_ENTITY_ID):
 
 			# Remember our name.
 		_name = name
@@ -431,6 +435,10 @@ class Human_Entity_(Entity_):
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	@classproperty
 	def entityType(dynamicClass):
-		"""By default, just return AI_Entity_.  Subclasses can override this."""
-		return AI_Entity_
+		"""By default, just return Human_Entity_.  Subclasses can override this."""
+		return Human_Entity_
 	
+class Operator_Entity(Human_Entity_):
+	_isAbstract = False
+	_ENTITY_NAME = "System Operator"
+	_ENTITY_ID = "Operator"
