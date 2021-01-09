@@ -88,6 +88,8 @@ class InputPanel(Panel):
 	
 	def __init__(newInputPanel:InputPanel):
 			
+		_logger.debug("inputPanel.__init__(): Initializing input panel.")
+
 			# Use a shorter name for this new log panel.
 		panel = newInputPanel
 		
@@ -101,7 +103,7 @@ class InputPanel(Panel):
 		panel._operatorEntity = operator
 		
 			# Create and store the draft text input event.
-		opTextEvent = Event("", author=operator, defaultFormat=FullEventFormat)
+		opTextEvent = TextEvent("", author=operator, defaultFormat=FullEventFormat)
 			# Note the text of the event is just the empty string initially.
 			# It will expand as the operator types text.
 		panel._opTextEvent = opTextEvent	# Operator's text event.
@@ -175,6 +177,9 @@ class InputPanel(Panel):
 		display.renderText(displayText, win=win)
 			# Note this method does special stuff with various control
 			# and whitespace characters.
+
+		# Sync the cursor position upwards in window hierarchy.
+		win.cursyncup()
 
 			# Call the original drawContent() method in Panel, which does 
 			# some general bookkeeping work needed for all panels.

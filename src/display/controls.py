@@ -73,6 +73,24 @@ __all__ = [		# List of all public names exported from this module.
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+from curses.ascii import (
+
+			# ASCII control codes.
+
+		NUL, SOH, STX, ETX, EOT, ENQ, ACK, BEL, BS, TAB, HT, LF, NL, VT,
+		FF, CR, SO, SI, DLE, DC1, DC2, DC3, DC4, NAK, SYN, ETB, CAN, EM,
+		SUB, ESC, FS, GS, RS, US, SP, DEL,
+
+			# Functions we use.
+
+		alt,	# Turns on 8th bit of a 7-bit character.
+	)
+
+global XON, XOFF
+
+XON = DC1
+XOFF = DC3
+
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	2.1.  Custom imports.						[module code subsection]
 		#|

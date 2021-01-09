@@ -207,8 +207,8 @@ class Entity_:
 		return thisEntity._name		# Set in instance initializer.
 
 
-	def __str__(thisTextEntity):
-		return thisTextEntity._id	# Return the short ID string.
+	def __str__(thisEntity):
+		return thisEntity._id	# Return the short ID string.
 
 	#/--------------------------------------------------------------------------
 	#|	Private instance data members.					   [class documentation]
@@ -222,11 +222,17 @@ class Entity_:
 	#|
 	#\--------------------------------------------------------------------------
 	
-	def __init__(inst, name=_ENTITY_NAME, id=_ENTITY_ID):
+	def __init__(inst, name=None, eid=None):
+
+		if name is None:
+			name = inst._ENTITY_NAME
+
+		if eid is None:
+			eid = inst._ENTITY_ID
 
 			# Remember our name and ID.
-		_name = name
-		_id = id
+		inst._name = name
+		inst._id = eid
 	
 	partOf = None
 	#def partOf():

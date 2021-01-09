@@ -123,9 +123,10 @@ from curses import *
 	# curses names that we actually use in this module.
 
 from curses.ascii import (
-		controlnames, 	# Array: Names of characters 0-33, used in KeyEvent.
-		iscntrl, 		# Function: Is this code a 7-bit ASCII control? Used in KeyEvent.
-		DC4				# Constant: Code point for Device Control 4 (control-T).  Used in theDisplay.do1iteration().
+
+		TAB, LF, NL, VT, FF, CR,	# Whitespace code points.
+
+		DC4	# Constant: Code point for Device Control 4 (control-T).  Used in theDisplay.do1iteration().
 	)
 
 
