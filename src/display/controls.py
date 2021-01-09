@@ -46,6 +46,11 @@
 global __all__ 
 __all__ = [		# List of all public names exported from this module.
 
+			#------------------
+			# Global constants.
+		
+		'NBSP',		# Nonbreaking space character code.
+		
 			#|~~~~~~~~~~~
 			#| Functions.
 		
@@ -81,6 +86,9 @@ __all__ = [		# List of all public names exported from this module.
 
 from .colors import *		# All color-related definitions.
 
+	# Create a constant for NBSP.
+global NBSP		# Character code point for nonbreaking space.
+NBSP = alt(SP)	# Start with a space (SP), and set the 8th bit.
 
 	#|==========================================================================
 	#|	3.	Static data structures.					   	   [module code section]

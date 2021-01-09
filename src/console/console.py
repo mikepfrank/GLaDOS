@@ -231,7 +231,7 @@ class ConsoleClient(PanelClient):
 		_logger.debug("console.__init__(): Creating console panels.")
 
 		client._logPanel	= logPanel 			= LogPanel()
-		#client._inputPanel	= inputPanel 		= InputPanel()
+		client._inputPanel	= inputPanel 		= InputPanel()
 		#client._diagPanel	= diagnosticPanel	= DiagnosticPanel()
 		#client._rFieldPanel	= rightFieldPanel 	= FieldPanel(column='right')
 		#client._lFieldPanel = leftFieldPanel	= FieldPanel(column='left')
@@ -241,7 +241,7 @@ class ConsoleClient(PanelClient):
 		_logger.debug("console.__init__(): Adding panels to console.")
 
 		client.addPanel(logPanel)			# Place this first, to occupy bottom of screen.
-		#client.addPanel(inputPanel)		# This goes next, at the bottom of the right column.
+		client.addPanel(inputPanel)			# This goes next, at the bottom of the right column.
 		#client.addPanel(diagnosticPanel)	# This goes next, just above the input panel.
 		#client.addPanel(rightFieldPanel)	# This fills the rest of the right-hand column.
 		#client.addPanel(leftFieldPanel)	# This fills the rest of the left-hand column.
@@ -267,6 +267,7 @@ class ConsoleClient(PanelClient):
 	#__/ End method console.start().
 	
 #__/ End class ConsoleClient.
+
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #|						END OF FILE:	console/console.py

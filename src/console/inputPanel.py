@@ -31,52 +31,60 @@ from	entities.entity	import (
 	
 from	events.event 	import (
 
-		Event,				# For an event representing the operator's input.
+		TextEvent,			# For an event representing the operator's text input.
+		FullEventFormat,	
+			# The format we use by default for displaying this text event in 
+			# the inputPanel.  Includes the date/time and author (Operator).
 		
 	)
 
-class BlinkTimer: pass
+class PromptTimer: pass
 class InputPanel: pass
 
-class BlinkTimer(ThreadActor):
+class PromptTimer(ThreadActor):
 	
-	defaultRole = 'BlinkTmr'
+	"""The purpose of this thread is to update the operator's prompt once
+		per second with an updated time and date."""
+	
+	defaultRole = 'PromptTmr'
 	defaultComponent = _sw_component
 	
-	def __init__(newBlinkTimer:BlinkTimer, inputPanel:InputPanel):
-		timer = newBlinkTimer
+	def __init__(newPromptTimer:PromptTimer, inputPanel:InputPanel):
+	
+		timer = newPromptTimer
 		timer._inputPanel = inputPanel
-		timer._defaultTarget = timer._main
 		timer._exitRequested = False
-		super(BlinkTimer, timer).__init__(daemon=True)	# ThreadActor initialization.
+
+		timer.defaultTarget = timer._main
+		super(PromptTimer, timer).__init__(daemon=True)	# ThreadActor initialization.
 			# The daemon=True tells Python not to let this thread keep the process alive.
-			
-	def _main(thisBlinkTimer:BlinkTimer):
-		timer = thisBlinkTimer
+	
+	@property
+	def panel(thisPromptTimer:PromptTimer):
+		return thisPromptTimer._inputPanel
+	
+	def _main(thisPromptTimer:PromptTimer):
+		
+		timer = thisPromptTimer		# Shorter name
 
 		while not timer._exitRequested:
 
-			# The full blink cycle is 1 second.  Blink on, wait half abs
-			# second, blink off, wait half a second.
+			# The prompt update cycle is 1 second.  Update time in prompt,
+			# wait 1 second, update time in prompt again, etc.
 		
-			timer.blinkOn()		# Turn cursor A_BLINK on.
+			timer.updatePrompt()		# Update prompt with current time.
 			
-			sleep(0.5)			# Sleep half a second.
+			sleep(1.0)			# Sleep for one second.
 			
-			timer.blinkOff()	# Turn cursor A_BLINK off.
-			
-			sleep(0.5)			# Sleep half a second.
-			
-	def blinkOn(thisBlinkTimer:BlinkTimer):
-		timer = thisBlinkTimer
+	def updatePrompt(thisPromptTimer:PromptTimer):
+		timer = thisPromptTimer
+		timer.panel.updatePrompt()	# Let the main Panel class do the work.
 		
-	def blinkOff(thisBlinkTimer:BlinkTimer)
-		timer = thisBlinkTimer
-			
 
 class InputPanel(Panel):
 
 	"""Panel for prompting for and accepting input from the operator."""
+
 	
 	def __init__(newInputPanel:InputPanel):
 			
@@ -84,12 +92,92 @@ class InputPanel(Panel):
 		panel = newInputPanel
 		
 			# First we do general panel initialization.
-		super(InputPanel, panel).__init__("Operator Input", FILL_BOTTOM, 4)
-			# Default height of 4 is fine.
+		super(InputPanel, panel).__init__("Operator Input", LOWER_RIGHT, 4)
+			# By default, the input panel appears at the bottom of the right column.
+			# A default height of 4 for this panel is fine.  It can grow if needed.
 		
 			# Create and store the operator entity.
 		operator = Operator_Entity()
 		panel._operatorEntity = operator
 		
-			# Create and store the draft input event.
+			# Create and store the draft text input event.
+		opTextEvent = Event("", author=operator, defaultFormat=FullEventFormat)
+			# Note the text of the event is just the empty string initially.
+			# It will expand as the operator types text.
+		panel._opTextEvent = opTextEvent	# Operator's text event.
+			
+			# Create the prompt timer thread (see above).
+			# Its job will be to update the time displayed in the
+			# operator's input prompt.
+		timerThread = PromptTimer(panel)
+		panel._promptTimer = timerThread
+
+	#__/ End instance initializer method inputPanel.__init__().
+
+	def updatePrompt(thisInputPanel:InputPanel):
 		
+		panel	= thisInputPanel
+		client	= panel.client
+		display	= client.display
+		driver	= display.driver
+		event	= panel.textEvent
+		
+		event.updateTime()			# Tell the text event to update its creation time.
+		
+		# At this point, we actually want the new time to be visible, so we go
+		# ahead and tell this panel to update its display, in the driver thread.
+		
+		driver(panel.redisplayContent, "Redisplay input panel contents")
+
+	@property
+	def textEvent(thisInputPanel:InputPanel):
+		panel = thisInputPanel
+		return panel._opTextEvent
+
+
+	def launch(thisInputPanel:InputPanel):
+	
+		"""This standard Panel method is called automatically by the Panel 
+			to start up any associated threads at the time of first display.  
+			In our case, we use it to start the prompt-update timer."""
+		
+		_logger.debug("inputPanel.launch(): Starting the prompt timer thread.")
+		thisInputPanel._promptTimer.start()
+		
+	#__/ End instance method inputPanel.launch().
+	
+	
+	def drawContent(thisInputPanel:InputPanel):
+	
+		"""This standard Panel method is called automatically when the panel's
+			content needs to be redrawn.  The context is that the window's 
+			display buffer has already been erased, and that the screen will
+			be refreshed sometime after this method returns.
+		
+			For the input panel, the behavior is simply to display the input
+			text event being constructed.
+		"""
+		
+		panel	= thisInputPanel
+		client	= panel.client
+		display	= client.display
+		win 	= panel.win		
+			# This is the panel's internal window, for displaying content.
+			# It already has appropriate padding around it.
+		
+			# Get the text event, to display in the panel.
+		textEvent = panel.textEvent
+		
+			# Get the displayable text representing that event.
+		displayText = textEvent.display()	# Uses event's default format.
+		
+			# Sweet; now have the display render it in the window.
+		display.renderText(displayText, win=win)
+			# Note this method does special stuff with various control
+			# and whitespace characters.
+
+			# Call the original drawContent() method in Panel, which does 
+			# some general bookkeeping work needed for all panels.
+		super(InputPanel, panel).drawContent()
+			
+	#__/ End instance method inputPanel.drawContent().

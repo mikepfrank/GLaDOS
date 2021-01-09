@@ -212,9 +212,10 @@ class LogFeeder(ThreadActor):
 		while not exitRequested:
 
 			logLine = process.stdout.readline().strip()
+			
 			panel.addLogLine(logLine)
 
-			# Request screen to update shortly after new line is added.
+				# Request screen to update shortly after new line is added.
 			dispDrv.do(display.update, desc="Update display after adding log line")
 
 			if not started:
@@ -347,11 +348,11 @@ class LogPanel(Panel):
 			try:
 				# Reset both the position and size, just to make sure.
 				
-				panel._header_subwin.mvderwin(0, 0)
+				#panel._header_subwin.mvderwin(0, 0)	# Commented out because shouldn't change
 				panel._header_subwin.resize(3, width)	# Width might be new.
 
-				panel._data_subwin.mvderwin(3, 0)
-				panel._data_subwin.resize(height-3, width)
+				#panel._data_subwin.mvderwin(3, 0)		# Commented out because shouldn't change
+				panel._data_subwin.resize(height-3, width)	# Width might be new.
 
 			except curses.error as e:
 				_logger.error(f"logPanel.configWin(): During sub-window resizing, got curses error: {str(e)}")
