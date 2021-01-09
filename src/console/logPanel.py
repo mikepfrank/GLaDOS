@@ -78,7 +78,7 @@ import subprocess
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 from infrastructure.logmaster import (
-		sysName,			# Used just below.
+		sysName,			# Used for forming _sw_component.
 		ThreadActor,		# Log feeder thread is subclassed from this.
 		getComponentLogger 	# Used just below.
 	)
@@ -166,7 +166,7 @@ class LogFeeder(ThreadActor):
 		
 		feeder._panel = panel
 		
-		feeder.defaultTarget = feeder.main				# Point at our .main() method.
+		feeder.defaultTarget = feeder._main				# Point at our ._main() method.
 		super(LogFeeder, feeder).__init__(daemon=True)	# ThreadActor initialization.
 			# The daemon=True tells Python not to let this thread keep the process alive.
 
@@ -176,7 +176,7 @@ class LogFeeder(ThreadActor):
 		return thisLogFeeder._panel
 	
 
-	def main(thisLogFeeder):
+	def _main(thisLogFeeder):
 
 		"""This is the main routine of the newly-created LogFeeder thread.
 			It basically just reads lines from the log file tail and adds
@@ -503,7 +503,9 @@ class LogPanel(Panel):
 			for logLine in data:
 				panel.drawLogLine(logLine)
 
-		
+			# This moves screen cursor to end of last log line.
+		#win.cursyncup()
+
 	def repaintDataArea(thisLogPanel):
 		panel = thisLogPanel
 		area = panel.data_win	# The data area (sub-window) within the log panel.

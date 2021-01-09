@@ -75,7 +75,9 @@ __all__ = [		# List of all public names exported from this module.
 		'BRIGHT_CYAN', 'BRIGHT_MAGENTA', 'BRIGHT_YELLOW',
 
 				# Rendering style designators.
-		'PLAIN', 'BORDER', 'HEADER', 'CONTROL', 'WHITESP', 'METACTL', 'METAWSP',
+		'PLAIN', 'BORDER', 'HEADER', 'BRIGHT_CURSOR', 'DIM_CURSOR',
+				# Rendering style designators for character types.
+		'CONTROL', 'WHITESP', 'METACTL', 'METAWSP',
 				# Logging-related rendering styles (move to console package?)
 		'DEBUG_STYLE', 'INFO_STYLE', 'GOOD_STYLE', 'WARNING_STYLE', 
 		'ERROR_STYLE', 'CRITICAL_STYLE', 'FATAL_STYLE'
@@ -270,6 +272,15 @@ class RenderStyle(Enum):
 		# Use this style for displaying text headers that stand out.
 	HEADER='header'
 
+		# Styles used for alternating bright and dim (blinking) cursor.
+	BRIGHT_CURSOR='bright-cursor'
+	DIM_CURSOR='dim-cursor'
+
+		#|------------------------------------------------------------
+		#| The following styles are for rendering of control and
+		#| whitespace characters.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 		# Use this style for rendering 7-bit ASCII control characters.
 	CONTROL='control'
 
@@ -310,11 +321,16 @@ class RenderStyle(Enum):
 
 	# Put the render styles in shorter globals.
 
-global PLAIN, BORDER, HEADER, CONTROL, WHITESP, METACTL, METAWSP
+global PLAIN, BORDER, HEADER, BRIGHT_CURSOR, DIM_CURSOR
 
-PLAIN		=	RenderStyle.PLAIN
-BORDER		=	RenderStyle.BORDER
-HEADER		=	RenderStyle.HEADER
+PLAIN			=	RenderStyle.PLAIN
+BORDER			=	RenderStyle.BORDER
+HEADER			=	RenderStyle.HEADER
+BRIGHT_CURSOR	=	RenderStyle.BRIGHT_CURSOR
+DIM_CURSOR		=	RenderStyle.DIM_CURSOR
+
+global CONTROL, WHITESP, METACTL, METAWSP
+
 CONTROL		=	RenderStyle.CONTROL
 WHITESP		=	RenderStyle.WHITESPACE
 METACTL		=	RenderStyle.META_CONTROL
@@ -357,11 +373,16 @@ FATAL_STYLE		=	CRITICAL_STYLE
 global _style_colors
 _style_colors = {		# Maps render style to (fgcolorspec, bgcolorspec) pairs.
 
+	#STYLE:			(FOREGROUND,  	BACKGR),
+	#-------		-------------	--------
+	PLAIN:			(WHITE,		  	BLACK ),		# Normal characters: Medium-white text on black background.
+	BORDER:			(BRIGHT_CYAN, 	BLACK ),		# Border characters: Bright cyan text on a black background.
+	HEADER:			(BRIGHT_WHITE,	BLACK ),		# Text headers: Bright white on a black background.
+	BRIGHT_CURSOR:	(BLACK,			BRIGHT_GREEN),	# Bright cursor: Black text on a bright green background.
+	DIM_CURSOR:		(BLACK,			GREEN),			# Dim cursor: Black text on a medium green background.
+
 	#STYLE:		(FOREGROUND,  	BACKGR),
 	#-------	-------------	--------
-	PLAIN:		(WHITE,		  	BLACK ),	# Normal characters: 			Medium-white text on black background.
-	BORDER:		(BRIGHT_CYAN, 	BLACK ),	# Border characters: 			Bright cyan text on a black background.
-	HEADER:		(BRIGHT_WHITE,	BLACK ),	# Text headers:					Bright white on a black background.
 	CONTROL:	(BLACK,		  	RED	  ),	# Control characters: 			Black text on a red background.
 	WHITESP:	(GRAY,		  	BLACK ),	# Whitespace characters: 		Faded (gray) text on black background.
 	METACTL:	(BLACK,		  	BLUE  ),	# Meta-control characters: 		Black text on blue background.
