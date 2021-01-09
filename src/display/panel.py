@@ -143,7 +143,7 @@ class Panel:
 
 		if win == None:	# No sub-window yet; create one.
 
-			panel._win = win = screen.derwin(panel.height, int_width, panel.top + 1, (panel.left + 1) + leftPad)
+			panel._win = win = screen.subwin(panel.height, int_width, panel.top + 1, (panel.left + 1) + leftPad)
 				# NOTE: <leftPad> gives a number of blank spaces to leave in between the panel's
 				# left border and its interior sub-window.
 		else:
@@ -158,7 +158,7 @@ class Panel:
 			_logger.debug(f"panel.configWin(): Moving internal window to ({new_winy},{new_winx}).")
 
 			try:
-				win.mvderwin(new_winy, new_winx)
+				win.mvwin(new_winy, new_winx)
 			except error as e:
 				_logger.error(f"panel.configWin(): Move attempt generated curses error: {str(e)}")
 
