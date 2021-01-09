@@ -24,7 +24,8 @@
 from datetime import datetime
 	# Needed for tracking the creation date and time of events.
 
-from .author import Author	# Abstract superclass of author objects.
+#from .author import Author	# Abstract superclass of author objects.
+from entities.entity import Entity_	# Abstract superclass for entity objects.
 
 #|==============================================================================
 #|  Module public classes.                               		[code section]
@@ -115,7 +116,7 @@ class Event:
 	#|
 	#\--------------------------------------------------------------------------
 
-	def __init__(inst, text:str=None, when:datetime=None, author:Author=None):
+	def __init__(inst, text:str=None, when:datetime=None, author:Entity_=None):
 	
 			# Default the creation time to right now if not provided.
 			
@@ -125,7 +126,10 @@ class Event:
 		inst.creationTime	= when
 		inst.creator		= author
 		inst.text			= text
-		
+	
+	def updateTime(thisEvent):
+		thisEvent.creationTime	= datetime.now()
+	
 	def display(inst, format:EventFormat):
 		format.display(inst)
 	
