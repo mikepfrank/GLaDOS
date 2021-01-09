@@ -150,6 +150,7 @@ from	display.panel	import (
 	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
+class LogFeeder: pass
 class LogPanel: pass	# Forward declaration for type hints.
 
 # A LogFeeder is a ThreadActor whose job it is to spool log file data
@@ -168,7 +169,13 @@ class LogFeeder(ThreadActor):
 		feeder.defaultTarget = feeder.main				# Point at our .main() method.
 		super(LogFeeder, feeder).__init__(daemon=True)	# ThreadActor initialization.
 			# The daemon=True tells Python not to let this thread keep the process alive.
-		
+
+
+	@property
+	def panel(thisLogFeeder:LogFeeder):
+		return thisLogFeeder._panel
+	
+
 	def main(thisLogFeeder):
 
 		"""This is the main routine of the newly-created LogFeeder thread.
@@ -176,7 +183,7 @@ class LogFeeder(ThreadActor):
 			them to the panel."""
 		
 		feeder = thisLogFeeder
-		panel = feeder._panel
+		panel = feeder.panel
 		client = panel.client
 		display = client.display
 		dispDrv = display.driver
@@ -197,7 +204,8 @@ class LogFeeder(ThreadActor):
 		started = False
 
 		# Infinite loop, reading output of tail. The only way this will exit
-		# is if the tail process terminates, or we get an exception.
+		# is if the tail process terminates, or we get an exception, or an 
+		# explicit exit is requested.
 		
 		exitRequested = False
 
@@ -232,11 +240,20 @@ class LogFeeder(ThreadActor):
 		# Feeder thread can only terminate at this point.
 		_logger.info("logFeeder.main(): Log panel feeder thread is exiting.")
 
+
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#|	LogPanel													  [public class]
+#|
+#|		This is the class for the log panel.
+#|
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 class LogPanel(Panel):
 	# This is a panel that displays lines from the log stream
 
 	lock = RLock()	# Reentrant lock for concurrency control.
 		# The scope of this lock is the panel._content_data structure.
+
 		
 		# Here, we extend the default Panel initialization to also do 
 		# LogPanel-specific initialization.
@@ -265,6 +282,7 @@ class LogPanel(Panel):
 			
 	#__/ End instance initializer for class Panel.
 
+
 	def launch(thisLogPanel):
 	
 		"""This starts up the feeder process needed to stream content to the panel.
@@ -277,7 +295,8 @@ class LogPanel(Panel):
 	@property
 	def data_win(thisLogPanel):
 		return thisLogPanel._data_subwin
-				
+	
+	
 		# Here, we extend the configWin() method to also configure 
 		# our LogPanel-specific sub-windows.
 	def configWin(thisLogPanel):
@@ -291,7 +310,7 @@ class LogPanel(Panel):
 			# This gets the panel's top-level interior window.
 		win = panel.win
 
-			# Get the current size of the top-level panel window.
+			# Get the current size of the top-level interior panel window.
 		(height, width) = win.getmaxyx()			
 
 		_logger.debug(f"logPanel.configWin(): About to configure subwindows for interior size ({height}, {width}).")
@@ -302,7 +321,7 @@ class LogPanel(Panel):
 				
 				# Now create our sub-windows.
 				
-			panel._header_subwin = win.derwin(3, width, 0, 0)			# NOTE: WHy do I need -1 here?
+			panel._header_subwin = win.derwin(3, width, 0, 0)
 				# This means: The header sub-window is 3 rows tall,
 				# same width as the top-level panel window, and begins
 				# at the upper-left corner of the top-level window.
@@ -313,6 +332,7 @@ class LogPanel(Panel):
 				# and extends all the way to the lower-right corner of the
 				# top-level interior window for the panel.
 			data_win.scrollok(True)		# Allow window to scroll (for adding new lines at bottom)
+				# Does this do anything?
 			
 				# Remember that we already created our sub-windows.
 			panel._subWinsCreated = True
@@ -320,8 +340,8 @@ class LogPanel(Panel):
 		else:	# Panel windows already exist; at most, we may need to resize them.
 		
 				# Clear everything that used to be in these guys before move/resize.
-			panel._header_subwin.clear()
-			panel._data_subwin.clear()
+			panel._header_subwin.erase()
+			panel._data_subwin.erase()
 
 			# Header sub-window width may need adjusting.
 			try:
@@ -398,17 +418,17 @@ class LogPanel(Panel):
 				# Extracts field where we expect to see the log level printed.
 			
 			# This is annoying due to the varying numbers of spaces.
-			if logLevel == "   DEBUG":
+			if		logLevel == "   DEBUG":
 				logLevel = 'debug'
-			elif logLevel == "    INFO":
+			elif 	logLevel == "    INFO":
 				logLevel = 'info'
-			elif logLevel == "  NORMAL":
+			elif 	logLevel == "  NORMAL":
 				logLevel = 'normal'
-			elif logLevel == " WARNING":
+			elif	logLevel == " WARNING":
 				logLevel = 'warning'
-			elif logLevel == "   ERROR":
+			elif	logLevel == "   ERROR":
 				logLevel = 'error'
-			elif logLevel == "CRITICAL":
+			elif	logLevel == "CRITICAL":
 				logLevel = 'critical'
 			
 				# Move this to a class variable?
@@ -500,7 +520,6 @@ class LogPanel(Panel):
 		panel.drawData()
 
 
-
 	def _trim_data(thisLogPanel):
 
 		"""Call this routine to keep the content data buffer from
@@ -521,6 +540,7 @@ class LogPanel(Panel):
 
 
 	def addLogLine(thisLogPanel, logLine:str):
+	
 		"""Adds the given (new) line of log file data to 
 			our content dataset, and display it in our 
 			content subwindow. NOTE: This runs within
