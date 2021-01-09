@@ -704,7 +704,7 @@ class TheDisplay:
 			# First, we create the thread to manage the main input loop for the
 			# human user's TUI (text user interface).
 			
-		tuiInputThread = TUI_Input_Thread(target=display.main)
+		tuiInputThread = TUI_Input_Thread(target=display._main)
 		display._tuiInputThread = tuiInputThread	# Remember it.
 		
 			#-------------------------------------------------------------------
