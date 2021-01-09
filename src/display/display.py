@@ -144,11 +144,17 @@ from infrastructure.decorators	import	singleton	# Class decorator.  Used by TheD
 			#| Logging-related stuff.
 			#|vvvvvvvvvvvvvvvvvvvvvvvv
 
-from infrastructure.logmaster import sysName, getComponentLogger # Used below.
+from infrastructure.logmaster import (
+		sysName,			# Used for forming _sw_component.
+		ThreadActor,		# BlinkTimer inherits from this.
+		getComponentLogger 	# Used just below.
+	)
 global _package, _logger
 _package = path.basename(path.dirname(__file__))	# Our package name.
 _logger = getComponentLogger(_package)  # Create/access the package logger.
 
+global _sw_component	# Full name of this software component.
+_sw_component = sysName + '.' + _package
 
 			#|------------------------------------------------------------------
 			#| Import sibling modules we need from within the display package.
@@ -280,7 +286,7 @@ class BlinkTimer: 		pass
 
 class BlinkTimer(ThreadActor):
 	
-	defaultRole = 'BlinkTmr'
+	defaultRole = 'BlinkTimr'
 	defaultComponent = _sw_component
 	
 	def __init__(newBlinkTimer:BlinkTimer, display:TheDisplay):
@@ -289,8 +295,9 @@ class BlinkTimer(ThreadActor):
 	
 		timer = newBlinkTimer
 		timer._display = display
-		timer._defaultTarget = timer._main
 		timer._exitRequested = False
+
+		timer.defaultTarget = timer._main
 		super(BlinkTimer, timer).__init__(daemon=True)	# ThreadActor initialization.
 			# The daemon=True tells Python not to let this thread keep the process alive.
 	
@@ -307,6 +314,8 @@ class BlinkTimer(ThreadActor):
 
 		while not timer._exitRequested:
 
+			#_logger.debug("blinkTimer._main(): Starting a blink cycle.")
+
 			# The full blink cycle is 1 second.  Blink on, wait half abs
 			# second, blink off, wait half a second.
 		
@@ -319,14 +328,14 @@ class BlinkTimer(ThreadActor):
 		timer = thisBlinkTimer
 		display = timer.display
 		driver = display.driver
-		driver(display.setBlinkOn)
+		driver(display.setBlinkOn, desc="Blink cursor on")
 			# Wait for return so we don't get ahead of driver
 		
-	def blinkOff(thisBlinkTimer:BlinkTimer)
+	def blinkOff(thisBlinkTimer:BlinkTimer):
 		timer = thisBlinkTimer
 		display = timer.display
 		driver = display.driver
-		driver(display.setBlinkOff)
+		driver(display.setBlinkOff, desc="Blink cursor off")
 			# Wait for return so we don't get ahead of driver
 
 
@@ -1310,6 +1319,12 @@ class TheDisplay:
 			
 		init_color_pairs()		# Configure color map (from colors module).
 		
+			#|-------------------------------------------------------------------
+			#| Cursor setup. By default, we turn the system cursor off so we can
+			#| control cursor display in a customized way.
+		curs_set(0)		# 0=invisible, 1=normal, 2=very visible
+		#screen.leaveok(True)	# Minimize cursor movement (do we need this?)
+
 			#|------------------------------------------------------------------
 			#| This effectively first measures the size of the display, & then 
 			#| automatically paints its entire contents, for the first time.
@@ -1320,6 +1335,7 @@ class TheDisplay:
 			#| This starts the blinker thread going in the background, which 
 			#| makes the cursor blink.
 		
+		_logger.debug("display._init(): Starting blink timer thread.")
 		display._blinker.start()	# Starts blinker thread running in background.
 		
 	#__/ End sensitive private instance method theDisplay._init().
@@ -1682,46 +1698,37 @@ class TheDisplay:
 		display = theDisplay
 		screen = display.screen
 		
-		(sy, sx) = getsyx()					# Get cursor screen coordinates.
-		cursdata = screen.inch(sy, sx)		# Fetch data from screen at cursor loc.
-		attrs = cursdata >> 8				# Get just the attrs part.
-		attrs = attrs | A_BLINK				# Make sure A_BLINK (bright background) attribute is on.
-		screen.chgat(1, attrs)				# Change attributes of 1 character at that loc.
-		
+		#(sy, sx) = getsyx()					# Get cursor screen coordinates.
+		#_logger.debug(f"Blink ON at ({sy},{sx})")
+
+		attrs = style_to_attr(BRIGHT_CURSOR)
+		screen.chgat(1, attrs)
+
+		#cursdata = screen.inch(sy, sx)		# Fetch data from screen at cursor loc.
+		#attrs = cursdata >> 8				# Get just the attrs part.
+		#attrs = attrs | A_BLINK				# Make sure A_BLINK (bright background) attribute is on.
+		#screen.chgat(1, attrs)				# Change attributes of 1 character at that loc.
+		#screen.refresh()					# Refresh screen to push change.
+		#curs_set(2)
+
+
 	def setBlinkOff(theDisplay:TheDisplay):
 
 		display = theDisplay
 		screen = display.screen
 		
-		(sy, sx) = getsyx()					# Get cursor screen coordinates.
-		cursdata = screen.inch(sy, sx)		# Fetch data from screen at cursor loc.
-		attrs = cursdata >> 8				# Get just the attrs part.
-		attrs = attrs & ~A_BLINK			# Make sure A_BLINK (bright background) attribute is off.
-		screen.chgat(1, attrs)				# Change attributes of 1 character at that loc.
-		
+		#(sy, sx) = getsyx()					# Get cursor screen coordinates.
+		#_logger.debug(f"Blink OFF at ({sy},{sx})")
 
-	#|==========================================================================
-	#|	Code scraps.										[class code section]
-	#|
-	#|		To be deleted.
-	#|
-	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-	
+		attrs = style_to_attr(DIM_CURSOR)
+		screen.chgat(1, attrs)
 
-	# def _has_buffered_keys(theDisplay):
-
-		# if not hasattr(display, '_bufferedKeys'):
-			# return False
-
-		# keybuf = display._bufferedKeys
-
-		# if keybuf is None:
-			# return False
-
-		# if keybuf == "":
-			# return False
-
-		# return True
+		#cursdata = screen.inch(sy, sx)		# Fetch data from screen at cursor loc.
+		#attrs = cursdata >> 8				# Get just the attrs part.
+		#attrs = attrs & ~A_BLINK			# Make sure A_BLINK (bright background) attribute is off.
+		#screen.chgat(1, attrs)				# Change attributes of 1 character at that loc.
+		#screen.refresh()					# Refresh screen to push change.
+		#curs_set(1)
 
 
 #__/ End singleton class TheDisplay.
