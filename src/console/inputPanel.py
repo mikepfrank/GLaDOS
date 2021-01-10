@@ -116,6 +116,9 @@ class PromptTimer(ThreadActor):
 		timer.panel.updatePrompt()	# Let the main Panel class do the work.
 		
 
+def isword(ch:int):
+	return isalpha(ch)
+
 class InputPanel(Panel):
 
 	"""Panel for prompting for and accepting input from the operator."""
@@ -516,25 +519,60 @@ class InputPanel(Panel):
 
 
 	def keyHome(thisInputPanel:InputPanel):
+	
 		"""This method handles the 'Home' key, and also ^A = go to start of line.
 			It moves the cursor to the leftmost editable column in the current row."""
 		
 		panel = thisInputPanel
+		
 		pos = panel.pos					# Get current cursor position in content text.
 		(cy, cx) = panel.pos2yx[pos]
 		cx = 0							# Try setting x coordinate to 0.
 		panel.setYxPos(cy, cx)			# Move cursor to there.
-		
+	
 	
 	def keyLeft(thisInputPanel:InputPanel):
+	
 		"""This method handles the left arrow key, and also ^B = go back one character.
 			It moves the cursor to one position earlier in the text."""
-		pass
+		
+		panel = thisInputPanel
+		
+		txpos = panel.txpos
+		if txpos > 0:
+			txpos = txpos - 1
+			
+		panel.setTxPos(txpos)
+	
+	
+	def atWordStart(thisInputPanel:InputPanel):
+	
+		panel = thisInputPanel
+		
+		txpos = panel.txpos
+		text = panel.text
+		
+		if txpos == 0:
+			return True
+			
+		prevCh = ord(text[txpos - 1])
+		thisCh = ord(text[txpos])
+		
+		if not isword(prevCh) and isword(thisCh):
+			return True
+	
 	
 	def keyLeftWord(thisInputPanel:InputPanel):
+	
 		"""This method handles control-left arrow, and also Alt-B = go back one word.
 			It moves the cursor to the start of the previous word."""
-		pass
+		
+		panel = thisInputPanel
+		
+		panel.keyLeft()
+		while not panel.atWordStart():
+			panel.keyLeft()					# Could do this more efficiently.
+	
 	
 	def keyDelete(thisInputPanel:InputPanel):
 		"""This method handles the 'Delete' key, and also ^D = delete character under cursor.
