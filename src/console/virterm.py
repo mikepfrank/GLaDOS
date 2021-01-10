@@ -44,7 +44,7 @@ class _TS_Counter:
 	"""Thread-safe counter class. Can be accessed concurrently
 		from multiple threads."""
 	
-	RLock lock		# Re-entrant lock for thread safety.
+	lock = RLock()		# Re-entrant lock for thread safety.
 	_count = 0
 	
 	@classmethod
@@ -353,7 +353,7 @@ class LineBuffer:
 			linebuf.setLines(newLines)
 
 				# Raises the "we have data" flag (if not already raised).
-			linebuf.hasData.raise()
+			linebuf.hasData.rise()
 
 	def popFirstLine(thisLineBuffer:LineBuffer):
 
@@ -433,7 +433,7 @@ class VirTerm:	# Virtual-terminal class.
 		return thisVirTerm._outVstrm
 
 	@property
-	def err(thisVirTerm:VirTerm)
+	def err(thisVirTerm:VirTerm):
 		return thisVirTerm._errVstrm
 	
 	def grab_stdout(thisVirTerm, tee:bool=True):
