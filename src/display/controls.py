@@ -153,43 +153,44 @@ _nonprint_7bit_glyphs = {	# Returns pair of (render style, printable 7-bit chara
 	  #CdPt:	(RNDSTYL, GLPH),
 	  #-----	---------------
 # NOTE: The first nine are control characters, which are rendered black-on-red.
-		0:		(CONTROL, '_'),		# Null character.
-		1:		(CONTROL, ':'),		# Start of heading.
-		2:		(CONTROL, '['),		# Start of text.
-		3:		(CONTROL, ']'),		# End of text.
-		4:		(CONTROL, '.'),		# End of transmission.
-		5:		(CONTROL, '?'),		# Enquiry.
-		6:		(CONTROL, 'Y'),		# Acknowledgement.
-		7:		(CONTROL, '*'),		# Bell.
-		8:		(CONTROL, '<'),		# Backspace.
+		NUL:	(CONTROL, '_'),		# 0 = ^@ = Null character.
+		SOH:	(CONTROL, ':'),		# 1 = ^A = Start of heading.
+		STX:	(CONTROL, '['),		# 2 = ^B = Start of text.
+		ETX:	(CONTROL, ']'),		# 3 = ^C = End of text.
+		EOT:	(CONTROL, '.'),		# 4 = ^D = End of transmission.
+		ENQ:	(CONTROL, '?'),		# 5 = ^E = Enquiry.
+		ACK:	(CONTROL, 'Y'),		# 6 = ^F = Acknowledgement.
+		BEL:	(CONTROL, '*'),		# 7 = ^G = Bell.
+		BS:		(CONTROL, '<'),		# 8 = ^H = Backspace.
 # Note the next few are whitespace characters (rendered gray-on-black).
-		9:		(WHITESP, '>'),		# Horizontal tab.
-		10:		(WHITESP, '/'),		# Line feed.
-		11: 	(WHITESP, 'v'),		# Vertical tab.
-		12:		(WHITESP, 'V'),		# Form feed.
-		13:		(WHITESP, '<'),		# Carriage return.
+		HT:		(WHITESP, '>'),		# 9 = ^I = Horizontal tab.
+		LF:		(WHITESP, '/'),		# 10 = ^J = Line feed.
+		VT: 	(WHITESP, 'v'),		# 11 = ^K = Vertical tab.
+		FF:		(WHITESP, 'V'),		# 12 = ^L = Form feed.
+		CR:		(WHITESP, '<'),		# 13 = ^M = Carriage return.
 # Now we go back to the rest of the non-whitespace control characters.
-		14:		(CONTROL, '('),		# Shift-out.
-		15:		(CONTROL, ')'),		# Shift-in.
-		16:		(CONTROL, '/'),		# Data-link escape.
-		17:		(CONTROL, 'o'),		# Device control 1.
-		18:		(CONTROL, '@'),		# Device control 2.
-		19:		(CONTROL, '='),		# Device control 3.
-		20:		(CONTROL, '-'),		# Device control 4.
-		21:		(CONTROL, 'N'), 	# Negative acknowledgement.
-		22:		(CONTROL, '~'),		# Synchronous idle.
-		23:		(CONTROL, ';'),		# Emd transmission block.
-		24: 	(CONTROL, 'X'), 	# Cancel.
-		25:		(CONTROL, '|'), 	# End of medium.
-		26:		(CONTROL, '$'),		# Substitute.
-		27: 	(CONTROL, '^'),		# Escape.
-		28:		(CONTROL, 'F'),		# File separator.
-		29: 	(CONTROL, 'G'),		# Group separator.
-		30: 	(CONTROL, '&'),		# Record separator.
-		31: 	(CONTROL, ','), 	# Unit separator.
+		SO:		(CONTROL, '('),		# 14 = ^N = Shift-out.
+		SI:		(CONTROL, ')'),		# 15 = ^O = Shift-in.
+		DLE:	(CONTROL, '/'),		# 16 = ^P = Data-link escape.
+		DC1:	(CONTROL, 'o'),		# 17 = ^Q = Device control 1.
+		DC2:	(CONTROL, '@'),		# 18 = ^R = Device control 2.
+		DC3:	(CONTROL, '='),		# 19 = ^S = Device control 3.
+		DC4:	(CONTROL, '-'),		# 20 = ^T = Device control 4.
+		NAK:	(CONTROL, 'N'), 	# 21 = ^U = Negative acknowledgement.
+		SYN:	(CONTROL, '~'),		# 22 = ^V = Synchronous idle.
+		ETB:	(CONTROL, ';'),		# 23 = ^W = Emd transmission block.
+		CAN: 	(CONTROL, 'X'), 	# 24 = ^X = Cancel.
+		EM:		(CONTROL, '|'), 	# 25 = ^Y = End of medium.
+		SUB:	(CONTROL, '$'),		# 26 = ^Z = Substitute.
+		ESC: 	(CONTROL, '^'),		# 27 = ^[ = Escape.
+		FS:		(CONTROL, 'F'),		# 28 = ^\ = File separator.
+		GS: 	(CONTROL, 'G'),		# 29 = ^] = Group separator.
+		RS: 	(CONTROL, '&'),		# 30 = ^^ = Record separator.
+		US: 	(CONTROL, ','), 	# 31 = ^_ = Unit separator.
 # These last couple are outside the range 0-31 of the normal control characters.
-		32: 	(WHITESP, '_'),		# Space.
-		127:	(CONTROL, '#'), 	# Rubout/delete.
+		SP: 	(WHITESP, '_'),		# 32 = Space.
+		DEL:	(CONTROL, '#'), 	# 127 = Rubout/delete.
+
 	}
 
 
@@ -205,44 +206,45 @@ _nonprint_8bit_glyphs = {	# Returns pair of (render style, printable character)
 	  #CdPt:	(RNDSTYL, GLPH),
 	  #-----	---------------
 # NOTE: The first nine are control characters, which are rendered black-on-red.
-		0:		(CONTROL, '_'),		# Null character.
-		1:		(CONTROL, '$'),		# Start of heading.
-		2:		(CONTROL, '«'),		# Start of text.
-		3:		(CONTROL, '»'),		# End of text.
-		4:		(CONTROL, '.'),		# End of transmission.
-		5:		(CONTROL, '?'),		# Enquiry.
-		6:		(CONTROL, '!'),		# Acknowledgement.
-		7:		(CONTROL, '¢'),		# Bell.
-		8:		(CONTROL, '<'),		# Backspace.
+		NUL:	(CONTROL, '_'),		# 0 = ^@ = Null character.
+		SOH:	(CONTROL, '$'),		# 1 = ^A = Start of heading.
+		STX:	(CONTROL, '«'),		# 2 = ^B = Start of text.
+		ETX:	(CONTROL, '»'),		# 3 = ^C = End of text.
+		EOT:	(CONTROL, '.'),		# 4 = ^D = End of transmission.
+		ENQ:	(CONTROL, '?'),		# 5 = ^E = Enquiry.
+		ACK:	(CONTROL, '!'),		# 6 = ^F = Acknowledgement.
+		BEL:	(CONTROL, '¢'),		# 7 = ^G = Bell.
+		BS:		(CONTROL, '<'),		# 8 = ^H = Backspace.
 # Note the next few are whitespace characters (rendered gray-on-black).
-		9:		(WHITESP, '>'),		# Horizontal tab.
-		10:		(WHITESP, '/'),		# Line feed.
-		11: 	(WHITESP, 'v'),		# Vertical tab.
-		12:		(WHITESP, '§'),		# Form feed.
-		13:		(WHITESP, '®'),		# Carriage return.
+		HT:		(WHITESP, '>'),		# 9 = ^I = Horizontal tab.
+		LF:		(WHITESP, '/'),		# 10 = ^J = Line feed.
+		VT: 	(WHITESP, 'v'),		# 11 = ^K = Vertical tab.
+		FF:		(WHITESP, '§'),		# 12 = ^L = Form feed.
+		CR:		(WHITESP, '®'),		# 13 = ^M = Carriage return.
 # Now we go back to the rest of the non-whitespace control characters.
-		14:		(CONTROL, '('),		# Shift-out.
-		15:		(CONTROL, ')'),		# Shift-in.
-		16:		(CONTROL, '±'),		# Data-link escape.
-		17:		(CONTROL, '°'),		# Device control 1.
-		18:		(CONTROL, '©'),		# Device control 2.
-		19:		(CONTROL, '='),		# Device control 3.
-		20:		(CONTROL, '-'),		# Device control 4.
-		21:		(CONTROL, '¬'), 	# Negative acknowledgement.
-		22:		(CONTROL, '~'),		# Synchronous idle.
-		23:		(CONTROL, ';'),		# Emd transmission block.
-		24: 	(CONTROL, '×'), 	# Cancel.
-		25:		(CONTROL, '|'), 	# End of medium.
-		26:		(CONTROL, '¿'),		# Substitute.
-		27: 	(CONTROL, '^'),		# Escape.
-		28:		(CONTROL, '¦'),		# File separator.
-		29: 	(CONTROL, '÷'),		# Group separator.
-		30: 	(CONTROL, '¶'),		# Record separator.
-		31: 	(CONTROL, '·'), 	# Unit separator.
+		SO:		(CONTROL, '('),		# 14 = ^N = Shift-out.
+		SI:		(CONTROL, ')'),		# 15 = ^O = Shift-in.
+		DLE:	(CONTROL, '±'),		# 16 = ^P = Data-link escape.
+		DC1:	(CONTROL, '°'),		# 17 = ^Q = Device control 1.
+		DC2:	(CONTROL, '©'),		# 18 = ^R = Device control 2.
+		DC3:	(CONTROL, '='),		# 19 = ^S = Device control 3.
+		DC4:	(CONTROL, '-'),		# 20 = ^T = Device control 4.
+		NAK:	(CONTROL, '¬'), 	# 21 = ^U = Negative acknowledgement.
+		SYN:	(CONTROL, '~'),		# 22 = ^V = Synchronous idle.
+		ETB:	(CONTROL, ';'),		# 23 = ^W = Emd transmission block.
+		CAN: 	(CONTROL, '×'), 	# 24 = ^X = Cancel.
+		EM:		(CONTROL, '|'), 	# 25 = ^Y = End of medium.
+		SUB:	(CONTROL, '¿'),		# 26 = ^Z = Substitute.
+		ESC: 	(CONTROL, '^'),		# 27 = ^[ = Escape.
+		FS:		(CONTROL, '¦'),		# 28 = ^\ = File separator.
+		GS: 	(CONTROL, '÷'),		# 29 = ^] = Group separator.
+		RS: 	(CONTROL, '¶'),		# 30 = ^^ = Record separator.
+		US: 	(CONTROL, '·'), 	# 31 = ^_ = Unit separator.
 # These last couple are outside the range 0-31 of the normal control characters.
-		32: 	(WHITESP, '_'),		# Space. (Gray on black.)
-		127:	(CONTROL, '#'), 	# Rubout/delete. (Black on red.)
-}
+		SP: 	(WHITESP, '·'),		# Space. (Gray on black.) (Was '_'.)
+		DEL:	(CONTROL, '#'), 	# Rubout/delete. (Black on red.)
+
+	}
 
 # (For terminals with full Unicode capability, we could choose from an even
 # broader range of glyphs, but we haven't bothered with that here yet.)
