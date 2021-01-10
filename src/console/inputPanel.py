@@ -27,8 +27,11 @@ from	display.keys	import (
 		#-------------------------------
 		# Special keys used for editing.
 
+			# Maybe some keywords will generate this one natively.
+		KEY_BACKSPACE,
+
 			# These ones are also normal ASCII A0 controls (& ASCII RUBOUT/DEL).
-		KEY_BACKSPACE, KEY_TAB, KEY_LINEFEED, KEY_FORMFEED, KEY_RETURN, KEY_ESCAPE, KEY_DELETE,
+		KEY_BSP, KEY_TAB, KEY_LINEFEED, KEY_FORMFEED, KEY_RETURN, KEY_ESCAPE, KEY_DELETE,
 		
 			# These ones are found on the little keypad for special controls.
 		KEY_HOME, KEY_BEG, KEY_END, KEY_DC, KEY_IC,	# KEY_DC = Del, KEY_IC = Ins.
@@ -397,7 +400,7 @@ class InputPanel(Panel):
 		elif keycode == alt(ord('f')) or keycode == KEY_CTRL_RIGHT:
 			panel.keyRightWord()
 			
-		elif keycode == KEY_BACKSPACE:	# ^H also maps to this.
+		elif keycode == KEY_BSP or keycode == KEY_BACKSPACE:	# ^H also maps to this.
 			panel.keyBackspace()
 			
 		elif keycode == KEY_RETURN or keycode == KEY_ENTER:		# ^J (KEY_LINEFEED) also maps to KEY_ENTER.
@@ -542,8 +545,7 @@ class InputPanel(Panel):
 		txpos = panel.txpos
 		if txpos > 0:
 			txpos = txpos - 1
-			
-		panel.setTxPos(txpos)
+			panel.setTxPos(txpos)
 	
 	
 	def atWordStart(thisInputPanel:InputPanel):
@@ -647,19 +649,55 @@ class InputPanel(Panel):
 
 	
 	def keyRight(thisInputPanel:InputPanel):
+
 		"""This method handles the right arrow key, and also ^F = go forward one character.
 			It moves the cursor to one position later in the text."""
-		pass
+
+		panel = thisInputPanel
+		text = panel.text
+		tlen = len(text)
+
+		txpos = panel.txpos
+		if txpos < tlen - 1:	# tlen - 1 is final ETX.
+
+			txpos = txpos + 1
+			
+			panel.setTxPos(txpos)
+
 
 	def keyRightWord(thisInputPanel:InputPanel):
+
 		"""This method handles control-right arrow, and also Alt-F = go forward one word.
 			It moves the cursor to the start of the next word."""
-		pass
+
+		panel = thisInputPanel
+		
+		panel.keyRight()
+		while not panel.atWordStart() and panel.txpos < len(panel.text) - 1:
+			panel.keyRight()
+
 	
 	def keyBackspace(thisInputPanel:InputPanel):
+
 		"""This method handles the Backspace key, and also ^H = BS.
 			It deletes the character to the left of the cursor."""
-		pass
+
+		panel = thisInputPanel
+		txpos  = panel.txpos
+
+		if txpos > 0:
+			text = panel.text
+
+			# Delete character to the left.
+			text = text[:txpos-1] + text[txpos:]
+
+			# Move cursor position left.
+			txpos = txpos - 1
+			panel.setTxPos(txpos)
+
+			# Update the text.
+			panel.setText(text)
+
 	
 	def keyEnter(thisInputPanel:InputPanel):
 		"""This method handles the Return (^M) and Enter keys, and also ^J = LF.
