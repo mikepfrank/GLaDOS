@@ -619,7 +619,8 @@ class InputPanel(Panel):
 				txpos = panel.txpos
 				text = panel.text
 				thisCh = ord(text[txpos])
-				
+
+		# From start of word, delete until we run out of word/string.
 		txpos = panel.txpos
 		text = panel.text
 		thisCh = ord(text[panel.txpos])
@@ -629,11 +630,21 @@ class InputPanel(Panel):
 			thisCh = ord(text[txpos])
 			
 
-	
 	def keyEnd(thisInputPanel:InputPanel):
+		
 		"""This method handles the 'End' key, and also ^E = go to end of line.
 			It moves the cursor to the rightmost editable column in the current row."""
-		pass
+		
+		panel = thisInputPanel
+		win = panel.win
+		(height, width) = win.getmaxyx()
+
+		pos = panel.pos					# Get current cursor position in content text.
+		(cy, cx) = panel.pos2yx[pos]
+		cx = width - 2					# Try setting x coordinate to rightmost non-pad column.
+		panel.setYxPos(cy, cx)			# Move cursor to there.
+			# This should automatically limit us to existing text.
+
 	
 	def keyRight(thisInputPanel:InputPanel):
 		"""This method handles the right arrow key, and also ^F = go forward one character.
