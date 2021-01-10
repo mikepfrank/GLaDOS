@@ -77,6 +77,8 @@ from	events.event 	import (
 		
 	)
 
+TERMINATOR = chr(EOT)	# This is a control-C or End-of-Text character.
+
 class PromptTimer: pass
 class InputPanel: pass
 
@@ -145,7 +147,7 @@ class InputPanel(Panel):
 		panel._operatorEntity = operator
 		
 			# Create and store the draft text input event.
-		opTextEvent = TextEvent(chr(EOT), author=operator, defaultFormat=FullEventFormat)
+		opTextEvent = TextEvent(TERMINATOR, author=operator, defaultFormat=FullEventFormat)
 			# Note the text of the event is just a single End-Of-Text (^C) character initially.
 			# It will expand as the operator types text in the box.
 		panel._opTextEvent = opTextEvent	# Operator's text event.
@@ -509,6 +511,19 @@ class InputPanel(Panel):
 
 		panel	= thisInputPanel
 		txpos	= panel.txpos
+
+		panel.insertAfter(char)
+
+		# This increments the text position.
+		panel.setTxPos(txpos + 1)
+
+
+	def insertAfter(thisInputPanel:InputPanel, char):
+
+		"""Inserts a given character after the current cursor position."""
+
+		panel	= thisInputPanel
+		txpos	= panel.txpos
 		text	= panel.text
 
 		# This inserts the character at the text position.
@@ -516,9 +531,6 @@ class InputPanel(Panel):
 		
 		# Update the panel's text (this also updates the display).
 		panel.setText(text)
-
-		# This increments the text position.
-		panel.setTxPos(txpos + 1)
 
 
 	def insertKey(thisInputPanel:InputPanel, event:KeyEvent):
@@ -755,24 +767,53 @@ class InputPanel(Panel):
 
 	
 	def keyDown(thisInputPanel:InputPanel):
+
 		"""This method handles the down arrow key, and also ^N = go to next line.
 			It moves the cursor down one line to an editable character."""
-		pass
+
+		panel = thisInputPanel
+		win = panel.win
+		(height, width) = win.getmaxyx()
+		
+		pos = panel.pos					# Get current cursor position in content text.
+		(cy, cx) = panel.pos2yx[pos]
+		if cy < height - 1:
+			cy = cy + 1						# Try increasing y coordinate by 1.
+			panel.setYxPos(cy, cx)			# Move cursor to there.
+
 	
 	def keyInsertLine(thisInputPanel:InputPanel):
+
 		"""This method handles the Ins key, and also ^O = insert line at cursor.
 			It inserts a newline character at the current cursor position."""
-		pass
+
+		thisInputPanel.insertAfter('\n')
+
 	
 	def keyUp(thisInputPanel:InputPanel):
+
 		"""This method handles the Up arrow key, and also ^P = go to previous line.
 			It moves the cursor up one line to an editable character."""
-		pass
+
+		panel = thisInputPanel
+		
+		pos = panel.pos					# Get current cursor position in content text.
+		(cy, cx) = panel.pos2yx[pos]
+		if cy > 0:
+			cy = cy - 1						# Try increasing y coordinate by 1.
+			panel.setYxPos(cy, cx)			# Move cursor to there.
+
 	
 	def keyClear(thisInputPanel:InputPanel):
+
 		"""This method handles the Clear key, and also ^U = undo all typing.
 			It clears all the text that has been typed."""
-		pass
+
+		panel = thisInputPanel
+
+		panel.setTxPos(0)
+		panel.setText(TERMINATOR)
+
 
 #__/ End class InputPanel.
 
