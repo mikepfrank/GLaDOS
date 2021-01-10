@@ -1716,7 +1716,7 @@ class TheDisplay:
 
 
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	def renderText(theDisplay:TheDisplay, text:str="", win=None):
+	def renderText(theDisplay:TheDisplay, text:str="", win=None, hang:int=0):
 		"""display.renderText()				  [sensitive public instance method]
 		
 				This method renders the given text to the given curses
@@ -1743,6 +1743,8 @@ class TheDisplay:
 		
 		if win is None:
 			win = screen
+
+		hangPad = ' '*hang	# Left pad string to use for hanging indent.
 
 		yx2pos = dict()		# Map from (y,x) pairs to positions in string.
 		pos2yx = dict()		# Map from positions in string to (y,x) pairs.
@@ -1785,7 +1787,7 @@ class TheDisplay:
 					win.addstr('\\', attr)	
 						# Note this is actually a single blackslash character.
 						
-					win.addstr('\n')
+					win.addstr('\n' + hangPad)
 						# And this actually goes to the next line.
 
 			#__/ End if possible automatic line-wrap.
@@ -1822,7 +1824,8 @@ class TheDisplay:
 			
 			if ch == TAB:	# Move forward to next tab stop, if needed.
 			
-				tabsize = get_tabsize()		# Get current tab size.
+				tabsize = 8
+				#tabsize = get_tabsize()		# Get current tab size.
 				
 					# Get current cursor position within window.
 				(cy, cx) = win.getyx()
@@ -1851,17 +1854,23 @@ class TheDisplay:
 			elif ch == LF:	# Line feed: Suppress if we just output CR; otherwise just do a newline.
 			
 				if not lastCharWasCR:
-					win.addstr('\n')	# Output newline.
+					win.addstr('\n' + hangPad)	# Output newline.
 			
 			elif ch == CR:	# Carriage return:  Output newline, and remember last char was CR.
-				win.addstr('\n')		# Output newline.
+
+				win.addstr('\n' + hangPad)		# Output newline.
 					# Now remember we already did this, in case next character is NL.
 				lastCharWasCR = True	
 				
 			elif ch == FF:	# Newline, centered page separator, newline.
+
 				win.addstr('\n')
-				display.drawCenter("* * *", win=win)
-				win.addstr('\n')
+				(ht, wd) = win.getmaxyx()
+				pageSep = "* * *"
+				nSpaces = int(((wd - 1)-len(pageSep))/2)
+				spaces = ' '*nSpaces
+				win.addstr(spaces + pageSep + '\n' + hangPad)
+
 			
 			#__/ End if/elif for handling whitespace characters.
 			
