@@ -129,8 +129,9 @@ class InputPanel(Panel):
 
 	"""Panel for prompting for and accepting input from the operator."""
 
+	_DEFAULT_HANGING = 4	# Default hanging indent. (Is 8 better?)
 	
-	def __init__(newInputPanel:InputPanel):
+	def __init__(newInputPanel:InputPanel, hanging:int=None):
 			
 		_logger.debug("inputPanel.__init__(): Initializing input panel.")
 
@@ -142,6 +143,12 @@ class InputPanel(Panel):
 			# By default, the input panel appears at the bottom of the right column.
 			# A default height of 4 for this panel is fine.  It can grow if needed.
 		
+			# Configure the hanging indent spacing.
+		if hanging is None:
+			hanging = panel._DEFAULT_HANGING
+
+		panel._hanging = hanging
+
 			# Create and store the operator entity.
 		operator = Operator_Entity()
 		panel._operatorEntity = operator
@@ -315,7 +322,7 @@ class InputPanel(Panel):
 		displayText = textEvent.display()	# Uses event's default format.
 		
 			# Sweet; now have the display render it in the window.
-		(yx2pos, pos2yx) = display.renderText(displayText, win=win)
+		(yx2pos, pos2yx) = display.renderText(displayText, win=win, hang=panel._hanging)
 			# Note this method does special stuff with various control
 			# and whitespace characters. The return values map screen
 			# locations to positions in the string.
@@ -553,7 +560,7 @@ class InputPanel(Panel):
 		
 		pos = panel.pos					# Get current cursor position in content text.
 		(cy, cx) = panel.pos2yx[pos]
-		cx = 0							# Try setting x coordinate to 0.
+		cx = panel._hanging				# Try setting x coordinate to 0.
 		panel.setYxPos(cy, cx)			# Move cursor to there.
 	
 	
