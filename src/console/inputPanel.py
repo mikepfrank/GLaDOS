@@ -169,6 +169,12 @@ class InputPanel(Panel):
 		panel = thisInputPanel
 		return panel._txpos
 
+	@property
+	def pos(thisInputPanel:InputPanel):
+		panel = thisInputPanel
+		txpos = panel.txpos
+		pos = txpos + panel.promptLen()
+		return pos
 
 	def grabCursor(thisInputPanel:InputPanel):
 
@@ -179,11 +185,8 @@ class InputPanel(Panel):
 			# Convert text position to a position in the window contents.
 		pos = txpos + panel.promptLen()
 
-		# Now convert the position back to cursor coordinates,
-		# and move the cursor there.
-		(cy, cx) = panel.pos2yx[pos]
-		win.move(cy, cx)
-		win.cursyncup()
+			# Set the cursor position based on that.
+		panel.setPos(pos)
 		
 
 	def setTxPos(thisInputPanel:InputPanel, txpos:int):
@@ -192,6 +195,20 @@ class InputPanel(Panel):
 
 		panel.grabCursor()	# Make sure cursor is at txpos.
 
+
+	def setPos(thisInputPanel:InputPanel, pos:int):
+
+		"""Sets the cursor position based on the given position
+			within the window content string."""
+
+			# Remember the new position (relative to start of text).
+		panel._txpos = pos - panel.promptLen()
+	
+			# Now convert the position back to cursor coordinates, and move the cursor there.
+		(cy, cx) = panel.pos2yx[pos]
+		win.move(cy, cx)
+		win.cursyncup()
+		
 
 	def updatePrompt(thisInputPanel:InputPanel):
 		
@@ -403,6 +420,7 @@ class InputPanel(Panel):
 	#__/ End instance method panel.handle().
 
 	def _adjustPos(thisInputPanel:InputPanel):
+		
 		"""This method adjusts the cursor position as needed to make
 			sure it's in a valid location."""
 
@@ -435,11 +453,9 @@ class InputPanel(Panel):
 		promptLen = panel.promptLen()
 		if pos < promptLen:
 			pos = promptLen
-			
-			# Now convert the position back to cursor coordinates, and move the cursor there.
-		(cy, cx) = panel.pos2yx[pos]
-		win.move(cy, cx)
-		win.cursyncup()
+
+			# Now set the cursor position based on that.
+		panel.setPos(pos)
  
 	def cursorPos(thisInputPanel:InputPanel):
 		
@@ -456,13 +472,30 @@ class InputPanel(Panel):
 		
 		return pos
 
+
+	def setYxPos(thisInputPanel:InputPanel, cursY:int, cursX:int):
+		"""Sets the (y,x) cursor coordinates as given, with any
+			adjustments needed."""
+		
+		panel		= thisInputPanel
+		win			= panel.win
+		
+			# First, just move the cursor to the requested coordinates.
+		win.move(cursY, cursX)
+		
+			# Next, adjust the cursor position as needed to make sure 
+			# we're actually sitting on an editable character.
+		pane._adjustPos()
+		
+
 	def insertKey(thisInputPanel:InputPanel, event:KeyEvent):
 		
 		"""Inserts the given keypress at the current cursor position."""
 		
 		panel	= thisInputPanel
-		pos		= panel.cursorPos()			# Get (valid) current position in text.
-		txpos	= pos - panel.promptLen()	# Adjust for length of prompt.
+		txpos	= panel.txpos
+		#pos		= panel.cursorPos()			# Get (valid) current position in text.
+		#txpos	= pos - panel.promptLen()	# Adjust for length of prompt.
 		text	= panel.text
 		keycode = event.keycode				# Numeric keycode for current key.
 		char	= chr(keycode)				# Convert code to a character.
@@ -480,7 +513,13 @@ class InputPanel(Panel):
 	def keyHome(thisInputPanel:InputPanel):
 		"""This method handles the 'Home' key, and also ^A = go to start of line.
 			It moves the cursor to the leftmost editable column in the current row."""
-		pass
+		
+		panel = thisInputPanel
+		pos = panel.pos					# Get current cursor position in content text.
+		(cy, cx) = panel.pos2yx(pos)
+		cx = 0							# Try setting x coordinate to 0.
+		panel.setYxPos(cy, cx)			# Move cursor to there.
+		
 	
 	def keyLeft(thisInputPanel:InputPanel):
 		"""This method handles the left arrow key, and also ^B = go back one character.
