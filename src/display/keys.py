@@ -175,9 +175,9 @@ from infrastructure.decorators	import	singleton	# Class decorator.  Used by TheD
 	#|----------------------------------------------------------------------------
 	#| Key code synonyms for existing control code points that we don't repurpose.
 	
-KEY_BSP			= BS	# ^H = Back space.
+KEY_DELBACK		= BS	# ^H = Back space.
 KEY_TAB			= HT	# ^I = Horizontal tab.
-KEY_LINEFEED	= LF	# ^J = Line feed.			NOTE: This is also KEY_ENTER
+KEY_LINEFEED	= LF	# ^J = Line feed.			
 KEY_FORMFEED	= FF	# ^L = Form feed.
 KEY_RETURN		= CR	# ^M = Carriage return.
 KEY_ESCAPE		= ESC	# ^[ (27) = Escape
@@ -332,9 +332,10 @@ _name_codes = {
 		'^D':			KEY_DC,			# Delete character under cursor.
 		'^E':			KEY_END,		# Go to end of line.
 		'^F':			KEY_RIGHT,		# Go forward to the right.
-		'^H':			KEY_BSP,		# Delete character backwards.
-		'^J':			KEY_ENTER,		# Insert new line before cursor.
+		'^H':			KEY_DELBACK,	# Delete character backwards.
+		'^J':			KEY_LINEFEED,	# Insert new line before cursor.
 		'^K':			KEY_EOL,		# Clear to end of line.
+		'^M':			KEY_RETURN,		# Carriage return (never seen).
 		'^N':			KEY_DOWN,		# Go down to next line.
 		'^O':			KEY_IL,			# Insert new line at cursor.
 		'^P':			KEY_UP,			# Go up to previous line.

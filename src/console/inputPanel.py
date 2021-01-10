@@ -31,7 +31,7 @@ from	display.keys	import (
 		KEY_BACKSPACE,
 
 			# These ones are also normal ASCII A0 controls (& ASCII RUBOUT/DEL).
-		KEY_BSP, KEY_TAB, KEY_LINEFEED, KEY_FORMFEED, KEY_RETURN, KEY_ESCAPE, KEY_DELETE,
+		KEY_DELBACK, KEY_TAB, KEY_LINEFEED, KEY_FORMFEED, KEY_RETURN, KEY_ESCAPE, KEY_DELETE,
 		
 			# These ones are found on the little keypad for special controls.
 		KEY_HOME, KEY_BEG, KEY_END, KEY_DC, KEY_IC,	# KEY_DC = Del, KEY_IC = Ins.
@@ -400,10 +400,13 @@ class InputPanel(Panel):
 		elif keycode == alt(ord('f')) or keycode == KEY_CTRL_RIGHT:
 			panel.keyRightWord()
 			
-		elif keycode == KEY_BSP or keycode == KEY_BACKSPACE:	# ^H also maps to this.
+		elif keycode == KEY_DELBACK or keycode == KEY_BACKSPACE:	# ^H also maps to KEY_DELBACK.
 			panel.keyBackspace()
 			
-		elif keycode == KEY_RETURN or keycode == KEY_ENTER:		# ^J (KEY_LINEFEED) also maps to KEY_ENTER.
+		elif keycode == KEY_LINEFEED:	# ^J also maps to this.
+			panel.keyLineFeed()
+
+		elif keycode == KEY_ENTER:		# We'll use this to generate an ASCII CR (^M) character.
 			panel.keyEnter()
 			
 		elif keycode == KEY_EOL:			# ^K also maps to this.
@@ -500,18 +503,14 @@ class InputPanel(Panel):
 		panel._adjustPos()
 		
 
-	def insertKey(thisInputPanel:InputPanel, event:KeyEvent):
-		
-		"""Inserts the given keypress at the current cursor position."""
-		
+	def insertChar(thisInputPanel:InputPanel, char):
+
+		"""Inserts a given character at the current cursor position."""
+
 		panel	= thisInputPanel
 		txpos	= panel.txpos
-		#pos		= panel.cursorPos()			# Get (valid) current position in text.
-		#txpos	= pos - panel.promptLen()	# Adjust for length of prompt.
 		text	= panel.text
-		keycode = event.keycode				# Numeric keycode for current key.
-		char	= chr(keycode)				# Convert code to a character.
-		
+
 		# This inserts the character at the text position.
 		text = text[:txpos] + char + text[txpos:]
 		
@@ -520,6 +519,17 @@ class InputPanel(Panel):
 
 		# This increments the text position.
 		panel.setTxPos(txpos + 1)
+
+
+	def insertKey(thisInputPanel:InputPanel, event:KeyEvent):
+		
+		"""Inserts the given keypress at the current cursor position."""
+		
+		panel	= thisInputPanel
+		keycode = event.keycode				# Numeric keycode for current key.
+		char	= chr(keycode)				# Convert numeric code to a character.
+		
+		panel.insertChar(char)
 
 
 	def keyHome(thisInputPanel:InputPanel):
@@ -699,15 +709,50 @@ class InputPanel(Panel):
 			panel.setText(text)
 
 	
+	def keyLineFeed(thisInputPanel:InputPanel):
+
+		"""This method handles the Return key and also ^J = LF.
+			It inserts a newline (LF) before the cursor (moving the cursor)."""
+
+		thisInputPanel.insertChar('\n')
+		
+	
 	def keyEnter(thisInputPanel:InputPanel):
-		"""This method handles the Return (^M) and Enter keys, and also ^J = LF.
-			It inserts a newline (LF) before the cursor."""
-		pass
+
+		"""This method handles the keypad Enter key.
+			It inserts a carriage return (CR) before the cursor (moving the cursor)."""
+
+		thisInputPanel.insertChar('\r')
+		
 	
 	def keyKillToEOL(thisInputPanel:InputPanel):
+
 		"""This method handles the EOL key, and also ^K = Kill to End of Line.
-			It deletes the remainder of the current line of text, from the cursor to EOL (LF)."""
-		pass
+			It deletes the remainder of the current line of text, from the cursor to EOL (CR or LF)."""
+
+		panel = thisInputPanel
+		txpos = panel.txpos
+		text = panel.text
+		
+		# If the position is on a line break (CR, LF, or CRLF), delete the line break.
+		if text[txpos] == '\r':
+			panel.keyDelete()
+			if panel.text[txpos] == '\n':
+				panel.keyDelete()
+		elif text[txpos] == '\n':
+			panel.keyDelete()
+		else:
+
+			whereTo = len(text)-1
+			for i in range(txpos+1, len(text)-2):
+				if text[i] == '\r' or text[i] == '\n':
+					whereTo = i
+					break
+
+			text = text[:txpos] + text[whereTo:]
+
+			panel.setText(text)
+
 	
 	def keyDown(thisInputPanel:InputPanel):
 		"""This method handles the down arrow key, and also ^N = go to next line.
