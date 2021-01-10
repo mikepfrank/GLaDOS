@@ -111,6 +111,8 @@ class FullEventFormat(PromptedEventFormat):
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
+class TextEvent: pass
+
 class TextEvent:
 	
 	"""Class for objects that track the date, time, and creator of a 
@@ -152,10 +154,12 @@ class TextEvent:
 	
 		return format.display(inst)
 
-	def promptLen(thisEvent:Event, format:TextEventFormat=None):
+	def promptLen(thisEvent:TextEvent, format:TextEventFormat=None):
 		"""Returns the length of the prompt portion of the event."""
 
+		event = thisEvent
+
 		if format is None:
-			format = inst.defaultFormat
+			format = event.defaultFormat
 	
-		return format.promptLen(inst)
+		return format.promptLen(event)

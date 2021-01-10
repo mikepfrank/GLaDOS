@@ -1224,7 +1224,7 @@ class Worker(ThreadActor):
 
 		if inst == current_thread():						# We are giving this task to ourselves!
 			if not front:									# If this task is supposed to go at the back of our queue,
-				catchup()									# go ahead and do all the tasks that are ahead of it.
+				inst.catchup()									# go ahead and do all the tasks that are ahead of it.
 			return task()									# Now do the task itself, and return its result.
 
 			# OK, that optimization wasn't possible, so we have to go ahead and put the
@@ -1510,7 +1510,7 @@ class Worker(ThreadActor):
 	def catchup(self):
 		try:
 			while True:						# Indefinitely,
-				work_cycle(block=False)		# do a work cycle, but throw an Empty exception if there's no work left to do.
+				self.work_cycle(block=False)		# do a work cycle, but throw an Empty exception if there's no work left to do.
 		except Empty as e:		# Work queue empty?
 			return				# Return to caller.
 		

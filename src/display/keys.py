@@ -131,7 +131,9 @@ _encoding = getpreferredencoding()
 from curses import (
 		keyname,
 		ERR, KEY_HOME, KEY_END, KEY_RESIZE,
-		KEY_F1, KEY_F2, KEY_F3, KEY_F4, 
+		KEY_F1, KEY_F2, KEY_F3, KEY_F4,
+		KEY_BEG, KEY_LEFT, KEY_DC, KEY_END, KEY_RIGHT, KEY_BACKSPACE,
+		KEY_ENTER, KEY_EOL, KEY_DOWN, KEY_IC, KEY_IL, KEY_UP, KEY_CLEAR,
 		KEY_MAX
 	)
 
@@ -140,7 +142,7 @@ from curses.ascii import (
 			# The following are both control character code points, and valid key codes.
 			
 		HT, TAB,		# Horizontal tab character.
-		CR, LF,			# Carriage return and line feed.
+		CR, LF,	FF,		# Carriage return, line feed and form feed.
 		BS, DEL, 		# Backspace and delete.
 		ESC,			# Escape character; used in KeyBuffer.
 		

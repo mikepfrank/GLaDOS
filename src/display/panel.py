@@ -86,6 +86,7 @@ LOWER_RIGHT = PanelPlacement.LOWER_RIGHT
 FILL_RIGHT = PanelPlacement.FILL_RIGHT
 FILL_LEFT = PanelPlacement.FILL_LEFT	
 
+class Panel: pass
 class PanelClient: pass
 
 class Panel:
