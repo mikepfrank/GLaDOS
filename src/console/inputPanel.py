@@ -4,8 +4,9 @@ from time		import	sleep		# Causes thread to give up control for a period.  Used 
 from os 		import 	path
 
 from curses.ascii import (
-		EOT,	# Code point for End-of-Transmission (^C).
-		alt,	# Returns the meta (8th bit set) version of a key code.
+		EOT,		# Code point for End-of-Transmission (^C).
+		isalpha,	# Returns True for alphabetic character codes.
+		alt,		# Returns the meta (8th bit set) version of a key code.
 	)
 
 from infrastructure.logmaster import (
@@ -577,7 +578,22 @@ class InputPanel(Panel):
 	def keyDelete(thisInputPanel:InputPanel):
 		"""This method handles the 'Delete' key, and also ^D = delete character under cursor.
 			It deletes the character under the cursor."""
-		pass
+
+		panel = thisInputPanel
+		
+		txpos = panel.txpos
+		text = panel.text
+
+		txlen = len(text)
+
+		if txpos >= txlen - 1:	# If = then sitting on ETX. Should never be >.
+			return
+
+			# Actually delete the character.
+		text = text[:txpos] + text[txpos + 1:]
+	
+		panel.setText(text)
+
 	
 	def keyDeleteWord(thisInputPanel:InputPanel):
 		"""This method handles control-delete (maybe), and also Alt-D = delete word.
