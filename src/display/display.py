@@ -1640,8 +1640,9 @@ class TheDisplay:
 			# Default the window to the top-level screen if not given.
 		if win is None:
 			win = screen
-
-		(width, height) = win.getmaxyx()
+			(height, width) = display.get_size()
+		else:
+			(height, width) = win.getmaxyx()
 
 			# If the row is not specified, use current cursor row.
 		if row is None:
@@ -1655,6 +1656,8 @@ class TheDisplay:
 			# Calculate starting position for text.
 		startPos = int((width - len(text))/2)
 		
+		_logger.debug(f"display.drawCenter(): width={width}, startPos={startPos}")
+
 			# Calculate display attributes.
 		attr = extraAttr	# Start with the extra-attrs, if any.
 		if style is not None:

@@ -107,7 +107,7 @@
 	#|		29	x1D	GS	^]		÷	G	Group separator. (G is for "group.")
 	#|		30	x1E	RS	^^		¶	&	Record separator. (And, here's another record!  Or, 'P' looks like an end-paragraph marker.)
 	#|		31	x1F	US	^_		·	,	Unit separator. (In CSV, separates fields of a database row.)
-	#|		32	x20	SP	^`		_	_	Space. (Whitespace; render as gray on black.)
+	#|		32	x20	SP	^`		·	_	Space. (Whitespace; render as gray on black.)
 	#|	   127	x7F	DEL	^?		#	#	Delete. (Looks like RUBOUT hash.)
 	#|
 	#|	For character codes from 128-255, we render them as above (but in a 
@@ -133,7 +133,8 @@ from os 		import 	path
 
 from infrastructure.logmaster import (
 		sysName,			# Used just below.
-		getComponentLogger 	# Used just below.
+		getComponentLogger,	# Used just below.
+		set_alt_stdout,		# used in consoleClient.start().
 	)
 
 global _component, _logger	# Software component name, logger for component.
@@ -217,14 +218,19 @@ class FieldPanel(Panel):
 	pass
 
 
+class ConsoleClient: pass
+
 class ConsoleClient(PanelClient):
 
 	"""The console display client controls the display 
 		when the system console is active."""
 
-	def __init__(newClient, title:str="GLaDOS System Console"):
+	def __init__(newConsoleClient:ConsoleClient,
+				 virterm:VirTerm, title:str="GLaDOS System Console"):
 	
-		client = newClient
+		client = newConsoleClient
+
+		client._virterm = virterm
 		
 			# First, do general initialization for panel clients.
 		super(ConsoleClient, client).__init__(title)
@@ -235,7 +241,7 @@ class ConsoleClient(PanelClient):
 
 		client._logPanel	= logPanel 			= LogPanel()
 		client._inputPanel	= inputPanel 		= InputPanel()
-		#client._diagPanel	= diagnosticPanel	= DiagnosticPanel()
+		client._consPanel	= consolePanel		= ConsolePanel(virterm)
 		#client._rFieldPanel	= rightFieldPanel 	= FieldPanel(column='right')
 		#client._lFieldPanel = leftFieldPanel	= FieldPanel(column='left')
 		
@@ -251,15 +257,30 @@ class ConsoleClient(PanelClient):
 		#client.addPanel(leftFieldPanel)	# This fills the rest of the left-hand column.
 		
 
-	def start(thisClient, waitForExit:bool=True):
+	def start(thisConsoleClient:ConsoleClient, waitForExit:bool=True):
 		# NOTE: Here we override the default value of waitForExit 
 		# while we're debugging basic console capabilities.
 		# We can remove this override once that's done.
 		
 		_logger.debug("console.start(): Starting the console client...")
 
-		client = thisClient
+		client = thisConsoleClient
 		
+		# THIS IS VERY IMPORTANT. The superclass .start() method 
+		# will start the curses display.  Before we do this, we
+		# have to tell our virtual terminal to release control of
+		# stdout, so that curses can use it to write directly to 
+		# the screen.  At the same time, we have to tell the logging
+		# facility to start using the virterm's virtual out stream
+		# instead of normal stdout for normal-level messages, so
+		# that those messages will appear in the console panel.
+
+		virterm = client._virterm
+		virterm.release_stdout()	# Release control of stdout.
+		set_alt_stdout(virterm.out)
+			# This tells the logging module to use virterm.out
+			# in place of stdout.
+
 		# IS THERE ANYTHING WE NEED TO DO HERE TO PREP FOR STARTUP?
 		
 			# Note: We do this last, because it will never return if

@@ -40,6 +40,7 @@ from 	threading 					import RLock
 from 	infrastructure.timestamp 	import CoarseTimeStamp
 
 class _TS_Counter:
+
 	"""Thread-safe counter class. Can be accessed concurrently
 		from multiple threads."""
 	
@@ -55,10 +56,14 @@ class _TS_Counter:
 			thisClass._count = curCount + 1		# Increments counter for next guy.
 			return curCount						# Return orig. counter value.
 	
+class BufItem: pass
+
 class BufItem:
+
 	"""An item of buffered raw data to include in a stream buffer.
 		Items are timestamped (with about +/- ~10 ms precision) and 
 		assigned unique sequence numbers in the order of creation."""
+
 	def __init__(newBufItem, data:str=None):
 			# Get the next sequence number. Thread-safe.
 		newBufItem._seqno = _TS_Counter.getSeqNo()	
@@ -69,7 +74,26 @@ class BufItem:
 			# Also make a note of its size.
 		newBufItem._size = len(data)
 
+	@property
+	def seqno(thisBufItem:BufItem):
+		return thisBufItem._seqno
+
+	@property
+	def timestamp(thisBufItem:BufItem):
+		return thisBufItem._timestamp
+	
+	@property
+	def data(thisBufItem:BufItem):
+		return thisBufItem._data
+
+	@property
+	def size(thisBufItem:BufItem):
+		return thisBufItem._size
+
+class StreamBuf: pass
+
 class StreamBuf:
+
 	"""This class implements a simple buffer for output streams, with
 		timestamping of buffered data, and mirroring of output.  The
 		timestamping is useful to allowed the buffered data to be 
@@ -120,6 +144,7 @@ class StreamBuf:
 		for handler in thisStreamBuf._handlers:
 			handler(dataItem)
 
+
 class VirOut:	# Virtual output-stream class.
 
 	# Note this class does double duty; instances of it can be used to handle
@@ -147,6 +172,7 @@ class VirOut:	# Virtual output-stream class.
 	def flush(newVirOut):
 		pass
 
+
 def _preserve_orig_stdio():
 		# Before we actually reassign stdout/stderr streams to print to our
         # virterm, we first make sure we have a record of our original
@@ -161,17 +187,254 @@ def _preserve_orig_stdio():
     if sys.__stdin__  == None:
         sys.__stdin__  = sys.stdin
 
+
 def streamHandler(stream:File):
-	"""Given a (duck-typed) File object, returns an item handler method that writes to that file."""
+	"""Given a (duck-typed) File object, returns an item handler
+		method that just writes the item data to that file."""
 	return lambda item: stream.write(item._data)
+
+
+class Line: pass
+
+class Line:
+	
+	"""An object of this class represents a single line within a
+		LineBuffer."""
+
+	def __init__(newLine:Line, text:str, seqno:int, isErr:bool):
+		line = newLine
+		line._text = text
+		line._seqno = seqno
+		line._isErr = isErr
+
+	@property
+	def text(thisLine:Line):
+		return thisLine._text
+
+	@property
+	def setText(thisLine:Line, text:str):
+		thisLine._text = text
+
+	@property
+	def seqno(thisLine:Line):
+		return thisLine._seqno
+
+	@property
+	def isErr(thisLine:Line):
+		return thisLine._isErr
+
+class LineBuffer: pass
+
+class LineBuffer:
+
+	"""This class implements a sorted buffer for lines of text, in sequence
+		order, with each line marked as to whether it is from a normal
+		stream or an error stream.  It is used by VirTerm for assembling
+		the interleaved, line-based combination of the virtual input and
+		output streams.  It is thread-safe, so that we can add and remove
+		lines from it safely from within multiple threads."""
+
+	def __init__(newLineBuffer:LineBuffer):
+
+		linebuf = newLineBuffer
+		linebuf._lock = RLock()
+
+		with linebuf.lock:
+			linebuf._lines = []
+			linebuf._outLine = None		# Non-error line being assembled.
+			linebuf._errLine = None		# Error line being assembled.
+			linebuf._hasData = Flag()	# This flag is raised when buffer has data.
+
+	@property
+	def hasData(thisLineBuffer:Linebuffer):
+		return thisLineBuffer._hasData
+
+	def addOut(thisLineBuffer:LineBuffer, outItem:BufItem):
+
+		"""Adds a new output data item into the line buffer."""
+		
+		linebuf = thisLineBuffer
+
+		seqno = outItem.seqno
+		tstamp = outItem.timestamp
+		data = outItem.data
+		size = outItem.size
+
+		# See if we've started assembling an output line; if not, do so.
+		outLine = linebuf._outLine
+		if outLine is None:
+			linebuf._outLine = outLine = Line("", seqno, isErr=False)
+
+		# Does the new data contain a newline? If so, then we can now
+		# finish assembling an output line and adding it to the buffer.
+		# If not, then the new data just gets appended to data present.
+
+		nlpos = data.find('\n')
+
+		if nlpos == -1:
+			outLine.setText(outLine.text + data)	# Append new data.
+
+		else:
+			restLine = data[:nlpos+1]
+			outLine.setText(outLine.text + restLine)
+			linebuf.addLine(outLine)
+
+			linebuf._outLine = Line(data[nlpos+1:], seqno, isErr=False)
+
+
+	def addErr(thisLineBuffer:LineBuffer, errItem:BufItem):
+
+		"""Adds a new error data item into the line buffer."""
+		
+		linebuf = thisLineBuffer
+
+		seqno = errItem.seqno
+		tstamp = errItem.timestamp
+		data = errItem.data
+		size = errItem.size
+
+		# See if we've started assembling an output line; if not, do so.
+		errLine = linebuf._errLine
+		if errLine is None:
+			linebuf._errLine = errLine = Line("", seqno, isErr=True)
+
+		# Does the new data contain a newline? If so, then we can now
+		# finish assembling an output line and adding it to the buffer.
+		# If not, then the new data just gets appended to data present.
+
+		nlpos = data.find('\n')
+
+		if nlpos == -1:
+			errLine.setText(errLine.text + data)	# Append new data.
+
+		else:
+			restLine = data[:nlpos+1]
+			errLine.setText(errLine.text + restLine)
+			linebuf.addLine(errLine)
+
+			linebuf._errLine = Line(data[nlpos+1:], seqno, isErr=True)
+
+
+	@property
+	def lock(thisLineBuffer:LineBuffer):
+		return thisLineBuffer._lock
+
+	@property
+	def lines(thisLineBuffer:LineBuffer):
+		return thisLineBuffer._lines
+
+	@property
+	def nLines(thisLineBuffer:LineBuffer):
+		return len(thisLineBuffer.lines)
+
+	@property
+	def setLines(thisLineBuffer:LineBuffer, newLines):
+		thisLineBuffer._lines = newLines
+
+	def addLine(thisLineBuffer:LineBuffer, newLine:Line):
+
+		"""Inserts the given line into the line buffer, maintaining
+			sequence number order."""
+
+		with linebuf.lock:
+
+			linebuf = thisLineBuffer
+			lines = linebuf.lines
+			seqno = newLine.seqno
+
+			pos = len(linebuf)
+			for i in range(0, len(lines)):
+				if seqno < lines[i].seqno:
+					pos = i
+					break
+
+			newLines = lines[:pos] + newLine + lines[pos:]
+		
+			linebuf.setLines(newLines)
+
+				# Raises the "we have data" flag (if not already raised).
+			linebuf.hasData.raise()
+
+	def popFirstLine(thisLineBuffer:LineBuffer):
+
+		"""Removes and returns the first line from the line buffer,
+			or returns None if the line buffer is currently empty."""
+
+		linebuf = thisLineBuffer
+
+		with linebuf.lock:
+			
+			if linebuf.nLines == 0:
+				return None
+		
+			lines = linebuf.lines
+
+			firstLine = lines[0]
+			restLines = lines[1:]
+
+			linebuf.setLines(restLines)
+
+			# Lower our 'we have data' flag if we were just emptied out.
+			if linebuf.nLines == 0:
+				linebuf.hasData.lower()
+
+			return firstLine
+	
+
+class VirTerm: pass
 
 class VirTerm:	# Virtual-terminal class.
 
 	# Note: Still need to implement methods for line-based interleaving of streams.
 
-	def __init__(newVirTerm):
-		newVirTerm._outVstrm = VirOut()
-		newVirTerm._errVstrm = VirOut(isErr = True)
+	def __init__(newVirTerm:VirTerm):
+
+		virterm = newVirTerm
+		
+		virterm._outVstrm = vout = VirOut()
+		virterm._errVstrm = verr = VirOut(isErr = True)
+		virterm._lineBuffer = LineBuffer()
+
+		vout.addHandler(virterm.outHandler)
+		verr.addHandler(virterm.errHandler)
+
+	def popFirstLine(newVirTerm:VirTerm):
+		virterm = thisVirTerm
+		linebuf = virterm._lineBuffer
+
+		return linebuf.popFirstLine()
+
+	@property
+	def hasData(thisVirTerm:VirTerm):
+		return thisVirTerm._lineBuffer.hasData
+
+	def outHandler(thisVirTerm:VirTerm, outBufItem:BufItem):
+		"""This is a handler method that we install in our output
+			virtual stream to process normal output data items.
+			It adds the item to our line buffer."""
+
+		virterm = thisVirTerm
+		linebuf = virterm._lineBuffer
+
+		linebuf.addOut(outBufItem)
+
+	def errHandler(thisVirTerm:VirTerm, errBufItem:BufItem):
+		"""This is a handler method that we install in our output
+			virtual stream to process error output data items.
+			It adds the item to our line buffer."""
+
+		virterm = thisVirTerm
+		linebuf = virterm._lineBuffer
+
+		linebuf.addErr(errBufItem)
+
+	@property
+	def out(thisVirTerm:VirTerm):
+		return thisVirTerm._outVstrm
+
+	@property
+	def err(thisVirTerm:VirTerm)
+		return thisVirTerm._errVstrm
 	
 	def grab_stdout(thisVirTerm, tee:bool=True):
 		"""Redirects stdout to this virtual terminal."""

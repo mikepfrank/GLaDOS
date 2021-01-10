@@ -88,7 +88,21 @@ RAW_DEBUG = False	# Change this to True as needed during initial development.
 
 global CONS_DEBUG, LOG_DEBUG	# These control debug-level output to console & log file.
 CONS_DEBUG = False	# Tell logmaster: Don't diplay debug-level output on console.
-LOG_DEBUG = False	# Tell logmaster: Don't save debug-level output to log file.
+LOG_DEBUG = True	# Tell logmaster: DO save debug-level output to log file.
+
+# Before doing anything else, we start a virtual terminal and have it grab
+# control of the stdout/stderr output streams, so that any early output 
+# that is generated will be remembered for display within the paneled
+# console environment after that is started up.
+
+from console.virterm import VirTerm
+global _virTerm
+_virTerm = VirTerm()
+_virTerm.grab_stdio()	# Grabs stdout/stderr streams (redirecting them here).
+
+if RAW_DEBUG:
+	print("Virtual terminal grabbed stdout/stderr output streams.")
+
 
 		#|----------------------------------------------------------------------
 		#| Here we do a little bit more preliminary work, prior to starting the 
@@ -391,7 +405,8 @@ def _main():
 		#| It also provides for human input (for commands, talking to the AI, etc.)
 	
 	_logger.info("glados-server.py:_main(): Creating console client...")
-	console = ConsoleClient()	# Initializes the system console client functionality.
+	console = ConsoleClient(_virterm)
+		# Initializes the system console client functionality.
 
 	_logger.info("glados-server.py:_main(): Starting console client...")
 	console.start()

@@ -348,6 +348,13 @@
 global _RAW_DEBUG
 _RAW_DEBUG = False
 
+global _alt_stdout
+_alt_stdout = None
+
+def set_alt_stdout(alt_stdout):
+	global _alt_stdout
+	_alt_stdout = alt_stdout
+
         #-----------------------------------------------------------------------
         #
         #  Some previously-completed coding tasks:
@@ -476,6 +483,7 @@ __all__ = [
     'byname', 'getLogger', 'getComponentLogger',
     'testLogging', 'updateStderr',
     'setThreadRole', 'setComponent',
+	'set_alt_stdout'
 ]
 
 
@@ -2461,7 +2469,10 @@ class NormalLogger(logging.Logger):
            then passing it on to the logging system for processing at
            the new NORMAL logging level."""
         
-        print(message)              # Print the message to stdout.
+		if _alt_stdout is None:
+			print(message)              # Print the message to stdout.
+		else:
+			print(message, file=_alt_stdout)
         
         if inst.isEnabledFor(NORMAL):
             if caller==None:                                
