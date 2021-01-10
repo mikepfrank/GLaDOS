@@ -597,8 +597,38 @@ class InputPanel(Panel):
 	
 	def keyDeleteWord(thisInputPanel:InputPanel):
 		"""This method handles control-delete (maybe), and also Alt-D = delete word.
-			It deletes the word under the cursor."""
-		pass
+			It deletes the word under (or after) the cursor."""
+		
+		panel = thisInputPanel
+
+		txpos  = panel.txpos
+		text   = panel.text
+		thisCh = ord(text[txpos])
+
+		if isword(thisCh):	# Are we in a word?
+
+			# Make sure we're at the start of this word.
+			if not panel.atWordStart():
+				panel.keyLeftWord()		
+
+		else:	# We're not in a word.
+
+			# Delete characters until we are, or we run out of string.
+			while not isword(thisCh) and txpos < len(panel.text) - 1:
+				panel.keyDelete()
+				txpos = panel.txpos
+				text = panel.text
+				thisCh = ord(text[txpos])
+				
+		txpos = panel.txpos
+		text = panel.text
+		thisCh = ord(text[panel.txpos])
+		while isword(thisCh) and txpos < len(text) - 1:
+			panel.keyDelete()
+			text = panel.text
+			thisCh = ord(text[txpos])
+			
+
 	
 	def keyEnd(thisInputPanel:InputPanel):
 		"""This method handles the 'End' key, and also ^E = go to end of line.
