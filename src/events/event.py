@@ -50,8 +50,12 @@ class PlainEventFormat(TextEventFormat):
 	"""A plain event format that only shows the raw text of the event, nothing else."""
 
 	@classmethod
-	def display(thisClass,event):
+	def display(thisClass, event):
 		return event.text
+
+	@classmethod
+	def promptLen(thisClass, event):
+		return 0
 
 class PromptedEventFormat(TextEventFormat):		# Abstract class for event formats that begin with a prompt-like structure
 
@@ -80,7 +84,11 @@ class PromptedEventFormat(TextEventFormat):		# Abstract class for event formats 
 
 	@classmethod
 	def display(thisClass, event):
-		return thisClass.prompt(event) + event.text;
+		return thisClass.prompt(event) + event.text
+	
+	@classmethod
+	def promptLen(thisClass, event):
+		return len(thisClass.prompt(event))
 
 class BriefEventFormat(PromptedEventFormat):
 
@@ -143,3 +151,11 @@ class TextEvent:
 			format = inst.defaultFormat
 	
 		return format.display(inst)
+
+	def promptLen(thisEvent:Event, format:TextEventFormat=None):
+		"""Returns the length of the prompt portion of the event."""
+
+		if format is None:
+			format = inst.defaultFormat
+	
+		return format.promptLen(inst)

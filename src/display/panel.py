@@ -67,6 +67,8 @@ from .colors import (
 		style_to_attr,		# Needed to use render styles.
 	)
 
+from .keys import KeyEvent
+
 from .client import (
 		DisplayClient,		# We extend this to form panelclient.
 	)
@@ -450,6 +452,14 @@ class Panel:
 		
 	#__/ End method panel.launch().
 
+	def grabFocus(thisPanel:Panel):
+		"""Tells the panel to grab the keyboard focus."""
+		
+		panel	= thisPanel
+		client	= panel.client
+		
+		client.setFocusPanel(panel)
+
 #__/ End class Panel.
 
 
@@ -477,6 +487,26 @@ class PanelClient(DisplayClient):
 			# Initialize the layout constraints.
 		client._resetLayout()
 
+			# Initialize the input focus panel.
+		client._focusPanel = None
+
+	def setFocusPanel(thisPanelClient:PanelClient, panel:Panel=None):
+		"""This method sets which panel has the keyboard focus."""
+
+		client	= thisPanelClient
+		display	= client.display
+		driver	= display.driver
+		
+		client._focusPanel = panel
+		if panel is not None:
+			if client.dispRunning:	# If the display is running,
+				win = panel.win
+				driver(win.cursyncup)		# Put the visible cursor in the selected panel.
+					# Run in foreground to ensure new setting is visible before we go on.
+
+	@property
+	def focusPanel(thisPanelClient:PanelClient):
+		return thisPanelClient._focusPanel
 
 	def _resetLayout(thisPanelClient):
 
@@ -630,6 +660,23 @@ class PanelClient(DisplayClient):
 				# Now tell the client to inform the display that the screen needs
 				# repainting.
 			#client.requestRepaint()
+
+	def handle_event(thisPanelClient:PanelClient, keyEvent:KeyEvent):
+	
+		"""This standard DisplayClient method is called by the display
+			mainloop (in the display driver thread) to request the client
+			to handle a keypress."""
+
+		client = thisPanelClient
+		
+		# First call the superclass method in DisplayClient.
+		super(PanelClient, client).handle_event(keyEvent)
+			# So far this doesn't do much. This is optional.
+			
+		# If a panel has the focus, dispatch the keypress to it.
+		focusPanel = client.focusPanel
+		if focusPanel is not None:
+			focusPanel.handle(keyEvent)
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #|						END OF FILE:	display/panel.py

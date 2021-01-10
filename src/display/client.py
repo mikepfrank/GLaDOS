@@ -87,6 +87,8 @@ global _sw_component
 _sw_component = sysName + '.' + _component
 
 
+from .keys import KeyEvent
+
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	display.DisplayClient					   [public extensible class]
 		#|
@@ -420,7 +422,7 @@ class DisplayClient:
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 			
-	def handle_event(thisClient, keyevent):
+	def handle_event(thisClient, keyevent:KeyEvent):
 	
 		"""Subclasses should override this method with their own event handler."""
 

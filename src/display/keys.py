@@ -136,7 +136,16 @@ from curses import (
 	)
 
 from curses.ascii import (
-		ESC,			# Keycode & code point for Escape character; used in KeyBuffer.
+			
+			# The following are both control character code points, and valid key codes.
+			
+		HT, TAB,		# Horizontal tab character.
+		CR, LF,			# Carriage return and line feed.
+		BS, DEL, 		# Backspace and delete.
+		ESC,			# Escape character; used in KeyBuffer.
+		
+			# Other names.
+		
 		controlnames, 	# Array: Names of characters 0-33, used in _ctlname().
 		iscntrl, 		# Function: Is this code a 7-bit ASCII control? Used in KeyEvent.
 		isdigit,		# Function: Is this code a digit 0-9?  Used in kb._get_bracket_escape().
@@ -160,6 +169,17 @@ from infrastructure.decorators	import	singleton	# Class decorator.  Used by TheD
 		#|	New key codes.  Note this extends the standard list of key codes
 		#|	that ships with curses.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	#|----------------------------------------------------------------------------
+	#| Key code synonyms for existing control code points that we don't repurpose.
+	
+KEY_BACKSPACE	= BS	# ^H = Back space.
+KEY_TAB			= HT	# ^I = Horizontal tab.
+KEY_LINEFEED	= LF	# ^J = Line feed.			NOTE: This is also KEY_ENTER
+KEY_FORMFEED	= FF	# ^L = Form feed.
+KEY_RETURN		= CR	# ^M = Carriage return.
+KEY_ESCAPE		= ESC	# ^[ (27) = Escape
+KEY_DELETE		= DEL	# ^? (127) = Delete
 
 	#--------------
 	# Key pad keys.
@@ -255,16 +275,19 @@ _esc_map = {	# Map from escape sequences to key names.
 _name_codes = {
 
 			# Home and end keys.
+			
 		'Home':			KEY_HOME,
 		'End':			KEY_END,
 
 			# True function keys 1-4.
+			
 		'F1':			KEY_F1,
 		'F2':			KEY_F2,
 		'F3':			KEY_F3,
 		'F4':			KEY_F4,
 
 			# Numeric keypad keys.
+			
 		'Num_Lock':		KEY_NUM_LOCK,
 		'KP_PLUS':		KEY_PAD_PLUS,
 		'KP_DOT':		KEY_PAD_DOT,
@@ -283,12 +306,14 @@ _name_codes = {
 		'KP_MINUS':		KEY_PAD_MINUS,
 		
 			# Control-arrow keys.
+			
 		'Ctrl-Up':		KEY_CTRL_UP,
 		'Ctrl-Down':	KEY_CTRL_DOWN,
 		'Ctrl-Right':	KEY_CTRL_RIGHT,
 		'Ctrl-Left':	KEY_CTRL_LEFT,
 		
 			# Shifted function keys.
+			
 		'Shift-F3':		KEY_SHIFT_F3,
 		'Shift-F4':		KEY_SHIFT_F4,
 		'Shift-F5':		KEY_SHIFT_F5,
@@ -296,8 +321,22 @@ _name_codes = {
 		'Shift-F7':		KEY_SHIFT_F7,
 		'Shift-F8':		KEY_SHIFT_F8,
 		'Shift-F9':		KEY_SHIFT_F9,
-		'Shift-F10':	KEY_SHIFT_F10
+		'Shift-F10':	KEY_SHIFT_F10,
+
+			# Controls mapped to special keys for editing.
 		
+		'^A':			KEY_BEG,		# Go to beginning of line.
+		'^B':			KEY_LEFT,		# Go back to the left.
+		'^D':			KEY_DC,			# Delete character under cursor.
+		'^E':			KEY_END,		# Go to end of line.
+		'^F':			KEY_RIGHT,		# Go forward to the right.
+		'^H':			KEY_BACKSPACE,	# Delete character backwards.
+		'^J':			KEY_ENTER,		# Insert new line before cursor.
+		'^K':			KEY_EOL,		# Clear to end of line.
+		'^N':			KEY_DOWN,		# Go down to next line.
+		'^O':			KEY_IL,			# Insert new line at cursor.
+		'^P':			KEY_UP,			# Go up to previous line.
+		'^U':			KEY_CLEAR,		# Clear entire input region.
 	}
 
 _code_map = {	# Map from curses' key codes to better key names.

@@ -1726,7 +1726,16 @@ class TheDisplay:
 				window is reached, we display a grayed-out backslash 
 				('\') character at the end of the line, and wrap around 
 				to the next line.  Various whitespace characters are also
-				handled appropriately."""
+				handled appropriately.
+				
+			Return values:
+			~~~~~~~~~~~~~~
+			
+				This method returns a pair (yx2pos, pos2yx) of dictionaries
+				that map between positions in the text and (y,x) positions
+				within the window.  This is to facilitate editing.
+				
+				"""
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		display = theDisplay
@@ -1735,6 +1744,9 @@ class TheDisplay:
 		if win is None:
 			win = screen
 
+		yx2pos = dict()		# Map from (y,x) pairs to positions in string.
+		pos2yx = dict()		# Map from positions in string to (y,x) pairs.
+
 			# Get dimensions of selected window.
 		(height, width) = win.getmaxyx()
 
@@ -1742,16 +1754,18 @@ class TheDisplay:
 			# was a carriage return, because we treat LF after CR as null.
 		lastCharWasCR = False
 		
+		pos = 0		# Position in text.
 		for char in text:
 		
 			ch = ord(char)
 			
-			# Next, if we are already at the right margin, then
-			# before rendering the character, add a grayed-out '\'
-			# character to call attention to the line-wrapping.
-			# Exception: If the character is already a line break
-			# character (CR or LF), then it will take care of 
-			# wrapping itself.
+				#|----------------------------------------------------
+				#| Next, if we are already at the right margin, then,
+				#| before rendering the character, add a grayed-out '\'
+				#| character to call attention to the line-wrapping.
+				#| Exception: If the character is already a line break
+				#| character (CR or LF), then it will take care of 
+				#| wrapping itself.
 			
 			if ch != CR and ch != LF:
 			
@@ -1776,7 +1790,12 @@ class TheDisplay:
 
 			#__/ End if possible automatic line-wrap.
 		
-				# This actually displays the current character.
+				# Update pos <--> xy maps.
+			(cy, cx) = win.getyx()
+			yx2pos[(cy,cx)] = pos
+			pos2yx[pos] = (cy, cx)
+			
+				# This actually displays the current character.			
 			display.renderChar(ch, win=win)
 			
 			#/------------------------------------------------------------------
@@ -1849,6 +1868,12 @@ class TheDisplay:
 			# Remember to reset lastCharWasCR after non-CR characters.
 			if ch != CR:
 				lastCharWasCR = False
+	
+			pos = pos + 1
+	
+		#__/ End for loop over characters in string.
+	
+		return (yx2pos, pos2yx)
 	
 	#__/ End sensitive public instance method display.renderText().
 	
