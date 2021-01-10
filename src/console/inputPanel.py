@@ -4,6 +4,7 @@ from time		import	sleep		# Causes thread to give up control for a period.  Used 
 from os 		import 	path
 
 from curses.ascii import (
+		EOT,	# Code point for End-of-Transmission (^C).
 		alt,	# Returns the meta (8th bit set) version of a key code.
 	)
 
@@ -29,10 +30,11 @@ from	display.keys	import (
 		KEY_BACKSPACE, KEY_TAB, KEY_LINEFEED, KEY_FORMFEED, KEY_RETURN, KEY_ESCAPE, KEY_DELETE,
 		
 			# These ones are found on the little keypad for special controls.
-		KEY_HOME, KEY_END, KEY_DC, KEY_IC,	# KEY_DC = Del, KEY_IC = Ins.
+		KEY_HOME, KEY_BEG, KEY_END, KEY_DC, KEY_IC,	# KEY_DC = Del, KEY_IC = Ins.
 		
 			# Arrow keys.
 		KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT,
+		KEY_CTRL_LEFT, KEY_CTRL_RIGHT,
 		
 			# Numeric keypad keys.
 		KEY_ENTER,	# This is actually the same as KEY_LINEFEED, unfortunately.
@@ -41,6 +43,11 @@ from	display.keys	import (
 			
 		KEY_IL, 	# Insert line.  Keycode synthesized from ^O = open new line at cursor.
 		KEY_EOL,	# Delete to end of line.  Keycode synthesized from ^K = kill to end of line.
+		KEY_CLEAR,	# Clear entire contents of key data.
+
+		# Classes.
+
+		KeyEvent,
 
 	)
 
@@ -136,16 +143,54 @@ class InputPanel(Panel):
 			# It will expand as the operator types text in the box.
 		panel._opTextEvent = opTextEvent	# Operator's text event.
 			
+			# Set the initial cursor position within the input text.
+		panel._txpos = 0
+
 			# Create the prompt timer thread (see above).
 			# Its job will be to update the time displayed in the
 			# operator's input prompt.
 		timerThread = PromptTimer(panel)
 		panel._promptTimer = timerThread
 		
-			# Grab the keyboard focus.
-		panel.grabFocus()
-
 	#__/ End instance initializer method inputPanel.__init__().
+
+	def configWin(thisInputPanel:InputPanel):
+		panel = thisInputPanel
+
+			# Do generic Panel configWin stuff.
+		super(InputPanel, panel).configWin()
+
+			# Make sure leaveok is true so cursor doesn't move too much.
+		win = panel.win
+		win.leaveok(True)
+
+	@property
+	def txpos(thisInputPanel:InputPanel):
+		panel = thisInputPanel
+		return panel._txpos
+
+
+	def grabCursor(thisInputPanel:InputPanel):
+
+		panel 	= thisInputPanel
+		win		= panel.win
+		txpos 	= panel.txpos
+
+			# Convert text position to a position in the window contents.
+		pos = txpos + panel.promptLen()
+
+		# Now convert the position back to cursor coordinates,
+		# and move the cursor there.
+		(cy, cx) = panel.pos2yx[pos]
+		win.move(cy, cx)
+		win.cursyncup()
+		
+
+	def setTxPos(thisInputPanel:InputPanel, txpos:int):
+		panel = thisInputPanel
+		panel._txpos = txpos
+
+		panel.grabCursor()	# Make sure cursor is at txpos.
 
 
 	def updatePrompt(thisInputPanel:InputPanel):
@@ -191,16 +236,27 @@ class InputPanel(Panel):
 		panel 		= thisInputPanel
 		textEvent	= panel.textEvent
 		promptLen	= textEvent.promptLen()
+		return promptLen
 		
 
 	def launch(thisInputPanel:InputPanel):
 	
 		"""This standard Panel method is called automatically by the Panel 
 			to start up any associated threads at the time of first display.  
-			In our case, we use it to start the prompt-update timer."""
+			In our case, we use it to grab the keyboard focus and start the
+			prompt-update timer."""
 		
+		panel = thisInputPanel
+
+			# Grab the keyboard focus.
+		panel.grabFocus()
+
+			# Pull in the cursor's position to where it should be.
+		panel.grabCursor()
+
+			# Start the prompt timer thread.
 		_logger.debug("inputPanel.launch(): Starting the prompt timer thread.")
-		thisInputPanel._promptTimer.start()
+		panel._promptTimer.start()
 		
 	#__/ End instance method inputPanel.launch().
 	
@@ -237,8 +293,9 @@ class InputPanel(Panel):
 		panel._yx2pos = yx2pos
 		panel._pos2yx = pos2yx
 
-		# Sync the cursor position upwards in window hierarchy.
-		win.cursyncup()
+			# Make sure the cursor is positioned where it should
+			# be according to the current text position.
+		panel.grabCursor()
 
 			# Call the original drawContent() method in Panel, which does 
 			# some general bookkeeping work needed for all panels.
@@ -264,7 +321,7 @@ class InputPanel(Panel):
 			facilitates text entry and editing."""
 
 		panel = thisInputPanel
-		event = keyEvent
+		keyevent = keyEvent
 		
 		keycode	= keyevent.keycode
 		keyname	= keyevent.keyname
@@ -301,7 +358,7 @@ class InputPanel(Panel):
 		elif keycode == alt(ord('b')) or keycode == KEY_CTRL_LEFT:
 			panel.keyLeftWord()
 			
-		elif keycode == KEY_DELETE or keycode = KEY_DC:		# ^D also maps to this, also Del.
+		elif keycode == KEY_DELETE or keycode == KEY_DC:		# ^D also maps to this, also Del.
 			panel.keyDelete()
 			
 		elif keycode == alt(ord('d')):	# We would like to accept Ctrl-Del for this also but we don't have a keycode for it yet.
@@ -322,7 +379,7 @@ class InputPanel(Panel):
 		elif keycode == KEY_RETURN or keycode == KEY_ENTER:		# ^J (KEY_LINEFEED) also maps to KEY_ENTER.
 			panel.keyEnter()
 			
-		elif keycode == KEY_EOL			# ^K also maps to this.
+		elif keycode == KEY_EOL:			# ^K also maps to this.
 			panel.keyKillToEOL()
 			
 		elif keycode == KEY_DOWN:		# ^N also maps to this.
@@ -339,7 +396,7 @@ class InputPanel(Panel):
 		
 		# All other keys are just self-inserting by default.
 		else:
-			panel.insertKey(event)
+			panel.insertKey(keyevent)
 		
 		#__/ End if/elif/else block for keycode-based event dispatching.
 		
@@ -383,7 +440,7 @@ class InputPanel(Panel):
 		(cy, cx) = panel.pos2yx[pos]
 		win.move(cy, cx)
 		win.cursyncup()
-
+ 
 	def cursorPos(thisInputPanel:InputPanel):
 		
 		"""Returns the current cursor's position in the text."""
@@ -415,6 +472,10 @@ class InputPanel(Panel):
 		
 		# Update the panel's text (this also updates the display).
 		panel.setText(text)
+
+		# This increments the text position.
+		panel.setTxPos(txpos + 1)
+
 
 	def keyHome(thisInputPanel:InputPanel):
 		"""This method handles the 'Home' key, and also ^A = go to start of line.
