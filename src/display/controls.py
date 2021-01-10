@@ -73,6 +73,12 @@ __all__ = [		# List of all public names exported from this module.
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+from curses import (
+
+		A_UNDERLINE		# Underline attribute, which we support.
+
+	)
+
 from curses.ascii import (
 
 			# ASCII control codes.
@@ -399,6 +405,11 @@ def render_char(win, code, baseAttrs=0):
 		elif style is WHITESP:
 			style = METAWSP
 	
+	# The only base attribute that we support combining with the render style
+	# is the underline style.  Otherwise, just zero it out at this point.
+	if baseAttrs != A_UNDERLINE:
+		baseAttrs = 0
+
 		# Convert the style to a display attribute setting.
 	attr = style_to_attr(style) | baseAttrs
 	

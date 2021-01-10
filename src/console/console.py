@@ -168,18 +168,14 @@ from	display.panel	import (
 		
 	)
 
-from .logPanel 			import (
+from .virterm import VirTerm	# Virtual terminal support.
 
-		LogPanel			# Panel for displaying the system log.
-		
-	)
+from .logPanel import LogPanel			# Panel for displaying the system log.
 
-from .inputPanel   		import (
+from .inputPanel import InputPanel
+	# Panel for prompting for and accepting input from the operator.
 
-		InputPanel			# Panel for prompting for and accepting input from the operator.
-
-	)
-	
+from .consolePanel import ConsolePanel	
 
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#|
@@ -252,7 +248,7 @@ class ConsoleClient(PanelClient):
 		client.addPanel(logPanel)			# Place this first, to occupy bottom of screen.
 		client.addPanel(inputPanel)			# This goes next, at the bottom of the right column.
 			# Note this panel automatically grabs the keyboard focus.
-		#client.addPanel(diagnosticPanel)	# This goes next, just above the input panel.
+		client.addPanel(consolePanel)		# This goes next, just above the input panel.
 		#client.addPanel(rightFieldPanel)	# This fills the rest of the right-hand column.
 		#client.addPanel(leftFieldPanel)	# This fills the rest of the left-hand column.
 		
@@ -283,10 +279,18 @@ class ConsoleClient(PanelClient):
 
 		# IS THERE ANYTHING WE NEED TO DO HERE TO PREP FOR STARTUP?
 		
+		# The following try/except is needed so we can see output
+		# to the virtual terminal in case of exceptions.
+		try:
 			# Note: We do this last, because it will never return if
 			# waitForExit is not False.
-		super(ConsoleClient, client).start(waitForExit=waitForExit)
+			super(ConsoleClient, client).start(waitForExit=waitForExit)
 			# Calls DisplayClient's .start() method.
+
+		finally:
+			set_alt_stdout(None)		# Tell logger to stop using virterm.
+			virterm.release_stderr()	# Release control of stderr.
+			virterm.dump_all()			# Dump everything 
 
 		_logger.debug("console.start(): Returning.")
 	
