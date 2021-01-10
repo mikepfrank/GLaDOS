@@ -245,9 +245,11 @@ class ConsoleClient(PanelClient):
 
 		client.addPanel(logPanel)			# Place this first, to occupy bottom of screen.
 		client.addPanel(inputPanel)			# This goes next, at the bottom of the right column.
+			# Note this panel automatically grabs the keyboard focus.
 		#client.addPanel(diagnosticPanel)	# This goes next, just above the input panel.
 		#client.addPanel(rightFieldPanel)	# This fills the rest of the right-hand column.
 		#client.addPanel(leftFieldPanel)	# This fills the rest of the left-hand column.
+		
 
 	def start(thisClient, waitForExit:bool=True):
 		# NOTE: Here we override the default value of waitForExit 
