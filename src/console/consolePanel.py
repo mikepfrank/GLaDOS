@@ -3,6 +3,7 @@
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+from os import path
 from infrastructure.logmaster import (
 		sysName,			# Used just below.
 		ThreadActor,		# Blink timer thread is subclassed from this.
@@ -18,7 +19,36 @@ _sw_component = sysName + '.' + _component
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-from .virterm import Line
+from 	.virterm 			import (
+
+		Line,				# A line of text output saved in the virtual terminal.
+		VirTerm				# The virtual terminal.
+
+	)
+
+from	display.colors		import (
+
+		DEBUG_STYLE,		# Render style we use for debug-level log messages.
+		INFO_STYLE, 		# Render style we use for input-level log messages.
+		GOOD_STYLE,			# Render style we use for normal-level log messages.
+		WARNING_STYLE,		# Render style we use for warning-level log messages.
+		ERROR_STYLE,		# Render style we use for error-level log messages.
+		CRITICAL_STYLE,		# Render style we use for critical-level (or fatal) log messages.
+		style_to_attr,		# Converts render styles to display attributes.
+	
+	)
+
+from 	display.drawing		import (
+
+		addLineClipped, 	# Adds a line of text to a window, but with right-clipping.
+	)
+
+from	display.panel		import (
+
+		Panel,				# Console panel inherits from this.
+		LOWER_RIGHT,		# Placement for the console panel.
+
+	)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -57,6 +87,8 @@ class ConsoleFeeder(ThreadActor):
 		display	= client.display
 		driver	= display.driver
 
+		_logger.debug("consoleFeeder._main(): Console panel feeder thread has started.")
+
 		while not feeder.exitRequested:
 
 			# If the virterm doesn't have data currently, we wait
@@ -72,6 +104,9 @@ class ConsoleFeeder(ThreadActor):
 			line = virterm.popFirstLine()
 			panel.addLine(line)
 
+		# Feeder thread can only terminate at this point.
+		_logger.info("logFeeder._main(): Console panel feeder thread is exiting.")
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 class ConsolePanel(Panel):
@@ -81,11 +116,15 @@ class ConsolePanel(Panel):
 		STDOUT/STDERR output streams in the absence of the paneled
 		console display."""
 
+	_DEFAULT_INITROWS = 38		# Default initial height of panel.
 	_DEFAULT_MAXLINES = 100
 
-	def __init__(newConsolePanel:ConsolePanel, virterm:VirTerm):
+	def __init__(newConsolePanel:ConsolePanel, virterm:VirTerm, initRows=None):
 
 		panel = newConsolePanel
+
+		if initRows is None:
+			initRows = panel._DEFAULT_INITROWS
 
 			# Remember the virtual terminal whose output we're displaying.
 		panel._virterm = virterm
@@ -97,7 +136,7 @@ class ConsolePanel(Panel):
 		panel._max_nlines = panel._DEFAULT_MAXLINES
 
 		# General panel initialization.
-		super(ConsolePanel, panel).__init__("Console Output", LOWER_RIGHT, 8)
+		super(ConsolePanel, panel).__init__("Console Output", LOWER_RIGHT, initRows)
 			# By default, the input panel appears at the bottom of the right column.
 			# A default height of 8 for this panel is fine.  It can grow if needed.
 		
@@ -106,6 +145,13 @@ class ConsolePanel(Panel):
 		feederThread = ConsoleFeeder(panel)
 		panel._consoleFeeder = feederThread
 
+	def launch(thisConsolePanel:ConsolePanel):
+		"""This starts up the feeder thread needed to stream content to the panel.
+			Note this gets called automatically in Panel's .drawContent method."""
+		
+		_logger.debug("consolePanel.launch(): Starting the feeder thread.")
+		thisConsolePanel._consoleFeeder.start()
+
 	def addLine(thisConsolePanel:ConsolePanel, line:Line):
 		"""Adds a line's worth of virtual terminal data to the console
 			panel's contents."""
@@ -113,7 +159,7 @@ class ConsolePanel(Panel):
 		panel = thisConsolePanel
 		client = panel.client
 		display = client.display
-		driver = display.driver()
+		driver = display.driver
 
 		panel._lines.append(line)
 		nlines = len(panel.lines)
@@ -122,11 +168,13 @@ class ConsolePanel(Panel):
 		if len(panel.lines) > panel._max_nlines:
 			panel._lines = panel.lines[-panel._max_nlines]
 
-		driver(panel.redisplayContent)	# Tell panel to redisplay its content.
+		if display.isRunning:
+			driver(panel.redisplayContent, desc="Redisplay console panel to show new line")
+			# Tell panel to redisplay its content.
 
 	@property
 	def lines(thisConsolePanel:ConsolePanel):
-		return thisConsolePanel._line
+		return thisConsolePanel._lines
 
 	def drawContent(thisConsolePanel:ConsolePanel):
 		"""This is a standard Panel method that is called to fill in
@@ -138,6 +186,8 @@ class ConsolePanel(Panel):
 
 		lastLines = panel.lines[-height:]	# Last <height> lines
 
+		lineNo = 0
+
 		for line in lastLines:
 
 			text = line.text
@@ -145,9 +195,47 @@ class ConsolePanel(Panel):
 
 				# Set the rendering style for this line.
 			style = ERROR_STYLE if isErr else GOOD_STYLE
+
+				# See if we can figure out a logging level from the line data.
+			if len(text) >= 10:
+
+				logLevel = text[0:10]
+				
+				if		logLevel == "   DEBUG: ":
+
+					style = DEBUG_STYLE
+
+				elif 	logLevel == "    INFO: ":
+
+					style = INFO_STYLE
+
+				elif 	logLevel == "  NORMAL: ":
+
+					style = GOOD_STYLE
+
+				elif	logLevel == " WARNING: ":
+
+					style = WARNING_STYLE
+
+				elif	logLevel == "   ERROR: ":
+
+					style = ERROR_STYLE
+
+				elif	logLevel == "CRITICAL: ":
+
+					style = CRITICAL_STYLE
+
 			attr = style_to_attr(style)
 
-			win.addstr(text, attr)
+			addLineClipped(win, text.strip(), attr)
+
+			if lineNo < height - 1:
+				win.addstr('\n')
+				lineNo = lineNo + 1
+
+			# Call the original method in Panel, which does some general
+			# bookkeeping work needed for all panels.
+		super(ConsolePanel, panel).drawContent()
 
 	@property
 	def virterm(thisConsolePanel:ConsolePanel):

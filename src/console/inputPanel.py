@@ -322,10 +322,13 @@ class InputPanel(Panel):
 		displayText = textEvent.display()	# Uses event's default format.
 		
 			# Sweet; now have the display render it in the window.
-		(yx2pos, pos2yx) = display.renderText(displayText, win=win, hang=panel._hanging)
+		(yx2pos, pos2yx) = display.renderText(
+			displayText, win=win, hang=panel._hanging, promptChar='>')
 			# Note this method does special stuff with various control
-			# and whitespace characters. The return values map screen
+			# and whitespace characters. Also it puts the prompt in a
+			# different color.  The return values map screen
 			# locations to positions in the string.
+
 		panel._yx2pos = yx2pos
 		panel._pos2yx = pos2yx
 

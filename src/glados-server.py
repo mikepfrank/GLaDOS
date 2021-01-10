@@ -86,9 +86,15 @@
 global RAW_DEBUG	# Raw debugging flag--controls low-level debug output for this module.
 RAW_DEBUG = False	# Change this to True as needed during initial development.
 
+	# The following control logging level thresholds in the logmaster module.
+
 global CONS_DEBUG, LOG_DEBUG	# These control debug-level output to console & log file.
 CONS_DEBUG = False	# Tell logmaster: Don't diplay debug-level output on console.
 LOG_DEBUG = True	# Tell logmaster: DO save debug-level output to log file.
+
+global CONS_INFO	# These control info-level output to console.
+CONS_INFO = True	# Tell logmaster: DO diplay debug-level output on console.
+
 
 # Before doing anything else, we start a virtual terminal and have it grab
 # control of the stdout/stderr output streams, so that any early output 
@@ -98,7 +104,9 @@ LOG_DEBUG = True	# Tell logmaster: DO save debug-level output to log file.
 from console.virterm import VirTerm
 global _virTerm
 _virTerm = VirTerm()
-_virTerm.grab_stdio()	# Grabs stdout/stderr streams (redirecting them here).
+_virTerm.grab_stdio(tee=True)
+	# Grabs stdout/stderr streams (redirecting them here), but also
+	# replicating the writes on the original streams as well.
 
 if RAW_DEBUG:
 	print("Virtual terminal grabbed stdout/stderr output streams.")
@@ -175,6 +183,7 @@ from infrastructure.logmaster import (
 		doInfo,				# Boolean: Whether to display info-level output.
 		doNorm,				# Boolean: Whether to display normal output.
 		testLogging,		# Function to test logging facility.
+		updateStderr,		# Function to update what stderr is used.
 	)
 
 
@@ -304,7 +313,11 @@ def _initLogging():
 			  "logging module...", file=stderr)
 
 		# NOTE: CONS_DEBUG and LOG_DEBUG are defined at the top of this file.
-	configLogMaster(consdebug = CONS_DEBUG, logdebug = LOG_DEBUG, role = 'startup', component = appName)
+	configLogMaster(consdebug = CONS_DEBUG,
+					consinfo = CONS_INFO,
+					logdebug = LOG_DEBUG,
+					role = 'startup',
+					component = appName)
 		#	\
 		#	Configures the logger with default settings (NORMAL level
 		#	messages and higher output to console, INFO and higher to
@@ -312,6 +325,7 @@ def _initLogging():
 		#	set the thread component to "GLaDOS.server".  You can 
 		#	alternatively turn on CONS_DEBUG and/or LOG_DEBUG at the
 		#	top of this file to also get lower-level output messages.
+	updateStderr()	# Make sure logmaster notices we're using a nonstandard stderr.
 
 	# This is a test of different styles of log output.
 	testLogging()
@@ -405,7 +419,7 @@ def _main():
 		#| It also provides for human input (for commands, talking to the AI, etc.)
 	
 	_logger.info("glados-server.py:_main(): Creating console client...")
-	console = ConsoleClient(_virterm)
+	console = ConsoleClient(_virTerm)
 		# Initializes the system console client functionality.
 
 	_logger.info("glados-server.py:_main(): Starting console client...")

@@ -34,10 +34,12 @@
 #|		
 
 from 	typing						import Callable
+from	io							import StringIO		# Type for I/O streams.
 import	sys
 from 	time						import time
 from 	threading 					import RLock
 from 	infrastructure.timestamp 	import CoarseTimeStamp
+from	infrastructure.flag			import Flag
 
 class _TS_Counter:
 
@@ -117,22 +119,25 @@ class StreamBuf:
 
 	def addHandler(thisStreamBuf, handler:Callable):
 		"""Adds a handler function to the list."""
-		newStreamBuf._handlers.add(handler)
+		thisStreamBuf._handlers.append(handler)
 
 	def _addItem(thisStreamBuf, item:BufItem):
 		"""Adds a new item to the buffer, while keeping the total buffer 
 			size in check. (The oldest items disappear as needed.)"""
-		newStreamBuf._items.add(item)	# Adds the item.
+
+		strmbuf = thisStreamBuf
+
+		strmbuf._items.append(item)	# Adds the item.
 			# Calculate new size of buffered data.
-		newStreamBuf._size = newStreamBuf._size + item._size
+		strmbuf._size = strmbuf._size + item._size
 			# This loop trims old items off the front as needed.
-		while newStreamBuf._size > _DEFAULT_MAX_SIZE:
+		while strmbuf._size > strmbuf._DEFAULT_MAX_SIZE:
 				# Remember size of item we're about to remove.
-			firstItemSize = newStreamBuf._items[0]._size
+			firstItemSize = strmbuf._items[0]._size
 				# Remove it from the list.
-			newStreamBuf._items.pop(0)	
+			strmbuf._items.pop(0)	
 				# Update buffer size.
-			newStreamBuf._size = newStreamBuf._size - firstItemSize
+			strmbuf._size = strmbuf._size - firstItemSize
 
 	def addData(thisStreamBuf, data:str):
 		"""Appends the given data to the end of the stream buffer."""
@@ -188,7 +193,7 @@ def _preserve_orig_stdio():
         sys.__stdin__  = sys.stdin
 
 
-def streamHandler(stream:File):
+def streamHandler(stream:StringIO):
 	"""Given a (duck-typed) File object, returns an item handler
 		method that just writes the item data to that file."""
 	return lambda item: stream.write(item._data)
@@ -211,7 +216,6 @@ class Line:
 	def text(thisLine:Line):
 		return thisLine._text
 
-	@property
 	def setText(thisLine:Line, text:str):
 		thisLine._text = text
 
@@ -246,7 +250,7 @@ class LineBuffer:
 			linebuf._hasData = Flag()	# This flag is raised when buffer has data.
 
 	@property
-	def hasData(thisLineBuffer:Linebuffer):
+	def hasData(thisLineBuffer:LineBuffer):
 		return thisLineBuffer._hasData
 
 	def addOut(thisLineBuffer:LineBuffer, outItem:BufItem):
@@ -327,7 +331,6 @@ class LineBuffer:
 	def nLines(thisLineBuffer:LineBuffer):
 		return len(thisLineBuffer.lines)
 
-	@property
 	def setLines(thisLineBuffer:LineBuffer, newLines):
 		thisLineBuffer._lines = newLines
 
@@ -336,24 +339,26 @@ class LineBuffer:
 		"""Inserts the given line into the line buffer, maintaining
 			sequence number order."""
 
+		linebuf = thisLineBuffer
+
 		with linebuf.lock:
 
 			linebuf = thisLineBuffer
 			lines = linebuf.lines
 			seqno = newLine.seqno
 
-			pos = len(linebuf)
+			pos = linebuf.nLines
 			for i in range(0, len(lines)):
 				if seqno < lines[i].seqno:
 					pos = i
 					break
 
-			newLines = lines[:pos] + newLine + lines[pos:]
+			newLines = lines[:pos] + [newLine] + lines[pos:]
 		
 			linebuf.setLines(newLines)
 
 				# Raises the "we have data" flag (if not already raised).
-			linebuf.hasData.rise()
+			linebuf.hasData.rise()	# Make the flag rise (go high).
 
 	def popFirstLine(thisLineBuffer:LineBuffer):
 
@@ -376,7 +381,7 @@ class LineBuffer:
 
 			# Lower our 'we have data' flag if we were just emptied out.
 			if linebuf.nLines == 0:
-				linebuf.hasData.lower()
+				linebuf.hasData.fall()	# Make the flag fall (go low).
 
 			return firstLine
 	
@@ -394,11 +399,14 @@ class VirTerm:	# Virtual-terminal class.
 		virterm._outVstrm = vout = VirOut()
 		virterm._errVstrm = verr = VirOut(isErr = True)
 		virterm._lineBuffer = LineBuffer()
+		virterm._has_stdout = False
+		virterm._has_stderr = False
 
 		vout.addHandler(virterm.outHandler)
 		verr.addHandler(virterm.errHandler)
 
-	def popFirstLine(newVirTerm:VirTerm):
+	def popFirstLine(thisVirTerm:VirTerm):
+
 		virterm = thisVirTerm
 		linebuf = virterm._lineBuffer
 
@@ -505,3 +513,20 @@ class VirTerm:	# Virtual-terminal class.
 		thisVirTerm.release_stdout()
 		thisVirTerm.release_stderr()
 		thisVirTerm.release_stdin()		# This does nothing yet.
+
+	def dump_all(thisVirTerm):		# Dump everything to real stdout/stderr.
+		virterm = thisVirTerm
+
+		virterm.release_stdio()		# Make sure we're not still holding these.
+
+		print("\n\n"
+			  "============================================================\n"
+			  "DUMPING VIRTERM LINES:\n"
+			  "vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv")
+			  
+		while virterm.hasData():
+			line = virterm.popFirstLine()
+			if line.isErr:
+				print(line.text, end='', file=sys.stderr)
+			else:
+				print(line.text, end='')

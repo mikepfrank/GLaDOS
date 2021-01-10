@@ -1695,7 +1695,10 @@ class TheDisplay:
 
 
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	def renderChar(theDisplay:TheDisplay, charcode:int, win=None):	
+	def renderChar(theDisplay:TheDisplay, charcode:int, win=None,
+				   defStyle=None):	
+		# If defStyle is supplied, it denotes a default style to use, if
+		# not special.
 		# TODO: Also add loc,attr support.
 	
 		"""display.renderChar()				  [sensitive public instance method]
@@ -1710,16 +1713,22 @@ class TheDisplay:
 		display = theDisplay
 		screen = display.screen
 		
+		if defStyle is not None:
+			baseAttrs = style_to_attr(defStyle)
+		else:
+			baseAttrs = 0
+
 		if win is None:
 			win = screen	# Use the display's top-level window by default.
 		
-		render_char(win, charcode)		# Function defined in .controls module.
+		render_char(win, charcode, baseAttrs)		# Function defined in .controls module.
 
 	#__/ End sensitive public instance method display.renderChar().
 
 
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	def renderText(theDisplay:TheDisplay, text:str="", win=None, hang:int=0):
+	def renderText(theDisplay:TheDisplay, text:str="", win=None, hang:int=0,
+					promptChar = None):
 		"""display.renderText()				  [sensitive public instance method]
 		
 				This method renders the given text to the given curses
@@ -1731,6 +1740,19 @@ class TheDisplay:
 				to the next line.  Various whitespace characters are also
 				handled appropriately.
 				
+			Arguments:
+			~~~~~~~~~~
+
+				hang [int] - If this is provided, it denotes a number of
+					spaces of hanging indent to output after each line
+					break.
+
+				promptChar [char] - If this is provided, it denotes a 
+					character such that, every character up to and
+					including the first occurrence of that character is
+					rendered in 'prompt' style by default.
+
+
 			Return values:
 			~~~~~~~~~~~~~~
 			
@@ -1746,6 +1768,8 @@ class TheDisplay:
 		
 		if win is None:
 			win = screen
+
+		promptDone = False	# Prompt is not done yet.
 
 		hangPad = ' '*hang	# Left pad string to use for hanging indent.
 
@@ -1800,9 +1824,22 @@ class TheDisplay:
 			yx2pos[(cy,cx)] = pos
 			pos2yx[pos] = (cy, cx)
 			
+			# If we're supposed to be looking for a prompt char
+			# and we're not done with displaying the prompt, then
+			# use PROMPT render style.
+			if promptChar is not None and not promptDone:
+				style = PROMPT
+			else:
+				style = None	# Just uses the default style.
+
 				# This actually displays the current character.			
-			display.renderChar(ch, win=win)
+			display.renderChar(ch, win=win, defStyle=style)
 			
+				# If we just rendered the prompt character, we're done
+				# with the prompt part of the string.
+			if promptChar is not None and ch == ord(promptChar):
+				promptDone = True
+
 			#/------------------------------------------------------------------
 			#|	Non-space whitespace characters need to be handled specially 
 			#|	here. Specifically:

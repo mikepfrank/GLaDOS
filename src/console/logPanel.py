@@ -188,12 +188,12 @@ class LogFeeder(ThreadActor):
 		display = client.display
 		dispDrv = display.driver
 		
-		_logger.debug("logFeeder.main(): Creating 'tail -f' subprocess to feed log panel.")
+		_logger.debug("logFeeder._main(): Creating 'tail -f' subprocess to feed log panel.")
 		
 		command_words = ['tail', '-n', str(panel._content_height), '-f', logFilename]
 		command_string = ' '.join(command_words)
 		
-		_logger.debug(f"logFeeder.main(): Command words are: [{command_string}]")
+		_logger.debug(f"logFeeder._main(): Command words are: [{command_string}]")
 
 		process = subprocess.Popen(
 			command_words, 
@@ -219,14 +219,14 @@ class LogFeeder(ThreadActor):
 			dispDrv.do(display.update, desc="Update display after adding log line")
 
 			if not started:
-				_logger.debug("logFeeder.main(): Just added my very first line of log data to the panel.")
+				_logger.debug("logFeeder._main(): Just added my very first line of log data to the panel.")
 				started=True
 
 				# If subprocess terminated, check for & process any return code.
 			return_code = process.poll()
 			if return_code is not None:
 
-				_logger.warn(f"logFeeder.main(): 'tail -f' subprocess unexpectedly terminated with return code {return_code}.")
+				_logger.warn(f"logFeeder._main(): 'tail -f' subprocess unexpectedly terminated with return code {return_code}.")
 
 					# In case there was output we didn't read yet, go ahead and display it. 
 				for logLine in process.stdout.readlines():
@@ -239,7 +239,7 @@ class LogFeeder(ThreadActor):
 				exitRequested = True
 		
 		# Feeder thread can only terminate at this point.
-		_logger.info("logFeeder.main(): Log panel feeder thread is exiting.")
+		_logger.info("logFeeder._main(): Log panel feeder thread is exiting.")
 
 
 #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

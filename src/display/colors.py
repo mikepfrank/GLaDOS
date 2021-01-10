@@ -75,7 +75,7 @@ __all__ = [		# List of all public names exported from this module.
 		'BRIGHT_CYAN', 'BRIGHT_MAGENTA', 'BRIGHT_YELLOW',
 
 				# Rendering style designators.
-		'PLAIN', 'BORDER', 'HEADER', 'BRIGHT_CURSOR', 'DIM_CURSOR',
+		'PLAIN', 'BORDER', 'HEADER', 'PROMPT', 'BRIGHT_CURSOR', 'DIM_CURSOR',
 				# Rendering style designators for character types.
 		'CONTROL', 'WHITESP', 'METACTL', 'METAWSP',
 				# Logging-related rendering styles (move to console package?)
@@ -272,6 +272,9 @@ class RenderStyle(Enum):
 		# Use this style for displaying text headers that stand out.
 	HEADER='header'
 
+		# Use this style for displaying input prompts.
+	PROMPT='prompt'
+
 		# Styles used for alternating bright and dim (blinking) cursor.
 	BRIGHT_CURSOR='bright-cursor'
 	DIM_CURSOR='dim-cursor'
@@ -326,6 +329,7 @@ global PLAIN, BORDER, HEADER, BRIGHT_CURSOR, DIM_CURSOR
 PLAIN			=	RenderStyle.PLAIN
 BORDER			=	RenderStyle.BORDER
 HEADER			=	RenderStyle.HEADER
+PROMPT			=	RenderStyle.PROMPT
 BRIGHT_CURSOR	=	RenderStyle.BRIGHT_CURSOR
 DIM_CURSOR		=	RenderStyle.DIM_CURSOR
 
@@ -376,10 +380,11 @@ _style_colors = {		# Maps render style to (fgcolorspec, bgcolorspec) pairs.
 	#STYLE:			(FOREGROUND,  	BACKGR),
 	#-------		-------------	--------
 	PLAIN:			(WHITE,		  	BLACK ),		# Normal characters: Medium-white text on black background.
+	PROMPT:			(BRIGHT_YELLOW,	BLACK ),		# Prompt characters: Medium cyan text on a black background.
 	BORDER:			(BRIGHT_CYAN, 	BLACK ),		# Border characters: Bright cyan text on a black background.
 	HEADER:			(BRIGHT_WHITE,	BLACK ),		# Text headers: Bright white on a black background.
-	BRIGHT_CURSOR:	(BLACK,			BRIGHT_GREEN),	# Bright cursor: Black text on a bright green background.
 	DIM_CURSOR:		(BLACK,			GREEN),			# Dim cursor: Black text on a medium green background.
+	BRIGHT_CURSOR:	(BLACK,			BRIGHT_GREEN),	# Bright cursor: Black text on a bright green background.
 
 	#STYLE:		(FOREGROUND,  	BACKGR),
 	#-------	-------------	--------

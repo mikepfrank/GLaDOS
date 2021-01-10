@@ -350,7 +350,8 @@ class Panel:
 
 			# Draw the edges.
 		screen.hline(top, 	 left+1, '-', width)
-		screen.hline(bottom, left+1, '-', width)
+		#screen.hline(bottom, left+1, '-', width)
+			# Skip the bottom edge so we don't cover up title of panel below us.
 		screen.vline(top+1,  left,   '|', height)
 		screen.vline(top+1,  right,  '|', height)
 		
