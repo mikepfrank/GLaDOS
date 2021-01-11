@@ -90,10 +90,10 @@ RAW_DEBUG = False	# Change this to True as needed during initial development.
 
 global CONS_DEBUG, LOG_DEBUG	# These control debug-level output to console & log file.
 CONS_DEBUG = False	# Tell logmaster: Don't diplay debug-level output on console.
-LOG_DEBUG = False	# Tell logmaster: Don't save debug-level output to log file.
+LOG_DEBUG = True	# Tell logmaster: Don't save debug-level output to log file.
 
 global CONS_INFO	# These control info-level output to console.
-CONS_INFO = False	# Tell logmaster: Don't diplay debug-level output on console.
+CONS_INFO = True	# Tell logmaster: Don't diplay debug-level output on console.
 
 
 # Before doing anything else, we start a virtual terminal and have it grab
@@ -373,97 +373,159 @@ def _main():
 		print("__main__._main(): Entered application's _main() routine...",
 			  file=stderr)
 
-		#|-------------------------------------------------------------
-		#| Initialize the logging system.
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		#|----------------------------------------------------------------------
+		#| 1. Initialize the logging system. We do this extremely early since
+		#|		basically the entire system needs to be able to use it.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	_initLogging()		# Initializes/configures the logmaster module.
 
-		#|-------------------------------------------------------------
-		#| Application startup:	 Display splash text.
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		#|----------------------------------------------------------------------
+		#| 2. Application startup:	Display splash text.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	if doInfo: 
-		_logger.info(f"{systemName} server application is starting up...")
+		_logger.info(f"[Main] {systemName} server application is starting up...")
 
 	if doNorm:
 		print() # Just visual whitespace; no need to log it.
 		_logger.normal(f"Welcome to the {systemName} server, v0.0 (pre-alpha).")
 		_logger.normal("Copyright (C) 2020 Metaversal Constructions.")
-		#_logger.normal("See the LICENSE.txt file for terms of use.")	# Commented out because this file doesn't exist yet.
+		#_logger.normal("See the LICENSE.txt file for terms of use.")
+			# Commented out because this file doesn't exist yet.
 		print() # Just visual whitespace; no need to log it.
 
 
-		#=========================================================
-		# Below follows the main code of the server application.
-		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		#|======================================================================
+		#| 3. Now follows the main code of the server application.  The first
+		#|		phase of it is initializing a few pieces of key, fundamental
+		#|		infrastructure that will be need to be used by various major
+		#|		subsystems as they are starting up.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	setThreadRole('startup')		# Denotes we are starting up the server.
-
-	if doDebug:
-		_logger.debug("About to initialize system configuration, settings facility, "
-						"and supervisory subsystem...")
-
-	config = TheConfiguration()			# Loads the system configuration.
-	settings = TheSettingsFacility()	# Initializes the settings facility.
-	supervisor = TheSupervisor()		# Creates the main supervisory subsystem.
-	
-	_logger.info("glados-server.py:_main(): System initialization complete.")
-	
-	if doDebug:
-		pass
+	setThreadRole('init')	# Denotes we are initializing the server.
 
 	if doNorm:
-		_logger.normal("glados-server.py:_main(): Starting up the system...")
+		_logger.normal("Initializing infrastructure...")
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| The first packages that we initialize are the configuration and 
+			#| settings packages, because they are needed to provide parameter
+			#| values to all of the other major packages.
+
+	if doInfo:
+		_logger.info("[Main/Init] Initializing system configuration and settings facility...")
+
+	config   = TheConfiguration()		# Loads the system configuration.
+	settings = TheSettingsFacility()	# Initializes the settings facility.
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Next, before starting up the "real meat" of the core system
+			#| components, we start up our TUI-based "console" display, so that
+			#| the operator can use it to monitor our progress.  "TUI" means
+			#| "Text User Interface," and it is more specifically an interface
+			#| based on the curses library for interfacing with Unix-style text
+			#| terminals.  This is organized into a "display" object which
+			#| provides low-level display management, and a "client" object that
+			#| gives the application-specific functionality.  In particular, the
+			#| console client organizes the display into panels showing various
+			#| information that would be of interest to a human operator looking
+			#| at the GLaDOS system console.  It also provides for human input
+			#| (for commands, talking to the AI, etc.)
 	
-		#|------------------------------------------------------------------------------
-		#| Before starting up the "real meat" of the major system components, first we 
-		#| start up our TUI-based "console" display.  "TUI" means "Text User Interface," 
-		#| more specifically an interface based on the curses library for interfacing 
-		#| with Unix-style text terminals.  This is organized into a "display" object 
-		#| which provides low-level display management, and a "client" object that gives
-		#| the application-specific functionality.  In particular, the console client 
-		#| organizes the display into panels showing various information that would be
-		#| of interest to a human operator looking at the GLaDOS system console.  
-		#| It also provides for human input (for commands, talking to the AI, etc.)
-	
-	_logger.info("glados-server.py:_main(): Creating console client...")
+	if doInfo:
+		_logger.info("[Main/Init] Booting up console display...")
+
+	if doDebug:
+		_logger.debug("glados-server.py:_main(): Creating console client...")
+		
 	console = ConsoleClient(_virTerm)
 		# Initializes the system console client functionality.
 
-	_logger.info("glados-server.py:_main(): Starting console client...")
+	if doDebug:
+		_logger.debug("glados-server.py:_main(): Starting console client...")
+
 	console.start(waitForExit=False)
-		# Rather than waiting for the console to exit, we start it running
-		# in a background thread, while we continue setting up the rest of
-		# the system.
-	
-	supervisor.start(console) # Tells the supervisor to start everything up.
+		# Rather than waiting here for the console to exit, we start it
+		# running in a background thread, while in the meantime we
+		# continue setting up the rest of the system.
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Next, we initialize and start up the Supervisor.  This is one of
+			#| the most important subsystems of GLaDOS, in that it is
+			#| responsible for starting up and coordinating all of the other
+			#| major subsystems.
+
+	if doInfo:
+		_logger.info("[Main/Init] Initializing system Supervisor...")
+
+	supervisor = TheSupervisor(console)		# Creates the main supervisory subsystem.
 			# We give it a handle to the console so that it can connect it up to
-			# the system innards.  NOTE: This also starts up all of the other major 
+			# the system innards.
+	
+	if doInfo:
+		_logger.info("[Main/Init] System initialization complete.")
+	
+
+		#|======================================================================
+		#| 4. At this point, basic initializion is complete, and we can pro-
+		#|		ceed to start up all of the major subsystems to start the
+		#|		server actively running.  This process is handled by the 
+		#|		Supervisor, so basically be just need to start it running.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	setThreadRole('startup')		# Denotes we are starting up the server.
+
+	if doNorm:
+		_logger.normal("Starting up the {systemName} system...")
+	
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| This starts up the supervisor, which in turn initializes and
+			#| starts up all of the other major subsystems, and then continues
+			#| running in the background.  When the supervisor thread finally
+			#| exits, that's because the whole system is shutting down.
+
+	supervisor.start() # Tells the supervisor to start everything up.
+			# NOTE: This also starts up all of the other major 
 			# subsystems of GLaDOS.
 				
-			#---------------------------------------------------------------------
-			# By the time we get here, the Supervisor is up and running in a 
-			# background thread, and all we need to do is wait for it to exit, at 
-			# which point we can exit the whole server process.
-	
+
+		#|======================================================================
+		#| 5. By the time we get here, the Supervisor is up and running in a 
+		#|		background thread, and all we need to do is wait for it to exit, 
+		#|		at which point we can exit the entire server process.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	setThreadRole('wait4exit')		# Denotes we just waiting to exit now.
+
 	if doNorm:
-		_logger.normal("Waiting for the Supervisor to exit...")
+		_logger.info("[Main/Wait] Waiting for the {systemName} Supervisor to exit...")
 	setThreadRole('waiting')	# Denotes that we are just waiting.
 	supervisor.waitForExit()	# Waits for the Supervisor to exit.
 
-				#------------------------------------------------------------
-				# If we get here, then we are exiting the server application.
+
+		#|======================================================================
+		#| 6. If we get here, then we are exiting the server application.
+		#|		We should tell the settings and configuration facilities to
+		#|		exit gracefully (so they can save state and so forth).
+		#|		However, that is not fully implemented yet.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 
 	setThreadRole('shutdown')	# Denotes that we are shutting down.
 
 	if doNorm:
 		_logger.normal(f"{systemName} server application is shutting down...")
 
-			#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-			# End of main code of server application.
-			#=========================================================
+
+		#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+		#|	End of main code of server application.
+		#|=========================================================
 	
+	_logger.debug("__main__._main(): Exiting from _main()...")
+
 	if RAW_DEBUG:
 		print("__main__._main(): Exiting from _main()...", file=stderr)
 

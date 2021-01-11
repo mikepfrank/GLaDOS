@@ -96,6 +96,10 @@ class ConsoleFeeder(ThreadActor):
 
 			virterm.hasData.wait()		# Wait for this flag to be high.
 		
+			# If an exit was request, break out without processing it.
+			if feeder.exitRequested:
+				break
+
 			# OK, now we pop a line from the virterm and add it to
 			# our console panel display.
 
@@ -115,10 +119,13 @@ class ConsolePanel(Panel):
 		console display.  This includes normal, info, warning, 
 		error messages, etc."""
 
-	_DEFAULT_INITROWS = 8		# Default initial height of panel.
+	_DEFAULT_INITROWS = 38		# Default initial height of panel.
+	#_DEFAULT_INITROWS = 8		# Default initial height of panel.
 	_DEFAULT_MAXLINES = 100
 
 	def __init__(newConsolePanel:ConsolePanel, virterm:VirTerm, initRows=None):
+
+		_logger.info("[ConsolePanel] Initializing console panel.")
 
 		panel = newConsolePanel
 
@@ -155,6 +162,14 @@ class ConsolePanel(Panel):
 
 		_logger.debug("consolePanel.launch(): Starting the feeder thread.")
 		panel._consoleFeeder.start()
+
+	def stop(thisConsolePanel:ConsolePanel):
+		
+		"""This tells the console panel that it should stop consuming and displaying
+			messages from the virterm.  We do this by telling the feeder thread to exit."""
+
+		thisConsolePanel._consoleFeeder.exitRequested = True
+			# It will see this whenever it sees there's another line available
 
 	def addLine(thisConsolePanel:ConsolePanel, line:Line):
 		"""Adds a line's worth of virtual terminal data to the console
@@ -232,7 +247,7 @@ class ConsolePanel(Panel):
 
 			attr = style_to_attr(style)
 
-			addLineClipped(win, text.strip(), attr)
+			addLineClipped(win, text[:-1], attr)
 
 			if lineNo < height - 1:
 				win.addstr('\n')

@@ -46,6 +46,17 @@
 #|
 #\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+global __all__
+__all__ = [
+
+			# Major classes we provide.
+		'PanelPlacement', 'Panel', 'PanelClient',
+
+			# Panel placement designators.
+		'FILL_BOTTOM', 'LOWER_RIGHT', 'FILL_RIGHT', 'FILL_LEFT'
+
+	]
+
 from enum import Enum					# Enumerated type support.
 from os import path
 
@@ -119,6 +130,14 @@ class Panel:
 	@property
 	def height(thisPanel):
 		return thisPanel._height
+
+	@height.setter
+	def height(thisPanel, newHeight):
+		
+		"""This .height property setter sets the panel's height and
+			does any other needed adjustments."""
+		
+		thisPanel._height = newHeight
 
 	@property
 	def client(thisPanel):

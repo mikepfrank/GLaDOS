@@ -261,6 +261,8 @@ class LogPanel(Panel):
 	def __init__(newLogPanel):
 		"""Initializer for new instances of class LogPanel."""
 		
+		_logger.info("[LogPanel] Initializing log panel.")
+
 			# Use a shorter name for this new log panel.
 		panel = newLogPanel
 		

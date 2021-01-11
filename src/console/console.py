@@ -232,6 +232,7 @@ class ConsoleClient(PanelClient):
 
 		client._supervisor		= None		# We haven't been introduced to the supervisor yet.
 		client._actionSystem	= None		# We haven't been told how to find the action system yet.
+		client._hasTerminal		= False		# The console client doesn't yet control the terminal.
 
 		client._virterm = virterm
 		
@@ -258,6 +259,53 @@ class ConsoleClient(PanelClient):
 		fieldDisplay.addPanels()			# Tells the field display to add its panels.
 
 
+	def grabTerminal(thisConsoleClient:ConsoleClient):
+
+		"""This method sets up control of the terminal, in such a way
+			that normal and error output messages will only go to the
+			console panel, while curses has access to real stdout."""
+
+		client = thisConsoleClient
+		virterm = client._virterm
+
+		virterm.release_stdout()
+			# Release control of stdout, since curses needs it.
+
+			# Untee out and err.
+		virterm.untee()		# Remove the tee handlers from out/err streams.
+			
+		set_alt_stdout(virterm.out)
+			# This tells the logging module to use virterm.out
+			# in place of stdout.
+		#set_alt_stderr(virterm.err)
+
+		client._hasTerminal = True 
+
+
+	def releaseTerminal(thisConsoleClient:ConsoleClient):
+
+		"""This method releases control of the terminal, and dumps
+			any remaining virtual stdout/stderr messages to real
+			stdout/stderr."""
+
+		client = thisConsoleClient
+		virterm = client._virterm
+
+			# Tell the console panel to stop consuming log messages.
+
+			# Tell logger to stop using virterm streams.
+		set_alt_stderr(None)
+		set_alt_stdout(None)
+		
+			# Tell virterm to stop absorbing stderr.
+		virterm.release_stderr()	# Release control of stderr.
+
+			# Tell virterm to spit out any buffered output
+		virterm.dump_all()			# Dump everything 
+
+		client._hasTerminal = False
+
+
 	def start(thisConsoleClient:ConsoleClient, waitForExit:bool=True):
 		# NOTE: Here we override the default value of waitForExit 
 		# while we're debugging basic console capabilities.
@@ -276,17 +324,7 @@ class ConsoleClient(PanelClient):
 		# instead of normal stdout for normal-level messages, so
 		# that those messages will appear in the console panel.
 
-		virterm = client._virterm
-		virterm.release_stdout()	# Release control of stdout.
-
-			# Untee out and err.
-		virterm.untee()		# Remove the tee handlers from out/err streams.
-			
-		set_alt_stdout(virterm.out)
-			# This tells the logging module to use virterm.out
-			# in place of stdout.
-		#set_alt_stderr(virterm.err)
-
+		client.grabTerminal()	# Configures stdio for console.
 
 		# The following try/except is needed so we can see output
 		# to the virtual terminal in case of exceptions.
@@ -296,17 +334,16 @@ class ConsoleClient(PanelClient):
 			super(ConsoleClient, client).start(waitForExit=waitForExit)
 			# Calls DisplayClient's .start() method.
 
+		# This code needs to be moved somewhere else.
 		finally:
-			set_alt_stderr(None)
-			set_alt_stdout(None)		# Tell logger to stop using virterm.
-			virterm.release_stderr()	# Release control of stderr.
-			virterm.dump_all()			# Dump everything 
+			if waitForExit:		# If true, then display has exited. Clean up.
+				releaseTerminal()	# Restores normal stdio
 
 		_logger.debug("console.start(): Returning.")
 	
 	#__/ End method console.start().
 	
-	
+
 	def setSupervisor(thisConsoleClient:ConsoleClient, supervisor:Supervisor):
 		"""Inform the console client of who is the system supervisor."""
 		client = thisConsoleClient
@@ -327,6 +364,31 @@ class ConsoleClient(PanelClient):
 		client = thisConsoleClient
 		client._cognosys = cognoSys
 	
+	def prepareForShutdown(thisConsoleClient:ConsoleClient):
+
+		"""This method is called to notify the client that it should
+			prepare for an imminent shutdown of the display."""
+
+		# Tell the console panel to stop consuming messages from the VirTerm.
+		client = thisConsoleClient
+		consPanel = client._consPanel
+		consPanel.stop()	# Stop what you're doing!
+
+
+	def notifyShutdown(thisConsoleClient:ConsoleClient):
+
+		"""This method is called to notify the client that the display
+			has shut down, in case it doesn't know yet."""
+
+		client = thisConsoleClient
+		supervisor = client.supervisor
+
+			# Do we still have control of the terminal?
+		if client._hasTerminal:
+			client.releaseTerminal()	# Release it.
+
+			# Also, ask the supervisor to exit.
+		supervisor.requestExit()
 	
 #__/ End class ConsoleClient.
 

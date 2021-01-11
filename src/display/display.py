@@ -840,6 +840,11 @@ class TheDisplay:
 			
 		_logger.debug("display._main(): Starting the display running.")
 
+		# The try/except clause here is needed to catch exceptions so we
+		# can tell the client about them.
+
+		try:
+
 			#|------------------------------------------------------------------
 			#| NOTE: wrapper() is a curses function, so we acquire the display 
 			#| lock here to ensure thread-safety.  However, although we acquire 
@@ -847,14 +852,25 @@ class TheDisplay:
 			#| internally to ._manage(), the lock is released whenever we're not 
 			#| actively using it.  This is needed to avoid deadlocks.
 
-		with display.lock:
+			with display.lock:
 		
-			# Call the standard curses wrapper on our private display management 
-			# method, below.
-			wrapper(theDisplay._manage)
+				# Call the standard curses wrapper on our private display management 
+				# method, below.
+				wrapper(theDisplay._manage)
 				# ._manage() sets up the display and runs our main input loop.
 		
-		_logger.debug("display._main(): Finished running the display.")
+		except TerminateServer as e:
+			# If we get this exception, it means that the user intentionally
+			# terminated the server by pressing ^T.  Execute a clean exit.
+
+			_logger.info("display._main(): Exiting because user requested server termination.")
+
+		finally:
+
+			_logger.debug("display._main(): Finished running the display.")
+
+			_logger.debug("display._main(): Notifying client of display shutdown.")
+			display.client.notifyShutdown()
 
 	#__/ End private instance method theDisplay._main().
 
@@ -1142,6 +1158,10 @@ class TheDisplay:
 			
 			if ch == DC4:		# ^T = Device control 4, primary stop, terminate.
 				_logger.fatal("display._do1iteration(): Exiting due to ^T = terminate key.")
+
+				# Notify client that it should prepare for imminent display termination.
+				client.prepareForShutdown()
+
 				raise TerminateServer("Terminating server because user pressed ^T.")
 			
 				#/--------------------------------------------------------------
