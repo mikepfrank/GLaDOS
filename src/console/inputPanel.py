@@ -14,6 +14,7 @@ from curses.ascii import (
 		BS,		# ^H = Delete to the left. (Backspace)
 		LF,		# ^J = Insert newline. (Line Feed)
 		VT,		# ^K = Kill to end of line. (Vertical Tab)
+		FF,		# ^L = Let's refresh the display. (Form Feed)
 		CR,		# ^M = Insert carriage return. (Carriage Return)
 		SO,		# ^N = Down to next line. (Shift Out)
 		SI,		# ^O = Insert newline at cursor. (Shift In)
@@ -60,9 +61,10 @@ from	display.keys	import (
 			
 			# Other "special" (synthesized) keys.
 			
-		KEY_IL, 	# Insert line.  Keycode synthesized from ^O = open new line at cursor.
-		KEY_EOL,	# Delete to end of line.  Keycode synthesized from ^K = kill to end of line.
-		KEY_CLEAR,	# Clear entire contents of key data.
+		KEY_IL, 		# Insert line.  Keycode synthesized from ^O = open new line at cursor.
+		KEY_EOL,		# Delete to end of line.  Keycode synthesized from ^K = kill to end of line.
+		KEY_CLEAR,		# Clear entire contents of text data.
+		KEY_REFRESH,	# Refresh the display.
 
 		# Classes.
 
@@ -444,6 +446,10 @@ class InputPanel(Panel):
 			# ^K = Kill line.
 			panel.keyKillToEOL()
 			
+		elif keycode == FF or keycode == KEY_REFRESH:
+			# ^L = Let's refresh the display.
+			panel.keyRefresh()
+
 		elif keycode == CR or keycode == KEY_ENTER:
 			# ^M = Move cursor to start of next line.
 			panel.keyEnter()
@@ -466,7 +472,10 @@ class InputPanel(Panel):
 		
 		elif keycode >= 0xc0 and keycode <= 0xdf:	# Alt-Shift-'@' through Alt-Shift-'_' - Remap these to self-insert all A0 controls.
 
-			keyevent = KeyEvent(keycode - 0xc0)
+			newkeyevent = KeyEvent(keycode - 0xc0)
+			panel.insertKey(newkeyevent)
+
+			_logger.info(f"Input Panel: Remapped {keyname} to literal {newkeyevent.ctlname}.")
 
 		# All other keys are just self-inserting by default.
 		else:
@@ -808,6 +817,18 @@ class InputPanel(Panel):
 			panel.setText(text)
 
 	
+	def keyRefresh(thisInputPanel:InputPanel):
+
+		"""This method handles the FF key, which is ^L = Let's refresh the display.
+			It redisplays the entire screen."""
+		
+		panel = thisInputPanel
+		client = panel.client
+
+			# Tells the client to regenerate its entire display.
+		client.redisplay()
+
+
 	def keyDown(thisInputPanel:InputPanel):
 
 		"""This method handles the down arrow key, and also ^N = go to next line.
