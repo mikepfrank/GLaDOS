@@ -90,10 +90,10 @@ RAW_DEBUG = False	# Change this to True as needed during initial development.
 
 global CONS_DEBUG, LOG_DEBUG	# These control debug-level output to console & log file.
 CONS_DEBUG = False	# Tell logmaster: Don't diplay debug-level output on console.
-LOG_DEBUG = True	# Tell logmaster: DO save debug-level output to log file.
+LOG_DEBUG = False	# Tell logmaster: Don't save debug-level output to log file.
 
 global CONS_INFO	# These control info-level output to console.
-CONS_INFO = True	# Tell logmaster: DO diplay debug-level output on console.
+CONS_INFO = False	# Tell logmaster: Don't diplay debug-level output on console.
 
 
 # Before doing anything else, we start a virtual terminal and have it grab
