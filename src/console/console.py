@@ -178,6 +178,14 @@ from .inputPanel import InputPanel
 
 from .consolePanel import ConsolePanel	
 
+from .fieldDisplay import FieldDisplay
+	# FieldDisplay manages the display of the receptive field.
+
+# There are just dummy classes for type hints.
+class Supervisor: pass
+class TheActionSystem: pass
+class TheCognitiveSystem: pass
+
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#|
 	#|	Classes provided by the current 'console' module include the following:
@@ -205,11 +213,6 @@ from .consolePanel import ConsolePanel
 
 # The following need to be moved out to their own modules once written.
 
-class DiagnosticPanel(Panel):
-	"""Panel to display text that would normally go to sydtem stdout/stderr:
-		Normal, info, warning, error messages etc."""
-	pass
-	
 class FieldPanel(Panel):
 	"""Panel to display all or part of the receptive field."""
 	pass
@@ -227,6 +230,9 @@ class ConsoleClient(PanelClient):
 	
 		client = newConsoleClient
 
+		client._supervisor		= None		# We haven't been introduced to the supervisor yet.
+		client._actionSystem	= None		# We haven't been told how to find the action system yet.
+
 		client._virterm = virterm
 		
 			# First, do general initialization for panel clients.
@@ -236,11 +242,10 @@ class ConsoleClient(PanelClient):
 		
 		_logger.debug("console.__init__(): Creating console panels.")
 
-		client._logPanel	= logPanel 			= LogPanel()
-		client._inputPanel	= inputPanel 		= InputPanel()
-		client._consPanel	= consolePanel		= ConsolePanel(virterm)
-		#client._rFieldPanel	= rightFieldPanel 	= FieldPanel(column='right')
-		#client._lFieldPanel = leftFieldPanel	= FieldPanel(column='left')
+		client._logPanel		= logPanel 			= LogPanel()
+		client._inputPanel		= inputPanel 		= InputPanel()
+		client._consPanel		= consolePanel		= ConsolePanel(virterm)
+		client._fieldDisplay	= fieldDisplay		= FieldDisplay(client)
 		
 			# This installs all the panels in this PanelClient.
 			
@@ -250,9 +255,8 @@ class ConsoleClient(PanelClient):
 		client.addPanel(inputPanel)			# This goes next, at the bottom of the right column.
 			# Note this panel automatically grabs the keyboard focus.
 		client.addPanel(consolePanel)		# This goes next, just above the input panel.
-		#client.addPanel(rightFieldPanel)	# This fills the rest of the right-hand column.
-		#client.addPanel(leftFieldPanel)	# This fills the rest of the left-hand column.
-		
+		fieldDisplay.addPanels()			# Tells the field display to add its panels.
+
 
 	def start(thisConsoleClient:ConsoleClient, waitForExit:bool=True):
 		# NOTE: Here we override the default value of waitForExit 
@@ -301,6 +305,28 @@ class ConsoleClient(PanelClient):
 		_logger.debug("console.start(): Returning.")
 	
 	#__/ End method console.start().
+	
+	
+	def setSupervisor(thisConsoleClient:ConsoleClient, supervisor:Supervisor):
+		"""Inform the console client of who is the system supervisor."""
+		client = thisConsoleClient
+		client._supervisor = supervisor
+		
+	@property
+	def supervisor(thisConsoleClient:ConsoleClient):
+		return thisConsoleClient._supervisor
+	
+	def setActionSystem(thisConsoleClient:ConsoleClient, actionSystem:TheActionSystem):
+		"""Tell the console client what action system to use for reporting."""
+		client = thisConsoleClient
+		client._actionSystem = actionSystem
+
+	def setMind(thisConsoleClient:ConsoleClient, cognoSys:TheCognitiveSystem):
+		"""Give the console client a pointer to the cognitive system whose
+			receptive field it will be displaying."""
+		client = thisConsoleClient
+		client._cognosys = cognoSys
+	
 	
 #__/ End class ConsoleClient.
 
