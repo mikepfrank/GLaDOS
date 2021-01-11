@@ -186,6 +186,15 @@ class DisplayClient:
 		
 	#__/ End instance method displayClient.start().
 
+	def prepareForShutdown(thisClient):
+		"""This method is called to notify the client that it should
+			prepare for an imminent shutdown of the display."""
+		pass
+
+	def notifyShutdown(thisClient):
+		"""This method is called to notify the client that the display
+			has shut down."""
+		pass
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	client.display					  	  	   		   [public property]

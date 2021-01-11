@@ -95,8 +95,8 @@
 		#|	1.1. Imports of standard python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from thread.threading	import	RLock	# Re-entrant mutex locks.
-from os					import	path	# Manipulate filesystem path strings.
+from threading	import	RLock	# Re-entrant mutex locks.
+from os			import	path	# Manipulate filesystem path strings.
 
 
 		#|======================================================================
@@ -110,6 +110,8 @@ from os					import	path	# Manipulate filesystem path strings.
 
 	# A simple decorator for singleton classes.
 from infrastructure.decorators	import	singleton
+
+from infrastructure.flag 		import	Flag	# Waitable flags.
 
 				#-------------------------------------------------------------
 				# The logmaster module defines our logging framework; we
@@ -290,7 +292,7 @@ class SupervisorThread(ThreadActor):
 		
 		superthread = thisSupervisorThread
 		
-		_logger.info("supervisorThread._main():  Supervisor thread has started.")
+		_logger.info("[Supervisor] Supervisor thread has started.")
 		
 			# Inform other threads that this thread is now running.
 		superthread.running.rise()	# Raise our "running" flag.
@@ -301,7 +303,7 @@ class SupervisorThread(ThreadActor):
 			# Inform other threads that this thread is no longer running.
 		superthread.running.fall()	# Lower our "running" flag.
 		
-		_logger.info("supervisorThread._main():  Supervisor thread is exiting.")
+		_logger.info("[Supervisor] Supervisor thread is exiting.")
 		
 		
 @singleton
@@ -375,7 +377,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 
 		supervisor = theSupervisor
 
-		_logger.info("Initializing supervisory subsystem...")
+		_logger.info("[Supervisor] Initializing supervisory subsystem...")
 		
 		# As a small initial task, we link up the supervisor (i.e., ourselves) with the console client.
 		supervisor.setConsole(console)
@@ -395,7 +397,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 				#| supervisor subsystem, and by which the supervisor subsystem
 				#| maintains supervisory control over the rest of the system.
 
-		_logger.info("    Supervisor: Initializing our action processing facility...")
+		_logger.info("    [Supervisor] Initializing our action processing facility...")
 		supervisor._actionSystem = tas = TheActionSystem()		
 			# Initialize the action processing subsystem.
 
@@ -411,7 +413,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 				#| installed in the command interface, so it needs to be 
 				#| already available.
 		
-		_logger.info("    Supervisor: Initializing the command interface...")
+		_logger.info("    [Supervisor] Initializing the command interface...")
 		supervisor._commandInterface = ci = TheCommandInterface()		
 			# Initializes the command interface.
 			
@@ -430,7 +432,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 				#| and each process generally needs to have an associated window
 				#| which will show its I/O stream.
 				
-		_logger.info("    Supervisor: Initializing the text windowing system...")
+		_logger.info("    [Supervisor] Initializing the text windowing system...")
 		ws = TheWindowSystem()			# Initializes the text windowing system.
 		
 		
@@ -442,7 +444,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 				#| here to support various internal housekeeping functions of 
 				#| GLaDOS itself.
 		
-		_logger.info("    Supervisor: Initializing the sub-process system...")
+		_logger.info("    [Supervisor] Initializing the sub-process system...")
 		ps = TheProcessSystem()			
 			# Start the process framework and launch any essential 
 			# background GLaDOS processes.
@@ -453,14 +455,14 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 				#| individual GLaDOS applications to be launched as needed, and
 				#| some of them will even be launched automatically on startup.
 		
-		_logger.info("    Supervisor: Initializing the applications system...")
+		_logger.info("    [Supervisor] Initializing the applications system...")
 		appSys = TheAppSystem()		# Initializes the application system.
 		
 		
 				#|--------------------------------------------------------------
 				#| (5) Finally, we can initialize the A.I.'s cognitive system.
 		
-		_logger.info("    Supervisor: Initializing the cognitive system...")
+		_logger.info("    [Supervisor] Initializing the cognitive system...")
 		mind = TheCognitiveSystem()			# Start up the A.I.'s mind, itself.
 		
 		# The console needs to be given a pointer to the AI's mind because, in
@@ -486,7 +488,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 			#|---------------------------------------------------------
 			#| At this point, we have finished initializing everything.
 		
-		_logger.info("    Supervisor: All subsystems have been initialized.")
+		_logger.info("[Supervisor] All subsystems have been initialized.")
 		
 	#__/ End singleton instance initializer for class TheSupervisor.
 
@@ -568,6 +570,16 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 	@property
 	def thread(theSupervisor):
 		return theSupervisor._thread
+
+	def requestExit(theSupervisor:TheSupervisor):
+
+		"""Calling this method requests the supervisor subsystem to exit."""
+
+		supervisor = theSupervisor
+		supthread = supervisor.thread		
+
+		supthread.exitRequested.rise()		# Raise the thread's exit request flag.
+		
 
 	def waitForExit(theSupervisor):
 		

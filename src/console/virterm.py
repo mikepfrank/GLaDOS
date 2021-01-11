@@ -552,3 +552,7 @@ class VirTerm:	# Virtual-terminal class.
 				print(line.text, end='', file=sys.stderr)
 			else:
 				print(line.text, end='')
+
+		print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n"
+			  "END VIRTERM DUMP\n"
+			  "============================================================")

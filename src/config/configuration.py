@@ -356,7 +356,7 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		"""
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		_logger.info("Loading system configuration...")
+		_logger.info("[Config] Loading system configuration...")
 
 		theConfig.reinit(*args, **kwargs)
 
@@ -747,7 +747,7 @@ class	TheAIPersonaConfig:
 		"""
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		_logger.info("Loading AI persona configuration...")
+		_logger.info("[Config] Loading AI persona configuration...")
 
 		theAIConfig.reinit(*args, **kwargs)
 
