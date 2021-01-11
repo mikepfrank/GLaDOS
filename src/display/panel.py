@@ -96,7 +96,7 @@ class Panel:
 	def __init__(newPanel, 
 			title:str = "Untitled Panel",			# REQUIRED ARGUMENT. Panel title. CALLER MUST PROVIDE THIS.
 			initPlacement:PanelPlacement = None,	# REQUIRED ARGUMENT, panel placement specifier.
-			initHeight:int = 8,						# Initial internal panel height, in rows of text.
+			initHeight:int = None,						# Initial internal panel height, in rows of text.
 			leftPad:int = 1,						# Internal padding at left side of panel (inside border).
 		):
 		newPanel._title		= title
@@ -386,8 +386,8 @@ class Panel:
 		panel.drawFrame()
 		
 			# Now draw the panel's title in its top frame, in border style.
-		if panel._title != None:
-			paddedTitle = ' ' + panel._title + ' '
+		if panel.title != None:
+			paddedTitle = ' ' + panel.title + ' '
 			screen.addstr(panel.top, panel.left + 4, paddedTitle, style_to_attr(BORDER))
 		
 			# Now paint the panel's contents.  This method is implemented by its subclass.

@@ -206,8 +206,13 @@ from 	config.configuration		import	TheConfiguration
 	# configuration from config files on system startup.
 
 from	console.console				import	ConsoleClient
-	# The "console client" starts up and manages a curses-based 
-	# display screen consisting of a number of user interface panels.
+	# The "console client" starts up and manages the main GLaDOS system
+	# console screen for benefit of human system operators.  This is a
+	# a curses-based display screen consisting of a number of text user 
+	# interface (TUI) panels.  Although most of the core elements of 
+	# GLaDOS are associated with displays on the receptive field, which
+	# can be seen by the AI and also by human system operators, additional 
+	# system debugging information not visible to the AI may appear here.
 
 from 	supervisor.supervisor		import	TheSupervisor
 	# This singleton class will manage startup of the Supervisor 
@@ -427,12 +432,15 @@ def _main():
 		# Initializes the system console client functionality.
 
 	_logger.info("glados-server.py:_main(): Starting console client...")
-	console.start()
-		# Presently this waits for the console to exit; in future, it will just
-		# run it in the background.
+	console.start(waitForExit=False)
+		# Rather than waiting for the console to exit, we start it running
+		# in a background thread, while we continue setting up the rest of
+		# the system.
 	
-	#supervisor.start()				# Tells the supervisor to start everything up.
-			# NOTE: This also starts up all of the other major subsystems.
+	supervisor.start(console) # Tells the supervisor to start everything up.
+			# We give it a handle to the console so that it can connect it up to
+			# the system innards.  NOTE: This also starts up all of the other major 
+			# subsystems of GLaDOS.
 				
 			#---------------------------------------------------------------------
 			# By the time we get here, the Supervisor is up and running in a 

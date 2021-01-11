@@ -94,9 +94,7 @@ class ConsoleFeeder(ThreadActor):
 			# If the virterm doesn't have data currently, we wait
 			# until it does.
 
-			with virterm.hasData.lock:
-				if not virterm.hasData():
-					virterm.hasData.waitRise()
+			virterm.hasData.wait()		# Wait for this flag to be high.
 		
 			# OK, now we pop a line from the virterm and add it to
 			# our console panel display.
@@ -114,9 +112,10 @@ class ConsolePanel(Panel):
 	"""Panel for displaying the GLaDOS server application program's
 		diagnostic output; i.e., what would normally go to the
 		STDOUT/STDERR output streams in the absence of the paneled
-		console display."""
+		console display.  This includes normal, info, warning, 
+		error messages, etc."""
 
-	_DEFAULT_INITROWS = 38		# Default initial height of panel.
+	_DEFAULT_INITROWS = 8		# Default initial height of panel.
 	_DEFAULT_MAXLINES = 100
 
 	def __init__(newConsolePanel:ConsolePanel, virterm:VirTerm, initRows=None):
