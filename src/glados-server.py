@@ -184,7 +184,11 @@ from infrastructure.logmaster import (
 		doNorm,				# Boolean: Whether to display normal output.
 		testLogging,		# Function to test logging facility.
 		updateStderr,		# Function to update what stderr is used.
+		initLogMaster,
 	)
+
+# Reinitialize logmaster using virterm
+#initLogMaster(out = _virTerm.out, err = _virTerm.err)
 
 
 	#|----------------------------------------------------------------
@@ -328,7 +332,7 @@ def _initLogging():
 	updateStderr()	# Make sure logmaster notices we're using a nonstandard stderr.
 
 	# This is a test of different styles of log output.
-	testLogging()
+	#testLogging()
 
 	_logger = appLogger	 # Sets this module's logger to be our application logger.
 	

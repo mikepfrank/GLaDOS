@@ -121,6 +121,9 @@ class StreamBuf:
 		"""Adds a handler function to the list."""
 		thisStreamBuf._handlers.append(handler)
 
+	def removeHandler(thisStreamBuf, handler:Callable):
+		thisStreamBuf._handlers.remove(handler)
+
 	def _addItem(thisStreamBuf, item:BufItem):
 		"""Adds a new item to the buffer, while keeping the total buffer 
 			size in check. (The oldest items disappear as needed.)"""
@@ -168,6 +171,9 @@ class VirOut:	# Virtual output-stream class.
 	def addHandler(newVirOut, handler:Callable):
 		newVirOut._buffer.addHandler(handler)	# Delegate to buffer.
 	
+	def removeHandler(thisVirOut, handler:Callable):
+		thisVirOut._buffer.removeHandler(handler)
+
 		# write() method, expected by users of File objects.
 	def write(newVirOut, data):
 		if data == "": return		# Empty strings are ignored and don't generate data records.
@@ -453,7 +459,8 @@ class VirTerm:	# Virtual-terminal class.
 		
 			# If we're teeing to it, add a handler to do this.
 		if tee:
-			thisVirTerm._outVstrm.addHandler(streamHandler(origStream))
+			thisVirTerm._out_teehandler = tee_handler = streamHandler(origStream)
+			thisVirTerm._outVstrm.addHandler(tee_handler)
 		
 			# OK, now redirect sys.stdout to our virtual stream guy.
 		sys.stdout = thisVirTerm._outVstrm
@@ -461,6 +468,11 @@ class VirTerm:	# Virtual-terminal class.
 			# Remember that we grabbed stdout.
 		thisVirTerm._has_stdout = True
 	
+	def untee_out(thisVirTerm):
+		if thisVirTerm._out_teehandler is not None:
+			thisVirTerm._outVstrm.removeHandler(thisVirTerm._out_teehandler)
+			thisVirTerm._out_teehandler = None
+
 	def release_stdout(thisVirTerm):
 		if thisVirTerm._has_stdout:
 			sys.stdout = thisVirTerm._orig_stdout
@@ -475,13 +487,23 @@ class VirTerm:	# Virtual-terminal class.
 		
 			# If we're teeing to it, add a handler to do this.
 		if tee:
-			thisVirTerm._errVstrm.addHandler(streamHandler(origStream))
+			thisVirTerm._err_teehandler = tee_handler = streamHandler(origStream)
+			thisVirTerm._errVstrm.addHandler(tee_handler)
 		
 			# OK, now redirect sys.stderr to our virtual stream guy.
 		sys.stderr = thisVirTerm._errVstrm
 		
 			# Remember that we grabbed stderr.
 		thisVirTerm._has_stderr = True
+
+	def untee_err(thisVirTerm):
+		if thisVirTerm._err_teehandler is not None:
+			thisVirTerm._errVstrm.removeHandler(thisVirTerm._err_teehandler)
+			thisVirTerm._err_teehandler = None
+
+	def untee(thisVirTerm):
+		thisVirTerm.untee_out()
+		thisVirTerm.untee_err()
 
 	def release_stderr(thisVirTerm):
 		if thisVirTerm._has_stderr:

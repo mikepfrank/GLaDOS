@@ -149,8 +149,13 @@ class ConsolePanel(Panel):
 		"""This starts up the feeder thread needed to stream content to the panel.
 			Note this gets called automatically in Panel's .drawContent method."""
 		
+		panel = thisConsolePanel
+		win = panel.win
+
+		win.scrollok(True)
+
 		_logger.debug("consolePanel.launch(): Starting the feeder thread.")
-		thisConsolePanel._consoleFeeder.start()
+		panel._consoleFeeder.start()
 
 	def addLine(thisConsolePanel:ConsolePanel, line:Line):
 		"""Adds a line's worth of virtual terminal data to the console
@@ -182,6 +187,7 @@ class ConsolePanel(Panel):
 
 		panel = thisConsolePanel
 		win = panel.win
+
 		(height, width) = win.getmaxyx()
 
 		lastLines = panel.lines[-height:]	# Last <height> lines

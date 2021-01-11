@@ -348,12 +348,36 @@
 global _RAW_DEBUG
 _RAW_DEBUG = False
 
-global _alt_stdout
+global _alt_stdout, _alt_stderr
 _alt_stdout = None
+_alt_stderr = None
 
 def set_alt_stdout(alt_stdout):
 	global _alt_stdout
 	_alt_stdout = alt_stdout
+
+def set_alt_stderr(alt_stderr):
+	global _alt_stderr
+	_alt_stderr = alt_stderr
+	updateStderr(alt_stderr)
+
+def outstr():
+
+	if _alt_stdout != None:
+		outstrm = _alt_stdout
+	else:
+		outstrm = sys.stdout
+
+	return outstrm
+
+def errstr():
+
+	if _alt_stderr != None:
+		errstrm = _alt_stderr
+	else:
+		errstrm = sys.stderr
+
+	return errstrm
 
 		#-----------------------------------------------------------------------
 		#
@@ -483,7 +507,7 @@ __all__ = [
 	'byname', 'getLogger', 'getComponentLogger',
 	'testLogging', 'updateStderr',
 	'setThreadRole', 'setComponent',
-	'set_alt_stdout'
+	'set_alt_stdout', 'set_alt_stderr',
 ]
 
 
@@ -2469,10 +2493,7 @@ class NormalLogger(logging.Logger):
 		   then passing it on to the logging system for processing at
 		   the new NORMAL logging level."""
 		
-		if _alt_stdout is None:
-			print(message)				# Print the message to stdout.
-		else:
-			print(message, file=_alt_stdout)
+		print(message, file=outstr())		# Print the message to stdout.
 		
 		if inst.isEnabledFor(NORMAL):
 			if caller==None:								
@@ -2581,6 +2602,10 @@ class NormalLoggerAdapter(logging.LoggerAdapter):
 	   NormalLogger does for Logger. (Adds the .normal() method and
 	   the <caller> kwarg.)"""
 	
+	@property
+	def underlying(inst):
+		return inst._underlying
+
 	def normal(inst, msg:str, *args, caller=None, **kwargs):
 		msg, kwargs = inst.process(msg, kwargs)
 		if caller==None:								
@@ -2752,6 +2777,7 @@ def getLogger(name:str = appName):
 		# the global LoggingContext object has thread-local content.
 		
 	wrapped_logger = NormalLoggerAdapter(logger, theLoggingContext)
+	wrapped_logger._underlying = logger
 	
 	return	wrapped_logger		# Return that wrapped-up logger.
 
@@ -2858,9 +2884,11 @@ def exception(msg:str, *args, **kwargs):
 		# We surround the traceback above and below with "vvvv", "^^^^"
 		# delimiter lines, to set it off from other output.
 	
-	print("v"*70,file=sys.stderr)		
+	errstrm = errstr()
+
+	print("v"*70,file=errstrm)		
 	mainLogger.exception(msg, *args, caller=caller, **kwargs)
-	print("^"*70,file=sys.stderr)
+	print("^"*70,file=errstrm)
 			#- WARNING:	 The above code may do weird things (specifically,
 			#	print the delimiters in one place and the traceback in
 			#	another) if the console is shutting down and logging is being
@@ -2958,18 +2986,46 @@ def testLogging():
 			#|
 			#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-def updateStderr():
+def updateStderr(new_errstrm=None):
+
 	"""In case the definition of sys.stderr changes, this function
 	   retrieves its new definition for use by the console output log
 	   handler (if that has been defined)."""
+
+	global consHandler
+
+	if new_errstrm is None:
+		new_errstrm = sys.stderr
+
 	# The locking here prevents another thread from putting some
 	# more output to the console handler after we flush it, and
 	# before we redirect its stream.  Or from nulling out the
 	# consHandler global after we check it and before we use it.
 	logging._acquireLock()	
 	if consHandler:
+
 		consHandler.flush()
-		consHandler.stream = sys.stderr
+		consHandler.stream = new_errstrm
+
+		# mainLogger.underlying.removeHandler(consHandler)
+		
+		# consHandler = logging.StreamHandler(stream=new_errstrm)
+		# consHandler.addFilter(AbnormalFilter())	   # Add a filter to ignore NORMAL-level messages.
+		# consHandler.setLevel(console_level)		   # Set console to log level we determined earlier.
+
+		# # Console log messages will just have the simple format showing the log
+		# # level name and the actual log message.  Look at the log file to see
+		# # more details such as thread info, module, and function.
+
+		# consHandler.setFormatter(logging.Formatter("%(levelname)8s: %(message)s"))
+
+		# # Add the console log handler to the main logger adapter's underlying logger.
+
+		# mainLogger.logger.addHandler(consHandler)
+
+		
+		#consHandler.setStream(new_errstrm)
+
 	logging._releaseLock()
 	
 
@@ -3052,7 +3108,8 @@ def setLogLevels(verbose=False):
 			#|
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-def initLogMaster():
+def initLogMaster(out=None, err=None):
+	# If out and err are provided, they are used instead of stdout/stderr.
 
 	"""Do basic initialization of the logmaster facility.  This
 	   routine is called whenever the logmaster module is first
@@ -3062,6 +3119,12 @@ def initLogMaster():
 	global logFormatter, theLoggingContext, mainLogger	   # In python, we have to declare
 	global consHandler, _moduleLogger, _initialized		  # the globals that we'll reassign.
 	global sysLogger, appLogger
+
+	if out is not None:
+		set_alt_stdout(out)
+
+	if err is not None:
+		set_alt_stderr(out)
 
 			#|==================================================================
 			#|
@@ -3170,7 +3233,9 @@ def initLogMaster():
 		# that are (typically) at warning level or higher.	This will ensure
 		# that these messages also appear on the stdout/stderr console.
 	
-	consHandler = logging.StreamHandler()	   # The default stream handler uses stderr.
+	errstrm = errstr()
+
+	consHandler = logging.StreamHandler(stream=errstrm)	   # The default stream handler uses stderr.
 	consHandler.addFilter(AbnormalFilter())	   # Add a filter to ignore NORMAL-level messages.
 	consHandler.setLevel(console_level)		   # Set console to log level we determined earlier.
 

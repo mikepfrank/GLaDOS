@@ -135,6 +135,7 @@ from infrastructure.logmaster import (
 		sysName,			# Used just below.
 		getComponentLogger,	# Used just below.
 		set_alt_stdout,		# used in consoleClient.start().
+		set_alt_stderr,
 	)
 
 global _component, _logger	# Software component name, logger for component.
@@ -273,12 +274,16 @@ class ConsoleClient(PanelClient):
 
 		virterm = client._virterm
 		virterm.release_stdout()	# Release control of stdout.
+
+			# Untee out and err.
+		virterm.untee()		# Remove the tee handlers from out/err streams.
+			
 		set_alt_stdout(virterm.out)
 			# This tells the logging module to use virterm.out
 			# in place of stdout.
+		#set_alt_stderr(virterm.err)
 
-		# IS THERE ANYTHING WE NEED TO DO HERE TO PREP FOR STARTUP?
-		
+
 		# The following try/except is needed so we can see output
 		# to the virtual terminal in case of exceptions.
 		try:
@@ -288,6 +293,7 @@ class ConsoleClient(PanelClient):
 			# Calls DisplayClient's .start() method.
 
 		finally:
+			set_alt_stderr(None)
 			set_alt_stdout(None)		# Tell logger to stop using virterm.
 			virterm.release_stderr()	# Release control of stderr.
 			virterm.dump_all()			# Dump everything 
