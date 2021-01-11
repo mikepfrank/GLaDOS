@@ -464,6 +464,10 @@ class InputPanel(Panel):
 			# ^U = Clear all text.
 			panel.keyClear()
 		
+		elif keycode >= 0xc0 and keycode <= 0xdf:	# Alt-Shift-'@' through Alt-Shift-'_' - Remap these to self-insert all A0 controls.
+
+			keyevent = KeyEvent(keycode - 0xc0)
+
 		# All other keys are just self-inserting by default.
 		else:
 			panel.insertKey(keyevent)
