@@ -544,7 +544,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 			#| Next, we just start the supervisor main loop. This runs in
 			#| its own background thread that is created for this purpose.
 		
-		_logger.info("    Supervisor: Starting main loop...")
+		_logger.info("[Supervisor] Starting main loop...")
 		theSupervisor.startMainloop()
 		
 	

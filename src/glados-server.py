@@ -479,7 +479,7 @@ def _main():
 	setThreadRole('startup')		# Denotes we are starting up the server.
 
 	if doNorm:
-		_logger.normal("Starting up the {systemName} system...")
+		_logger.normal(f"Starting up the {systemName} subsystems...")
 	
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#| This starts up the supervisor, which in turn initializes and
@@ -501,7 +501,7 @@ def _main():
 	setThreadRole('wait4exit')		# Denotes we just waiting to exit now.
 
 	if doNorm:
-		_logger.info("[Main/Wait] Waiting for the {systemName} Supervisor to exit...")
+		_logger.info(f"[Main/Wait] Waiting for the {systemName} Supervisor to exit...")
 	setThreadRole('waiting')	# Denotes that we are just waiting.
 	supervisor.waitForExit()	# Waits for the Supervisor to exit.
 
