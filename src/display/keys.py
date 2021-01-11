@@ -327,19 +327,20 @@ _name_codes = {
 
 			# Controls mapped to special keys for editing.
 		
-		'^A':			KEY_BEG,		# Go to beginning of line.
-		'^B':			KEY_LEFT,		# Go back to the left.
-		'^D':			KEY_DC,			# Delete character under cursor.
-		'^E':			KEY_END,		# Go to end of line.
-		'^F':			KEY_RIGHT,		# Go forward to the right.
-		'^H':			KEY_DELBACK,	# Delete character backwards.
-		'^J':			KEY_LINEFEED,	# Insert new line before cursor.
-		'^K':			KEY_EOL,		# Clear to end of line.
-		'^M':			KEY_RETURN,		# Carriage return (never seen).
-		'^N':			KEY_DOWN,		# Go down to next line.
-		'^O':			KEY_IL,			# Insert new line at cursor.
-		'^P':			KEY_UP,			# Go up to previous line.
-		'^U':			KEY_CLEAR,		# Clear entire input region.
+#		'^A':			KEY_BEG,		# Go to beginning of line.
+#		'^B':			KEY_LEFT,		# Go back to the left.
+#		'^D':			KEY_DC,			# Delete character under cursor.
+#		'^E':			KEY_END,		# Go to end of line.
+#		'^F':			KEY_RIGHT,		# Go forward to the right.
+#		'^H':			KEY_DELBACK,	# Delete character backwards.
+#		'^J':			KEY_LINEFEED,	# Insert new line before cursor.
+#		'^K':			KEY_EOL,		# Clear to end of line.
+#		'^M':			KEY_RETURN,		# Carriage return (never seen).
+#		'^N':			KEY_DOWN,		# Go down to next line.
+#		'^O':			KEY_IL,			# Insert new line at cursor.
+#		'^P':			KEY_UP,			# Go up to previous line.
+#		'^U':			KEY_CLEAR,		# Clear entire input region.
+
 	}
 
 _code_map = {	# Map from curses' key codes to better key names.

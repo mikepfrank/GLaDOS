@@ -4,7 +4,22 @@ from time		import	sleep		# Causes thread to give up control for a period.  Used 
 from os 		import 	path
 
 from curses.ascii import (
-		EOT,		# Code point for End-of-Transmission (^C).
+		
+		SOH,	# ^A = Start of line. (Start of Heading)
+		STX,	# ^B = Move back to the left. (Start of Text)
+		ETX,	# ^C = (End of Text)
+		EOT,	# ^D = Delete character. (End-of-Transmission)
+		ENQ,	# ^E = End of line. (Enquiry.)
+		ACK,	# ^F = Forward to the right. (Acknowlegement)
+		BS,		# ^H = Delete to the left. (Backspace)
+		LF,		# ^J = Insert newline. (Line Feed)
+		VT,		# ^K = Kill to end of line. (Vertical Tab)
+		CR,		# ^M = Insert carriage return. (Carriage Return)
+		SO,		# ^N = Down to next line. (Shift Out)
+		SI,		# ^O = Insert newline at cursor. (Shift In)
+		DLE,	# ^P = Up to previous line. (Data Link Escape)
+		NAK,	# ^U = Clear all text. (Negative Acknowlegement)
+		
 		isalpha,	# Returns True for alphabetic character codes.
 		alt,		# Returns the meta (8th bit set) version of a key code.
 	)
@@ -77,7 +92,7 @@ from	events.event 	import (
 		
 	)
 
-TERMINATOR = chr(EOT)	# This is a control-C or End-of-Text character.
+TERMINATOR = chr(ETX)	# This is a control-C or End-of-Text character.
 
 class PromptTimer: pass
 class InputPanel: pass
@@ -388,52 +403,65 @@ class InputPanel(Panel):
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		if keycode == KEY_HOME or keycode == KEY_BEG:		# ^A also maps to this.
+		if keycode == SOH or keycode == KEY_HOME or keycode == KEY_BEG:
+			# ^A = Actually, please go to the start of the line.
 			panel.keyHome()
 			
-		elif keycode == KEY_LEFT:		# ^B also maps to this.
+		elif keycode == STX or keycode == KEY_LEFT:
+			# ^B = Back to previous character.
 			panel.keyLeft()
 			
 		elif keycode == alt(ord('b')) or keycode == KEY_CTRL_LEFT:
 			panel.keyLeftWord()
 			
-		elif keycode == KEY_DELETE or keycode == KEY_DC:		# ^D also maps to this, also Del.
+		elif keycode == EOT or keycode == KEY_DELETE or keycode == KEY_DC:
+			# ^D = Delete character.
 			panel.keyDelete()
 			
 		elif keycode == alt(ord('d')):	# We would like to accept Ctrl-Del for this also but we don't have a keycode for it yet.
 			panel.keyDeleteWord()
 			
-		elif keycode == KEY_END:		# ^E also maps to this.
+		elif keycode == ENQ or keycode == KEY_END:
+			# ^E = End of line, go to.
 			panel.keyEnd()
 			
-		elif keycode == KEY_RIGHT:		# ^F also maps to this.
+		elif keycode == ACK or keycode == KEY_RIGHT:
+			# ^F = Forward to the right.
 			panel.keyRight()
 			
 		elif keycode == alt(ord('f')) or keycode == KEY_CTRL_RIGHT:
 			panel.keyRightWord()
 			
-		elif keycode == KEY_DELBACK or keycode == KEY_BACKSPACE:	# ^H also maps to KEY_DELBACK.
+		elif keycode == BS or keycode == KEY_DELBACK or keycode == KEY_BACKSPACE:
+			# ^H = Hey, undo that.
 			panel.keyBackspace()
 			
-		elif keycode == KEY_LINEFEED:	# ^J also maps to this.
+		elif keycode == LF or keycode == KEY_LINEFEED:
+			# ^J = Jump to new line.
 			panel.keyLineFeed()
 
-		elif keycode == KEY_ENTER:		# We'll use this to generate an ASCII CR (^M) character.
-			panel.keyEnter()
-			
-		elif keycode == KEY_EOL:			# ^K also maps to this.
+		elif keycode == VT or keycode == KEY_EOL:
+			# ^K = Kill line.
 			panel.keyKillToEOL()
 			
-		elif keycode == KEY_DOWN:		# ^N also maps to this.
+		elif keycode == CR or keycode == KEY_ENTER:
+			# ^M = Move cursor to start of next line.
+			panel.keyEnter()
+			
+		elif keycode == SO or keycode == KEY_DOWN:
+			# ^N = Next line.
 			panel.keyDown()
 			
-		elif keycode == KEY_IL or keycode == KEY_IC:	# ^O also maps to this, and also Ins.
+		elif keycode == SI or keycode == KEY_IL or keycode == KEY_IC:
+			# ^O = Open line. (Ins)
 			panel.keyInsertLine()
 			
-		elif keycode == KEY_UP:			# ^P also maps to this.
+		elif keycode == DLE or keycode == KEY_UP:
+			# ^P = Previous line.
 			panel.keyUp()
 			
-		elif keycode == KEY_CLEAR:		# ^U also maps to this.
+		elif keycode == NAK or keycode == KEY_CLEAR:		
+			# ^U = Clear all text.
 			panel.keyClear()
 		
 		# All other keys are just self-inserting by default.
