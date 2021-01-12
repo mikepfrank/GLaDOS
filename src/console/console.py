@@ -232,6 +232,8 @@ class ConsoleClient(PanelClient):
 
 		client._supervisor		= None		# We haven't been introduced to the supervisor yet.
 		client._actionSystem	= None		# We haven't been told how to find the action system yet.
+		client._cognosys		= None		# We haven't been told how to find the cognitive system yet.
+		
 		client._hasTerminal		= False		# The console client doesn't yet control the terminal.
 
 		client._virterm = virterm

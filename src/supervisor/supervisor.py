@@ -379,6 +379,9 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 
 		_logger.info("[Supervisor] Initializing supervisory subsystem...")
 		
+		# At this point, the main supervisor thread has not yet been started.
+		supervisor._thread = None
+
 		# As a small initial task, we link up the supervisor (i.e., ourselves) with the console client.
 		supervisor.setConsole(console)
 		
@@ -574,12 +577,17 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 	def thread(theSupervisor):
 		return theSupervisor._thread
 
+
 	def requestExit(theSupervisor:TheSupervisor):
 
 		"""Calling this method requests the supervisor subsystem to exit."""
 
 		supervisor = theSupervisor
 		supthread = supervisor.thread		
+
+		if supthread is None:
+			_logger.error("supervisor.requestExit(): Supervisor thread does not exist! Ignoring.")
+			return
 
 		supthread.exitRequested.rise()		# Raise the thread's exit request flag.
 		

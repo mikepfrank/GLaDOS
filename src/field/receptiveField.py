@@ -164,90 +164,8 @@ class _TheBaseFieldData:		pass
 class AnnounceFieldExistsAction(ActionByAI_):
 	pass
 	
-#	FieldSlot			- A "slot" in the display order for the receptive field.
-#							A slot holds an object that will be displayed at that
-#							spot in the field.  Slots can be rearranged in several 
-#							ways:  Moved to the top of the field, moved to the 
-#							bottom, anchored to the top (after all other slots 
-#							anchored to the top), anchored to the bottom (before 
-#							all other slots anchored to the bottom.  A slot can 
-#							also be marked as "adjustable", which means that when 
-#							the field is underfull, the field will tell the slot 
-#							to expand itself, and when the field is overfull, the 
-#							field will tell the slot to shrink itself.  Slots can
-#							also be added and removed (e.g. when a window opens or
-#							closes.  A slot can also be "pinned" to the top or
-#							bottom of the field, meaning it can't be moved (normally),
-#							or "anchored" to the top or bottom of the field, meaning
-#							that it won't normally be displaced by slots that are 
-#							only slid to the top or bottom.
-#
-
 class FieldElement_: pass	# Forward declaration.
 
-class FieldSlot:
-	# Data members:
-	#
-	#	- A placement designator for this slot, which determines how its
-	#		position will be set/maintained within the field ordering.
-	#
-	#	- An index giving the slot's current sequential position within
-	#		the receptive field.
-	#
-	#	- A reference to the field element that's being held in this slot.
-	#
-	# Properties:
-	#
-	#	- Height (in rows). This just comes from the element that's being 
-	#		held in the slot.
-	#
-	# Methods:
-	#
-	#	- fieldSlot.place() - Tells the field slot to place itself 
-	#		appropriately within the given base field data object.
-	
-	def __init__(
-			thisFieldSlot, 
-				# How to place the new slot on the field:
-			placement:Placement=Placement.SLIDE_TO_BOTTOM,	
-				# By default, we slide new slots to the bottom without anchoring 
-				# them (thereby displacing pre-placed unanchored slots upwards).
-			forElement:FieldElement_=None,	
-				# The field element we're creating this slot to hold (if it 
-				# exists already).
-			field:ReceptiveField_=TheReceptiveField()
-		):
-		"""
-			FieldSlot.__init__()						  [Instance initializer]
-			
-				This is the instance initialization method that is used in
-				constructing field slots (instances of the FieldSlot class).
-				
-				When a new field slot is created, it is assigned an initial
-				placement, specifying how it will be positioned relative to
-				other slots in the ordering of field slots (top to bottom).
-				
-				Later, after the field slot has been constructed, the 
-				fieldSlot.place() method, below, can be used to actually
-				place it within the field ordering, after which the field
-				display should be refreshed.  (But managing the field 
-				refreshment is a responsibility of higher-level classes.)
-		"""
-			# Remember our placement and our element and our field.
-		thisFieldSlot._placement = placement
-		thisFieldSlot._posIndex = None			# Slot isn't placed yet.
-		thisFieldSlot._element = forElement
-
-	@property
-	def element(this):	# Field element contained in this slot.
-		return this._element
-
-	def place(thisFieldSlot, 
-				# Where to place the slot on the field?
-			where:Placement=None, 
-				# By default, we'll just use the element's initial placement.
-			field=TheReceptiveField()):
-		pass
 
 #	_TheBaseFieldData		- The base data object containing everything that's 
 #							intended to be viewed by the A.I. in its 
@@ -486,6 +404,8 @@ class TheReceptiveField(ReceptiveField_):
 		
 		"""
 	
+		field = theReceptiveField
+
 			# First, configure all of the default settings for the field facility.
 		settings = TheFieldSettings.config()
 		
@@ -511,32 +431,32 @@ class TheReceptiveField(ReceptiveField_):
 		_logger.info(f"    Nominal width = {nominalWidth} characters.")
 	
 			# Stash the important settings in instance data members.
-		theReceptiveField._fieldSize		= fieldSize
-		theReceptiveField._nominalWidth		= nominalWidth
+		field._fieldSize		= fieldSize
+		field._nominalWidth		= nominalWidth
 	
 		_logger.debug("[Receptive Field] Creating base field data object...")
 	
 			# Create the base field data object & store it.
-		baseFieldData 						= _TheBaseFieldData(fieldSize)
-		theReceptiveField._baseFieldData	= baseFieldData
+		baseFieldData 			= _TheBaseFieldData(fieldSize)
+		field._baseFieldData	= baseFieldData
 		
 		_logger.debug("[Receptive Field] Creating the AI's field view...")
 	
 			# Create and store field views for the AI & for humans.
-		theReceptiveField._aiFieldView		= TheAIFieldView(baseFieldData)
-		theReceptiveField._humanFieldView	= HumanFieldView(baseFieldData)
+		field._aiFieldView		= TheAIFieldView(baseFieldData)
+		field._humanFieldView	= HumanFieldView(baseFieldData)
 
 		_logger.debug("[Receptive Field] Creating the field header element...")
 	
 			# Create the "field header" element, which automatically pins
 			# itself to the very top edge of the receptive field.
-		theReceptiveField._fieldHeader		= TheFieldHeader()
+		field._fieldHeader		= TheFieldHeader(field)
 		
 		_logger.debug("[Receptive Field] Creating the input area element...")
 	
 			# Create the "input area" element, which automatically pins 
 			# itself to the very bottom edge of the receptive field.
-		theReceptiveField._inputArea		= TheInputArea()
+		field._inputArea		= TheInputArea(field)
 		
 		_logger.debug("[Receptive Field] Creating the prompt separator element...")
 	
@@ -545,9 +465,9 @@ class TheReceptiveField(ReceptiveField_):
 			# from the "prompt" part of the receptive field (below the
 			# separator). It automaticaly pins itself to the bottom of the
 			# receptive field (just below the input box we just placed).
-		theReceptiveField._promptSeparator	= ThePromptSeparator()
+		field._promptSeparator	= ThePromptSeparator(field)
 
-	#__/ End singleton instance initializer theReceptiveField.__init__().
+	#__/ End singleton instance initializer field.__init__().
 
 	@property
 	def view(theReceptiveField:TheReceptiveField):

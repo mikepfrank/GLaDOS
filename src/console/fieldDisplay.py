@@ -2,13 +2,15 @@
 # Contains a panel type to display all or part of the receptive field,
 # and a class FieldDisplay to manage this/these panels.
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 from os import path
 from infrastructure.logmaster import (
 		sysName,			# Used just below.
 		ThreadActor,		# Blink timer thread is subclassed from this.
-		getComponentLogger 	# Used just below.
+		getComponentLogger,	# Used just below.
+		LoggedException,
+		WarningException,
 	)
 
 global _component, _logger	# Software component name, logger for component.
@@ -18,7 +20,7 @@ _logger = getComponentLogger(_component)  # Create the component logger.
 global _sw_component	# Full name of this software component.
 _sw_component = sysName + '.' + _component
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 from display.exceptions import (
 
@@ -36,14 +38,30 @@ from display.panel import (
 	)
 
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 class ConsoleClient:	pass
 
 class FieldPanel:		pass
 class FieldDisplay:		pass
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+class ConsoleException(LoggedException):
+
+	"""This is an abstract base class for all exception types generated
+		by the console client."""
+
+	defLogger = _logger
+
+class FieldUnavailable(ConsoleException, WarningException):
+
+	"""This is an exception type that is thrown by the field display
+		when it is unable to access the receptive field facility."""
+
+	pass
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 class FieldPanel(Panel):
 
@@ -334,7 +352,8 @@ class FieldDisplay:
 		#|	field data between the panels.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
-		fdisp.refresh()		# Refresh the field display from source data.
+		if client.mind is not None:
+			fdisp.refresh()		# Refresh the field display from source data.
 		
 			# Mark the field display as having been launched.
 		fdisp._launched = True 
@@ -371,6 +390,14 @@ class FieldDisplay:
 		
 		fdisp	= thisFieldDisplay	# This field display.
 		
+		# If the mind hasn't been set, we can't do anything yet.
+		client	= fdisp.client		# The overall console client.
+		mind	= client.mind		# The AI's cognitive system.
+		
+		if mind is None:
+			_logger.warn("fieldDisplay.queryField(): Receptive field is not available yet.")
+			raise FieldUnavailable("fieldDisplay.queryField(): Receptive field unavailable.")
+
 		# Attach to the field if it's not already attached.
 		if fdisp.field is None:
 			fdisp.attachField()
