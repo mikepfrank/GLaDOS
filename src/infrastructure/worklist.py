@@ -1184,7 +1184,7 @@ class Worker(ThreadActor):
 			else:
 				#_logger.debug(f"First, wrapping task '{desc}' in a wrapper...")
 				#task = lambda *args, **kwargs: wrapper(lambda: task(*args, **kwargs))	# Wrap the task in the wrapper
-				wrappedCallable = lambda: wrapper(bareCallable)
+				wrappedCallable = lambda: wrapper(bareCallable, desc)
 				theCallable = wrappedCallable
 		
 			task = WorkItem(theCallable, owner=inst, desc=desc)	# Now, make a real WorkItem out of it.

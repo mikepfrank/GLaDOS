@@ -204,7 +204,7 @@ class DisplayDriver(RPCWorker):
 	#| driver's .do() method.
 	#|---------------------------------------------------------------------
 	
-	def withLock(thisDriver, callable):
+	def withLock(thisDriver, func:callable, desc:str=None):
 	
 		"""This is a wrapper function that is to be automatically applied 
 			around all bare callables that are handed to the display driver 
@@ -224,11 +224,13 @@ class DisplayDriver(RPCWorker):
 			# asynchronous operations might affect the running state of the display.
 			if not display.running:
 				#_logger.warn("displayDriver.withLock(): Display not running; ignoring task.")
-				return DisplayNotRunning("displayDriver.withLock(): Display not running; task ignored.")
+				if desc is None:
+					desc = "(no description)"
+				return DisplayNotRunning(f"displayDriver.withLock(): Display not running; task [{desc}] ignored.")
 				# Note: Callers who obtain a result should be prepared to handle results of this type.
 
 			#_logger.debug("About to call wrapped callable...")
-			return callable()				# Call the callable, return any result.
+			return func()				# Call the callable, return any result.
 			#_logger.debug("Returned from wrapped callable...")
 		#_logger.debug("Released display lock.")
 		

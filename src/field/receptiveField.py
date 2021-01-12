@@ -570,7 +570,7 @@ class TheReceptiveField(ReceptiveField_):
 			
 		field	= theReceptiveField
 		view	= field.view
-		data	= view.getData()
+		data	= view.data
 		
 		field._data = data	
 			# Cache this in case needed for diagnostics.

@@ -20,6 +20,12 @@ _sw_component = sysName + '.' + _component
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+from display.exceptions import (
+
+		RenderExcursion
+
+	)
+
 from display.panel import (
 
 		Panel,			# Base class that FieldPanel inherits from.
@@ -52,8 +58,6 @@ class FieldPanel(Panel):
 		panel._column			= column		# 'left' or 'right'
 		panel._launched			= False			# Not yet launched.
 		
-		panel.clear()	# Clears the data content of the panel.
-
 			# Select panel placement.
 
 		if column == 'right':
@@ -66,6 +70,19 @@ class FieldPanel(Panel):
 		super(FieldPanel, panel).__init__(title=None, initPlacement=placement)
 			# Field panels are untitled by default, since they are the main focus
 			# of the server application in any case.
+
+
+	def configWin(this):
+		
+			# Do generic Panel configWin stuff.
+		super(FieldPanel, this).configWin()
+
+			# Make sure leaveok is true so cursor doesn't move too much.
+		#win = panel.win
+		#win.leaveok(True)
+
+		this.clear()	# Clears the data content of the panel.
+		
 
 	@property
 	def fieldDisplay(thisFieldPanel:FieldPanel):
@@ -84,6 +101,8 @@ class FieldPanel(Panel):
 		"""Clear the data content of this panel."""
 
 		panel = thisFieldPanel
+		client = panel.client
+		display = client.display
 
 		panel._data				= []			# Array of items (text strings) in panel.
 		panel._nChars			= 0				# Number of characters of text data (includes newlines, etc.).
@@ -91,8 +110,11 @@ class FieldPanel(Panel):
 		panel._filled			= False			# Not yet filled up with data, obviously.
 
 			# Actually go ahead and erase the panel's window too, in its backing store.
-		win = panel.win
-		win.erase()
+		if client.dispRunning:
+			with display.lock:
+				win = panel.win
+				if win is not None:
+					win.erase()
 
 	@property
 	def data(thisFieldPanel:FieldPanel):
@@ -126,6 +148,15 @@ class FieldPanel(Panel):
 		
 		nChars = len(item)
 		
+		# If the display isn't running yet, or there's no sub-window yet,
+		# we can't actually to a trial display of the item, so just finish up.
+		if not client.dispRunning or win is None:
+			# Go ahead and add the item onto the end of the data list.
+			panel._data.append(item)
+				# Accumulate the total number of characters.
+			panel._nChars = panel._nChars + nChars
+			return
+
 		# Go ahead and try rendering the item.
 		try:
 			with display.lock:
@@ -223,12 +254,24 @@ class FieldDisplay:
 		fieldDisp._lFieldPanel	= leftFieldPanel	= FieldPanel(fieldDisp, column='left')
 	
 	@property
+	def client(thisFieldDisplay:FieldDisplay):
+		return thisFieldDisplay._client
+
+	@property
 	def field(thisFieldDisplay:FieldDisplay):
 		return thisFieldDisplay._field
 
 	@property
-	def client(thisFieldDisplay:FieldDisplay):
-		return thisFieldDisplay._client
+	def data(fd):
+		return fd._data
+
+	@property
+	def nChars(fd):
+		return fd._nChars
+
+	@property
+	def nTokens(fd):
+		return fd._nTokens
 
 	@property
 	def leftPanel(thisFieldDisplay:FieldDisplay):
@@ -254,8 +297,8 @@ class FieldDisplay:
 	def notifyLaunch(thisFieldDisplay:FieldDisplay, whichColumn:str):
 	
 		fdisp = thisFieldDisplay
-		lpanel = fieldDisplay._lFieldPanel
-		rpanel = fieldDisplay._rFieldPanel
+		lpanel = fdisp.leftPanel
+		rpanel = fdisp.rightPanel
 		
 			# Check whether this was the last field panel that we were waiting
 			# to have been launched.
@@ -274,7 +317,7 @@ class FieldDisplay:
 		display = client.display
 		driver = display.driver
 	
-		_logger.info("[FieldDisplay] Launching field display.de")
+		_logger.info("[FieldDisplay] Launching field display.")
 	
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	OK, at this point, both field panels are up and running, and are 
@@ -300,9 +343,14 @@ class FieldDisplay:
 	
 		"""Tells the field display to refresh itself from field data."""
 		
+		fdisp = thisFieldDisplay
+		client = fdisp.client
+		display = client.display
+		driver = display.driver
+
 		fdisp.queryField()		# Query the receptive field for its contents.
 		fdisp.refillPanels()	# Refill the field panels with data.
-		driver.do(fdisp.repaintPanels)
+		driver.do(fdisp.repaintPanels, desc="Repaint field display panels.")
 			# As a background task, have the display driver repaint both panels.
 			# This needs to be a background task to avoid recursion.
 
@@ -422,7 +470,7 @@ class FieldDisplay:
 		"""Redisplays both panels."""
 		
 		fdisp 	= thisFieldDisplay
-		client	= panel.client
+		client	= fdisp.client
 		display	= client.display
 		
 		lpanel	= fdisp.leftPanel	# Field panel in left column.
