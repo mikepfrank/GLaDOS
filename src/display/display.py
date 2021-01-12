@@ -163,6 +163,7 @@ _sw_component = sysName + '.' + _package
 
 from .exceptions import (	# Display-related exception classes.
 
+		RenderExcursion,		# display.renderText() can throw this.
 		DisplayNotRunning,		# We handle this return from driver().
 		DisplayDied,			# display._do1iteration() can throw this.
 		RequestRestart,			# display._resize() might throw this.
@@ -1779,6 +1780,12 @@ class TheDisplay:
 				This method returns a pair (yx2pos, pos2yx) of dictionaries
 				that map between positions in the text and (y,x) positions
 				within the window.  This is to facilitate editing.
+			
+			
+			Exceptions thrown:
+			~~~~~~~~~~~~~~~~~~
+			
+				
 				
 				"""
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -1852,8 +1859,22 @@ class TheDisplay:
 			else:
 				style = None	# Just uses the default style.
 
+			# Use try/except here to catch if we try to draw 
+			# outside the window.
+			try:
 				# This actually displays the current character.			
-			display.renderChar(ch, win=win, defStyle=style)
+				display.renderChar(ch, win=win, defStyle=style)
+			except curses.error as e:
+				msg = str(e)
+				
+				# Wrap up some state information that the caller
+				# might want to know in a RenderExcursion exception.
+				excursion = RenderExcursion(
+					"display.renderText() got curses error: " + msg, 
+					ch, pos, Loc(cy, cx), yx2pos, pos2yx)
+				
+				# Throw that back to the caller.
+				raise excursion
 			
 				# If we just rendered the prompt character, we're done
 				# with the prompt part of the string.

@@ -17,6 +17,7 @@ __all__ = [		# List of all public names exported from this module.
 			#| Exceptions.
 		
 		'DisplayException', 	# Base class for display-related exceptions.
+		'RenderExcursion',		# InfoException: Rendered text went off the screen.
 		'DisplayNotRunning',	# WarningException: Display is not running.
 		'DisplayDied',			# ErrorException: Display unexpectedly quit.
 		'RequestRestart',		# CriticalException: Request display restart.
@@ -35,6 +36,7 @@ from infrastructure.logmaster import (
 		sysName,			# Used just below.
 		getComponentLogger,	# Used just below.
 		LoggedException,	# DisplayException inherits from this.
+		InfoException,		# RenderExcursion inherits from this.
 		WarningException,	# DisplayNotRunning inherits from this.
 		ErrorException,		# DisplayDied inherits from this.
 		CriticalException,	# RequestRestart inherits from this.
@@ -59,6 +61,27 @@ class DisplayException(LoggedException):
 	
 	defLogger = _logger		# Use the display package's logger.
 
+
+class RenderExcursion(DisplayException, InfoException):
+
+	"""This is an exception type that is thrown by the 
+		display.renderText() method when the rendering
+		moves outside the available window."""
+
+	def __init__(exception, msg:str="Render excursion",
+		ch:int=None, pos:int=None, loc:Loc=None, yx2pos:dict={},
+		pos2yx:dict={}):
+		
+		exception._msg = msg
+		exception._ch = ch
+		exception._pos = pos
+		exception._loc = loc
+		exception._yx2pos = yx2pos
+		exception._pos2yx = pos2yx
+	
+	def __str__(exception):
+		return exception._msg
+	
 
 class DisplayNotRunning(DisplayException, WarningException):
 

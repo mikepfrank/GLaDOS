@@ -465,9 +465,12 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 		_logger.info("    [Supervisor] Initializing the cognitive system...")
 		mind = TheCognitiveSystem()			# Start up the A.I.'s mind, itself.
 		
-		# The console needs to be given a pointer to the AI's mind because, in
-		# particular, it needs to be able to examine the AI's receptive field,
-		# so as to display it in the field display on the console.
+			# The console needs to be given a pointer to the AI's mind because, in
+			# particular, it needs to be able to examine the AI's receptive field,
+			# so as to display it in the field display on the console.  We could 
+			# have the console just get it directly from TheReceptiveField(), but
+			# it's perhaps a little cleaner to do things this way.
+			
 		console.setMind(mind)
 		
 			#|------------------------------------------------------------------

@@ -95,7 +95,12 @@ class FieldElement_:
 		"""
 			# Remember our initial requested placement.
 		thisFE._initPlacement	= where
-	
+		thisFE._image			= None		# No image data exists by default.
+
+	@property
+	def image(thisFE):
+		return thisFE._image
+
 @singleton
 class TheFieldHeader(FieldElement_):
 	
@@ -132,7 +137,7 @@ class TheFieldHeader(FieldElement_):
 
 	@property
 	def image(theFieldHeader):		# Just a constant string.
-		return topperStr
+		return headerStr
 		# NOTE: Later we might want to modify this to be able to be updated
 		# dynamically, e.g., if the ai config is reloaded, and the new config
 		# has a different NLP model name.

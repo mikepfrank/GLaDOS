@@ -258,6 +258,9 @@ class ConsoleClient(PanelClient):
 		client.addPanel(consolePanel)		# This goes next, just above the input panel.
 		fieldDisplay.addPanels()			# Tells the field display to add its panels.
 
+	@property
+	def fieldDisplay(thisConsoleClient:ConsoleClient):
+		return thisConsoleClient._fieldDisplay
 
 	def grabTerminal(thisConsoleClient:ConsoleClient):
 
@@ -354,15 +357,36 @@ class ConsoleClient(PanelClient):
 		return thisConsoleClient._supervisor
 	
 	def setActionSystem(thisConsoleClient:ConsoleClient, actionSystem:TheActionSystem):
+	
 		"""Tell the console client what action system to use for reporting."""
+		
 		client = thisConsoleClient
 		client._actionSystem = actionSystem
 
 	def setMind(thisConsoleClient:ConsoleClient, cognoSys:TheCognitiveSystem):
+	
 		"""Give the console client a pointer to the cognitive system whose
-			receptive field it will be displaying."""
+			receptive field it will be displaying.  A side effect of this is
+			that we then immediately "read the AI's mind" (receptive field) 
+			and display its contents."""
+			
 		client = thisConsoleClient
 		client._cognosys = cognoSys
+		
+		client.refreshFieldDisplay()
+			# This tells the console client to update its receptive field display
+			# now that it has access to the AI's mind.
+			
+	def refreshFieldDisplay(thisConsoleClient:ConsoleClient):
+	
+		client 	= thisConsoleClient
+		fdisp	= client.fieldDisplay
+		
+		fdisp.refresh()		# Tells the field display to refresh itself.
+	
+	@property
+	def mind(thisConsoleClient:ConsoleClient):
+		return thisConsoleClient._cognosys
 	
 	def prepareForShutdown(thisConsoleClient:ConsoleClient):
 

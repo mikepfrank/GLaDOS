@@ -225,6 +225,8 @@ class TheCognitiveSystem:
 		"""
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
+		mind = theCognitiveSystem
+	
 		_logger.normal("The AI's cognitive system is booting up...")
 	
 		#|-------------------------------------------------------------------
@@ -245,8 +247,9 @@ class TheCognitiveSystem:
 			# the GLaDOS system's input interface to the core AI's real receptive 
 			# field), passing it the nTokens parameter to tell it how big it is.
 		
-		_logger.info(f"Cognitive system: Creating {nTokens}-token receptive field...")
-		TheReceptiveField(nTokens)	# If we don't supply it, it'll get it from config.
+		_logger.info(f"[Cognitive System] Creating {nTokens}-token receptive field...")
+		field = TheReceptiveField(nTokens)	# If we don't supply it, it'll get it from config.
+		mind._field = field		# Stash it for later reference.
 		
 		#|--------------------------------------
 		#| Step 2:  Create our cognitive stream.
@@ -262,6 +265,11 @@ class TheCognitiveSystem:
 		## Not implemented yet.
 	
 	#__/ End singleton instance initializer theCognitiveSystem.__init__().
+
+	@property
+	def field(theCongitiveSystem:TheCognitiveSystem):
+		mind = theCognitiveSystem
+		return mind._field
 
 	@property
 	def inputChannels(theCongitiveSystem:TheCognitiveSystem):

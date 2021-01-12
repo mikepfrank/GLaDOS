@@ -145,9 +145,11 @@ class Panel:
 
 	@property
 	def win(thisPanel):
+	
 		"""Gets the top-level internal window of this panel, or None
 			if the window has not been created yet.  (Please note this
 			refers to a curses display window, not a GLaDOS window.)"""
+			
 		return thisPanel._win
 
 	def configWin(thisPanel):
@@ -424,9 +426,9 @@ class Panel:
 		panel = thisPanel
 		win = panel.win
 	
-		#/-----------------------------------------
-		#| EXTEND METHOD WITH ADDITIONAL CODE HERE.
-		#\-----------------------------------------
+		#/----------------------------------------------------
+		#| EXTEND METHOD WITH ANY ADDITIONAL CODE BEFORE HERE.
+		#\----------------------------------------------------
 	
 			# Tell the display the panel's window needs refreshing now.
 		win.noutrefresh()
@@ -441,11 +443,13 @@ class Panel:
 	#__/ End method panel.drawContent().
 
 
-	def redisplayContent(thisPanel):
+	def regenerateContent(thisPanel):
 	
-		"""This repaints and refreshes the display of just this panel's 
-			content, leaving the rest of the screen untouched."""
-			
+		"""This regenerates all of the content of the panel, but 
+			postpones the actual screen refresh, which can be done
+			later using display.update().  This method is useful if
+			you want to regenerate multiple panels before refreshing."""
+	
 		panel 	= thisPanel
 		client	= panel.client
 		display	= client.display
@@ -455,7 +459,19 @@ class Panel:
 		win.erase()
 		
 			# Fill in panel contents.
-		thisPanel.drawContent()
+		panel.drawContent()
+			
+
+	def redisplayContent(thisPanel):
+	
+		"""This repaints and refreshes the display of just this panel's 
+			content, leaving the rest of the screen untouched."""
+		
+		panel 	= thisPanel
+		display	= client.display
+
+			# Regenerate (draw from scratch) the content of this panel.
+		panel.regenerateContent()
 		
 			# Tell curses to update the physical display.
 		display.update()

@@ -196,8 +196,9 @@ class ConsolePanel(Panel):
 		return thisConsolePanel._lines
 
 	def drawContent(thisConsolePanel:ConsolePanel):
+		
 		"""This is a standard Panel method that is called to fill in
-			the content of a blank log panel."""
+			the content of a blank panel."""
 
 		panel = thisConsolePanel
 		win = panel.win
