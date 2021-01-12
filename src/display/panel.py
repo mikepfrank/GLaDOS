@@ -468,6 +468,7 @@ class Panel:
 			content, leaving the rest of the screen untouched."""
 		
 		panel 	= thisPanel
+		client  = panel.client
 		display	= client.display
 
 			# Regenerate (draw from scratch) the content of this panel.

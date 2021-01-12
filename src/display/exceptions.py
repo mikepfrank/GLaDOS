@@ -62,6 +62,8 @@ class DisplayException(LoggedException):
 	defLogger = _logger		# Use the display package's logger.
 
 
+class Loc: pass
+
 class RenderExcursion(DisplayException, InfoException):
 
 	"""This is an exception type that is thrown by the 

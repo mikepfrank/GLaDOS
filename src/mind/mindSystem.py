@@ -267,7 +267,7 @@ class TheCognitiveSystem:
 	#__/ End singleton instance initializer theCognitiveSystem.__init__().
 
 	@property
-	def field(theCongitiveSystem:TheCognitiveSystem):
+	def field(theCognitiveSystem:TheCognitiveSystem):
 		mind = theCognitiveSystem
 		return mind._field
 
