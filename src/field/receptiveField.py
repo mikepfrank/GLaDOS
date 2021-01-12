@@ -81,6 +81,8 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 
 from	text.buffer				import	TextBuffer
 
+from	tokenizer.tokenizer		import	countTokens
+
 from 	mind.aiActions			import 	ActionByAI_
 	# This is an abstract class for actions that we might want to take,
 	# which should then be automatically handled by the Supervisor.
@@ -236,6 +238,10 @@ class FieldSlot:
 		thisFieldSlot._posIndex = None			# Slot isn't placed yet.
 		thisFieldSlot._element = forElement
 
+	@property
+	def element(this):	# Field element contained in this slot.
+		return this._element
+
 	def place(thisFieldSlot, 
 				# Where to place the slot on the field?
 			where:Placement=None, 
@@ -268,7 +274,7 @@ class _TheBaseFieldData:
 		in the field.
 		
 		In practice, the fit may not be exact.  The base field data object 
-		can report to using objects whether its currently overfull or 
+		can report to its customers whether its currently overfull or 
 		underfull, and by how much.  Those objects can then potentially 
 		adjust how much information they are currently displaying, in an 
 		attempt to optimally fill the field.
@@ -280,7 +286,11 @@ class _TheBaseFieldData:
 	def __init__(theBaseFieldData:_TheBaseFieldData, maxTokens:int):
 		theBaseFieldData._maxTokens = maxTokens
 		theBaseFieldData._slots = []
-		
+	
+	@property
+	def slots(this):
+		return this._slots
+	
 	def addElement(theBaseFieldData:_TheBaseFieldData, 
 					element:FieldElement_,
 					location:Placement):
@@ -334,7 +344,9 @@ class _TheBaseFieldData:
 				SLIDE-TO-TOP - Similar to SLIDE-TO-BOTTOM, but for the top.
 		"""
 		pass
-		
+	
+	
+	
 	def measure(inst):
 		"""Measure the size of the field in tokens.  This works by
 			Asking the AI's field view (which is the real view) to
@@ -352,8 +364,16 @@ class FieldView_:
 		
 	def __init__(inst, base):
 		inst._baseFieldData = base
-		inst._textBuffer = TextBuffer()
-		
+		#inst._textBuffer = TextBuffer()
+
+		inst._data = []		# Empty list of data items (strings).
+		inst._nChars = 0	# No characters initially.
+		inst._nTokens = 0	# No tokens initially.
+
+	@property
+	def baseData(this):
+		return this._baseFieldData
+
 	# Subclasses should define .render() to render themselves from the
 	# base data.
 
@@ -363,19 +383,56 @@ class TheAIFieldView(FieldView_):
 	
 	"""Derived class for views of the receptive field to be sent to AIs."""
 	
-	def render(inst):
+	def render(this):
 		# This works by iterating through elements in the base data,
-		# and adding their text to an unbounded-length text field.
-		pass
+		# and just adding their images as items in the data set.
+		
+		base = this.baseData	# Get the base data.
+		slots = base.slots		# Get the list of field slots.
+		
+		data = []	# Initialize data array to empty list.
+		for slot in slots:
+			element = slot.element		# Get the field element.
+			image = element.image		# Get that element's (text) image.
+			data.append(image)			# Append it to our list.
+			
+		inst._data = data			# Remember the data array.
+		inst._text = ''.join(data)	# Here's the data as one huge string.
+		inst._nChars = None			# Mark nChars as not-yet-computed.
+		inst._nTokens = None		# Mark nTokens as not-yet-computed.
+	
+	@property
+	def data(inst):
+		return inst._data
+
+	def text(inst):
+		"""Returns the field view as one huge text string."""
+		text = inst._text
+		if text is None:		# Not computed yet?
+			data = inst.data
+			inst._text = text = ''.join(data)
+		return text
+
+	def nChars(inst):
+		"""Returns the number of characters in the current field view."""
+		nChars = inst._nChars
+		if nChars is None:		# Not calculated yet?
+			text = inst.text
+			inst._nChars = nChars = len(text)
+		return nChars
 		
 	def nTokens(inst):
 		"""Returns the number of tokens in the current field view."""
 		# This works by concatenating together all the rows of 
 		# the text buffer, and then we run that
 		# through the tokenizer.
-		pass
-
-
+		nTokens = inst._nTokens
+		if nTokens is None:		# Not calculated yet?
+			text = inst.text
+			inst._nTokens = nTokens = countTokens(text)
+		return nTokens
+		
+		
 # Not a singleton because maybe we have several different humans connected
 # to the system viewing the field and maybe they each have their views
 # configured slightly differently.
@@ -449,30 +506,40 @@ class TheReceptiveField(ReceptiveField_):
 			TheFieldSettings.nominalWidth = nominalWidth
 			#TheFieldSettings.updateNominalWidth(nominalWidth)	# Don't need yet
 	
-		_logger.info("Receptive field: Initializing with the following settings:")
-		_logger.info(f"    field size = {fieldSize} tokens.")
-		_logger.info(f"    nominal width = {nominalWidth} characters.")
+		_logger.info("[Receptive Field] Initializing with the following settings:")
+		_logger.info(f"    Field size = {fieldSize} tokens.")
+		_logger.info(f"    Nominal width = {nominalWidth} characters.")
 	
 			# Stash the important settings in instance data members.
 		theReceptiveField._fieldSize		= fieldSize
 		theReceptiveField._nominalWidth		= nominalWidth
 	
+		_logger.debug("[Receptive Field] Creating base field data object...")
+	
 			# Create the base field data object & store it.
 		baseFieldData 						= _TheBaseFieldData(fieldSize)
 		theReceptiveField._baseFieldData	= baseFieldData
 		
+		_logger.debug("[Receptive Field] Creating the AI's field view...")
+	
 			# Create and store field views for the AI & for humans.
 		theReceptiveField._aiFieldView		= TheAIFieldView(baseFieldData)
 		theReceptiveField._humanFieldView	= HumanFieldView(baseFieldData)
 
+		_logger.debug("[Receptive Field] Creating the field header element...")
+	
 			# Create the "field header" element, which automatically pins
 			# itself to the very top edge of the receptive field.
 		theReceptiveField._fieldHeader		= TheFieldHeader()
 		
+		_logger.debug("[Receptive Field] Creating the input area element...")
+	
 			# Create the "input area" element, which automatically pins 
 			# itself to the very bottom edge of the receptive field.
 		theReceptiveField._inputArea		= TheInputArea()
 		
+		_logger.debug("[Receptive Field] Creating the prompt separator element...")
+	
 			# Create the "prompt separator" element, which separates the
 			# "context" part of the receptive field (above the separator)
 			# from the "prompt" part of the receptive field (below the
@@ -481,5 +548,55 @@ class TheReceptiveField(ReceptiveField_):
 		theReceptiveField._promptSeparator	= ThePromptSeparator()
 
 	#__/ End singleton instance initializer theReceptiveField.__init__().
+
+	@property
+	def view(theReceptiveField:TheReceptiveField):
+	
+		"""Return's the receptive field's currently preferred view.  This 
+			is generally the AI's field view."""
+			
+		field = theReceptiveField
+		return field._aiFieldView
+
+	def getData(theReceptiveField:TheReceptiveField):
+	
+		"""This method retrieves and returns all of the text data currently 
+			contained in the AI's receptive field.  This should have already
+			been trimmed down to fit within the nominal size (in tokens) of 
+			the field.  The format of the returned value is a simple list
+			of items, each of which is a string.  Each item is conceptually
+			a single, indivisible unit; however, they are concatenated 
+			together for purposes of displaying them to the AI, or a human."""
+			
+		field	= theReceptiveField
+		view	= field.view
+		data	= view.getData()
+		
+		field._data = data	
+			# Cache this in case needed for diagnostics.
+		
+		return data
+
+	def nTokens(theReceptiveField:TheReceptiveField):
+	
+		field	= theReceptiveField
+		view	= field.view
+		ntoks	= view.nTokens()	# Counts the tokens.
+		
+		field._nTokens = ntoks
+			# Cache this in case needed for diagnostics.
+		
+		return ntoks
+
+	def nChars(theReceptiveField:TheReceptiveField):
+	
+		field	= theReceptiveField
+		view	= field.view
+		nchars	= view.nChars()		# Counts the characters.
+		
+		field._nChars = nchars
+			# Cache this in case needed for diagnostics.
+		
+		return nchars
 
 #__/ End singleton class TheReceptiveField.
