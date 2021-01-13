@@ -92,8 +92,21 @@ from 	mind.aiActions			import 	ActionByAI_
 			#|		present module within its package.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from	.placement					import	Placement		
-	# A placement specifies an initial location for new slots on the field.
+from	.placement					import	(
+	
+			# Types.
+		Placement,		# A placement specifies an initial location for new slots on the field, or a persistent placement.
+		
+			# Constants (placement values).
+		PINNED_TO_BOTTOM, PINNED_TO_TOP, MOVE_TO_BOTTOM, MOVE_TO_TOP,
+		ANCHORED_TO_BOTTOM, ANCHORED_TO_TOP, SLIDE_TO_BOTTOM, SLIDE_TO_TOP,
+		FLOATING,
+		
+			# Constant structures.
+		GRAVITY_MAP, MODE_MAP
+		
+	)
+	
 
 from	.fieldSettings				import	TheFieldSettings, TheFieldSettingsModule
 	# TheFieldSettings - This uninstantiated class object holds our settings in class variables.
@@ -121,6 +134,8 @@ _DEFAULT_NOMINAL_WIDTH	= 60	# Keeping it narrow-ish reduces tokens wasted on dec
 	# Note that this default may not be respected in all field elements or views.
 	# (Does it make more sense conceptually to set this in the window system?)
 	# NOTE: We still need to add a config setting to override this.
+
+class ConsoleClient: pass
 
 	#|==========================================================================
 	#|
@@ -150,20 +165,6 @@ class _TheBaseFieldData:		pass
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-#	AnnounceFieldExistsAction(ActionByAI) -
-#
-#		This is a class of action that is taken by the AI as soon as its 
-#		receptive field has been created, and is ready for entities outside
-#		of itself to begin writing information into it.  Like all actions, 
-#		as soon as it gets created and initiated, it gets automatically 
-#		processed by the supervisor's ActionProcessor.  This responds 
-#		appropriately, for example, by telling the application system that 
-#		its windows that want to auto-open can now open themselves on the 
-#		field.
-
-class AnnounceFieldExistsAction(ActionByAI_):
-	pass
-	
 class FieldElement_: pass	# Forward declaration.
 
 
@@ -202,66 +203,175 @@ class _TheBaseFieldData:
 	
 	"""
 	def __init__(theBaseFieldData:_TheBaseFieldData, maxTokens:int):
-		theBaseFieldData._maxTokens = maxTokens
-		theBaseFieldData._slots = []
 	
+		base = theBaseFieldData
+	
+		base._maxTokens = maxTokens
+		base._slots = []
+		base._nSlots = 0	# Zero slots on the field initially.
+
+
 	@property
 	def slots(this):
 		return this._slots
+
+
+	def insertSlotAt(base:_TheBaseFieldData, slot:FieldSlot, pos:int):
+		"""Inserts a slot at a given position in the base field data."""
+		base.slots.insertAt(pos, slot)
+		base._nSlots = base._nSlots + 1		# Increment number of slots.
+
+
+	def move(base:_TheBaseFieldData, slot:FieldSlot, gravity:str, soft=False):
+		
+		"""Moves the slot to one side of the field (top or bottom, depending on 
+			whether the gravity is 'up' or 'down'), excluding elements already 
+			pinned (or anchored, if soft is True) to that side."""
+		
+		#/======================================================================
+		#| The algorithm is to start at the extreme point of the side that we
+		#| are heading towards, and move away from it (that is, moving against
+		#| our gravity) until we have no more pinned (and possibly anchored) 
+		#| elements to move past.  This way, when we plop ourselves down there,
+		#| the existing pinned (and possibly anchored) elements aren't disturbed.
+		#| 
+		#| An alternative algorithm would be to start from the opposite side 
+		#| and then move in the direction of gravity until we get to an obstacle, 
+		#| but, assuming that the great majority of slots are going to be 
+		#| floating, that could take a lot longer.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		
+		slots = base.slots
+		length = len(slots)
+		
+		pos 		= 0 	if gravity=='up' else length-1	# Extreme position.
+		direction 	= +1 	if gravity=='up' else -1		# Opposite gravity.
+		
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| The following loop searches for the position that we're supposed
+			#| to end up in.  If the pos >= 0 condition fails, when we went too
+			#| far up.  If the pos < length condition fails, then pos=length and
+			#| we went down off the end of the existing slot list.  We can also
+			#| break out of the loop earlier (as soon as we get past all the 
+			#| slots that we need to get past.
+			
+		while pos >= 0 and pos < length:
+		
+			# "He" = The existing slot at this position in the field data.
+			
+			hisPlacement	= slots[pos].placement			# Get his placement.
+			hisMode 		= MODE_MAP[hisPlacement]		# Get his mode.
+			hisGravity		= GRAVITY_MAP[hisPlacement]		# Get his gravity.
+
+				#|--------------------------------------------------------------
+				#| First, if that guy's gravity doesn't match ours, then we know 
+				#| he's past the slots that we needed to get past, so, break out 
+				#| of the loop.  Note this 'if' also triggers if we get into the 
+				#| floating zone (where the gravity value is None).
+
+			if hisGravity != gravity:
+				break
+
+				#|--------------------------------------------------------------
+				#| Next, if we're doing a hard move (i.e., a pin or a normal 
+				#| move) and that guy's mode is anchored, then we know he's past 
+				#| the guys we needed to get past, so, break out of the loop.
+				
+			if not soft and hisMode == 'anchored':
+				break
+			
+			#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| If we get here, then either we're doing a soft move (anchor or
+			#| slide) and haven't yet reached the floating zone, or we're doing 
+			#| a hard move, but we're still in the area that's already pinned to 
+			#| our side.  In either case, we need to keep going.
+			
+			pos = pos + direction
+		
+		#__/ End while still on the field.
+		
+		
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| OK, by the time we get here, we have successfully moved past all of 
+		#| the elements that we needed to get past to find our position.  So now,
+		#| just insert us in the slots list at the position we just determined.
+		#| (The only subtlety is because "insert" really means "insert before.")
+		
+		# Insert this slot just past the elements we're not displacing.
+		if gravity=='down':
+			pos = pos + 1	# This goes back down one, since we went too far up.
+		slot.insertAt(pos)
+		
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Now we need to re-index all the slots after the current one, because
+		#| their indices have changed.
+		
+		for i in range(pos+1, length+1):
+			slots[i]._posIndex = i
+			
+	#__/ End instance method baseFieldData.move().
 	
-	def addElement(theBaseFieldData:_TheBaseFieldData, 
+	
+	def slide(base:_TheBaseFieldData, slot:FieldSlot, gravity:str):
+	
+		"""A 'slide' simply means a 'soft' move, meaning that we don't 
+			displace previously anchored elements."""
+			
+		base.move(slot, gravity, soft=True)
+	
+	def place(base:_TheBaseFieldData, slot:FieldSlot):
+	
+		mode	= slot.mode
+		gravity = slot.gravity
+	
+		"""This tells the base to please insert the given slot into
+			its slot list, using the specified placement designation."""
+	
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| 'Pin' or 'move' requests are "hard moves." That is, they are strong
+		#| enough to even shove their way past any elements that are "anchored," 
+		#| meaning that their gravity is normally weighing them in place.
+		
+		if mode == 'pinned' or mode == 'move':
+			# Move the slot roughly to be up against the already-pinned elements.
+			base.move(slot,gravity)
+		
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| 'Anchor' and 'slide' requests are "soft moves," which means, they are
+		#| gentle enough that they don't disturb any already-anchored elements.
+		
+		elif mode == 'anchored' or mode == 'slide':
+			# Move the slot gently to be up against already-pinned-or-anchored elements.
+			base.slide(slot,gravity)
+		
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Next, 'moved' elements remain 'anchored', while elements that were
+		#| only 'slid' into place are subsequently allowed to float.
+		
+			# Figure out what the persistent placement of this slot should be.
+		persistentPlacement = where.persistsAs
+		
+			# Set its placement to the new value. (This also updates its mode.)
+		slot.placement = persistentPlacement	
+				# (This invokes a setter method to update the slot's mode.)
+
+	#__/ End instance method theBaseFieldData.place().
+	
+	
+	def addElement(base:_TheBaseFieldData, 
 					element:FieldElement_,
 					location:Placement):
-		"""
-			In this context, an 'element' just means an object that 
-			can be displayed in the AI's receptive field.
-			
-			The 'location' is value of the Placement enumerable, which
-			has the following possible values (see placement.py):
-			
-				PIN_TO_BOTTOM - The element is pinned to the bottom
-					of the receptive field (above elements previously 
-					pinned to the bottom).  This means it cannot be
-					moved from this position in the order by 'normal'
-					placement requests.  Examples of elements pinned
-					to the bottom:  Prompt, separator.
-					
-				PIN_TO-TOP - The element is pinned to the bottom of 
-					the receptive field (below elements previously 
-					pinned to the top).  Examples of elements pinned 
-					to the top:  Info window.
-					
-				MOVE-TO-BOTTOM - The element is moved to the bottom of
-					the receptive field, just above all of the elements
-					pinned to the bottom.  Examples of elements moved
-					to the bottom:  The current active application 
-					window.  After moving it there, it is anchored.
-					
-				MOVE-TO-TOP - The element is moved to the top of the 
-					receptive field, just below all of the elements 
-					pinned to the top.  Examples of elements moved to
-					the top:  A window that the AI doesn't want to 
-					focus its attention on, but wants to remain visible.
-					After being moved, it is anchored.
-					
-				ANCHOR-TO-BOTTOM - This is like MOVE-TO-BOTTOM but the
-					element's location is just above all elements that
-					were only moved to the bottom.
-					
-				ANCHOR-TO-TOP - This is like MOVE-TO-TOP but the element's
-					location is just below all elements that were only
-					moved to the top.
-					
-				SLIDE-TO-BOTTOM - Just above all elements pinned  
-					or anchored to the bottom, but the new element is not 
-					anchored.  That is, the element can be displaced by a 
-					new SLIDE-TO-BOTTOM.  This is the usual mode for 
-					adding new elements: All previously added elements are 
-					displaced upwards.
-					
-				SLIDE-TO-TOP - Similar to SLIDE-TO-BOTTOM, but for the top.
-		"""
-		pass
+		
+		"""Adds the given element to the base field using the given placement
+			specifier. (Note that in this context, an 'element' just means any 
+			object that can be displayed in the AI's receptive field.)  Also:
+			If the element was already placed, it gets re-placed."""
+		
+			# Get the element's slot.
+		slot = element.slot
+		
+			# Tell the slot to re-place itself at the new location.
+		slot.replace(location)
 	
 	
 	
@@ -406,14 +516,19 @@ class TheReceptiveField(ReceptiveField_):
 	
 		field = theReceptiveField
 
+		field._console = None	# The console client is not yet connected to us.
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| 1. The first part of receptive field initialization is to con-
+			#| figure all of our parameter settings.  For non-provided argu-
+			#| ments, we retrieve their values from the current field settings; 
+			#| but for arguments that were provided, we use them to update the 
+			#| current field settings.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+			
 			# First, configure all of the default settings for the field facility.
 		settings = TheFieldSettings.config()
 		
-			#---------------------------------------------------------
-			# For non-provided arguments, retrieve their values from 
-			# the current field settings; but for arguments that were 
-			# provided, use them to update the current field settings.
-			
 		if fieldSize is None:
 			fieldSize = TheFieldSettings.maxSize
 		else:	# Change the maxSize setting to the value provided.
@@ -434,6 +549,14 @@ class TheReceptiveField(ReceptiveField_):
 		field._fieldSize		= fieldSize
 		field._nominalWidth		= nominalWidth
 	
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| 2. Next, we initialize core sub-structures. Primarily, these are
+			#| (a) the base field data object, which maintains the list of dis-
+			#| played field elements; and (b) the AI's field view, which renders
+			#| the field in a format that can be given to the AI, and that also
+			#| can be easily be displayed on the console.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
 		_logger.debug("[Receptive Field] Creating base field data object...")
 	
 			# Create the base field data object & store it.
@@ -444,30 +567,79 @@ class TheReceptiveField(ReceptiveField_):
 	
 			# Create and store field views for the AI & for humans.
 		field._aiFieldView		= TheAIFieldView(baseFieldData)
-		field._humanFieldView	= HumanFieldView(baseFieldData)
+		#field._humanFieldView	= HumanFieldView(baseFieldData)
 
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| 3. Third, we create various initial elements of our field display.
+			#| These automatically place themselves on the field.  Later on, when
+			#| we are connected to the console, it will show these to the human
+			#| operator. They will also be shown to the AI in its main loop.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		_logger.info("[Receptive Field] Creating initial field elements...")
+
+				#------------------------------------------------------------
+				# Create the "field header" element, which automatically pins
+				# itself to the very top edge of the receptive field.
+				
 		_logger.debug("[Receptive Field] Creating the field header element...")
 	
-			# Create the "field header" element, which automatically pins
-			# itself to the very top edge of the receptive field.
-		field._fieldHeader		= TheFieldHeader(field)
+		field._fieldHeader	= TheFieldHeader(field)
 		
+				#------------------------------------------------------------
+				# Create the "input area" element, which automatically pins 
+				# itself to the very bottom edge of the receptive field.
+				
 		_logger.debug("[Receptive Field] Creating the input area element...")
 	
-			# Create the "input area" element, which automatically pins 
-			# itself to the very bottom edge of the receptive field.
-		field._inputArea		= TheInputArea(field)
+		field._inputArea	= TheInputArea(field)
 		
+				#------------------------------------------------------------
+				# Create the "prompt separator" element, which separates the
+				# "context" part of the receptive field (above the separator)
+				# from the "prompt" part of the receptive field (below the
+				# separator). It automaticaly pins itself to the bottom of the
+				# receptive field (just below the input box we just placed).
+
 		_logger.debug("[Receptive Field] Creating the prompt separator element...")
 	
-			# Create the "prompt separator" element, which separates the
-			# "context" part of the receptive field (above the separator)
-			# from the "prompt" part of the receptive field (below the
-			# separator). It automaticaly pins itself to the bottom of the
-			# receptive field (just below the input box we just placed).
 		field._promptSeparator	= ThePromptSeparator(field)
 
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| 4. Now we're done with field initialization.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		_logger.info("[Receptive Field] Field initialization is complete.")
+
 	#__/ End singleton instance initializer field.__init__().
+
+	@property
+	def base(field:TheReceptiveField):
+		return field._baseFieldData
+			# Our base field data object.
+
+	@property
+	def console(field:TheReceptiveField):
+		return field._console	# Our console client.
+
+	def setConsole(field:TheReceptiveField, console:ConsoleClient):
+	
+		"""Tells the field where to find the system console.  We 
+			need to know this so that, whenever the field contents 
+			change, we can update the field display on the console."""
+			
+		field._console = console
+	
+	def place(field:TheReceptiveField, slot:FieldSlot, where:Placement):
+	
+		"""This method tells the field to place the given slot onto itself.
+			We delegate this work to the base field data structure."""
+
+		base = field.base
+		
+			# Tell our base data structure to place this slot inside itself.
+		base.place(slot, placement)
 
 	@property
 	def view(theReceptiveField:TheReceptiveField):

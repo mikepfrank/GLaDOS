@@ -115,7 +115,21 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 
 global __all__	# List of public symbols exported by this module.
 __all__ = [
+			#-------
+			# Types.
+			
 		'Placement',   # Enumerated type for field element placement values.
+		
+			#-----------
+			# Constants.
+			
+		# Placement values.
+		PINNED_TO_BOTTOM, PINNED_TO_TOP, MOVE_TO_BOTTOM, MOVE_TO_TOP,
+		ANCHORED_TO_BOTTOM, ANCHORED_TO_TOP, SLIDE_TO_BOTTOM, SLIDE_TO_TOP,
+		FLOATING,
+		
+		# Structures.
+		GRAVITY_MAP, MODE_MAP
 	]
 
 global _CONVERSION_MAP		# Maps convertible placements.
@@ -126,6 +140,8 @@ global _CONVERSION_MAP		# Maps convertible placements.
 	#|		Define some new 'types' (i.e., simple classes) that this module 
 	#|		will provide.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+class Placement: pass
 
 class Placement(Enum):
 	#---------------------------------------------------------------------------
@@ -160,23 +176,23 @@ class Placement(Enum):
 					focus its attention on, but wants to remain visible.
 					After being moved, it is anchored.
 				
-				ANCHORED_TO_BOTTOM - This is like MOVE-TO-BOTTOM but the
+				ANCHORED_TO_BOTTOM - This is like MOVE_TO_BOTTOM but the
 					element's location is just above all elements that
 					were only moved to the bottom.
 				
-				ANCHORED_TO_TOP - This is like MOVE-TO-TOP but the element's
+				ANCHORED_TO_TOP - This is like MOVE_TO_TOP but the element's
 					location is just below all elements that were only
 					moved to the top.
 				
 				SLIDE_TO_BOTTOM - Just above all elements pinned  
 					or anchored to the bottom, but the new element is not 
 					anchored.  That is, the element can be displaced by a 
-					new SLIDE-TO-BOTTOM.  This is the usual mode for 
+					new SLIDE_TO_BOTTOM.  This is the usual mode for 
 					adding new elements: All previously added elements are 
 					displaced upwards.  After being slid, the element is
 					converted to floating.
 			
-				SLIDE_TO_TOP - Similar to SLIDE-TO-BOTTOM, but for the top.
+				SLIDE_TO_TOP - Similar to SLIDE_TO_BOTTOM, but for the top.
 				
 				FLOATING - The element may appear anywhere between the top
 					and bottom anchored slots.  Not generally used as an
@@ -304,15 +320,61 @@ class Placement(Enum):
 			it convert to?"""
 		return thisPlacement if thisPlacement.isPersistent else _CONVERSION_MAP[thisPlacement] 
 
+	@property
+	def persistsAs(thisPlacement:Placement):
+		
+		placement = thisPlacement
+		
+		if placement.isPersistent:
+			return placement
+			
+		return placement.convertsTo
+		
+
 #__/ End enumerated type class Placement.
 
+global PINNED_TO_BOTTOM, PINNED_TO_TOP, MOVE_TO_BOTTOM, MOVE_TO_TOP
+global ANCHORED_TO_BOTTOM, ANCHORED_TO_TOP, SLIDE_TO_BOTTOM, SLIDE_TO_TOP
+global FLOATING
 
+PINNED_TO_BOTTOM	= Placement.PINNED_TO_BOTTOM
+PINNED_TO_TOP		= Placement.PINNED_TO_TOP
+MOVE_TO_BOTTOM		= Placement.MOVE_TO_BOTTOM
+MOVE_TO_TOP			= Placement.MOVE_TO_TOP
+ANCHORED_TO_BOTTOM	= Placement.ANCHORED_TO_BOTTOM
+ANCHORED_TO_TOP		= Placement.ANCHORED_TO_TOP
+SLIDE_TO_BOTTOM		= Placement.SLIDE_TO_BOTTOM
+SLIDE_TO_TOP		= Placement.SLIDE_TO_TOP
 
 _CONVERSION_MAP = {	
-		Placement.MOVE_TO_TOP: 		Placement.ANCHORED_TO_TOP,
-		Placement.MOVE_TO_BOTTOM:	Placement.ANCHORED_TO_BOTTOM,
-		Placement.SLIDE_TO_TOP:		Placement.FLOATING,
-		Placement.SLIDE_TO_BOTTOM:	Placement.FLOATING
+		MOVE_TO_TOP: 		ANCHORED_TO_TOP,
+		MOVE_TO_BOTTOM:		ANCHORED_TO_BOTTOM,
+		SLIDE_TO_TOP:		FLOATING,
+		SLIDE_TO_BOTTOM:	FLOATING
+	}
+
+GRAVITY_MAP = {
+		PINNED_TO_BOTTOM:		'down'
+		PINNED_TO_TOP:			'up'
+		MOVE_TO_BOTTOM:			'down'
+		MOVE_TO_TOP:			'up'
+		ANCHORED_TO_BOTTOM:		'down'
+		ANCHORED_TO_TOP:		'up'
+		SLIDE_TO_BOTTOM:		'down'
+		SLIDE_TO_TOP:			'up'
+		FLOATING:				None
+	}
+
+MODE_MAP = {
+		PINNED_TO_BOTTOM:		'pinned'
+		PINNED_TO_TOP:			'pinned'
+		MOVE_TO_BOTTOM:			'move'
+		MOVE_TO_TOP:			'move'
+		ANCHORED_TO_BOTTOM:		'anchored'
+		ANCHORED_TO_TOP:		'anchored'
+		SLIDE_TO_BOTTOM:		'slide'
+		SLIDE_TO_TOP:			'slide'
+		FLOATING:				'floating'
 	}
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

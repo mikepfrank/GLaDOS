@@ -166,17 +166,42 @@ from 	config.configuration 	import	TheAIPersonaConfig
 from	supervisor.action		import	Action_, CommandAction_, ActionChannel_
 	# Abstract base classes for general actionsm command-type actions, and action channels.
 
-from	.aiActions				import	The_AI_Cognosphere_Channel
-	# We tell this dude to init itself, and we list it as our input challen.
+from	.aiActions				import	(
+
+		ActionByAI_, 	# This is the base class for action classes we define.
+		The_AI_Cognosphere_Channel
+			# We tell this dude to init itself, and we list it as our input channel.
+	)
 
 from	field.receptiveField	import	TheReceptiveField
 	# This singleton class gives us a handle into the receptive field module.
+
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#| Dummy declarations of classes from modules we don't actually bother to load.
+#| These are used only in type hints.
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+class ConsoleClient: pass
 
 # Forward declarations.
 
 class	TheCognitiveSystem: 			pass
 
 
+#	AnnounceFieldExistsAction(ActionByAI) -
+#
+#		This is a class of action that is taken by the AI as soon as its 
+#		receptive field has been created, and is ready for entities outside
+#		of itself to begin writing information into it.  Like all actions, 
+#		as soon as it gets created and initiated, it gets automatically 
+#		processed by the supervisor's ActionProcessor.  This responds 
+#		appropriately, for example, by telling the application system that 
+#		its windows that want to auto-open can now open themselves on the 
+#		field.
+
+class AnnounceFieldExistsAction(ActionByAI_):
+	pass
+	
 
 
 @singleton
@@ -213,7 +238,7 @@ class TheCognitiveSystem:
 				A subclass of SubProcess, this is the GLaDOS process within
 				which the main processing loop of the AI actually runs.
 	"""
-	def __init__(theCognitiveSystem:TheCognitiveSystem):
+	def __init__(theCognitiveSystem:TheCognitiveSystem, console:ConsoleClient=None):
 		#-----------------------------------------------------------------------
 		"""
 		theCognitiveSystem.__init__()		 [special singleton instance method]
@@ -229,27 +254,46 @@ class TheCognitiveSystem:
 	
 		_logger.normal("The AI's cognitive system is booting up...")
 	
-		#|-------------------------------------------------------------------
-		#| Step 1:  Create (the input interface to) our AI's receptive field.
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		mind._console = None		# The system console is not attached at first.
 	
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Step 0:  Fetch key configuration parameters from our config data.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		# Note: The following is somewhat redundant now, since the field
+		# module itself now uses the settings facility to get its params.
+	
+			#-------------------------------------------------------------------
 			# Fetch the configuration of the AI's persona from the config package.
 			
 		aiConfig = TheAIPersonaConfig()
 		
-			# Look up its .maxVisibleTokens parameter, which we'll need to know in 
-			# order to create our receptive field system--since it determines how 
-			# large our receptive field will be.
+			#-------------------------------------------------------------------
+			# Look up its .maxVisibleTokens parameter, which we'll need to know
+			# in order to create our receptive field system--since it determines 
+			# how large our receptive field will be.			
 			
 		nTokens = aiConfig.maxVisibleTokens
 	
-			# Finally, create the receptive field (which actually just means, 
+	
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Step 1:  Create (the input interface to) our AI's receptive field.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+			# Next, we create the receptive field (which actually just means, 
 			# the GLaDOS system's input interface to the core AI's real receptive 
 			# field), passing it the nTokens parameter to tell it how big it is.
 		
 		_logger.info(f"[Cognitive System] Creating {nTokens}-token receptive field...")
-		field = TheReceptiveField(nTokens)	# If we don't supply it, it'll get it from config.
-		mind._field = field		# Stash it for later reference.
+		field = TheReceptiveField(nTokens)	# If we don't supply it here, it'll get it from config.
+		mind._field = field		# Stash the field for later reference.
+		
+			# Now is probably a good time to attach ourselves to the console, so 
+			# that the operator can immediately see the field we just created.
+			
+		if console is not None:
+			mind.setConsole(console)
+			
 		
 		#|--------------------------------------
 		#| Step 2:  Create our cognitive stream.
@@ -259,6 +303,8 @@ class TheCognitiveSystem:
 		#|---------------------------------------
 		#| Step 3:  Subscribe to notifications.
 		
+		## Not implemented yet.
+		
 		#|---------------------------------------
 		#| Step 4:  Create our cognitive process.
 		
@@ -266,10 +312,35 @@ class TheCognitiveSystem:
 	
 	#__/ End singleton instance initializer theCognitiveSystem.__init__().
 
+
 	@property
 	def field(theCognitiveSystem:TheCognitiveSystem):
 		mind = theCognitiveSystem
 		return mind._field
+
+
+	def setConsole(theMind:TheCognitiveSystem, console:ConsoleClient):
+	
+		"""This method is used to tell the mind where the system console
+			is.  We need this so that we can automatically update the 
+			receptive field display on the console whenever the contents 
+			of the field are changed."""
+			
+		mind._console = console		# Remember where the console is.
+		
+			# Also, tell the field where it is.
+		mind.field.setConsole(console)
+		
+			#|------------------------------------------------------------------
+			#| The console itself also needs to be given a pointer back into the 
+			#| AI's mind because, in particular, it needs to be able to examine 
+			#| the AI's receptive field on demand, so as to display its current
+			#| state in the field display on the console.  We could have the 
+			#| console just find the field directly from TheReceptiveField(), 
+			#| but it's perhaps a little cleaner to do things this way.
+			
+		console.setMind(mind)
+		
 
 	@property
 	def inputChannels(theCongitiveSystem:TheCognitiveSystem):
@@ -287,8 +358,23 @@ class TheCognitiveSystem:
 		return [The_AI_Cognosphere_Channel()]
 
 	def start(theCongitiveSystem:TheCognitiveSystem):
+		
 		"""Starts the cognitive system running in a background thread."""
-		pass
+		
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Before we go into our main loop, we'll take care of some necessary
+		#| startup tasks.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		
+			# First, here we conceive and initiate the action of announcing 
+			# to the rest of the system that the receptive field is now up 
+			# and running and is ready for other parts of the system to use 
+			# it. This is one of our first major tests of the action system.
+		announcement = AnnounceFieldExistsAction()
+		announcement.initiate()
+
+		# TO DO: Write more code here, including starting up other subsystems,
+		# and going into the main loop.
 
 #__/ End singleton class TheCognitiveSystem.
 
