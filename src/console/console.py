@@ -374,6 +374,10 @@ class ConsoleClient(PanelClient):
 			
 		client = thisConsoleClient
 		
+			# If we already know our mind, we don't need to do anything.
+		if cognoSys is client.mind:
+			return
+
 			# Remember how to find the cognitive system.
 		client._cognosys = cognoSys
 		
