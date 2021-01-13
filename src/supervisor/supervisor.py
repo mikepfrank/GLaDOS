@@ -381,6 +381,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 		
 		# At this point, the main supervisor thread has not yet been started.
 		supervisor._thread = None
+			# (This will be done later, when it's time to run our main loop.)
 
 		# As a small initial task, we link up the supervisor (i.e., ourselves) with the console client.
 		supervisor.setConsole(console)
@@ -427,36 +428,38 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 				
 
 				#|--------------------------------------------------------------
-				#| (2) Next, we start up the virtual text-based window system for
-				#| use by the AI.  (Note this is distinct from the curses-based 
-				#| window system being utilized by the console display.)  We do 
-				#| this now because the next step will be to start up various 
-				#| other subsystems that may launch associated GLaDOS processes, 
-				#| and each process generally needs to have an associated window
-				#| which will show its I/O stream.
+				#| (2) Next, we initialize the virtual text-based window system 
+				#| for use by the AI.  (Note this is distinct from the curses-
+				#| based window system being utilized by the console display.)  
+				#| We do this now because the next step will be to initialize
+				#| various other subsystems that may launch associated GLaDOS
+				#| processes, and each process generally needs to have an 
+				#| associated window which will show its I/O stream.
 				
 		_logger.info("    [Supervisor] Initializing the text windowing system...")
 		ws = TheWindowSystem()			# Initializes the text windowing system.
 		
 		
 				#|--------------------------------------------------------------
-				#| (3) Next, we start up the process system.  This is needed to
-				#| support any processes that may need to be created to support
-				#| individual apps that will be launched from within GLaDOS, and 
-				#| furthermore, there may be some background processes started 
-				#| here to support various internal housekeeping functions of 
-				#| GLaDOS itself.
+				#| (3) Next, we initialize the process system.  This is needed 
+				#| to support any background GLaDOS sub-processes that may need 
+				#| to be created in order to support individual apps that will 
+				#| be launched from within GLaDOS, and furthermore, there may be 
+				#| some background processes started by it to support various 
+				#| internal housekeeping functions of GLaDOS itself.
 		
 		_logger.info("    [Supervisor] Initializing the sub-process system...")
-		ps = TheProcessSystem()			
-			# Start the process framework and launch any essential 
-			# background GLaDOS processes.
+		ps = TheProcessSystem()		# Initializes the process framework.
+			# Later on, in .start(), below, we will actually start up the 
+			# process framework, which will launch any essential background 
+			# GLaDOS processes.
 				
 				
 				#|--------------------------------------------------------------
-				#| (4) Now we can start the application subsystem.	This allows
-				#| individual GLaDOS applications to be launched as needed, and
-				#| some of them will even be launched automatically on startup.
+				#| (4) Now we can initialized the application subsystem.  This 
+				#| allows individual GLaDOS applications to be launched as 
+				#| needed, and some of them will even be launched automatically 
+				#| on system startup in .start(), below.
 		
 		_logger.info("    [Supervisor] Initializing the applications system...")
 		appSys = TheAppSystem()		# Initializes the application system.
@@ -464,17 +467,12 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 		
 				#|--------------------------------------------------------------
 				#| (5) Finally, we can initialize the A.I.'s cognitive system.
+				#| We pass it a pointer to the console, because it will need to
+				#| be able to update the console display when the field changes.
 		
 		_logger.info("    [Supervisor] Initializing the cognitive system...")
-		mind = TheCognitiveSystem()			# Start up the A.I.'s mind, itself.
+		mind = TheCognitiveSystem(console)	# Initializes the A.I.'s mind, itself.
 		
-			# The console needs to be given a pointer to the AI's mind because, in
-			# particular, it needs to be able to examine the AI's receptive field,
-			# so as to display it in the field display on the console.  We could 
-			# have the console just get it directly from TheReceptiveField(), but
-			# it's perhaps a little cleaner to do things this way.
-			
-		console.setMind(mind)
 		
 			#|------------------------------------------------------------------
 			#| At this point, all of the individual subsystems have been 

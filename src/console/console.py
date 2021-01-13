@@ -373,8 +373,14 @@ class ConsoleClient(PanelClient):
 			and display its contents."""
 			
 		client = thisConsoleClient
+		
+			# Remember how to find the cognitive system.
 		client._cognosys = cognoSys
 		
+			# Tell the cognitive system how to find us.
+		cognoSys.setConsole(client)
+		
+			# Now tell ourselves to fetch & show the field data.
 		client.refreshFieldDisplay()
 			# This tells the console client to update its receptive field display
 			# now that it has access to the AI's mind.

@@ -55,7 +55,7 @@ __all__ = [
 from	infrastructure.decorators	import	singleton
 from	infrastructure.utils		import	overwrite			# Used for composing horizonal bars.
 from	.fieldSettings				import	TheFieldSettings
-from	.placement					import	Placement
+from	.placement					import	Placement, GRAVITY_MAP
 #from	.fieldSlot					import	FieldSlot
 	
 class FieldElement_: pass
@@ -101,16 +101,22 @@ class FieldSlot:
 	#	- fieldSlot.place() - Tells the field slot to place itself 
 	#		appropriately within the given base field data object.
 	
-	def __init__(
-			thisFieldSlot, 
-				# How to place the new slot on the field:
-			placement:Placement=Placement.SLIDE_TO_BOTTOM,	
-				# By default, we slide new slots to the bottom without anchoring 
-				# them (thereby displacing pre-placed unanchored slots upwards).
+	def __init__(newFieldSlot,	# The new field slot being initialized.
+			
 			forElement:FieldElement_=None,	
 				# The field element we're creating this slot to hold (if it 
 				# exists already).
+				
+				# This specifies how to place the new slot on the field:
+			placement:Placement=Placement.SLIDE_TO_BOTTOM,	
+					# By default, we slide all new slots to the bottom without anchoring 
+					# them (thereby displacing pre-placed unanchored slots upwards). The
+					# newly-placed slot is subsequently floating (thus easily displaced).
+			
 			field:ReceptiveField_=None
+				# If you want this slot to auto-place itself upon creation,
+				# then you need to give it a pointer to the field that it
+				# should place itself on.
 		):
 		"""
 			FieldSlot.__init__()						  [Instance initializer]
@@ -129,29 +135,120 @@ class FieldSlot:
 				refreshment is a responsibility of higher-level classes.)
 		"""
 
-			# Remember our placement and our element and our field.
-		thisFieldSlot._placement = placement
-		thisFieldSlot._posIndex = None			# Slot isn't placed yet.
-		thisFieldSlot._element = forElement
-		thisFieldSlot._field = field
+		slot	= newFieldSlot
+		base	= field.base
 
-			# Go ahead and place this slot.
-		thisFieldSlot.place()
+		# Remember the given placement.
+		slot.placement = placement
+			# (The setter for the .placement property also automatically
+			# calculates the implied mode and gravity values.)
+		
+			# Initialize some additional private attributes.
+		slot._posIndex	= None			# Slot isn't placed yet.
+		slot._element	= forElement	# We contain the element that we were created to hold.
+		slot._field		= field			# This is the field that we will place ourselves on.
+		slot._base		= base			# This is the base field data structure.
+
+			# Go ahead and place this slot, if possible.
+		slot.place()
+
+	@property
+	def placement(this):
+		return this._placement
+
+	@property
+	def placement.setter(thisSlot, newPlacement:Placement):
+		"""Sets this slot's placement value, and derived attributes."""
+		thisSlot._placement = newPlacement
+		thisSlot._mode		= MODE_MAP[newPlacement]
+		thisSlot._gravity	= GRAVITY_MAP[newPlacement]
+		
+	@property
+	def mode(thisSlot):
+		return thisSlot._mode
+
+	@property
+	def gravity(thisSlot):
+		return thisSlot._gravity
+
+	@property
+	def position(thisSlot):
+		return thisSlot._posIndex
 
 	@property
 	def element(this):	# Field element contained in this slot.
 		return this._element
 
-	def place(thisFieldSlot, 
+	@property
+	def field(slot):
+		return slot._field
+		
+	@property
+	def base(slot):
+		return slot._base
+
+	def replace(thisSlot:FieldSlot, newPlacement:Placement):
+	
+		"""Re-place an already-placed slot with a new placement value."""
+
+		# First, if the slot is already placed on the field, then
+		# we need to start by removing it from the field.
+		
+		if not slot.position is None:
+			thisSlot.remove()	# Remove slot from the field.
+
+		thisSlot.placement = newPlacement	# Assign the new placement.
+
+		thisSlot.place()	# Re-place this slot.
+
+
+	def place(slot:FieldSlot, 
 				# Where to place the slot on the field?
 			where:Placement=None):
 				# By default, we'll just use the element's initial placement.
-
+		
+		"""Place a slot on the field using the given placement designator.
+		
+			NOTE: If the slot doesn't know its field yet, it updates its
+			aspirational placement, but doesn't actually get placed yet."""
+		
 		if where is None:
-			where = thisFieldSlot._placement
+			where = slot._placement
+		else:
+			slot.placement = where
+			
+		base = slot.base	# Base field data structure
+		
+		if base is not None:
+			# Ask the field to place us on itself, please.
+			base.place(slot, where)
+	
+	
+	def insertAt(slot:FieldSlot, pos:int):
+		"""Insert this slot at a specific position on the field."""
+		base = slot.base
+		base.insertSlotAt(slot, pos)
+		slot._posIndex = pos			# Update the slot's index.
+	
+	def remove(slot:FieldSlot):
+		"""Removes this slot from the field."""
+		
+		base = slot.base
 
-		# TODO: Need to keep working here 
+		# If it's already not on the field, we have nothing to do.
+		if slot.position is None:
+			return
 
+		# Actually remove it.
+		oldIndex = slot._posIndex	# Remember where we were.
+		slots = base.slots
+		slots.remove(slot)
+		slot._posIndex = None
+		
+		# Now we need to re-index the remaining slots.
+		for i in range(oldIndex, len(slots)):
+			slots[i]._posIndex = i
+		
 #
 #	FieldElement		- Abstract subclass for any element (object) that can be 
 #							placed onto the receptive field.  This includes windows
@@ -192,8 +289,14 @@ class FieldElement_:
 		thisFE._initPlacement	= where
 		thisFE._image			= None		# No image data exists by default.
 
-			# Create a field slot to contain this field element.
-		slot = FieldSlot(where, thisFE, field)
+			# Go ahead and create a field slot to contain this field element.
+		slot = FieldSlot(thisFE, where, field)
+		
+		thisFE._slot			= slot		# Remember our slot.
+
+	@property
+	def slot(thisFE):
+		return thisFE._slot
 
 	@property
 	def image(thisFE):
