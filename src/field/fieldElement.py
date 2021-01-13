@@ -67,7 +67,13 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 from	infrastructure.decorators	import	singleton
 from	infrastructure.utils		import	overwrite			# Used for composing horizonal bars.
 from	.fieldSettings				import	TheFieldSettings
-from	.placement					import	Placement, MODE_MAP, GRAVITY_MAP
+from	.placement					import	(
+		
+		Placement, 
+		PINNED_TO_TOP, PINNED_TO_BOTTOM,
+		MODE_MAP, GRAVITY_MAP
+		
+	)
 #from	.fieldSlot					import	FieldSlot
 	
 class FieldElement_: pass
@@ -334,7 +340,27 @@ class TheFieldHeader(FieldElement_):
 	
 	"""This is a special field element that displays a "header bar" that is 
 		(semi-) permanently located at the top of the entire field."""
+
+		# Need to get this from sys config instead.
+	bgChar = "*"	# Fill top line with this character.
 	
+		# Need to get this from sys config instead.
+	fieldTitle = "GLaDOS Main Screen / GPT-3 Receptive Field"
+			# Except, fetch "GPT-3" from the name of the cognitive system's 
+			# associated language model.
+
+	fieldTitle = ' ' + fieldTitle + ' '		# Add some padding on both sides.
+	
+		# Set the header width to the current value of nominal field width setting.
+	headerWidth = TheFieldSettings.nominalWidth
+	
+		# Calculate where to place title string to (roughly) center it.
+	titlePos = int((headerWidth - len(fieldTitle))/2)
+	
+		# Construct the full text string for the topper bar.
+	headerStr = overwrite(bgChar*headerWidth, titlePos, fieldTitle) + '\n'
+		
+
 	def __init__(newHeaderElem:TheFieldHeader, *args, **kwargs):
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -342,31 +368,11 @@ class TheFieldHeader(FieldElement_):
 			#| ization for all field elements.
 
 		super(TheFieldHeader.__wrapped__, newHeaderElem).__init__(
-				"Field Header", Placement.PINNED_TO_TOP, *args, **kwargs
-			)
+				"Field Header", PINNED_TO_TOP, *args, **kwargs)
 			# NOTE: We always pin the field header to the very top of the 
 			# receptive field, because that's where it's supposed to appear, 
 			# by definition.
 
-			# Need to get this from sys config instead.
-		bgChar = "*"	# Fill top line with this character.
-		
-			# Need to get this from sys config instead.
-		fieldTitle = "GLaDOS Main Screen / GPT-3 Receptive Field"
-				# Except, fetch "GPT-3" from the name of the cognitive system's 
-				# associated language model.
-
-		fieldTitle = ' ' + fieldTitle + ' '		# Add some padding on both sides.
-		
-			# Set the header width to the current value of nominal field width setting.
-		headerWidth = TheFieldSettings.nominalWidth
-		
-			# Calculate where to place title string to (roughly) center it.
-		titlePos = int((headerWidth - len(fieldTitle))/2)
-		
-			# Construct the full text string for the topper bar.
-		headerStr = overwrite(bgChar*headerWidth, titlePos, fieldTitle) + '\n'
-		
 			# Save it as our instance image.
 		newHeaderElem._image = headerStr
 
@@ -403,8 +409,7 @@ class ThePromptSeparator(FieldElement_):
 			# the element placement.
 
 		super(ThePromptSeparator.__wrapped__, psElem).__init__(
-				"Prompt Separator", Placement.PINNED_TO_BOTTOM, *args, **kwargs
-			)
+				"Prompt Separator", PINNED_TO_BOTTOM, *args, **kwargs)
 			# NOTE: We always pin the prompt separator to the bottom of the 
 			# receptive field, except this will really end up being just above
 			# the actual prompt area, which should have been previously pinned.
@@ -412,6 +417,42 @@ class ThePromptSeparator(FieldElement_):
 		psElem._image = psElem.sepBarStr
 
 
+class TheInputArea: pass
+
 @singleton
 class TheInputArea(FieldElement_):
-	pass
+
+	"""This is a field element that provides a space where the AI's input prompt 
+		appears, and where, conceptually, the AI is 'typing' its input in response."""
+		
+	eventFormat = DateEventFormat		# Format for displaying the working "input event."
+		# Note this format shows the current date and the entity ID.
+	
+	def __init__(inputArea:TheInputArea, personaEntity:AI_Persona_):
+		
+		"""Initializer for the singleton instance of the "input area" field element."""
+	
+		aiTextEvent = TextEvent("", personaEntity, inputArea.eventFormat)
+			# This creates a fresh working draft of an "AI text event".  The 
+			# initial text content of the event is the empty string.  The author
+			# of the event is designated to be the AI persona that we are asking
+			# the AI to take on the role of.  We use the default event format for
+			# this class, which is a prompted format with the date and entity ID.
+
+			# Store the event for later reference.
+		inputArea._aiTextEvent = aiTextEvent
+		
+		super(TheInputArea.__wrapped__, inputArea).__init__(
+			"Input Area", PINNED_TO_BOTTOM)
+			# NOTE: The input area must be pinned to the very bottom of the receptive
+			# field, so that the AI will perceive the prompt as what it's completing.
+
+	@property
+	def image(inputArea:TheInputArea):
+	
+		"""This standard field element property gives the (textual) image of the 
+			element.  For an input area element, we just ask the AI text event to
+			display itself, which renders it using its default format."""
+			
+		return inputArea._aiTextEvent.display()
+		

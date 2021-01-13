@@ -175,7 +175,8 @@ class	ToggleType:				pass	# Setting types for two-valued settings.
 class	EnumeratedType:			pass	# Setting types for short enumerated lists.
 class	RangeType:				pass	# Setting types for short integer ranges.
 class	IntegerType:			pass	# Setting types for wide integer ranges.
-class	ContinuousType:			pass	# Setting types for continues number ranges.
+class	ContinuousType:			pass	# Setting types for continuous number ranges.
+class	StringType:				pass	# Setting types for strings.
 
 	# Value list classes.
 class	ValueList:				pass	# List of possible values, available for some types.

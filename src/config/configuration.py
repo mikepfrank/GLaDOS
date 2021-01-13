@@ -701,7 +701,7 @@ class	TheAIPersonaConfig:
 			
 		
 		Public instance attributes:
-		---------------------------
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		
 			The following are basic config parameters needed for
 			finding other data, and are customized using environment
@@ -718,6 +718,9 @@ class	TheAIPersonaConfig:
 				
 			The following are detailed configuration parameters 
 			that are specified in the config file itself.
+			
+			Mind configuration parameters (under 'mind-conf'):
+			--------------------------------------------------
 				
 				.modelFamily [string] - AI model type (e.g., 'gpt-2' or 
 											'gpt-3').
@@ -797,58 +800,76 @@ class	TheAIPersonaConfig:
 		"""
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	 
-		
 			#------------------------------------
-			# Extract the model-family parameter.
+			# Extract the mind-conf parameter.
 		
-		if 'model-family' in conf:
-			theAIConfig.modelFamily = modelFamily = conf['model-family']
+		if 'mind-conf' in conf:
+			theAIConfig.mindConf = mindConf = conf['mind-conf']
 				# TODO: Make sure value given is valid.
-			_logger.normal(f"    AI configuration: The AI's model family is {modelFamily}.")
+			_logger.normal(f"    AI configuration: The AI's mind configuration is {mindConf}.")
 		else:
-			_logger.warn("parseConf(): The required model-family parameter "
+			_logger.warn("parseConf(): The required mind-conf parameter "
 							"was not provided.")
-			theAIConfig.modelFamily = None
-	
-	
-			#------------------------------------
-			# Extract the model-version parameter.
-	
-		if 'model-version' in conf:
-			theAIConfig.modelVersion = modelVersion = conf['model-version']
-				# TODO: Make sure value given is valid.
-			_logger.normal(f"    AI configuration: The AI's model version is {modelVersion}.")
-		else:
-			_logger.warn("parseConf(): The required model-version parameter "
-							"was not provided.")
-			theAIConfig.modelVersion = None
+			theAIConfig.mindConf = None
 
-
-			#------------------------------------
-			# Extract the max-visible-tokens parameter.
-		
-		if 'max-visible-tokens' in conf:
-			theAIConfig.maxVisibleTokens = maxTok = conf['max-visible-tokens']
-				# TODO: Make sure value given is valid.
-			_logger.normal(f"    AI configuration: The AI's receptive field size is {maxTok}.")
-		else:
-			_logger.warn("parseConf(): The required max-visible-tokens parameter "
-							"was not provided.")
-			theAIConfig.maxVisibleTokens = None
-
-
-			#--------------------------------------------------
-			# Extract the sys-notification-threshold parameter.
-
-		if 'sys-notification-threshold' in conf:
-			theAIConfig.sysNotifyThresh = sysNotifyThresh = conf['sys-notification-threshold']
-				# TODO: Make sure value given is valid.
-			_logger.normal(f"    AI configuration: The importance threshold for system notifications is {sysNotifyThresh}.")
-		else:
-			_logger.warn("parseConf(): The required sys-notification-threshold parameter "
-							"was not provided.")
-			theAIConfig.sysNotifyThresh = 0
-
+## The below is commented out because currently, detailed config parameters are parsed by the
+## settings modules within individual packages (e.g., field and mind).
+##
+## 	This one is a field parameter:
+##
+##			#------------------------------------
+##			# Extract the max-visible-tokens parameter.
+##		
+##		if 'max-visible-tokens' in conf:
+##			theAIConfig.maxVisibleTokens = maxTok = conf['max-visible-tokens']
+##				# TODO: Make sure value given is valid.
+##			_logger.normal(f"    AI configuration: The AI's receptive field size is {maxTok}.")
+##		else:
+##			_logger.warn("parseConf(): The required max-visible-tokens parameter "
+##							"was not provided.")
+##			theAIConfig.maxVisibleTokens = None
+##
+##
+##	The rest of these are mind parameters:
+##
+##			#------------------------------------
+##			# Extract the model-family parameter.
+##		
+##		if 'model-family' in conf:
+##			theAIConfig.modelFamily = modelFamily = conf['model-family']
+##				# TODO: Make sure value given is valid.
+##			_logger.normal(f"    AI configuration: The AI's model family is {modelFamily}.")
+##		else:
+##			_logger.warn("parseConf(): The required model-family parameter "
+##							"was not provided.")
+##			theAIConfig.modelFamily = None
+##
+##	
+##			#------------------------------------
+##			# Extract the model-version parameter.
+##	
+##		if 'model-version' in conf:
+##			theAIConfig.modelVersion = modelVersion = conf['model-version']
+##				# TODO: Make sure value given is valid.
+##			_logger.normal(f"    AI configuration: The AI's model version is {modelVersion}.")
+##		else:
+##			_logger.warn("parseConf(): The required model-version parameter "
+##							"was not provided.")
+##			theAIConfig.modelVersion = None
+##
+##
+##			#--------------------------------------------------
+##			# Extract the sys-notification-threshold parameter.
+##
+##		if 'sys-notification-threshold' in conf:
+##			theAIConfig.sysNotifyThresh = sysNotifyThresh = conf['sys-notification-threshold']
+##				# TODO: Make sure value given is valid.
+##			_logger.normal(f"    AI configuration: The importance threshold for system notifications is {sysNotifyThresh}.")
+##		else:
+##			_logger.warn("parseConf(): The required sys-notification-threshold parameter "
+##							"was not provided.")
+##			theAIConfig.sysNotifyThresh = 0
+##
 
 		# NOTE: It would be nice to do some additional error-checking 
 		# here, such as warning the user if there are other parameters 

@@ -30,10 +30,10 @@
 									n*<tab-width>
 									
 			where n>0 is any integer.  Mainly, this is only used for rendering
-			of HT (horizontal tab) characters on human-viewable displays, but,
-			note that there is no guarantee that the AI will interpret tabs 
-			according to the same convention.  The best we can do is give it
-			a hint (say in an info bar near the bottom of its main screen). */
+			of HT (horizontal tab) characters on human-viewable displays; and,
+			please note that there is no guarantee that the AI will interpret 
+			tabs according to the same convention.  The best we can do is give 
+			it a hint (say in an info bar near the bottom of its main screen). */
 
 	tab-width:		4		# Typical modern value.  Would 8 be better?
 
@@ -44,16 +44,21 @@
 	field-conf:		{
 			
 				/* Title string to be displayed (centered) in the header bar
-					at the very top edge of the entire receptive field. */
+					at the very top edge of the entire receptive field.  Note
+					that presently, this has the NLP model family name "hard-
+					coded" into it; someday, if we have more models available, 
+					we may want to specify this as a separate parameter. */
 			
 			title:					"GLaDOS Main Screen / GPT-3 Receptive Field"
 	
 				/* The nominal width of the receptive field, in (assumed
-					fixed-width) characters.  (Note that not all field views or 
-					field elements will necessarily end up respecting this
+					fixed-width) characters.  (Note that not all field views
+					or field elements will necessarily end up respecting this
 					suggested value.) */
 	
 			nominal-width:			60		
+				# (Note: The primary reason for limiting this value is to reduce
+				#	the number of tokens taken up by horizontal separators.)
 			
 				/* This character should be used as the "background" pattern 
 					making up the entire header bar, apart from the title 

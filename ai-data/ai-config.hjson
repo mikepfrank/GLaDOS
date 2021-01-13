@@ -49,48 +49,69 @@
 	# The top-level config struct is a dict of attribute-value pairs.
 
 {
-		#-----------------------------------------------------------------
-		# The persona-name is the proper name to be used (in event records
-		# and prompts) to refer to the AI's persona.
-	
-	persona-name:					"Gladys"
+		#/======================================================================
+		#|	The mind-conf sub-dict provides configuration parameters for the
+		#|	AI's "mind" or cognitive system specifically.  This is as opposed
+		#|	to parameters for other subsystems, such as application preferences.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		#-----------------------------------------------------------------
-		# The persona-user-account is the user account name on the host 
-		# system under which the server process should be run.
-	
-	persona-user-account:			"gladys"	# Not yet used.
+	mind-conf:	{
 
-		#-----------------------------------------------------------------
-		# The model-family is a symbol specifying the general architecture
-		# of the AI.  Choices are:  gpt-2 (Samson), gpt-3 (Gladys).
-		# (However, gpt-2 is not yet supported.)
-
-	model-family:					'gpt-3'		# Used for Gladys
-	
-		#------------------------------------------------------------------
-		# The model-version is a symbol naming the particular model within
-		# the model-family.  Choices for gpt-3 include ada, babbage, curie,
-		# and davinci.
-	
-	model-version:					'davinci'	# The most powerful GPT-3 model.
-
-		#-----------------------------------------------------------------------
-		# The max-visible-ntokens specifies the assumed size of the receptive 
-		# field of the underlying language model.  For GPT-3, this is 2,048.
+			#-----------------------------------------------------------------
+			# The persona-name is the proper name of the AI's persona.  The 
+			# persona-id is a shortened version to be used (in event records
+			# and prompts) to refer to the AI's persona.
 		
-	max-visible-tokens:				2048	# Comes from paper, n_ctx model parameter.
-	
-		#-----------------------------------------------------------------------
-		# The sys-notification-threshold specifies the minimum importance level
-		# of system actions that we want to be made aware of when they occur.
-		# These actions' completion events will appear in our cognitive stream.
-		
-	sys-notification-threshold:		0	# All system actions with non-negative importance.
+		persona-name:					"Gladys Eden"
+		persona-id:						"Gladys"
 
-	# Eventually, we need to add more configuration parameters here, to do
-	# things like set GPT-3 API parameters, customize locations in the 
-	# filesystem for various resources such as the memory and history, and
-	# so forth.
+			#-----------------------------------------------------------------
+			# The persona-user-account is the user account name on the host 
+			# system under which the server process should be run.
+		
+		persona-user-account:			"gladys"	# Not yet used.
+
+			#-----------------------------------------------------------------
+			# The model-family is a symbol specifying the general architecture
+			# of the AI.  Choices are:  gpt-2 (Samson), gpt-3 (Gladys).
+			# (However, gpt-2 is not yet supported.)
+
+		model-family:					'gpt-3'		# Used for Gladys
+		
+			#------------------------------------------------------------------
+			# The model-version is a symbol naming the particular model within
+			# the model-family.  Choices for gpt-3 include ada, babbage, curie,
+			# and davinci.
+		
+		model-version:					'davinci'	# The most powerful GPT-3 model.
+
+			#-----------------------------------------------------------------------
+			# The sys-notification-threshold specifies the minimum importance level
+			# of system actions that we want to be made aware of when they occur.
+			# These actions' completion events will appear in our cognitive stream.
+			
+		sys-notification-threshold:		0	# All system actions with non-negative importance.
+
+		# Eventually, we need to add more configuration parameters here, to do
+		# things like set GPT-3 API parameters, customize locations in the 
+		# filesystem for various resources such as the memory and history, and
+		# so forth.
+
+	}
+	
+		#/======================================================================
+		#|	The mind-conf sub-dict provides configuration parameters for the
+		#|	AI's receptive field specifically.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	field-conf:	{
+	
+			#-----------------------------------------------------------------------
+			# The max-visible-ntokens specifies the assumed size of the receptive 
+			# field of the underlying language model.  For GPT-3, this is 2,048.
+			
+		max-visible-tokens:				2048	# Comes from paper, n_ctx model parameter.
+	
+	}
 
 }

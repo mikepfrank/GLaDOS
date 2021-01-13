@@ -259,7 +259,8 @@ class AI_Entity_(Entity_):
 		return AI_Entity_
 
 class AI_Persona_(AI_Entity_):
-	_ENTITY_TYPE_NAME = "AI persona"
+	_isAbstract = False
+	_ENTITY_TYPE_NAME = "The AI's persona"
 	@classproperty
 	def entityType(dynClass):
 		return AI_Persona_
@@ -272,7 +273,6 @@ class AI_System_(AI_Entity_):
 class AI_Subsystem_(AI_Entity_):
 	"""An entity that is a subsystem of an AI system."""
 	_ENTITY_TYPE_NAME = "subsystem of an AI"
-
 
 	@classproperty
 	def entityType(dynamicClass):
