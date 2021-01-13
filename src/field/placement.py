@@ -124,12 +124,12 @@ __all__ = [
 			# Constants.
 			
 		# Placement values.
-		PINNED_TO_BOTTOM, PINNED_TO_TOP, MOVE_TO_BOTTOM, MOVE_TO_TOP,
-		ANCHORED_TO_BOTTOM, ANCHORED_TO_TOP, SLIDE_TO_BOTTOM, SLIDE_TO_TOP,
-		FLOATING,
+		'PINNED_TO_BOTTOM', 'PINNED_TO_TOP', 'MOVE_TO_BOTTOM', 'MOVE_TO_TOP',
+		'ANCHORED_TO_BOTTOM', 'ANCHORED_TO_TOP', 'SLIDE_TO_BOTTOM', 'SLIDE_TO_TOP',
+		'FLOATING',
 		
 		# Structures.
-		GRAVITY_MAP, MODE_MAP
+		'GRAVITY_MAP', 'MODE_MAP'
 	]
 
 global _CONVERSION_MAP		# Maps convertible placements.
@@ -345,6 +345,7 @@ ANCHORED_TO_BOTTOM	= Placement.ANCHORED_TO_BOTTOM
 ANCHORED_TO_TOP		= Placement.ANCHORED_TO_TOP
 SLIDE_TO_BOTTOM		= Placement.SLIDE_TO_BOTTOM
 SLIDE_TO_TOP		= Placement.SLIDE_TO_TOP
+FLOATING			= Placement.FLOATING
 
 _CONVERSION_MAP = {	
 		MOVE_TO_TOP: 		ANCHORED_TO_TOP,
@@ -354,26 +355,26 @@ _CONVERSION_MAP = {
 	}
 
 GRAVITY_MAP = {
-		PINNED_TO_BOTTOM:		'down'
-		PINNED_TO_TOP:			'up'
-		MOVE_TO_BOTTOM:			'down'
-		MOVE_TO_TOP:			'up'
-		ANCHORED_TO_BOTTOM:		'down'
-		ANCHORED_TO_TOP:		'up'
-		SLIDE_TO_BOTTOM:		'down'
-		SLIDE_TO_TOP:			'up'
+		PINNED_TO_BOTTOM:		'down',
+		PINNED_TO_TOP:			'up',
+		MOVE_TO_BOTTOM:			'down',
+		MOVE_TO_TOP:			'up',
+		ANCHORED_TO_BOTTOM:		'down',
+		ANCHORED_TO_TOP:		'up',
+		SLIDE_TO_BOTTOM:		'down',
+		SLIDE_TO_TOP:			'up',
 		FLOATING:				None
 	}
 
 MODE_MAP = {
-		PINNED_TO_BOTTOM:		'pinned'
-		PINNED_TO_TOP:			'pinned'
-		MOVE_TO_BOTTOM:			'move'
-		MOVE_TO_TOP:			'move'
-		ANCHORED_TO_BOTTOM:		'anchored'
-		ANCHORED_TO_TOP:		'anchored'
-		SLIDE_TO_BOTTOM:		'slide'
-		SLIDE_TO_TOP:			'slide'
+		PINNED_TO_BOTTOM:		'pinned',
+		PINNED_TO_TOP:			'pinned',
+		MOVE_TO_BOTTOM:			'move',
+		MOVE_TO_TOP:			'move',
+		ANCHORED_TO_BOTTOM:		'anchored',
+		ANCHORED_TO_TOP:		'anchored',
+		SLIDE_TO_BOTTOM:		'slide',
+		SLIDE_TO_TOP:			'slide',
 		FLOATING:				'floating'
 	}
 

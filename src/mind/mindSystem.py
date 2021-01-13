@@ -312,6 +312,9 @@ class TheCognitiveSystem:
 	
 	#__/ End singleton instance initializer theCognitiveSystem.__init__().
 
+	@property
+	def console(mind):
+		return mind._console
 
 	@property
 	def field(theCognitiveSystem:TheCognitiveSystem):
@@ -319,13 +322,17 @@ class TheCognitiveSystem:
 		return mind._field
 
 
-	def setConsole(theMind:TheCognitiveSystem, console:ConsoleClient):
+	def setConsole(mind:TheCognitiveSystem, console:ConsoleClient):
 	
 		"""This method is used to tell the mind where the system console
 			is.  We need this so that we can automatically update the 
 			receptive field display on the console whenever the contents 
 			of the field are changed."""
 			
+		# If we already know it, we don't have to do anything.
+		if console is mind.console:
+			return
+
 		mind._console = console		# Remember where the console is.
 		
 			# Also, tell the field where it is.

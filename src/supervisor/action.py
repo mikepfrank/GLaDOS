@@ -619,7 +619,7 @@ class TheActionProcessor:
 			# For speech actions taken, we need to check whether committing
 			# (executing) the speech act automatically invokes another action
 			# (such as a command action).  If so, then execute that action too.
-		elif isinstance(action, Speech_Action_):
+		elif isinstance(action, SpeechAction_):
 		
 				# Get the other action invoked by this speech act, if any.
 			invocation = action.invokesAction()

@@ -21,7 +21,7 @@ class ActionByAI_(Action_):
 			theAI:AI_Entity_=None,		# The AI entity that conceived of taking this action.
 		):
 		
-		super(ActionBySystem_, thisSystemAction).__init__(description, theAI)
+		super(ActionByAI_, thisAiAction).__init__(description, theAI)
 
 
 class AI_Speech_Action(SpeechAction_, ActionByAI_):

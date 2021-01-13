@@ -112,12 +112,17 @@ from	.fieldSettings				import	TheFieldSettings, TheFieldSettingsModule
 	# TheFieldSettings - This uninstantiated class object holds our settings in class variables.
 	# TheFieldSettingsModule - A settings module for plugging into the settings facility.
 
+
 	# Field elements are conceptually independent parts of the field display.
-from .fieldElement import (		
+
+from .fieldElement import (
+
+	FieldSlot,
 	FieldElement_,
 	TheFieldHeader,
 	ThePromptSeparator,
 	TheInputArea,
+
 )
 	
 
@@ -218,7 +223,7 @@ class _TheBaseFieldData:
 
 	def insertSlotAt(base:_TheBaseFieldData, slot:FieldSlot, pos:int):
 		"""Inserts a slot at a given position in the base field data."""
-		base.slots.insertAt(pos, slot)
+		base.slots.insert(pos, slot)		# Native Python list method.
 		base._nSlots = base._nSlots + 1		# Increment number of slots.
 
 
@@ -321,6 +326,7 @@ class _TheBaseFieldData:
 	
 	def place(base:_TheBaseFieldData, slot:FieldSlot):
 	
+		where	= slot.placement
 		mode	= slot.mode
 		gravity = slot.gravity
 	
@@ -591,9 +597,9 @@ class TheReceptiveField(ReceptiveField_):
 				# Create the "input area" element, which automatically pins 
 				# itself to the very bottom edge of the receptive field.
 				
-		_logger.debug("[Receptive Field] Creating the input area element...")
+		#_logger.debug("[Receptive Field] Creating the input area element...")
 	
-		field._inputArea	= TheInputArea(field)
+		#field._inputArea	= TheInputArea(field)
 		
 				#------------------------------------------------------------
 				# Create the "prompt separator" element, which separates the

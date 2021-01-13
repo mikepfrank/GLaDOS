@@ -47,6 +47,7 @@
 
 global __all__
 __all__ = [
+		'FieldSlot',
 		'FieldElement_',
 		'TheFieldHeader',
 		'ThePromptSeparator',
@@ -55,7 +56,7 @@ __all__ = [
 from	infrastructure.decorators	import	singleton
 from	infrastructure.utils		import	overwrite			# Used for composing horizonal bars.
 from	.fieldSettings				import	TheFieldSettings
-from	.placement					import	Placement, GRAVITY_MAP
+from	.placement					import	Placement, MODE_MAP, GRAVITY_MAP
 #from	.fieldSlot					import	FieldSlot
 	
 class FieldElement_: pass
@@ -79,6 +80,8 @@ class ReceptiveField_: pass
 #							that it won't normally be displaced by slots that are 
 #							only slid to the top or bottom.
 #
+
+class FieldSlot: pass
 
 class FieldSlot:
 	# Data members:
@@ -156,8 +159,8 @@ class FieldSlot:
 	def placement(this):
 		return this._placement
 
-	@property
-	def placement.setter(thisSlot, newPlacement:Placement):
+	@placement.setter
+	def placement(thisSlot, newPlacement:Placement):
 		"""Sets this slot's placement value, and derived attributes."""
 		thisSlot._placement = newPlacement
 		thisSlot._mode		= MODE_MAP[newPlacement]
@@ -221,7 +224,7 @@ class FieldSlot:
 		
 		if base is not None:
 			# Ask the field to place us on itself, please.
-			base.place(slot, where)
+			base.place(slot)
 	
 	
 	def insertAt(slot:FieldSlot, pos:int):
