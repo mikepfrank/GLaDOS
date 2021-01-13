@@ -517,11 +517,14 @@ class TheReceptiveField(ReceptiveField_):
 	"""Singleton class for the entire receptive field management system."""
 	
 	def __init__(theReceptiveField:TheReceptiveField, 
+			entity:AI_Persona_		# Caller must supply the AI persona entity.
 			fieldSize:int=None, 	# If supplied, this overrides config data.
 			nominalWidth:int=None,	# If supplied, this overrides config data.
 		):
 		
 		"""Arguments:
+		
+			entity - This entity represents the AI's persona.
 		
 			fieldSize - Specifies the maximum size of the receptive field in tokens.
 			
@@ -595,28 +598,31 @@ class TheReceptiveField(ReceptiveField_):
 
 		_logger.info("[Receptive Field] Creating initial field elements...")
 
-				#------------------------------------------------------------
-				# Create the "field header" element, which automatically pins
-				# itself to the very top edge of the receptive field.
+				#|--------------------------------------------------------------
+				#| Create the "field header" element, which automatically pins
+				#| itself to the very top edge of the receptive field.
 				
 		_logger.debug("[Receptive Field] Creating the field header element...")
 	
 		field._fieldHeader	= TheFieldHeader(field)
 		
-				#------------------------------------------------------------
-				# Create the "input area" element, which automatically pins 
-				# itself to the very bottom edge of the receptive field.
+				#|--------------------------------------------------------------
+				#| Create the "input area" element, which automatically pins 
+				#| itself to the very bottom edge of the receptive field.
 				
 		#_logger.debug("[Receptive Field] Creating the input area element...")
 	
-		#field._inputArea	= TheInputArea(field)
+		field._inputArea	= TheInputArea(field, entity)
+			# We pass in the entity for the AI persona because its entity-id
+			# (e.g., "Gladys") will be displayed in the prompt, to remind the
+			# AI which persona it's supposed to be responding as.
 		
-				#------------------------------------------------------------
-				# Create the "prompt separator" element, which separates the
-				# "context" part of the receptive field (above the separator)
-				# from the "prompt" part of the receptive field (below the
-				# separator). It automaticaly pins itself to the bottom of the
-				# receptive field (just below the input box we just placed).
+				#|------------------------------------------------------------
+				#| Create the "prompt separator" element, which separates the
+				#| "context" part of the receptive field (above the separator)
+				#| from the "prompt" part of the receptive field (below the
+				#| separator). It automaticaly pins itself to the bottom of the
+				#| receptive field (just below the input box we just placed).
 
 		_logger.debug("[Receptive Field] Creating the prompt separator element...")
 	

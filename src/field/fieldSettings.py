@@ -60,7 +60,7 @@ class 	TheFieldSettings: 	pass
 # here because we don't need to do any other (i.e., construct-time)
 # initialization.
 
-class TheFieldSettings():
+class TheFieldSettings:
 
 	"""This class gathers together key settings associated with the receptive
 		field subsystem.  These may be modified by the system configuration
@@ -150,7 +150,7 @@ class TheFieldSettings():
 			theFieldSettingsClass.configDefaultNominalWidth(fieldConf)
 		
 		#----------------------------------------------------------------------
-		# NOTE: At this point we should do the same for the AI configuration.
+		# NOTE: At this point we really should do the same for the AI configuration.
 		
 		theFieldSettingsClass.configDefaultMaxSize()
 		

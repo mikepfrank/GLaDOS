@@ -95,12 +95,46 @@ class BriefEventFormat(PromptedEventFormat):
 	@classmethod
 	def prompt(thisClass,event):
 		return f"{event.creator}> "
-		
-class FullEventFormat(PromptedEventFormat):
 
+class TimedEventFormat_(PromptedEventFormat):
+
+	"""This abstract class provides a prompted event format in which the time 
+		is given to some degree of precision.  Override <formatStr> in your
+		subclasses to set the precision."""
+
+	formatStr=None	# Don't set this by default in this abstract class.
+		#| Some possible values of formatStr would be:
+		#|	'%Y-%m-%d'			- Just the date.
+		#|	'%Y-%m-%d %H:%M'	- Date & time, down to the minute.
+		#|	'%Y-%m-%d %H:%M:%S'	- Complete date & time, down to the second.
+		
 	@classmethod
 	def prompt(thisClass, event):
-		return f"{event.creationTime.strftime('%Y-%m-%d %H:%M:%S')} ({event.creator})> "
+		return f"{event.creationTime.strftime(thisClass.formatStr)} ({event.creator})> "
+
+
+class DateEventFormat(TimedEventFormat_):
+
+	"""This class provides a timed event format in which the date is given,
+		but not the time of day."""
+
+	formatStr = '%Y-%m-%d'			# Just the date.
+
+
+class MinuteEventFormat(TimedEventFormat_):
+
+	"""This class provides a timed event format in which the date is given,
+		and also the time of day, down to the minute."""
+
+	formatStr = '%Y-%m-%d %H:%M'	# Date & time, down to the minute.
+
+
+class SecondEventFormat(PromptedEventFormat):
+
+	"""This class provides a timed event format in which the date is given,
+		and also the time of day, down to the second."""
+
+	formatStr = '%Y-%m-%d %H:%M:%S'	# Complete date & time, down to the second.
 
 	
 	#|--------------------------------------------------------------------------
@@ -127,8 +161,8 @@ class TextEvent:
 	#|
 	#\--------------------------------------------------------------------------
 
-	def __init__(inst, text:str=None, when:datetime=None, author:Entity_=None,
-		defaultFormat=None):
+	def __init__(inst, text:str=None, author:Entity_=None, defaultFormat=None
+			when:datetime=None):
 	
 			# Default the creation time to right now if not provided.
 			

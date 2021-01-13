@@ -7,7 +7,7 @@ from curses.ascii import (
 		
 		SOH,	# ^A = Start of line. (Start of Heading)
 		STX,	# ^B = Move back to the left. (Start of Text)
-		ETX,	# ^C = (End of Text)
+		ETX,	# ^C = We use this to terminate the input string. (End of Text)
 		EOT,	# ^D = Delete character. (End-of-Transmission)
 		ENQ,	# ^E = End of line. (Enquiry.)
 		ACK,	# ^F = Forward to the right. (Acknowlegement)
@@ -88,7 +88,7 @@ from	entities.entity	import (
 from	events.event 	import (
 
 		TextEvent,			# For an event representing the operator's text input.
-		FullEventFormat,	
+		MinuteEventFormat,	
 			# The format we use by default for displaying this text event in 
 			# the inputPanel.  Includes the date/time and author (Operator).
 		
@@ -106,6 +106,7 @@ class PromptTimer(ThreadActor):
 	
 	defaultRole = 'PromptTmr'
 	defaultComponent = _sw_component
+	updatePeriod = 60	# Update prompt once every 60 secs. = once per minute.
 	
 	def __init__(newPromptTimer:PromptTimer, inputPanel:InputPanel):
 	
@@ -127,12 +128,12 @@ class PromptTimer(ThreadActor):
 
 		while not timer._exitRequested:
 
-			# The prompt update cycle is 1 second.  Update time in prompt,
-			# wait 1 second, update time in prompt again, etc.
+			# The prompt update cycle is 1 minute.  Update time in prompt,
+			# wait 1 minute, update time in prompt again, etc.
 		
 			timer.updatePrompt()		# Update prompt with current time.
 			
-			sleep(1.0)			# Sleep for one second.
+			sleep(updatePeriod)			# Sleep for one second.
 			
 	def updatePrompt(thisPromptTimer:PromptTimer):
 		timer = thisPromptTimer
@@ -146,7 +147,8 @@ class InputPanel(Panel):
 
 	"""Panel for prompting for and accepting input from the operator."""
 
-	_DEFAULT_HANGING = 4	# Default hanging indent. (Is 8 better?)
+	_DEFAULT_HANGING = 4				# Default hanging indent. (Is 8 better?)
+	eventFormat = MinuteEventFormat		# Format for displaying the working "input event."
 	
 	def __init__(newInputPanel:InputPanel, hanging:int=None):
 			
@@ -172,7 +174,7 @@ class InputPanel(Panel):
 		panel._operatorEntity = operator
 		
 			# Create and store the draft text input event.
-		opTextEvent = TextEvent(TERMINATOR, author=operator, defaultFormat=FullEventFormat)
+		opTextEvent = TextEvent(TERMINATOR, author=operator, defaultFormat=eventFormat)
 			# Note the text of the event is just a single End-Of-Text (^C) character initially.
 			# It will expand as the operator types text in the box.
 		panel._opTextEvent = opTextEvent	# Operator's text event.

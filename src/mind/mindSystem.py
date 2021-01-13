@@ -166,6 +166,11 @@ from 	config.configuration 	import	TheAIPersonaConfig
 from	supervisor.action		import	Action_, CommandAction_, ActionChannel_
 	# Abstract base classes for general actionsm command-type actions, and action channels.
 
+
+from	.mindSettings				import	TheMindSettings, TheMindSettingsModule
+	# TheMindSettings - This uninstantiated class object holds our settings in class variables.
+	# TheMindSettingsModule - A settings module for plugging into the settings facility.
+
 from	.aiActions				import	(
 
 		ActionByAI_, 	# This is the base class for action classes we define.
@@ -201,8 +206,24 @@ class	TheCognitiveSystem: 			pass
 
 class AnnounceFieldExistsAction(ActionByAI_):
 	pass
-	
 
+
+@singleton
+class TheAIPersona:
+	"""This singleton class represents the AI's persona."""
+	def __init__(theNewAIPersona:TheAIPersona, name:str, id:str):
+		persona = theNewAIPersona
+
+			# Remember it's name and ID.
+		persona._name = name
+		persona._id = id
+		
+			# Create and store an Entity object for it.
+		persona._entity = AI_Persona_(name, id)
+		
+	@property
+	def entity(persona):
+		return persona._entity
 
 @singleton
 class TheCognitiveSystem:
@@ -260,21 +281,20 @@ class TheCognitiveSystem:
 		#| Step 0:  Fetch key configuration parameters from our config data.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		# Note: The following is somewhat redundant now, since the field
-		# module itself now uses the settings facility to get its params.
-	
-			#-------------------------------------------------------------------
-			# Fetch the configuration of the AI's persona from the config package.
-			
-		aiConfig = TheAIPersonaConfig()
+			# First, configure all of the default settings for the mind system.
+		settings = TheMindSettings.config()
 		
-			#-------------------------------------------------------------------
-			# Look up its .maxVisibleTokens parameter, which we'll need to know
-			# in order to create our receptive field system--since it determines 
-			# how large our receptive field will be.			
-			
-		nTokens = aiConfig.maxVisibleTokens
-	
+			# Now, fetch the particular parameters that we need to know now.
+		personaName = TheMindSettings.personaName
+		personaID	= TheMindSettings.personaID
+		
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Step 0.5:  Create an object to manage the AI's persona, and an 
+		#|	associated "entity" object to represent the persona.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		mind._persona = persona = TheAIPersona(name=personaName, id=personaID)
+		mind._entity = entity = persona.entity
 	
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| Step 1:  Create (the input interface to) our AI's receptive field.
@@ -282,11 +302,11 @@ class TheCognitiveSystem:
 	
 			# Next, we create the receptive field (which actually just means, 
 			# the GLaDOS system's input interface to the core AI's real receptive 
-			# field), passing it the nTokens parameter to tell it how big it is.
+			# field).
 		
-		_logger.info(f"[Cognitive System] Creating {nTokens}-token receptive field...")
-		field = TheReceptiveField(nTokens)	# If we don't supply it here, it'll get it from config.
-		mind._field = field		# Stash the field for later reference.
+		_logger.info(f"[Cognitive System] Creating receptive field...")
+		field = TheReceptiveField(entity)		# This figures out its own size.
+		mind._field = field				# Stash the field for later reference.
 		
 			# Now is probably a good time to attach ourselves to the console, so 
 			# that the operator can immediately see the field we just created.
