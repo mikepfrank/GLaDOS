@@ -363,14 +363,15 @@ class Panel:
 		screen.attrset(att)
 		
 			# Place the corner characters.
-		screen.addch(top, left, tlchar)
-		screen.addch(top, right, trchar)
+		if top > 0:
+			screen.addch(top, left, tlchar)
+			screen.addch(top, right, trchar)
 		screen.addch(bottom, left, blchar)
 		if bottom != scr_bot or right != scr_right:		# Avoids an exception
 			screen.addch(bottom, right, brchar)
 
 			# Draw the edges.
-		screen.hline(top, 	 left+1, '-', width)
+		if top > 0: screen.hline(top, 	 left+1, '-', width)
 		#screen.hline(bottom, left+1, '-', width)
 			# Skip the bottom edge so we don't cover up title of panel below us.
 		screen.vline(top+1,  left,   '|', height)
@@ -455,11 +456,13 @@ class Panel:
 		display	= client.display
 		win		= panel.win			# The panel's internal sub-window.
 		
+		with display.lock:	# Make sure display is locked.
+
 			# Erase whatever is presently in the panel's subwin.
-		win.erase()
+			win.erase()
 		
 			# Fill in panel contents.
-		panel.drawContent()
+			panel.drawContent()
 			
 
 	def redisplayContent(thisPanel):

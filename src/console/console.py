@@ -385,7 +385,7 @@ class ConsoleClient(PanelClient):
 		cognoSys.setConsole(client)
 		
 			# Now tell ourselves to fetch & show the field data.
-		client.refreshFieldDisplay()
+		#client.refreshFieldDisplay()
 			# This tells the console client to update its receptive field display
 			# now that it has access to the AI's mind.
 			

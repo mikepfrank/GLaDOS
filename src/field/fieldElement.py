@@ -53,6 +53,17 @@ __all__ = [
 		'ThePromptSeparator',
 	]
 
+from os import path
+from infrastructure.logmaster	import getComponentLogger
+
+	# Go ahead and create or access the logger for this module.
+
+global _component, _logger	# Software component name, logger for component.
+
+_component = path.basename(path.dirname(__file__))	# Our package name.
+_logger = getComponentLogger(_component)			# Create the component logger.
+
+
 from	infrastructure.decorators	import	singleton
 from	infrastructure.utils		import	overwrite			# Used for composing horizonal bars.
 from	.fieldSettings				import	TheFieldSettings
@@ -271,7 +282,7 @@ class FieldElement_:
 	# And the following methods:
 	# 	- An "update" method, which advises the element to update its current image if it needs to.
 
-	def __init__(thisFE, where:Placement=None, field:ReceptiveField_=None):
+	def __init__(thisFE, name:str="(Unnamed Element)", where:Placement=None, field:ReceptiveField_=None):
 		"""
 			FieldElement_.__init__()			  [Default instance initializer]
 			
@@ -288,6 +299,8 @@ class FieldElement_:
 				take care of actually doing the refreshing at a later time.)
 		"""
 
+		thisFE._name = name
+
 			# Remember our initial requested placement.
 		thisFE._initPlacement	= where
 		thisFE._image			= None		# No image data exists by default.
@@ -303,7 +316,18 @@ class FieldElement_:
 
 	@property
 	def image(thisFE):
-		return thisFE._image
+
+		image = thisFE._image
+
+		if image is None:
+			name = thisFE._name
+			_logger.warn(f"FieldElement.image(): Field element {name} has no image yet.")
+		
+		return image
+
+
+class TheFieldHeader: pass
+
 
 @singleton
 class TheFieldHeader(FieldElement_):
@@ -311,40 +335,44 @@ class TheFieldHeader(FieldElement_):
 	"""This is a special field element that displays a "header bar" that is 
 		(semi-) permanently located at the top of the entire field."""
 	
-		# Need to get this from sys config instead.
-	bgChar = "*"	# Fill top line with this character.
-	
-		# Need to get this from sys config instead.
-	fieldTitle = "GLaDOS Main Screen / GPT-3 Receptive Field"
-		# Except, fetch "GPT-3" from the name of the cognitive system's 
-		# associated language model.
-	fieldTitle = ' ' + fieldTitle + ' '		# Add some padding on both sides.
-			
-		# Set the header width to the current value of nominal field width setting.
-	headerWidth = TheFieldSettings.nominalWidth
-	
-		# Calculate where to place title string to (roughly) center it.
-	titlePos = int((headerWidth - len(fieldTitle))/2)
-	
-		# Construct the full text string for the topper bar.
-	headerStr = overwrite(bgChar*headerWidth, titlePos, fieldTitle) + '\n'
-	
-	def __init__(theFieldHeader, *args, **kwargs):
-			# Mostly handled by FieldElement_ superclass, except that we specify
-			# the element placement.
-		super(TheFieldHeader.__wrapped__, theFieldHeader).__init__(
-				Placement.PINNED_TO_TOP, *args, **kwargs
+	def __init__(newHeaderElem:TheFieldHeader, *args, **kwargs):
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| First, we call the superclass initializer to do general initial-
+			#| ization for all field elements.
+
+		super(TheFieldHeader.__wrapped__, newHeaderElem).__init__(
+				"Field Header", Placement.PINNED_TO_TOP, *args, **kwargs
 			)
-			# NOTE: We always pin the field topper to the very top of the 
+			# NOTE: We always pin the field header to the very top of the 
 			# receptive field, because that's where it's supposed to appear, 
 			# by definition.
 
-	@property
-	def image(theFieldHeader):		# Just a constant string.
-		return headerStr
-		# NOTE: Later we might want to modify this to be able to be updated
-		# dynamically, e.g., if the ai config is reloaded, and the new config
-		# has a different NLP model name.
+			# Need to get this from sys config instead.
+		bgChar = "*"	# Fill top line with this character.
+		
+			# Need to get this from sys config instead.
+		fieldTitle = "GLaDOS Main Screen / GPT-3 Receptive Field"
+				# Except, fetch "GPT-3" from the name of the cognitive system's 
+				# associated language model.
+
+		fieldTitle = ' ' + fieldTitle + ' '		# Add some padding on both sides.
+		
+			# Set the header width to the current value of nominal field width setting.
+		headerWidth = TheFieldSettings.nominalWidth
+		
+			# Calculate where to place title string to (roughly) center it.
+		titlePos = int((headerWidth - len(fieldTitle))/2)
+		
+			# Construct the full text string for the topper bar.
+		headerStr = overwrite(bgChar*headerWidth, titlePos, fieldTitle) + '\n'
+		
+			# Save it as our instance image.
+		newHeaderElem._image = headerStr
+
+
+
+class ThePromptSeparator: pass
 
 @singleton
 class ThePromptSeparator(FieldElement_):
@@ -370,21 +398,19 @@ class ThePromptSeparator(FieldElement_):
 		# Construct the full text string for the topper row.
 	sepBarStr = overwrite(bgChar*sepBarWidth, instrPos, sepInstrs) + '\n'
 	
-	def __init__(thePromptSeparator, *args, **kwargs):
+	def __init__(psElem:ThePromptSeparator, *args, **kwargs):
 			# Mostly handled by FieldElement_ superclass, except that we specify
 			# the element placement.
-		super(ThePromptSeparator.__wrapped__, thePromptSeparator).__init__(
-				Placement.PINNED_TO_BOTTOM, *args, **kwargs
+
+		super(ThePromptSeparator.__wrapped__, psElem).__init__(
+				"Prompt Separator", Placement.PINNED_TO_BOTTOM, *args, **kwargs
 			)
 			# NOTE: We always pin the prompt separator to the bottom of the 
 			# receptive field, except this will really end up being just above
 			# the actual prompt area, which should have been previously pinned.
 
-	@property
-	def image(thePromptSeparator):		# Just a constant string.
-		return sepBarStr
-		# NOTE: Later we might want to modify this to be able to be updated
-		# dynamically, like in the config file.  Not done yet.
+		psElem._image = psElem.sepBarStr
+
 
 @singleton
 class TheInputArea(FieldElement_):

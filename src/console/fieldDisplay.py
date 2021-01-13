@@ -4,6 +4,7 @@
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+from threading import RLock
 from os import path
 from infrastructure.logmaster import (
 		sysName,			# Used just below.
@@ -122,10 +123,10 @@ class FieldPanel(Panel):
 		client = panel.client
 		display = client.display
 
-		panel._data				= []			# Array of items (text strings) in panel.
-		panel._nChars			= 0				# Number of characters of text data (includes newlines, etc.).
-		panel._nLines			= 0				# Numbers of lines' worth of text data (to make sure we don't overflow panel).		
-		panel._filled			= False			# Not yet filled up with data, obviously.
+		panel._data		= []		# Array of items (text strings) in panel.
+		panel._nChars	= 0			# Number of characters of text data (includes newlines, etc.).
+		panel._nLines	= 0			# Numbers of lines' worth of text data (to make sure we don't overflow panel).		
+		panel._filled	= False		# Not yet filled up with data, obviously.
 
 			# Actually go ahead and erase the panel's window too, in its backing store.
 		if client.dispRunning:
@@ -225,6 +226,8 @@ class FieldPanel(Panel):
 		fdisp = panel.fieldDisplay
 		whichCol = panel.column
 
+		if panel._launched: return
+		
 		# Mark this panel as having been launched.
 		panel._launched = True
 		
@@ -261,12 +264,16 @@ class FieldDisplay:
 
 		fieldDisp = newFieldDisplay
 		
+		# This protects our field data.
+		fieldDisp.lock = lock = RLock()
+
 		fieldDisp._client = client
 		fieldDisp._launched = False 	# Becomes True after both panels are launched.
 		fieldDisp._field = None			# Receptive field is not attached yet.
-		fieldDisp._data = None			# No field data loaded yet.
-		fieldDisp._nChars = None		# Field character count = undefined.
-		fieldDisp._nTokens = None		# Field data size = undefined.
+		with lock:
+			fieldDisp._data = None			# No field data loaded yet.
+			fieldDisp._nChars = None		# Field character count = undefined.
+			fieldDisp._nTokens = None		# Field data size = undefined.
 		
 		fieldDisp._rFieldPanel	= rightFieldPanel 	= FieldPanel(fieldDisp, column='right')
 		fieldDisp._lFieldPanel	= leftFieldPanel	= FieldPanel(fieldDisp, column='left')
@@ -335,7 +342,11 @@ class FieldDisplay:
 		display = client.display
 		driver = display.driver
 	
-		_logger.info("[FieldDisplay] Launching field display.")
+		# If we're already launched, don't relaunch.
+		if fdisp._launched:
+			return
+
+		_logger.info("[Field Display] Launching field display.")
 	
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	OK, at this point, both field panels are up and running, and are 
@@ -367,9 +378,14 @@ class FieldDisplay:
 		display = client.display
 		driver = display.driver
 
+		_logger.info("[Field Display] Refreshing field display.")
+
 		fdisp.queryField()		# Query the receptive field for its contents.
 		fdisp.refillPanels()	# Refill the field panels with data.
-		driver.do(fdisp.repaintPanels, desc="Repaint field display panels.")
+
+		# Has the field display actually been launched yet? (Both panels launched?)
+		if fdisp._launched:
+			driver.do(fdisp.repaintPanels, desc="Repaint field display panels.")
 			# As a background task, have the display driver repaint both panels.
 			# This needs to be a background task to avoid recursion.
 
@@ -424,21 +440,27 @@ class FieldDisplay:
 		ntoks = fdisp.nTokens		# Get current data's # of tokens.
 		nchars = fdisp.nChars		# Get current data's # of characters.
 				
-		fdisp.clearPanels()		# Empty out both of the panels.
-		
-		# Loop over the data items, adding them to the display.
-		for item in data:
-			fdisp.addItem(item)		# Add this item.
+		with fdisp.lock:
 
-			# Add to the end of the visible dataset an item showing the 
-			# current count of total characters and tokens in the field.
-		fdisp.addItem(f"\n[{nchars} characters, {ntoks} tokens]")
+			fdisp.clearPanels()		# Empty out both of the panels.
+		
+			_logger.debug("fieldDispl.refillPanels(): Refilling field display.")
+
+			# Loop over the data items, adding them to the display.
+			for item in data:
+				fdisp.addItem(item)		# Add this item.
+
+				# Add to the end of the visible dataset an item showing the 
+				# current count of total characters and tokens in the field.
+			fdisp.addItem(f"\n[{nchars} characters, {ntoks} tokens]")
 
 
 	def clearPanels(thisFieldDisplay:FieldDisplay):
 	
 		"""Clears both panels, so that they contain no data yet."""
 		
+		_logger.debug("fieldDispl.clearPanels(): Clearing both panels.")
+
 		fdisp 	= thisFieldDisplay	# This field display.
 		lpanel	= fdisp.leftPanel	# Field panel in left column.
 		rpanel	= fdisp.rightPanel	# Field panel in right column.
@@ -505,10 +527,12 @@ class FieldDisplay:
 		lpanel	= fdisp.leftPanel	# Field panel in left column.
 		rpanel	= fdisp.rightPanel	# Field panel in right column.
 
-			# Regenerate drawn content of both panels.
-		lpanel.regenerateContent()
-		rpanel.regenerateContent()
+		_logger.debug("fieldDisplay.repaintPanels(): Repainting field panels.")
+
+		with fdisp.lock:
+				# Regenerate drawn content of both panels.
+			lpanel.regenerateContent()
+			rpanel.regenerateContent()
 		
-			# Tell the physical display to update itself now.
-		display.update()
-		
+				# Tell the physical display to update itself now.
+			display.update()

@@ -396,7 +396,12 @@ class FieldView_:
 	"""Abstract base class from which to derive more specific views of the 
 		receptive field."""
 		
-	def __init__(inst, base):
+	def __init__(inst, base:_TheBaseFieldData):
+
+		"""Instance initializer for FieldView_ and its subclasses.
+			The sole argument is a pointer to the base field data 
+			structure that this is a view for."""
+
 		inst._baseFieldData = base
 		#inst._textBuffer = TextBuffer()
 
@@ -412,16 +417,18 @@ class FieldView_:
 	# base data.
 
 
+class TheAIFieldView: pass
+
 @singleton
 class TheAIFieldView(FieldView_):
 	
 	"""Derived class for views of the receptive field to be sent to AIs."""
 	
-	def render(this):
+	def render(view:TheAIFieldView):
 		# This works by iterating through elements in the base data,
 		# and just adding their images as items in the data set.
 		
-		base = this.baseData	# Get the base data.
+		base = view.baseData	# Get the base data.
 		slots = base.slots		# Get the list of field slots.
 		
 		data = []	# Initialize data array to empty list.
@@ -430,10 +437,10 @@ class TheAIFieldView(FieldView_):
 			image = element.image		# Get that element's (text) image.
 			data.append(image)			# Append it to our list.
 			
-		inst._data = data			# Remember the data array.
-		inst._text = ''.join(data)	# Here's the data as one huge string.
-		inst._nChars = None			# Mark nChars as not-yet-computed.
-		inst._nTokens = None		# Mark nTokens as not-yet-computed.
+		view._data = data			# Remember the data array.
+		view._text = ''.join(data)	# Here's the data as one huge string.
+		view._nChars = None			# Mark nChars as not-yet-computed.
+		view._nTokens = None		# Mark nTokens as not-yet-computed.
 	
 	@property
 	def data(inst):
@@ -451,7 +458,7 @@ class TheAIFieldView(FieldView_):
 		"""Returns the number of characters in the current field view."""
 		nChars = inst._nChars
 		if nChars is None:		# Not calculated yet?
-			text = inst.text
+			text = inst.text()
 			inst._nChars = nChars = len(text)
 		return nChars
 		
@@ -462,7 +469,10 @@ class TheAIFieldView(FieldView_):
 		# through the tokenizer.
 		nTokens = inst._nTokens
 		if nTokens is None:		# Not calculated yet?
-			text = inst.text
+			text = inst.text()	# Put together the complete text.
+
+			_logger.debug(f"About to count tokens in text: [{text}]")
+
 			inst._nTokens = nTokens = countTokens(text)
 		return nTokens
 		
@@ -612,8 +622,17 @@ class TheReceptiveField(ReceptiveField_):
 	
 		field._promptSeparator	= ThePromptSeparator(field)
 
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| 4. Since we added several elements to the field, update the view
+			#|		of the field.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		field.updateView()	# This updates the view from the base field data.
+
+
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			#| 4. Now we're done with field initialization.
+			#| 5. Now we're done with field initialization.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		_logger.info("[Receptive Field] Field initialization is complete.")
@@ -655,6 +674,13 @@ class TheReceptiveField(ReceptiveField_):
 			
 		field = theReceptiveField
 		return field._aiFieldView
+
+	def updateView(field:TheReceptiveField):
+
+		"""Tells the field to update its views because the base data has changed."""
+
+		field.view.render()		# Render the view of the field.
+
 
 	def getData(theReceptiveField:TheReceptiveField):
 	
