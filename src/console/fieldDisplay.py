@@ -403,6 +403,8 @@ class FieldDisplay:
 			fdisp.attachField()
 		field = fdisp.field
 		
+		_logger.debug("fieldDisplay.queryField(): Querying receptive field for its data.")
+
 			# Ask the receptive field to give us its data (list of items).
 		fdisp._data = field.getData()
 		
