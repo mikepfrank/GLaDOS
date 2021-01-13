@@ -58,7 +58,7 @@ class Tokenizer:
 		theTokenizer.modelName 	= model_name
 		
 			# Now create our encoder.
-		theTokenizer.encoder	= get_encoder(model_dir, model_name)
+		theTokenizer.encoder	= get_encoder(model_name, model_dir)
 		
 		# That's it! That's all the setup we need to do.
 		

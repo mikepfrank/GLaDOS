@@ -291,6 +291,7 @@ class TheCognitiveSystem:
 			# Now is probably a good time to attach ourselves to the console, so 
 			# that the operator can immediately see the field we just created.
 			
+		_logger.info("[Cognitive System] Attaching to console...")
 		if console is not None:
 			mind.setConsole(console)
 			
