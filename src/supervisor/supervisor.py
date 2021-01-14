@@ -405,10 +405,14 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 		supervisor._actionSystem = tas = TheActionSystem()		
 			# Initialize the action processing subsystem.
 
-		# We go ahead and inform the console of how to find the action subsystem, 
-		# since it needs to be able to create and execute new actions, e.g., ones 
-		# taken by the system operator using the input panel.
+			# Once that's done, we go ahead right away and inform the console of 
+			# how to find the action subsystem, since it needs it in order to be 
+			# able to create and execute new actions, e.g., ones taken by the 
+			# system operator by entering them using the input panel.
 		console.setActionSystem(tas)
+			# NOTE: Maybe this isn't needed; the console could just import the 
+			# action module and call TheActionSystem() directly?
+		
 		
 				#|--------------------------------------------------------------
 				#| (1) We start up the command interface subsystem next.  We do 
@@ -485,6 +489,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 			#| get notifications from the rest of the system), and then we tell
 			#| the action system to add these channels to the "Action News 
 			#| Network."
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
 		theSupervisor.connect_AI_inputs()	
 			# Connects up all of the inputs to AI the from the rest of the system.
@@ -497,6 +502,10 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 	#__/ End singleton instance initializer for class TheSupervisor.
 
 	def setConsole(theSupervisor:TheSupervisor, console:ConsoleClient):
+		
+		"""Connect ourselves up with the console, so it can communicate
+			with us as needed."""
+		
 		supervisor = theSupervisor
 		supervisor._console = console
 		console.setSupervisor(supervisor)
@@ -530,9 +539,12 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 		TheActionNewsNetwork().addChannels(aiInputChannels)
 
 	def start(theSupervisor):
+	
 		"""This method 'starts' the supervisor, which puts it and all subsystems
 			into an active operation mode.  This will kick off all of the various 
-			background subprocesses/threads in the system."""
+			background subprocesses/threads in the system.  (Except for console-
+			related threads, which will already have started running when the 
+			console client started up earlier.)"""
 	
 		theSupervisor.announceStartup()
 			# This announces that the GLaDOS system is starting up.
@@ -558,8 +570,8 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 			# system is starting up, then immediately initiates this 
 			# action that we just conceived of taking.  The action 
 			# processing system takes over from there.
+		_logger.debug("[Supervisor] Creating and initiating startup announcement action.")
 		_AnnounceStartupAction().initiate()
-	
 	
 	def startMainloop(theSupervisor):
 		
