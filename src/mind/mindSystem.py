@@ -278,7 +278,7 @@ class TheCognitiveSystem:
 	
 		mind = theCognitiveSystem
 	
-		_logger.normal("The AI's cognitive system is booting up...")
+		_logger.normal("[Mind] The AI's cognitive system (Mind) is booting up...")
 	
 		mind._console = None		# The system console is not attached at first.
 	
@@ -309,14 +309,14 @@ class TheCognitiveSystem:
 			# the GLaDOS system's input interface to the core AI's real receptive 
 			# field).
 		
-		_logger.info(f"[Cognitive System] Creating receptive field...")
+		_logger.info(f"[Mind] Creating receptive field...")
 		field = TheReceptiveField(entity)		# This figures out its own size.
 		mind._field = field				# Stash the field for later reference.
 		
 			# Now is probably a good time to attach ourselves to the console, so 
 			# that the operator can immediately see the field we just created.
 			
-		_logger.info("[Cognitive System] Attaching to console...")
+		_logger.info("[Mind] Attaching to console...")
 		if console is not None:
 			mind.setConsole(console)
 			
@@ -372,6 +372,7 @@ class TheCognitiveSystem:
 			#| console just find the field directly from TheReceptiveField(), 
 			#| but it's perhaps a little cleaner to do things this way.
 			
+		_logger.debug("[Mind] Giving console access to cognitive system...")
 		console.setMind(mind)
 		
 
