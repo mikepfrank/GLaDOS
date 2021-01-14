@@ -25,15 +25,15 @@
 #
 #	Entity (abstract)
 #		|
-#		+->	AI_Entity (abstract)
+#		+->	AI_Entity_ (abstract)
 #		|		|
-#		|		+-> AI_Persona (abstract)
+#		|		+-> AI_Persona (concrete)
 #		|		|		|
 #		|		|		+-> Gladys (singleton)
 #		|		|		|
 #		|		|		+-> Samson (singleton)
 #		|		|
-#		|		+->	AI_LanguageModel (abstract)
+#		|		+->	AI_LanguageModel (concrete)
 #		|		|		|
 #		|		|		+->	GPT3_Model (abstract)
 #		|		|		|		|
@@ -41,11 +41,11 @@
 #		|		|		|
 #		|		|		+-> GPT2_Model (abstract)
 #		|		|
-#		|		+->	AI_Subsystem (abstract) 
+#		|		+->	AI_Subsystem (concrete) 
 #		|				|
 #		|				+-> Cognitive_System (singleton)
 #		|
-#		+-> Human_Entity (abstract)
+#		+-> Human_Entity (concrete)
 #		|		|
 #		|		+->	Mike (singleton)
 #		|		|
@@ -56,11 +56,11 @@
 #		|		+-> Colin (singleton)
 #		|
 #		|
-#		+-> System_Entity (abstract)
+#		+-> System_Entity_ (abstract)
 #		|		|
 #		|		+-> The_GLaDOS_System (singleton)
 #		|		|
-#		|		+->	GLaDOS_Subsystem (abstract)
+#		|		+->	GLaDOS_Subsystem (concrete)
 #		|		|		|
 #		|		|		+-> The_Configuration_System_Entity
 #		|		|		|
@@ -72,7 +72,7 @@
 #		|		|		|
 #		|		|		+-> The_App_System_Entity
 #		|		|
-#		|		+->	GLaDOS_Application
+#		|		+->	GLaDOS_Application (concrete)
 #		|				|
 #		|				+->	(objects for individual apps)
 #		|
@@ -90,9 +90,9 @@ class	Entity_:		pass
 	# AI entities.
 
 class	AI_Entity_:		pass
-class	AI_Persona_:	pass
-class	AI_System_:		pass
-class	AI_Subsystem_:	pass
+class	AI_Persona:		pass
+class	AI_System:		pass
+class	AI_Subsystem:	pass
 
 class	Cognitive_System:	pass	# This AI subsystem is the entire cognitive system in GLaDOS.
 class	Cognitive_Stream:	pass	# This AI subsystem is a subsystem of the cognitive system.
@@ -103,7 +103,7 @@ class	History_Buffer:		pass	# This AI subsystem is a subsystem of the cognitive 
 	# System entities.
 
 class	System_Entity_:		pass
-class	Subsystem_Entity_:	pass
+class	Subsystem_Entity:	pass
 
 class	The_GLaDOS_Entity:		pass
 
@@ -132,7 +132,7 @@ class	The_CommsApp_Entity:		pass
 	# External entities.
 
 class	External_Entity_:		pass
-class	Human_Entity_:			pass
+class	Human_Entity:			pass
 class	Operator_Entity:		pass
 
 #-------------Class definitions.
@@ -258,60 +258,61 @@ class AI_Entity_(Entity_):
 		"""By default, just return AI_Entity_.  Subclasses can override this."""
 		return AI_Entity_
 
-class AI_Persona_(AI_Entity_):
+class AI_Persona(AI_Entity_):
 	_isAbstract = False
 	_ENTITY_TYPE_NAME = "The AI's persona"
 	@classproperty
 	def entityType(dynClass):
-		return AI_Persona_
+		return AI_Persona
 
-class AI_System_(AI_Entity_):
+class AI_System(AI_Entity_):
 	"""A complete artificially-intelligent system."""
 	_isAbstract = False
 	_ENTITY_NAME = "The AI"
 
-class AI_Subsystem_(AI_Entity_):
+class AI_Subsystem(AI_Entity_):
 	"""An entity that is a subsystem of an AI system."""
+	_isAbstract = False
 	_ENTITY_TYPE_NAME = "subsystem of an AI"
 
 	@classproperty
 	def entityType(dynamicClass):
-		return AI_Subsystem_
+		return AI_Subsystem
 
 #====================================================================
 # Entities for the AI's cognitive system and its various components.
 
-class Cognitive_System(AI_Subsystem_):
+class Cognitive_System(AI_Subsystem):
 
 	"""An instance of the cognitive system would mean, the cognitive system
 		when configured for a specific AI persona."""
 
 	_isAbstract = False
 	_ENTITY_NAME = "Cognitive System"
-	partOf = AI_System_
+	partOf = AI_System
 	
-	def __inst__(thisCognitiveSystem:Cognitive_System, personaEntity:AI_Persona_):
+	def __inst__(thisCognitiveSystem:Cognitive_System, personaEntity:AI_Persona):
 		thisCognitiveSystem._personaEntity = personaEntity
 
-class Cognitive_Stream(AI_Subsystem_):
+class Cognitive_Stream(AI_Subsystem):
 	_isAbstract = False
 	_ENTITY_NAME = "Cognitive Stream"
 	partOf = Cognitive_System
 
-class Receptive_Field(AI_Subsystem_):
+class Receptive_Field(AI_Subsystem):
 	_isAbstract = False
 	_ENTITY_NAME = "Receptive Field"
-	partOf = AI_System_
+	partOf = AI_System
 
-class Memory_System(AI_Subsystem_):
+class Memory_System(AI_Subsystem):
 	_isAbstract = False
 	_ENTITY_NAME = "Memory System"
-	partOf = AI_System_
+	partOf = AI_System
 
-class History_Buffer(AI_Subsystem_):
+class History_Buffer(AI_Subsystem):
 	_isAbstract = False
 	_ENTITY_NAME = "Memory System"
-	partOf = AI_System_
+	partOf = AI_System
 
 #=========================================================================
 # Abstract and concrete classes for system entities, which in this context
@@ -340,56 +341,57 @@ class The_GLaDOS_Entity(System_Entity_):
 	_isAbstract = False
 	_ENTITY_NAME = "GLaDOS System"
 
-class Subsystem_Entity_(System_Entity_):
+class Subsystem_Entity(System_Entity_):
 
+	_isAbstract = False
 	_ENTITY_TYPE_NAME = "subsystem of GLaDOS"	
 
 	@classproperty
 	def entityType(dynamicClass):
-		return Subsystem_Entity_
+		return Subsystem_Entity
 
 	#|===================================================================
 	#| Here, we define entities representing the various major subsystems 
 	#| of GLaDOS that are not considered aspects of the AI itself.
 
 @singleton
-class The_SettingsFacility_Entity(Subsystem_Entity_):
+class The_SettingsFacility_Entity(Subsystem_Entity):
 	_isAbstract = False
 	_ENTITY_NAME = "Settings Facility"
 	partOf = The_GLaDOS_Entity
 
 @singleton
-class The_ConfigSystem_Entity(Subsystem_Entity_):
+class The_ConfigSystem_Entity(Subsystem_Entity):
 	_isAbstract = False
 	_ENTITY_NAME = "Configuration System"
 	partOf = The_GLaDOS_Entity
 
 @singleton
-class The_Supervisor_Entity(Subsystem_Entity_):
+class The_Supervisor_Entity(Subsystem_Entity):
 	_isAbstract = False
 	_ENTITY_NAME = "Supervisor"
 	partOf = The_GLaDOS_Entity
 
 @singleton
-class The_CommandInterface_Entity(Subsystem_Entity_):
+class The_CommandInterface_Entity(Subsystem_Entity):
 	_isAbstract = False
 	_ENTITY_NAME = "Command Interface"
 	partOf = The_GLaDOS_Entity
 	
 @singleton
-class The_ProcessSystem_Entity(Subsystem_Entity_):
+class The_ProcessSystem_Entity(Subsystem_Entity):
 	_isAbstract = False
 	_ENTITY_NAME = "Process System"
 	partOf = The_GLaDOS_Entity
 	
 @singleton
-class The_WindowSystem_Entity(Subsystem_Entity_):
+class The_WindowSystem_Entity(Subsystem_Entity):
 	_isAbstract = False
 	_ENTITY_NAME = "Window System"
 	partOf = The_GLaDOS_Entity
 	
 @singleton
-class The_AppSystem_Entity(Subsystem_Entity_):
+class The_AppSystem_Entity(Subsystem_Entity):
 	_isAbstract = False
 	_ENTITY_NAME = "Applications System"
 	partOf = The_GLaDOS_Entity

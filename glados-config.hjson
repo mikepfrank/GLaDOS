@@ -23,6 +23,12 @@
 # The top-level config struct is a dict of attribute-value pairs.
 
 {
+
+		/* This is the timezone, expressed as a number of hours offset from
+			UTC, to be used for displaying times, e.g. in prompt strings. */
+
+	timezone:		-7 		# U.S. Mountain Standard Time
+
 		/* This is the default value for the separation between tab stops to
 			be assumed throughout the system.  That is, if 0 is the leftmost
 			column, tab stops would implicitly be located at all columns 

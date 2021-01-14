@@ -166,8 +166,9 @@ from 	config.configuration 	import	TheAIPersonaConfig
 from	supervisor.action		import	Action_, CommandAction_, ActionChannel_
 	# Abstract base classes for general actionsm command-type actions, and action channels.
 
+from	entities.entity			import	AI_Persona	# We need to construct this entity.
 
-from	.mindSettings				import	TheMindSettings, TheMindSettingsModule
+from	.mindSettings			import	TheMindSettings, TheMindSettingsModule
 	# TheMindSettings - This uninstantiated class object holds our settings in class variables.
 	# TheMindSettingsModule - A settings module for plugging into the settings facility.
 
@@ -208,9 +209,13 @@ class AnnounceFieldExistsAction(ActionByAI_):
 	pass
 
 
+class TheAIPersona: pass
+
 @singleton
 class TheAIPersona:
-	"""This singleton class represents the AI's persona."""
+
+	"""This singleton class manages the AI's persona."""
+
 	def __init__(theNewAIPersona:TheAIPersona, name:str, id:str):
 		persona = theNewAIPersona
 
@@ -219,7 +224,7 @@ class TheAIPersona:
 		persona._id = id
 		
 			# Create and store an Entity object for it.
-		persona._entity = AI_Persona_(name, id)
+		persona._entity = AI_Persona(name, id)
 		
 	@property
 	def entity(persona):

@@ -451,13 +451,41 @@ class TheConfiguration:	# The GLaDOS server configuration.
 
 	def _parseConf(theConfig:TheConfiguration, conf:dict = None):
 	   
-		"""
-			theConfig._parseConf()			 [private singleton instance method]
+		""" theConfig._parseConf()			 [private singleton instance method]
 			
 				Reads the given raw configuration data structure into 
-				the configuration object.
-		"""
+				the configuration object."""
+
+		# Don't even try to read a mind config from the sys config file currently.
+		theConfig.mindConf = None
 	 
+		    #|----------------------------------------------------------------
+			#| Extract the 'timezone' parameter, which specifies the offset 
+			#| from UTC preferred by the operator for display of time values.
+			#| If this is not provided, UTC (+0) will be assumed by default.
+
+		if 'timezone' in conf:
+			theConfig.timezone = timezone = conf['timezone']	# Expect a number of hours.
+			_logger.info(f"\t[Config] Loaded config: timezone = {timezone}")
+		else:
+			_logger.warn("configuration._parseConf(): The 'timezone' parameter "
+							"was not supplied. Defaulting to +0 (UTC).")
+			theConfig.timezone = 0
+
+			#|-----------------------------------------------------------------
+			#| Extract the 'tab-width' parameter, which expresses the default
+			#| number of characters that tab stops are located at a multiple of.
+			#| If this is not provided, we default to 4.
+			
+
+		if 'tab-width' in conf:
+			theConfig.tabWidth = tabWidth = conf['tab-width']	# Expect an integer.
+			_logger.info(f"\t[Config] Loaded config: tab-width = {tabWidth}")
+		else:
+			_logger.warn("configuration._parseConf(): The 'tab-width' parameter "
+							"was not provided. Defaulting to 4.")
+			theConfig.tabWidth = 4
+
 			#-----------------------------------------------------------------
 			# Extract the 'field-conf' parameter, which contains configuration
 			# parameters for the receptive field facility.
@@ -465,7 +493,7 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		if 'field-conf' in conf:
 			theConfig.fieldConf = conf['field-conf']
 		else:
-			_logger.warn("_parseConf(): The required field-conf parameter was "
+			_logger.warn("_parseConf(): The required 'field-conf' parameter was "
 							"not provided.")
 	
 			#------------------------------------
@@ -474,7 +502,7 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		if 'app-list' in conf:
 			theConfig.appList = conf['app-list']
 		else:
-			_logger.warn("_parseConf(): The required app-list parameter was "
+			_logger.warn("_parseConf(): The required 'app-list' parameter was "
 							"not provided.")
 			theConfig.appList = None
 
@@ -812,23 +840,36 @@ class	TheAIPersonaConfig:
 							"was not provided.")
 			theAIConfig.mindConf = None
 
+			#------------------------------------
+			# Extract the field-conf parameter.
+		
+		if 'field-conf' in conf:
+			theAIConfig.fieldConf = fieldConf = conf['field-conf']
+				# TODO: Make sure value given is valid.
+			_logger.normal(f"    AI configuration: The AI's field configuration is {fieldConf}.")
+		else:
+			_logger.warn("parseConf(): The required field-conf parameter "
+							"was not provided.")
+			theAIConfig.fieldConf = None
+
+				#============================
+				# Parse some of its elements.
+		
+			#------------------------------------
+			# Extract the max-visible-tokens parameter.
+		
+		if 'max-visible-tokens' in fieldConf:
+			theAIConfig.maxVisibleTokens = maxTok = fieldConf['max-visible-tokens']
+				# TODO: Make sure value given is valid.
+			_logger.normal(f"    AI configuration: The AI's receptive field size is {maxTok}.")
+		else:
+			_logger.warn("parseConf(): The required max-visible-tokens parameter "
+							"was not provided.")
+			theAIConfig.maxVisibleTokens = None
+		
+
 ## The below is commented out because currently, detailed config parameters are parsed by the
 ## settings modules within individual packages (e.g., field and mind).
-##
-## 	This one is a field parameter:
-##
-##			#------------------------------------
-##			# Extract the max-visible-tokens parameter.
-##		
-##		if 'max-visible-tokens' in conf:
-##			theAIConfig.maxVisibleTokens = maxTok = conf['max-visible-tokens']
-##				# TODO: Make sure value given is valid.
-##			_logger.normal(f"    AI configuration: The AI's receptive field size is {maxTok}.")
-##		else:
-##			_logger.warn("parseConf(): The required max-visible-tokens parameter "
-##							"was not provided.")
-##			theAIConfig.maxVisibleTokens = None
-##
 ##
 ##	The rest of these are mind parameters:
 ##

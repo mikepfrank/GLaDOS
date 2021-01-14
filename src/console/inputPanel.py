@@ -133,7 +133,7 @@ class PromptTimer(ThreadActor):
 		
 			timer.updatePrompt()		# Update prompt with current time.
 			
-			sleep(updatePeriod)			# Sleep for one second.
+			sleep(timer.updatePeriod)	# Sleep for one minute.
 			
 	def updatePrompt(thisPromptTimer:PromptTimer):
 		timer = thisPromptTimer
@@ -174,7 +174,7 @@ class InputPanel(Panel):
 		panel._operatorEntity = operator
 		
 			# Create and store the draft text input event.
-		opTextEvent = TextEvent(TERMINATOR, author=operator, defaultFormat=eventFormat)
+		opTextEvent = TextEvent(TERMINATOR, author=operator, defaultFormat=panel.eventFormat)
 			# Note the text of the event is just a single End-Of-Text (^C) character initially.
 			# It will expand as the operator types text in the box.
 		panel._opTextEvent = opTextEvent	# Operator's text event.
@@ -188,6 +188,9 @@ class InputPanel(Panel):
 		timerThread = PromptTimer(panel)
 		panel._promptTimer = timerThread
 		
+			# Does panel need updating because a key handler changed its text?
+		panel._needsUpdate = False	# No, no keys have been processed yet.
+
 	#__/ End instance initializer method inputPanel.__init__().
 
 	def configWin(thisInputPanel:InputPanel):
@@ -200,10 +203,12 @@ class InputPanel(Panel):
 		win = panel.win
 		win.leaveok(True)
 
+
 	@property
 	def txpos(thisInputPanel:InputPanel):
 		panel = thisInputPanel
 		return panel._txpos
+
 
 	@property
 	def pos(thisInputPanel:InputPanel):
@@ -211,6 +216,7 @@ class InputPanel(Panel):
 		txpos = panel.txpos
 		pos = txpos + panel.promptLen()
 		return pos
+
 
 	def grabCursor(thisInputPanel:InputPanel):
 
@@ -248,6 +254,9 @@ class InputPanel(Panel):
 		win.move(cy, cx)
 		win.cursyncup()
 		
+			# We need to update the panel display to draw the cursor in the right location.
+		panel._needsUpdate = True
+
 
 	def updatePrompt(thisInputPanel:InputPanel):
 		
@@ -277,15 +286,18 @@ class InputPanel(Panel):
 
 	def setText(thisInputPanel:InputPanel, text:str=None):
 		
+		"""Modifies the text content of the panel.  Marks the panel
+			so that we remember that we need to update its display."""
+
 		panel = thisInputPanel
-		client	= panel.client
-		display	= client.display
-		driver	= display.driver
 		
 		textEvent = panel.textEvent
 		textEvent.text = text
 		
-		driver(panel.redisplayContent, desc="Redisplay input panel contents with new text.")
+		panel._needsUpdate = True
+
+		# Note: We now wait to do this in .handle().
+		#driver(panel.redisplayContent, desc="Redisplay input panel contents with new text.")
 			# Update the panel display.
 
 	def promptLen(thisInputPanel:InputPanel):
@@ -439,8 +451,12 @@ class InputPanel(Panel):
 			
 		elif keycode == BS or keycode == KEY_DELBACK or keycode == KEY_BACKSPACE:
 			# ^H = Hey, undo that.
-			panel.keyBackspace()
+			panel.keyDeleteBack()
 			
+		elif keycode == alt(BS) or keycode == alt(KEY_BACKSPACE):
+			# Alt-^H = Delete a word backwards.
+			panel.keyDelWordBack()
+
 		elif keycode == LF or keycode == KEY_LINEFEED:
 			# ^J = Jump to new line.
 			panel.keyLineFeed()
@@ -485,9 +501,36 @@ class InputPanel(Panel):
 			panel.insertKey(keyevent)
 		
 		#__/ End if/elif/else block for keycode-based event dispatching.
-		
+
+			#/--------------------------------------------------------
+			#| At this point, we check whether whatever the user did
+			#| caused some change to the panel text, and if so, we
+			#| request the display driver to show the updated text.
+
+		panel.updateIfNeeded()
+
 	#__/ End instance method panel.handle().
 
+
+	def updateIfNeeded(thisInputPanel:InputPanel):
+
+		"""Updates the panel display, but only if our internal record-keeping
+			indicates that an update is needed."""
+
+		panel	= thisInputPanel
+		client	= panel.client
+		display	= client.display
+		driver	= display.driver
+
+		if panel._needsUpdate:	# Does the panel display need updating?
+
+			panel.redisplayContent()
+
+			# Not needed since we should already be in the display driver thread.
+			#driver(panel.redisplayContent, desc="Redisplay input panel contents after key handling.")
+
+			panel._needsUpdate = False	# That's taken care of now.
+		
 
 	def _adjustPos(thisInputPanel:InputPanel):
 		
@@ -545,6 +588,7 @@ class InputPanel(Panel):
 
 
 	def setYxPos(thisInputPanel:InputPanel, cursY:int, cursX:int):
+
 		"""Sets the (y,x) cursor coordinates as given, with any
 			adjustments needed."""
 		
@@ -561,12 +605,18 @@ class InputPanel(Panel):
 
 	def insertChar(thisInputPanel:InputPanel, char):
 
-		"""Inserts a given character at the current cursor position."""
+		"""Inserts a given character at the current cursor position,
+			and moves the cursor to the right one space."""
 
 		panel	= thisInputPanel
 		txpos	= panel.txpos
 
 		panel.insertAfter(char)
+
+		# We go ahead and update the panel now, to make sure that the new cursor
+		# location actually exists before we try to move the cursor there.
+
+		panel.updateIfNeeded()
 
 		# This increments the text position.
 		panel.setTxPos(txpos + 1)
@@ -574,7 +624,8 @@ class InputPanel(Panel):
 
 	def insertAfter(thisInputPanel:InputPanel, char):
 
-		"""Inserts a given character after the current cursor position."""
+		"""Inserts a given character at the current cursor position,
+			leaving the cursor at the newly inserted character."""
 
 		panel	= thisInputPanel
 		txpos	= panel.txpos
@@ -583,7 +634,7 @@ class InputPanel(Panel):
 		# This inserts the character at the text position.
 		text = text[:txpos] + char + text[txpos:]
 		
-		# Update the panel's text (this also updates the display).
+		# Update the panel's text.
 		panel.setText(text)
 
 
@@ -654,6 +705,7 @@ class InputPanel(Panel):
 	
 	
 	def keyDelete(thisInputPanel:InputPanel):
+
 		"""This method handles the 'Delete' key, and also ^D = delete character under cursor.
 			It deletes the character under the cursor."""
 
@@ -674,6 +726,7 @@ class InputPanel(Panel):
 
 	
 	def keyDeleteWord(thisInputPanel:InputPanel):
+
 		"""This method handles control-delete (maybe), and also Alt-D = delete word.
 			It deletes the word under (or after) the cursor."""
 		
@@ -753,13 +806,13 @@ class InputPanel(Panel):
 			panel.keyRight()
 
 	
-	def keyBackspace(thisInputPanel:InputPanel):
+	def keyDeleteBack(thisInputPanel:InputPanel):
 
 		"""This method handles the Backspace key, and also ^H = BS.
 			It deletes the character to the left of the cursor."""
 
 		panel = thisInputPanel
-		txpos  = panel.txpos
+		txpos = panel.txpos
 
 		if txpos > 0:
 			text = panel.text
@@ -774,7 +827,27 @@ class InputPanel(Panel):
 			# Update the text.
 			panel.setText(text)
 
-	
+
+	def keyDelWordBack(thisInputPanel:InputPanel):
+
+		"""Deletes the entire word that the cursor is after, or in."""
+
+		panel = thisInputPanel
+		txpos = panel.txpos
+		text = panel.text
+
+		# Backspace till we get to a word.
+		while txpos > 0:
+			prevCh = ord(text[txpos - 1])
+			if isword(prevCh):
+				break
+			panel.keyDeleteBack()
+			txpos = panel.txpos
+
+		panel.keyLeftWord()
+		panel.keyDeleteWord()
+
+
 	def keyLineFeed(thisInputPanel:InputPanel):
 
 		"""This method handles the Return key and also ^J = LF.
