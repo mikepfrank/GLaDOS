@@ -452,7 +452,9 @@ class FieldDisplay:
 
 				# Add to the end of the visible dataset an item showing the 
 				# current count of total characters and tokens in the field.
-			fdisp.addItem(f"\n[{nchars} characters, {ntoks} tokens]")
+			fdisp.addItem(f"\n\n[{nchars} characters, {ntoks} tokens]")
+				# The double newline here is just to provide a blank line
+				# in between the AI's prompt and this data item.
 
 
 	def clearPanels(thisFieldDisplay:FieldDisplay):

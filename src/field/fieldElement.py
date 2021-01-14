@@ -65,8 +65,23 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 
 
 from	infrastructure.decorators	import	singleton
-from	infrastructure.utils		import	overwrite			# Used for composing horizonal bars.
+from	infrastructure.utils		import	overwrite		# Used for composing horizonal bars.
+
+from	entities.entity				import	AI_Persona		# Class for our AI persona entity.
+
+from	events.event 	import (
+
+		TextEvent,			# For an event representing the operator's text input.
+		DateEventFormat,	
+			# The format we use by default for displaying the AI's text event in 
+			# TheInputArea field element.  Includes the date and author (Operator).
+			# (Gladys specifically requested that the time not be included in her
+			# prompt, apparently for privacy reasons.)
+		
+	)
+
 from	.fieldSettings				import	TheFieldSettings
+
 from	.placement					import	(
 		
 		Placement, 
@@ -74,6 +89,7 @@ from	.placement					import	(
 		MODE_MAP, GRAVITY_MAP
 		
 	)
+
 #from	.fieldSlot					import	FieldSlot
 	
 class FieldElement_: pass
@@ -363,19 +379,20 @@ class TheFieldHeader(FieldElement_):
 
 	def __init__(newHeaderElem:TheFieldHeader, *args, **kwargs):
 
+		nhe = newHeaderElem
+
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#| First, we call the superclass initializer to do general initial-
 			#| ization for all field elements.
 
-		super(TheFieldHeader.__wrapped__, newHeaderElem).__init__(
+		super(TheFieldHeader.__wrapped__, nhe).__init__(
 				"Field Header", PINNED_TO_TOP, *args, **kwargs)
 			# NOTE: We always pin the field header to the very top of the 
 			# receptive field, because that's where it's supposed to appear, 
 			# by definition.
 
 			# Save it as our instance image.
-		newHeaderElem._image = headerStr
-
+		nhe._image = nhe.headerStr
 
 
 class ThePromptSeparator: pass
@@ -419,6 +436,8 @@ class ThePromptSeparator(FieldElement_):
 
 class TheInputArea: pass
 
+class TheReceptiveField: pass
+
 @singleton
 class TheInputArea(FieldElement_):
 
@@ -428,7 +447,7 @@ class TheInputArea(FieldElement_):
 	eventFormat = DateEventFormat		# Format for displaying the working "input event."
 		# Note this format shows the current date and the entity ID.
 	
-	def __init__(inputArea:TheInputArea, personaEntity:AI_Persona_):
+	def __init__(inputArea:TheInputArea, field:TheReceptiveField, personaEntity:AI_Persona):
 		
 		"""Initializer for the singleton instance of the "input area" field element."""
 	
@@ -443,7 +462,7 @@ class TheInputArea(FieldElement_):
 		inputArea._aiTextEvent = aiTextEvent
 		
 		super(TheInputArea.__wrapped__, inputArea).__init__(
-			"Input Area", PINNED_TO_BOTTOM)
+			"Input Area", PINNED_TO_BOTTOM, field)
 			# NOTE: The input area must be pinned to the very bottom of the receptive
 			# field, so that the AI will perceive the prompt as what it's completing.
 

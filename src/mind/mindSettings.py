@@ -1,6 +1,11 @@
 # mindSettings.py
 # Manages settings for the "mind" package, i.e., the Cognitive System.
 
+from	typing						import	ClassVar
+	# We use this for argument type hints in class methods.
+
+from	infrastructure.decorators	import	singleton	# Singleton class decorator.
+
 from	settings.settings		import	Setting, SettingsModule
 from	config.configuration	import	TheConfiguration, TheAIPersonaConfig
 
@@ -104,7 +109,7 @@ class	TheMindSettings:
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
 	@classmethod
-	def configDefaultPersonaName(theFieldSettingsClass:ClassVar, mindConf):
+	def configDefaultPersonaName(theMindSettingsClass:ClassVar, mindConf):
 
 		"""This method replaces the above hard-coded default value for
 			the name of the AI persona with the value loaded from
@@ -124,7 +129,7 @@ class	TheMindSettings:
 		
 
 	@classmethod
-	def configDefaultPersonaName(theMindSettingsClass:ClassVar, mindConf):
+	def configDefaultPersonaID(theMindSettingsClass:ClassVar, mindConf):
 
 		"""This method replaces the above hard-coded default value for
 			the short ID of the AI persona with the value loaded from

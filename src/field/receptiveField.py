@@ -83,6 +83,10 @@ from	text.buffer				import	TextBuffer
 
 from	tokenizer.tokenizer		import	countTokens
 
+from	entities.entity			import	AI_Persona
+	# We need to be given an instance of AI_Persona in order to appropriately
+	# configure the prompt string for it in the input area field element.
+
 from 	mind.aiActions			import 	ActionByAI_
 	# This is an abstract class for actions that we might want to take,
 	# which should then be automatically handled by the Supervisor.
@@ -517,7 +521,7 @@ class TheReceptiveField(ReceptiveField_):
 	"""Singleton class for the entire receptive field management system."""
 	
 	def __init__(theReceptiveField:TheReceptiveField, 
-			entity:AI_Persona_		# Caller must supply the AI persona entity.
+			entity:AI_Persona,		# Caller must specify an AI persona entity.
 			fieldSize:int=None, 	# If supplied, this overrides config data.
 			nominalWidth:int=None,	# If supplied, this overrides config data.
 		):

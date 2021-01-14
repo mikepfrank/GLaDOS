@@ -22,8 +22,10 @@
 #|  Module imports.                                           [code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 	# Needed for tracking the creation date and time of events.
+
+from config.configuration import TheConfiguration
 
 #from .author import Author	# Abstract superclass of author objects.
 from entities.entity import Entity_	# Abstract superclass for entity objects.
@@ -161,21 +163,31 @@ class TextEvent:
 	#|
 	#\--------------------------------------------------------------------------
 
-	def __init__(inst, text:str=None, author:Entity_=None, defaultFormat=None
+	def __init__(inst, text:str=None, author:Entity_=None, defaultFormat=None,
 			when:datetime=None):
 	
 			# Default the creation time to right now if not provided.
 			
 		if when is None:
-			when = datetime.now()
+			inst.updateTime()
+		else:
+			inst.creationTime	= when
 		
-		inst.creationTime	= when
 		inst.creator		= author
 		inst.text			= text
 		inst.defaultFormat	= defaultFormat
 	
 	def updateTime(thisEvent):
-		thisEvent.creationTime	= datetime.now()
+
+		"""Updates the creation time of the event to the present moment."""
+
+		config = TheConfiguration()		# System configuration.
+		tzConf = config.timezone		# User's time zone preference.
+		td = timedelta(hours=tzConf)	# Convert to a timedelta object.
+		tz = timezone(td)				# Create the timezone object.
+
+		thisEvent.creationTime	= datetime.now(tz)
+			# The time will be displayed in the user's timezone by default.
 	
 	def display(inst, format:TextEventFormat=None):
 	
