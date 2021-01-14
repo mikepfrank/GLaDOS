@@ -90,10 +90,10 @@ RAW_DEBUG = False	# Change this to True as needed during initial development.
 
 global CONS_DEBUG, LOG_DEBUG	# These control debug-level output to console & log file.
 CONS_DEBUG = False	# Tell logmaster: Don't diplay debug-level output on console.
-LOG_DEBUG = True	# Tell logmaster: Don't save debug-level output to log file.
+LOG_DEBUG = True	# Tell logmaster: Do save debug-level output to log file.
 
 global CONS_INFO	# These control info-level output to console.
-CONS_INFO = True	# Tell logmaster: Don't diplay debug-level output on console.
+CONS_INFO = False	# Tell logmaster: Don't diplay info-level output on console.
 
 
 # Before doing anything else, we start a virtual terminal and have it grab
@@ -152,6 +152,7 @@ if __name__ == "__main__":
 	if RAW_DEBUG:
 		print("__main__: Importing standard Python library modules...")
 
+from	time				import	sleep		# Gives other threads time to work.
 from	sys					import	stderr		# Used for error output to console.
 from	collections.abc		import	Iterable	# Used for type hints in declarations.
 
@@ -391,8 +392,8 @@ def _main():
 
 	if doNorm:
 		print() # Just visual whitespace; no need to log it.
-		_logger.normal(f"Welcome to the {systemName} server, v0.0 (pre-alpha).")
-		_logger.normal("Copyright (C) 2020 Metaversal Constructions.")
+		_logger.normal(f"[Main] Welcome to the {systemName} server, v0.0 (pre-alpha).")
+		_logger.normal("[Main] Copyright (C) 2020 Metaversal Constructions.")
 		#_logger.normal("See the LICENSE.txt file for terms of use.")
 			# Commented out because this file doesn't exist yet.
 		print() # Just visual whitespace; no need to log it.
@@ -408,7 +409,8 @@ def _main():
 	setThreadRole('init')	# Denotes we are initializing the server.
 
 	if doNorm:
-		_logger.normal("Initializing infrastructure...")
+		_logger.normal("[Main] (1) Initializing config/settings infrastructure...")
+		print() # Just visual whitespace; no need to log it.
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#| The first packages that we initialize are the configuration and 
@@ -435,8 +437,12 @@ def _main():
 			#| at the GLaDOS system console.  It also provides for human input
 			#| (for commands, talking to the AI, etc.)
 	
-	if doInfo:
-		_logger.info("[Main/Init] Booting up console display...")
+	if doNorm:
+		print() # Just visual whitespace; no need to log it.
+		_logger.normal("[Main] (2) Launching console display...")
+
+	#if doInfo:
+	#	_logger.info("[Main/Init] Booting up console display...")
 
 	if doDebug:
 		_logger.debug("glados-server.py:_main(): Creating console client...")
@@ -452,21 +458,35 @@ def _main():
 		# running in a background thread, while in the meantime we
 		# continue setting up the rest of the system.
 
+	# However, we do pause here briefly to give the console time to finish starting up
+	# before we proceed.
+	sleep(1)	# It should just take a second.
+
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#| Next, we initialize and start up the Supervisor.  This is one of
 			#| the most important subsystems of GLaDOS, in that it is
 			#| responsible for starting up and coordinating all of the other
 			#| major subsystems.
 
-	if doInfo:
-		_logger.info("[Main/Init] Initializing system Supervisor...")
+	if doNorm:
+		_logger.normal("") # At this point we can't print to stdout or we'll mess up curses.
+		_logger.normal("[Main] (3) Initializing system supervisor...")
+		_logger.normal("")
+
+	#if doInfo:
+	#	_logger.info("[Main/Init] Initializing system Supervisor...")
 
 	supervisor = TheSupervisor(console)		# Creates the main supervisory subsystem.
 			# We give it a handle to the console so that it can connect it up to
 			# the system innards.
 	
+	if doNorm:
+		_logger.info(f"[Main/Init] Pausing to give system initialization time to finish...")
+
+	sleep(1)	# It should only take a second.
+
 	if doInfo:
-		_logger.info("[Main/Init] System initialization complete.")
+		_logger.info("[Main/Init] Assuming system initialization is complete.")
 	
 
 		#|======================================================================
@@ -479,7 +499,9 @@ def _main():
 	setThreadRole('startup')		# Denotes we are starting up the server.
 
 	if doNorm:
-		_logger.normal(f"Starting up the {systemName} subsystems...")
+		_logger.normal("") # At this point we can't just print() to stdout or we'll mess up curses.
+		_logger.normal(f"[Main] (4) Starting up the {systemName} subsystems...")
+		_logger.normal("")
 	
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#| This starts up the supervisor, which in turn initializes and
@@ -517,7 +539,7 @@ def _main():
 	setThreadRole('shutdown')	# Denotes that we are shutting down.
 
 	if doNorm:
-		_logger.normal(f"{systemName} server application is shutting down...")
+		_logger.normal(f"[Main] {systemName} server application is shutting down...")
 
 
 		#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

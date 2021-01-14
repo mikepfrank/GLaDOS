@@ -433,7 +433,7 @@ class TheConfiguration:	# The GLaDOS server configuration.
 			--------------------------------------------------------------------
 		"""
 	
-		_logger.normal(f"Loading server configuration from {_CONFIG_PATHNAME}...")
+		_logger.normal(f"[Config] Loading server configuration from {_CONFIG_PATHNAME}...")
 
 		with open(_CONFIG_PATHNAME) as cf:
 			conf = load(cf)			# Load structure from hjson file.
@@ -466,7 +466,7 @@ class TheConfiguration:	# The GLaDOS server configuration.
 
 		if 'timezone' in conf:
 			theConfig.timezone = timezone = conf['timezone']	# Expect a number of hours.
-			_logger.info(f"\t[Config] Loaded config: timezone = {timezone}")
+			_logger.normal(f"[Config]    system configuration: The time zone offset from UTC is {timezone} hours.")
 		else:
 			_logger.warn("configuration._parseConf(): The 'timezone' parameter "
 							"was not supplied. Defaulting to +0 (UTC).")
@@ -480,7 +480,7 @@ class TheConfiguration:	# The GLaDOS server configuration.
 
 		if 'tab-width' in conf:
 			theConfig.tabWidth = tabWidth = conf['tab-width']	# Expect an integer.
-			_logger.info(f"\t[Config] Loaded config: tab-width = {tabWidth}")
+			_logger.normal(f"[Config]    System configuartion: The tab width is {tabWidth}.")
 		else:
 			_logger.warn("configuration._parseConf(): The 'tab-width' parameter "
 							"was not provided. Defaulting to 4.")
@@ -496,6 +496,8 @@ class TheConfiguration:	# The GLaDOS server configuration.
 			_logger.warn("_parseConf(): The required 'field-conf' parameter was "
 							"not provided.")
 	
+		# NOTE: We should parse its parameters.
+
 			#------------------------------------
 			# Extract the 'app-list' parameter.
 				
@@ -802,7 +804,7 @@ class	TheAIPersonaConfig:
 		"""
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
-		_logger.normal(f"Loading AI configuration from {_CONFIG_PATHNAME}...")
+		_logger.normal(f"[Config] Loading AI configuration from {_CONFIG_PATHNAME}...")
 
 		with open(_AI_CONFIG_PATHNAME) as cf:
 			conf = load(cf)			# Load structure from hjson file.
@@ -828,89 +830,89 @@ class	TheAIPersonaConfig:
 		"""
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	 
-			#------------------------------------
-			# Extract the mind-conf parameter.
+				#|====================================
+				#| Parse the field-conf substructure.
+				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
-		if 'mind-conf' in conf:
-			theAIConfig.mindConf = mindConf = conf['mind-conf']
-				# TODO: Make sure value given is valid.
-			_logger.normal(f"    AI configuration: The AI's mind configuration is {mindConf}.")
-		else:
-			_logger.warn("parseConf(): The required mind-conf parameter "
-							"was not provided.")
-			theAIConfig.mindConf = None
-
 			#------------------------------------
 			# Extract the field-conf parameter.
 		
 		if 'field-conf' in conf:
 			theAIConfig.fieldConf = fieldConf = conf['field-conf']
 				# TODO: Make sure value given is valid.
-			_logger.normal(f"    AI configuration: The AI's field configuration is {fieldConf}.")
+			_logger.info(f"[Config]    AI configuration: The AI's field configuration is {fieldConf}.")
 		else:
 			_logger.warn("parseConf(): The required field-conf parameter "
 							"was not provided.")
 			theAIConfig.fieldConf = None
 
-				#============================
-				# Parse some of its elements.
-		
 			#------------------------------------
 			# Extract the max-visible-tokens parameter.
 		
 		if 'max-visible-tokens' in fieldConf:
 			theAIConfig.maxVisibleTokens = maxTok = fieldConf['max-visible-tokens']
 				# TODO: Make sure value given is valid.
-			_logger.normal(f"    AI configuration: The AI's receptive field size is {maxTok}.")
+			_logger.normal(f"[Config]    AI configuration: The AI's receptive field size is {maxTok}.")
 		else:
 			_logger.warn("parseConf(): The required max-visible-tokens parameter "
 							"was not provided.")
 			theAIConfig.maxVisibleTokens = None
 		
 
-## The below is commented out because currently, detailed config parameters are parsed by the
-## settings modules within individual packages (e.g., field and mind).
-##
-##	The rest of these are mind parameters:
-##
-##			#------------------------------------
-##			# Extract the model-family parameter.
-##		
-##		if 'model-family' in conf:
-##			theAIConfig.modelFamily = modelFamily = conf['model-family']
-##				# TODO: Make sure value given is valid.
-##			_logger.normal(f"    AI configuration: The AI's model family is {modelFamily}.")
-##		else:
-##			_logger.warn("parseConf(): The required model-family parameter "
-##							"was not provided.")
-##			theAIConfig.modelFamily = None
-##
-##	
-##			#------------------------------------
-##			# Extract the model-version parameter.
-##	
-##		if 'model-version' in conf:
-##			theAIConfig.modelVersion = modelVersion = conf['model-version']
-##				# TODO: Make sure value given is valid.
-##			_logger.normal(f"    AI configuration: The AI's model version is {modelVersion}.")
-##		else:
-##			_logger.warn("parseConf(): The required model-version parameter "
-##							"was not provided.")
-##			theAIConfig.modelVersion = None
-##
-##
-##			#--------------------------------------------------
-##			# Extract the sys-notification-threshold parameter.
-##
-##		if 'sys-notification-threshold' in conf:
-##			theAIConfig.sysNotifyThresh = sysNotifyThresh = conf['sys-notification-threshold']
-##				# TODO: Make sure value given is valid.
-##			_logger.normal(f"    AI configuration: The importance threshold for system notifications is {sysNotifyThresh}.")
-##		else:
-##			_logger.warn("parseConf(): The required sys-notification-threshold parameter "
-##							"was not provided.")
-##			theAIConfig.sysNotifyThresh = 0
-##
+				#|====================================
+				#| Parse the mind-conf substructure.
+				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		
+			#------------------------------------
+			# Extract the mind-conf parameter.
+		
+		if 'mind-conf' in conf:
+			theAIConfig.mindConf = mindConf = conf['mind-conf']
+				# TODO: Make sure value given is valid.
+			_logger.info(f"[Config]    AI configuration: The AI's mind configuration is {mindConf}.")
+		else:
+			_logger.warn("parseConf(): The required mind-conf parameter "
+							"was not provided.")
+			theAIConfig.mindConf = None
+
+			#------------------------------------
+			# Extract the model-family parameter.
+		
+		if 'model-family' in mindConf:
+			theAIConfig.modelFamily = modelFamily = mindConf['model-family']
+				# TODO: Make sure value given is valid.
+			_logger.normal(f"[Config]    AI configuration: The AI's model family is {modelFamily}.")
+		else:
+			_logger.warn("parseConf(): The required model-family parameter "
+							"was not provided.")
+			theAIConfig.modelFamily = None
+
+	
+			#------------------------------------
+			# Extract the model-version parameter.
+	
+		if 'model-version' in mindConf:
+			theAIConfig.modelVersion = modelVersion = mindConf['model-version']
+				# TODO: Make sure value given is valid.
+			_logger.normal(f"[Config]    AI configuration: The AI's model version is {modelVersion}.")
+		else:
+			_logger.warn("parseConf(): The required model-version parameter "
+							"was not provided.")
+			theAIConfig.modelVersion = None
+
+
+			#--------------------------------------------------
+			# Extract the sys-notification-threshold parameter.
+
+		if 'sys-notification-threshold' in mindConf:
+			theAIConfig.sysNotifyThresh = sysNotifyThresh = mindConf['sys-notification-threshold']
+				# TODO: Make sure value given is valid.
+			_logger.normal(f"[Config]    AI configuration: The importance threshold for system notifications is {sysNotifyThresh}.")
+		else:
+			_logger.warn("parseConf(): The sys-notification-threshold parameter "
+							"was not provided. Defaulting to 0.")
+			theAIConfig.sysNotifyThresh = 0
+
 
 		# NOTE: It would be nice to do some additional error-checking 
 		# here, such as warning the user if there are other parameters 
@@ -969,8 +971,8 @@ class	TheAIPersonaConfig:
 
 			# Print this key info at NORMAL level.
 		
-		_logger.normal(f"The AI-specific data directory is set to {_AI_DATADIR}.")
-		_logger.normal(f"The AI-specific config file is set to {_AI_CONFIG_PATHNAME}.")
+		_logger.normal(f"[Config] The AI-specific data directory is set to {_AI_DATADIR}.")
+		_logger.normal(f"[Config] The AI-specific config file is set to {_AI_CONFIG_PATHNAME}.")
 			
 	#__/ End private singleton instance method theAIConfig._checkEnvironment().
 

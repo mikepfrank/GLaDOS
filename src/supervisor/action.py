@@ -279,6 +279,10 @@ class Action_:
 		
 	#__/
 
+	@property
+	def description(thisAction):
+		return thisAction._description
+
 	def initiate(thisAction,
 			initiator:Entity_ = None,	# OPTIONAL. Assume same as conceiver if not given.
 			executeAt:datetime = None	# OPTIONAL. If not provided or None, execute now.

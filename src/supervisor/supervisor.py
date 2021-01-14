@@ -96,6 +96,7 @@
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 from threading	import	RLock	# Re-entrant mutex locks.
+from sys		import	stderr	# Used for displaying console announcements.
 from os			import	path	# Manipulate filesystem path strings.
 
 
@@ -240,18 +241,28 @@ class _AnnouncementAction(_ActionBySupervisor_):
 			importance:int=5,	# Default level for announcements.
 		):
 
+		annAct = thisAnnouncementAction
+
 		description="Supervisor announces: " + announcementText
 
-		super(_AnnouncementAction, thisAnnouncementAction).__init__(
+		_logger.debug("_AnnouncementAction.__init__(): Initializing "
+					  f"announcement action. Description: '{description}'")
+
+		super(_AnnouncementAction, annAct).__init__(
 			description, importance)
 				 
 	def executionDetails(thisAnnouncementAction:_AnnouncementAction):
 		"""We don't need to do much here since an announcement is 
 			self-executing, in virtue of having its execution
 			reported to the cognosphere."""
-		# Really here we should also do things like printing the announcement
-		# to STDERR and/or sending it to all attached terminal sessions.
-		pass
+
+		annAct = thisAnnouncementAction
+
+			# Print the announcement to STDERR.
+		print(annAct.description, file=stderr)
+			# This will actually go to the virterm and thence to the console panel.
+
+		# Eventually we should also send it to all attached terminal sessions.
 			
 
 class _AnnounceStartupAction: pass
@@ -261,6 +272,9 @@ class _AnnounceStartupAction(_AnnouncementAction):
 			announcementText:str="The system is starting up.",
 			importance:int=10,	# System startup seems pretty important.
 		):
+
+		_logger.debug("_AnnounceStartupAction.__init__(): Initializing startup "
+					  f"announcement action. Announcement text is: '{announcementText}'")
 
 		super(_AnnounceStartupAction, thisAnnStartAction).__init__(
 			announcementText, importance)
