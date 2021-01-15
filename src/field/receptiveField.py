@@ -79,6 +79,8 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 			#|	1.2.2. The following modules are specific to GLaDOS.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+from	events.event			import	TextEvent
+
 from	text.buffer				import	TextBuffer
 
 from	tokenizer.tokenizer		import	countTokens
@@ -126,6 +128,7 @@ from .fieldElement import (
 	TheFieldHeader,
 	ThePromptSeparator,
 	TheInputArea,
+	TextEventElement,
 
 )
 	
@@ -441,11 +444,15 @@ class TheAIFieldView(FieldView_):
 			image = element.image		# Get that element's (text) image.
 			data.append(image)			# Append it to our list.
 			
+		text = ''.join(data)		# Here's the data as one huge string.
+
 		view._data = data			# Remember the data array.
-		view._text = ''.join(data)	# Here's the data as one huge string.
+		view._text = text
 		view._nChars = None			# Mark nChars as not-yet-computed.
 		view._nTokens = None		# Mark nTokens as not-yet-computed.
 	
+		_logger.debug(f"aiFieldView.render(): Just rendered field view as: [[{text}]]")
+
 	@property
 	def data(inst):
 		return inst._data
@@ -649,6 +656,16 @@ class TheReceptiveField(ReceptiveField_):
 
 	#__/ End singleton instance initializer field.__init__().
 
+	def addEvent(field:TheReceptiveField, event:TextEvent):
+		"""Given a text event, this adds it as a new element of our receptive field."""
+
+		# Create new text event element.
+		teElem = TextEventElement(field, event)
+			# This automatically adds itself to the field, sliding it to the bottom.
+
+		# Since we just changed the field, tell the view to re-render itself.
+		field.updateView()
+
 	@property
 	def base(field:TheReceptiveField):
 		return field._baseFieldData
@@ -676,6 +693,7 @@ class TheReceptiveField(ReceptiveField_):
 			# Tell our base data structure to place this slot inside itself.
 		base.place(slot, placement)
 
+
 	@property
 	def view(theReceptiveField:TheReceptiveField):
 	
@@ -685,11 +703,17 @@ class TheReceptiveField(ReceptiveField_):
 		field = theReceptiveField
 		return field._aiFieldView
 
+
 	def updateView(field:TheReceptiveField):
 
 		"""Tells the field to update its views because the base data has changed."""
 
 		field.view.render()		# Render the view of the field.
+
+		# If the console's attached, ask it to refresh its field display.
+		console = field.console
+		if console is not None:
+			console.refreshFieldDisplay()
 
 
 	def getData(theReceptiveField:TheReceptiveField):

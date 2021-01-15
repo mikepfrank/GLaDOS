@@ -1,8 +1,15 @@
 
 from	infrastructure.decorators	import	singleton
-from	entities.entity				import	AI_Entity_	# Abstract base class for AI entities.
+
+from	entities.entity				import	(
+		AI_Entity_,			# Abstract base class for AI entities.
+		Cognitive_System	# The AI's cognitive subsystem specifically.
+	)
+
+from	config.configuration		import	TheAIPersonaConfig
+
 from	supervisor.action			import	(
-		Action_, SpeechAction_, CommandAction_, ActionChannel_
+		Action_, SpeechAction_, CommandAction_, ActionChannel_, ActionBySystem_
 	)
 
 class	ActionByAI_:					pass
@@ -18,10 +25,20 @@ class ActionByAI_(Action_):
 	def __init__(thisAiAction, 
 			description:str="A generic action was taken by the AI.",
 				# REQUIRED. A description string. SUBCLASSES SHOULD OVERRIDE THIS VALUE.
-			theAI:AI_Entity_=None,		# The AI entity that conceived of taking this action.
+			conceiver:AI_Entity_=None,		# The AI entity that conceived of taking this action.
+			importance:int=0,			# Importance level that we declare this action to have. Default 0.
 		):
 		
-		super(ActionByAI_, thisAiAction).__init__(description, theAI)
+			# Remember the declared importance level of this AI action.
+		thisAiAction._importance = importance
+
+			# Set the conceiver implicitly.
+		if conceiver is None:
+			conceiver = Cognitive_System()
+			# We ascribe AI actions to the AI's cognitive system unless they're more specifically
+			# attributed to its persona, API, or other aspect of the AI.
+
+		super(ActionByAI_, thisAiAction).__init__(description, conceiver=conceiver)
 
 
 class AI_Speech_Action(SpeechAction_, ActionByAI_):
@@ -78,6 +95,7 @@ class CommandByAI_(AI_Speech_Action, CommandAction_):
 # parameters for the AI persona.
 @singleton
 class The_AI_Cognosphere_Channel(ActionChannel_):
+
 	"""The action system creates this specific action channel which is for 
 		reporting actions that we consider eligible for entering into the
 		AI's sphere of awareness.  Such actions include:
@@ -90,8 +108,10 @@ class The_AI_Cognosphere_Channel(ActionChannel_):
 			
 			(3) All high-importance system actions, which the AI might
 				need to be aware of.  The threshold importance level can
-				be configured in the system/AI configuration.
-	"""
+				be configured in the system/AI configuration."""
+
+	channelName = "AICC (AI Cognosphere Channel)"
+
 	def willReport(thisChannel, status:str, action:Action_):
 		
 			# At present, we report all status updates for actions, including
