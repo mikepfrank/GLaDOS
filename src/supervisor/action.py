@@ -119,6 +119,7 @@ from	collections.abc		import	Iterable
 
 	# We use datetime objects to keep a record of times associated with an action.
 from 	datetime			import	datetime
+from 	sys					import	stderr	# Used for displaying announcements.
 from 	os					import	path	# For manipulating filesystem paths.
 
 
@@ -274,6 +275,8 @@ class Action_:
 		thisAction._description	= description
 		thisAction._conceivedBy	= conceiver
 		
+		_logger.debug(f"_Action.__init__(): Constructed action '{description}'.")
+
 			# Report this action's conception on TheActionNewsNetwork.
 		thisAction._reportConception()
 		
@@ -282,6 +285,9 @@ class Action_:
 	@property
 	def description(thisAction):
 		return thisAction._description
+
+	def __str__(thisAction):
+		return thisAction.description
 
 	def initiate(thisAction,
 			initiator:Entity_ = None,	# OPTIONAL. Assume same as conceiver if not given.
@@ -361,6 +367,30 @@ class Action_:
 #-------------------------------------------------------------
 # Important abstract subclasses of Action_. Various subsystems
 # can/should derive from these.
+
+class AnnouncementAction_: pass
+
+class AnnouncementAction_(Action_):
+
+	"""This is a type of action that, when executed, generates
+		a message in several places (e.g., STDERR on each attached
+		console or user terminal, in the A.I.'s cognitive stream)."""
+
+	def executionDetails(thisAnnouncementAction:AnnouncementAction_):
+
+		"""We don't need to do much here since an announcement is 
+			self-executing, in virtue of having its execution
+			reported to the cognosphere."""
+
+		annAct = thisAnnouncementAction
+
+		_logger.debug(f"Carrying out execution details of announcement action '{annAct.description}'.")
+
+			# Print the announcement to STDERR.
+		print(f"\n*** {annAct.description} ***\n", file=stderr)
+			# This will actually go to the virterm and thence to the console panel.
+
+		# Eventually we should also send it to all attached terminal sessions.
 
 class CommandAction_(Action_):
 	pass
@@ -465,7 +495,8 @@ class CommandByHuman_(ActionByHuman_, CommandAction_):
 
 class ActionSubscriber_:
 
-	def __init__(thisSubscriber):
+	def __init__(thisSubscriber, name="(generic subscriber)"):
+		thisSubscriber.name = name
 		thisSubscriber.subscribedChannels = set()
 
 	def subscribe(thisSubscriber, channel):
@@ -482,11 +513,25 @@ class ActionSubscriber_:
 
 class ActionChannel_:
 
+	channelName = "(generic action channel)"	# Override this.
+
 	def __init__(thisChannel, name:str=None):
+
+		if name is None:
+			name = thisChannel.channelName
+
+		_logger.info(f"[ActionSystem] Initializing action channel '{name}'.")
+
 		thisChannel._name = name
 		thisChannel._subscribers = set()
 	
+	def __str__(this):
+		return this._name
+
 	def addSubscriber(thisChannel, subscriber:ActionSubscriber_):
+		
+		_logger.debug(f"ActionChannel_.addSubscriber(): Subscribing {subscriber.name} to {thisChannel._name}.")
+
 		thisChannel._subscribers.add(subscriber)
 	
 	def maybeReport(thisChannel, status:str, action:Action_):
@@ -506,6 +551,8 @@ class TheEverythingChannel(ActionChannel_):
 	"""This is an action channel that reports every single update
 		that comes out on TheActionNewsNetwork."""
 		
+	channelName = "TEC (The Everything Channel)"
+
 	def willReport(thisChannel, status, action):
 		return True
 
@@ -516,24 +563,33 @@ class TheLogReporter(ActionSubscriber_):
 		then reports every update to the Supervisor's logger."""
 	
 	def __init__(theLogReporter):
-		theLogReporter.subscribe(TheEverythingChannel)
+
+		_logger.info("[ActionSystem] Intializing the log reporter...")
+
+		super(TheLogReporter.__wrapped__, theLogReporter).__init__(name="The Log Reporter")
+		
+		theLogReporter.subscribe(TheEverythingChannel())
 	
 	def notify(theLogReporter, status:str, action):
-		_logger.info("Log reporter:  Action news update:  Action [{action}] was {status}.")
+		_logger.info(f"[ActionSystem] Log reporter: Action news update! Action [{action}] was {status}.")
 			# Note: Need to make sure actions convert to strings OK. 
 
 @singleton
 class TheActionNewsNetwork:
+
 	_actionChannels = set()
 	
-	def __init__(theANN):
-		pass
+	#def __init__(theANN):
+	# pass
 	
 	def addChannels(theANN, channels:Iterable):
 		for channel in channels:
 			theANN.addChannel(channel)
 	
 	def addChannel(theANN, channel:ActionChannel_):
+
+		_logger.info(f"[ActionSystem] TANN (The Action News Network) is adding '{channel}' to its lineup.")
+		
 		theANN._actionChannels.add(channel)
 		
 	def report(theANN, status:str, action:Action_):
@@ -541,16 +597,16 @@ class TheActionNewsNetwork:
 			channel.maybeReport(status, action)
 
 	def reportConception(theANN, action:Action_):
-		pass
+		theANN.report('conceived', action)
 		
 	def reportInitiation(theANN, action:Action_):
-		pass
+		theANN.report('initiated', action)
 
 	def reportExecuting(theANN, action:Action_):
-		pass
+		theANN.report('executed', action)
 		
 	def reportCompletion(theANN, action:Action_):
-		pass
+		theANN.report('completed', action)
 
 # To add:
 #
@@ -576,6 +632,8 @@ class TheActionProcessor:
 	def process(theActionProcessor:TheActionProcessor, action:Action_):
 		"""Process the initiation of the given action."""
 		
+		_logger.debug(f"actionProcessor.process(): Processing initiation of action '{action}'.")
+
 			# First, report the news of this action's initiation to 
 			# TheActionNewsNetwork.
 		action._reportInitiation()
@@ -604,6 +662,8 @@ class TheActionProcessor:
 	def execute(theActionProcessor:TheActionProcessor, action:Action_):
 		"""Handle the actual execution of the given action."""
 		
+		_logger.debug(f"actionProcessor.execute(): Processing execution of action '{action}'.")
+
 			# First, report the news of this action's execution to 
 			# TheActionNewsNetwork.
 		action._reportExecuting()
@@ -613,11 +673,12 @@ class TheActionProcessor:
 		# steps that are specific to the particular action subclass and details 
 		# of the action.
 		
-			# First off, if it's a system action, we just go ahead and run
+			# First off, if it's a system action or any announcement action
+			# (including announcements from the AI), we just go ahead and run
 			# its more specific execution method. (We don't need to second-guess 
 			# what else needs to be done.)
 		
-		if isinstance(action, ActionBySystem_):
+		if isinstance(action, ActionBySystem_) or isinstance(action, AnnouncementAction_):
 			action.executionDetails()
 			
 			# For speech actions taken, we need to check whether committing
@@ -645,12 +706,21 @@ class TheActionSystem:
 
 	def __init__(inst):
 		
+		_logger.info("[ActionSystem] Intializing the action system...")
+
 		tann = TheActionNewsNetwork()	# Initialize the "Action News Network"
-		tap = TheActionProcessor()	# Initialize the action processor.
+		tap = TheActionProcessor()		# Initialize the action processor.
+		tec = TheEverythingChannel()	# Initialize the Everything Channel.
+		tlr = TheLogReporter()			# Initialize the Log Reporter.
+
+		tann.addChannel(tec)
+			# Add The Everything Channel to TANN's lineup.
 
 			# Remember these guys.
 		inst._actionNewsNetwork = tann
 		inst._actionProcessor = tap
+		inst._everythingChannel = tec
+		inst._logReporter = tlr
 
 	def commandInterfaceIs(inst, theCommandInterface):
 
