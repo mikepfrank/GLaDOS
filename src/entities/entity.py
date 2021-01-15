@@ -206,9 +206,12 @@ class Entity_:
 	def name(thisEntity):
 		return thisEntity._name		# Set in instance initializer.
 
+	@property
+	def ID(thisEntity):
+		return thisEntity._id
 
 	def __str__(thisEntity):
-		return thisEntity._id	# Return the short ID string.
+		return thisEntity.ID	# Return the short ID string.
 
 	#/--------------------------------------------------------------------------
 	#|	Private instance data members.					   [class documentation]
@@ -289,6 +292,7 @@ class Cognitive_System(AI_Subsystem):
 
 	_isAbstract = False
 	_ENTITY_NAME = "Cognitive System"
+	_ENTITY_ID = "CognoSys"
 	partOf = AI_System
 	
 	def __inst__(thisCognitiveSystem:Cognitive_System, personaEntity:AI_Persona):
@@ -297,6 +301,7 @@ class Cognitive_System(AI_Subsystem):
 class Cognitive_Stream(AI_Subsystem):
 	_isAbstract = False
 	_ENTITY_NAME = "Cognitive Stream"
+	
 	partOf = Cognitive_System
 
 class Receptive_Field(AI_Subsystem):
@@ -369,7 +374,8 @@ class The_ConfigSystem_Entity(Subsystem_Entity):
 @singleton
 class The_Supervisor_Entity(Subsystem_Entity):
 	_isAbstract = False
-	_ENTITY_NAME = "Supervisor"
+	_ENTITY_NAME = "Supervisory Subsystem"
+	_ENTITY_ID = "Supervisor"
 	partOf = The_GLaDOS_Entity
 
 @singleton

@@ -226,7 +226,7 @@ class _ActionBySupervisor_(ActionBySystem_):
 		):
 
 			# The conceiver is set implicitly.
-		actor = The_Supervisor_Entity
+		actor = The_Supervisor_Entity()
 
 		super(_ActionBySupervisor_, thisSupervisorAction).__init__(
 			description, actor, importance)

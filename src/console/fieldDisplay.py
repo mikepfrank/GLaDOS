@@ -520,7 +520,7 @@ class FieldDisplay:
 			
 	def repaintPanels(thisFieldDisplay:FieldDisplay):
 		
-		"""Redisplays both panels."""
+		"""[Display driver thread] Redisplays both panels."""
 		
 		fdisp 	= thisFieldDisplay
 		client	= fdisp.client
