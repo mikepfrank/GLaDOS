@@ -53,6 +53,7 @@ __all__ = [
 		'ThePromptSeparator',
 	]
 
+from threading import RLock
 from os import path
 from infrastructure.logmaster	import getComponentLogger
 
@@ -85,7 +86,7 @@ from	.fieldSettings				import	TheFieldSettings
 from	.placement					import	(
 		
 		Placement, 
-		PINNED_TO_TOP, PINNED_TO_BOTTOM,
+		PINNED_TO_TOP, PINNED_TO_BOTTOM, SLIDE_TO_BOTTOM,
 		MODE_MAP, GRAVITY_MAP
 		
 	)
@@ -431,7 +432,7 @@ class ThePromptSeparator(FieldElement_):
 			# receptive field, except this will really end up being just above
 			# the actual prompt area, which should have been previously pinned.
 
-		psElem._image = psElem.sepBarStr
+		psElem._image = '\n' + psElem.sepBarStr
 
 
 class TheInputArea: pass
@@ -475,3 +476,44 @@ class TheInputArea(FieldElement_):
 			
 		return inputArea._aiTextEvent.display()
 		
+
+class TextEventElement: pass
+class TextEventElement(FieldElement_):
+
+	"""A text event element is a field element specifically to show an individual
+		text event that occurred.  These events are slid to bottom and left floating,
+		that is, they are not anchored, so, they are free to pass up the field and
+		disappear out of sight when the field gets too full."""
+
+	lock = RLock()
+
+	seqNo = 0
+
+	def __init__(newTextEventElement:TextEventElement, field:TheReceptiveField, event:TextEvent):
+
+		teElem = newTextEventElement
+
+		_logger.debug(f"textEventElement.__init___(): Initializing new text event field element for text event '{event.text}'.")
+
+		teElem._textEvent = event
+
+		# Thread-safely increment class's sequence counter.
+		with teElem.lock:
+			seqno = teElem.seqNo
+			teElem.seqNo = seqno + 1
+
+		# General field element initialization.
+		super(TextEventElement, teElem).__init__(
+			f"Text Event #{seqno}", SLIDE_TO_BOTTOM, field)
+			# NOTE: We slide new text events to the bottom (above anchored elements),
+			# but then allow them to subsequently float upwards.
+
+	@property
+	def image(thisTextEventElement:TextEventElement):
+
+		"""Standard field element property to get the element's image.
+			We do this by just asking the text event to display itself."""
+
+		teElem = thisTextEventElement
+
+		return '\n' + teElem._textEvent.display()
