@@ -1,0 +1,8 @@
+******** GLaDOS Main Screen / GPT-3 Receptive Field ********
+
+2021-01-14 (Supervisor)> *** The supervisory subsystem announces: "The system is starting up." ***
+
+2021-01-14 (CognoSys)> *** The AI's cognitive system announces: "The AI's receptive field is ready to receive data." ***
+
+##### Enter a command line or free-form text. (/Help) ######
+2021-01-14 (Gladys)> 
