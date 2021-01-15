@@ -502,11 +502,20 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 			#| create and subscribe to all of the "action channels" it wants (to
 			#| get notifications from the rest of the system), and then we tell
 			#| the action system to add these channels to the "Action News 
-			#| Network."
+			#| Network" so that they will receive and broadcast all action update 
+			#| reports.
+			#|
+			#| After this, the AI's cognitive system should start receiving 
+			#| updates about various actions that are occurring in the 
+			#| system, and it can respond in an appropriate way.  (Typically,
+			#| by adding corresponding events to its cognitive stream, which 
+			#| then makes these events visible in the AI's receptive field,
+			#| which then allows the core AI (NLP system) to respond to them.)
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
 		theSupervisor.connect_AI_inputs()	
 			# Connects up all of the inputs to AI the from the rest of the system.
+		
 		
 			#|---------------------------------------------------------
 			#| At this point, we have finished initializing everything.
@@ -562,6 +571,9 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 	
 		theSupervisor.announceStartup()
 			# This announces that the GLaDOS system is starting up.
+			# The announcement should be sent to STDERR, and be displayed in
+			# red in the console panel on the operator's system console display.
+			# It should also appear as an event in the AI's receptive field.
 	
 		#TheActionSystem().start()		# No background functionality yet.
 		#TheCommandInterface().start()	# No background functionality yet.
