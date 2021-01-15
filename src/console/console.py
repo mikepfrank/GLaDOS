@@ -392,9 +392,13 @@ class ConsoleClient(PanelClient):
 	def refreshFieldDisplay(thisConsoleClient:ConsoleClient):
 	
 		client 	= thisConsoleClient
+		display = client.display
+		driver = display.driver
 		fdisp	= client.fieldDisplay
 		
-		fdisp.refresh()		# Tells the field display to refresh itself.
+		_logger.debug("console.refreshFieldDisplay(): Refreshing field display.")
+
+		driver(fdisp.refresh)		# Tells the field display to refresh itself.
 	
 	@property
 	def mind(thisConsoleClient:ConsoleClient):

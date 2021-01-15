@@ -283,8 +283,22 @@ class Action_:
 	#__/
 
 	@property
+	def conceiver(thisAction):
+		return thisAction._conceivedBy
+
+	@property
+	def conceptionTime(thisAction):
+		return thisAction._conceivedAt
+
+	@property
 	def description(thisAction):
 		return thisAction._description
+
+	@property
+	def text(thisAction):
+		"""This attribute gives a textual representation of the action, in a
+			form suitable for viewing by the AI.  May be overridden by subclasses."""
+		return thisAction.description
 
 	def __str__(thisAction):
 		return thisAction.description
@@ -376,6 +390,17 @@ class AnnouncementAction_(Action_):
 		a message in several places (e.g., STDERR on each attached
 		console or user terminal, in the A.I.'s cognitive stream)."""
 
+	@property
+	def text(thisAnnouncementAction:AnnouncementAction_):
+
+		"""For announcement actions, we generate their text with a little highlighting
+			and a newline."""
+
+		annAct = thisAnnouncementAction
+		text = f"*** {annAct.description} ***\n"
+
+		return text
+
 	def executionDetails(thisAnnouncementAction:AnnouncementAction_):
 
 		"""We don't need to do much here since an announcement is 
@@ -387,7 +412,7 @@ class AnnouncementAction_(Action_):
 		_logger.debug(f"Carrying out execution details of announcement action '{annAct.description}'.")
 
 			# Print the announcement to STDERR.
-		print(f"\n*** {annAct.description} ***\n", file=stderr)
+		print('\n'+annAct.text, file=stderr)	# Extra newline before to make it stand out.
 			# This will actually go to the virterm and thence to the console panel.
 
 		# Eventually we should also send it to all attached terminal sessions.
@@ -452,40 +477,6 @@ class ActionBySystem_(Action_):
 		thisSystemAction._importance = importance
 	
 		super(ActionBySystem_, thisSystemAction).__init__(description, conceiver)
-
-# class ActionBySupervisor_(ActionBySystem_):
-# 	def __init__(thisSupervisorAction,
-# 			description:str="The supervisor took a generic system action.",
-# 			importance:int=0,			# Importance level (integer). Default is 0.
-# 		):
-			
-# 		actor = The_Supervisor_Entity
-		
-# 		super(ActionBySupervisor_, thisSupervisorAction).__init__(description, actor, importance)
-
-# class AnnouncementAction(ActionBySupervisor_):
-# 	def __init__(this,
-# 			announcementText:str="Generic accouncement.",
-# 			importance:int=0,			# Importance level (integer). Default is 0.
-# 		):
-		
-# 			# Remember the announcement text for reference in case needed in later 
-# 			# inspection of this action object.
-		
-# 		this._announcementText = announcementText
-		
-# 			# Construct the action description text.
-		
-# 		description = "Supervisor announces: " + announcementText
-		
-# 		super(SupervisorAnnouncementAction, this).__init__(description, importance)
-		
-# class StartupAnnouncementAction(SupervisorAnnouncementAction):
-# 	def __init__(this):
-# 		announcement = "System is starting up."
-# 		importance = 10		# A system startup event seems pretty important, right?
-# 			#(We could make this configurable, though.)
-# 		super(StartupAccouncement, this).__init__(announcement, importance)
 
 class CommandByHuman_(ActionByHuman_, CommandAction_):
 	pass

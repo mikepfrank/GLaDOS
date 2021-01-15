@@ -181,6 +181,8 @@ from	.aiActions				import	(
 			# We tell this dude to init itself, and we list it as our input channel.
 	)
 
+from	.mindStream				import	TheCognitiveStream
+
 from	field.receptiveField	import	TheReceptiveField
 	# This singleton class gives us a handle into the receptive field module.
 
@@ -189,6 +191,7 @@ from	field.receptiveField	import	TheReceptiveField
 #| These are used only in type hints.
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+class TextEvent: pass
 class ConsoleClient: pass
 
 # Forward declarations.
@@ -253,15 +256,16 @@ class TheAIPersona:
 
 	"""This singleton class manages the AI's persona."""
 
-	def __init__(theNewAIPersona:TheAIPersona, name:str, id:str):
+	def __init__(theNewAIPersona:TheAIPersona, name:str, ID:str):
+
 		persona = theNewAIPersona
 
 			# Remember it's name and ID.
 		persona._name = name
-		persona._id = id
+		persona._id = ID
 		
 			# Create and store an Entity object for it.
-		persona._entity = AI_Persona(name, id)
+		persona._entity = AI_Persona(name=name, eid=ID)
 		
 	@property
 	def entity(persona):
@@ -273,7 +277,12 @@ class The_CognoSys_Subscriber(ActionSubscriber_):
 
 	"""An action subscriber representing the cognitive system."""
 
-	def __init__(newSubscriber, name="CognoSys"):
+	def __init__(newSubscriber, mind:TheCognitiveSystem, name="CognoSys"):
+
+		sub = newSubscriber
+
+			# Remember how to find the whole cognitive system.
+		sub._cognoSys = mind
 
 			# First, do default initialization for all action subscribers.
 		super(The_CognoSys_Subscriber.__wrapped__, newSubscriber).__init__(name=name)
@@ -288,10 +297,18 @@ class The_CognoSys_Subscriber(ActionSubscriber_):
 
 	def notify(thisSubscriber, status, action):
 
-		_logger.info(f"[Mind] Cognitive system is being notified of status '{status}' for action '{action}'.")
+		_logger.info("[Mind] Cognitive system is notified of status "
+					 f"'{status}' for action '{action}'.")
 
-		# Write more code here.
+		tcSub = thisSubscriber		# The cognitive system subscriber.
+		tcSys = tcSub._cognoSys		# The cognitive system.
+		tcStr = tcSys._cogStream	# The cognitive stream.
+		
+			# If this is an action that's actually executing,
+			# let's bring it to the awareness of the cognitive stream.
 
+		if status=='executed':
+			tcStr.noticeAction(action)
 
 
 @singleton
@@ -342,7 +359,7 @@ class TheCognitiveSystem:
 	
 		mind = theCognitiveSystem
 	
-		_logger.normal("[Mind] The AI's cognitive system (Mind) is booting up...")
+		_logger.normal("[Mind/Init] The AI's cognitive system (Mind) is initializing...")
 	
 		mind._console = None		# The system console is not attached at first.
 	
@@ -362,7 +379,7 @@ class TheCognitiveSystem:
 		#|	associated "entity" object to represent the persona.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		mind._persona = persona = TheAIPersona(name=personaName, id=personaID)
+		mind._persona = persona = TheAIPersona(personaName, personaID)
 		mind._entity = entity = persona.entity
 	
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -373,14 +390,14 @@ class TheCognitiveSystem:
 			# the GLaDOS system's input interface to the core AI's real receptive 
 			# field).
 		
-		_logger.info(f"[Mind] Creating receptive field...")
+		_logger.info(f"[Mind/Init] Creating receptive field...")
 		field = TheReceptiveField(entity)		# This figures out its own size.
 		mind._field = field				# Stash the field for later reference.
 		
 			# Now is probably a good time to attach ourselves to the console, so 
 			# that the operator can immediately see the field we just created.
 			
-		_logger.info("[Mind] Attaching to console...")
+		_logger.info("[Mind/Init] Attaching to console...")
 		if console is not None:
 			mind.setConsole(console)
 			
@@ -388,14 +405,16 @@ class TheCognitiveSystem:
 		#|--------------------------------------
 		#| Step 2:  Create our cognitive stream.
 		
-		## Not implemented yet.
+		_logger.info("[Mind/Init] Initializing cognitive stream...")
+		cogStream = TheCognitiveStream(mind)
+		mind._cogStream = cogStream
 		
 		#|---------------------------------------
 		#| Step 3:  Subscribe to notifications.
 		
-		_logger.info("[Mind] Subscribing to notifications for actions in our cognitive sphere...")
-		mind._subscriber = The_CognoSys_Subscriber()
-			# This automatically subscribes to the AI Cognosphere Channel.
+		_logger.info("[Mind/Init] Subscribing to notifications for actions in our cognitive sphere...")
+		mind._subscriber = The_CognoSys_Subscriber(mind)
+			# This automatically subscribes itself to the AI Cognosphere Channel.
 		
 		#|---------------------------------------
 		#| Step 4:  Create our cognitive process.
@@ -403,6 +422,17 @@ class TheCognitiveSystem:
 		## Not implemented yet.
 	
 	#__/ End singleton instance initializer theCognitiveSystem.__init__().
+
+	def noticeEvent(mind, textEvent:TextEvent):
+		
+		"""When a new event gets appended to our cognitive stream, this method
+			is called so that we notice the event at a higher level.  We respond
+			by notifying our receptive field to add this event to its display."""
+
+		_logger.info(f"[Mind] Noticing text event: '{textEvent.text}'")
+
+		field = mind._field
+		field.addEvent(textEvent)
 
 	@property
 	def console(mind):
@@ -443,7 +473,7 @@ class TheCognitiveSystem:
 		
 
 	@property
-	def inputChannels(theCongitiveSystem:TheCognitiveSystem):
+	def inputChannels(theCognitiveSystem:TheCognitiveSystem):
 		"""
 			Returns a list of input channels that we would like to have filled 
 			with information generated by the system.  Presently, this consists
@@ -457,7 +487,8 @@ class TheCognitiveSystem:
 		"""
 		return [The_AI_Cognosphere_Channel()]
 
-	def start(theCongitiveSystem:TheCognitiveSystem):
+
+	def start(theCognitiveSystem:TheCognitiveSystem):
 		
 		"""Starts the cognitive system running in a background thread."""
 		

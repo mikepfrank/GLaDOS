@@ -34,7 +34,7 @@ class ActionByAI_(Action_):
 
 			# Set the conceiver implicitly.
 		if conceiver is None:
-			conceiver = Cognitive_System
+			conceiver = Cognitive_System()
 			# We ascribe AI actions to the AI's cognitive system unless they're more specifically
 			# attributed to its persona, API, or other aspect of the AI.
 

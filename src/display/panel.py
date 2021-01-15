@@ -446,10 +446,11 @@ class Panel:
 
 	def regenerateContent(thisPanel):
 	
-		"""This regenerates all of the content of the panel, but 
-			postpones the actual screen refresh, which can be done
-			later using display.update().  This method is useful if
-			you want to regenerate multiple panels before refreshing."""
+		"""[Display driver thread] This regenerates all of the content
+			of the panel, but postpones the actual screen refresh, which
+			can be done later using display.update().  This method is
+			useful if you want to regenerate multiple panels before
+			refreshing."""
 	
 		panel 	= thisPanel
 		client	= panel.client
