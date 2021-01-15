@@ -157,6 +157,8 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 from config.configuration	import  TheAIPersonaConfig
 	# Import the AI persona's configuration.
 
+from events.event import tznow		# datetime.now() in user's time zone
+
 from entities.entity	import	Entity_, The_GLaDOS_Entity, The_Supervisor_Entity
 	# This is the abstract base class for all entity objects.
 
@@ -271,7 +273,7 @@ class Action_:
 		"""
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
-		thisAction._conceivedAt = datetime.now()	# Use current time as conception time.
+		thisAction._conceivedAt = tznow()	# Use current time as conception time.
 		thisAction._description	= description
 		thisAction._conceivedBy	= conceiver
 		
