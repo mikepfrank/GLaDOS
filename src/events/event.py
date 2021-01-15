@@ -149,6 +149,18 @@ class SecondEventFormat(PromptedEventFormat):
 	
 class TextEvent: pass
 
+def tznow():
+
+	"""Returns a current datetime object localized to the user's timezone."""
+	
+	config = TheConfiguration()		# System configuration.
+	tzConf = config.timezone		# User's time zone preference.
+	td = timedelta(hours=tzConf)	# Convert to a timedelta object.
+	tz = timezone(td)				# Create the timezone object.
+
+	return datetime.now(tz)
+		# The time will be displayed in the user's timezone by default.
+
 class TextEvent:
 	
 	"""Class for objects that track the date, time, and creator of a 
@@ -181,12 +193,7 @@ class TextEvent:
 
 		"""Updates the creation time of the event to the present moment."""
 
-		config = TheConfiguration()		# System configuration.
-		tzConf = config.timezone		# User's time zone preference.
-		td = timedelta(hours=tzConf)	# Convert to a timedelta object.
-		tz = timezone(td)				# Create the timezone object.
-
-		thisEvent.creationTime	= datetime.now(tz)
+		thisEvent.creationTime	= tznow()
 			# The time will be displayed in the user's timezone by default.
 	
 	def display(inst, format:TextEventFormat=None):
