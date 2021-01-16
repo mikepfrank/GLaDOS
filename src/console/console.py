@@ -311,12 +311,12 @@ class ConsoleClient(PanelClient):
 		client._hasTerminal = False
 
 
-	def start(thisConsoleClient:ConsoleClient, waitForExit:bool=True):
+	def startup(thisConsoleClient:ConsoleClient, waitForExit:bool=True):
 		# NOTE: Here we override the default value of waitForExit 
 		# while we're debugging basic console capabilities.
 		# We can remove this override once that's done.
 		
-		_logger.debug("console.start(): Starting the console client...")
+		_logger.debug("console.start(): Starting up the console client...")
 
 		client = thisConsoleClient
 		

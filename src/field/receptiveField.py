@@ -222,6 +222,16 @@ class _TheBaseFieldData:
 		base._slots = []
 		base._nSlots = 0	# Zero slots on the field initially.
 
+		base._changed = True
+			# Has the base data changed since last rendered?
+
+	@property
+	def hasChanged(base):
+		return base._changed
+	
+	def markSeen(base):
+		"""Mark the base data as having been seen since it was last changed."""
+		base._changed = False
 
 	@property
 	def slots(this):
@@ -230,8 +240,10 @@ class _TheBaseFieldData:
 
 	def insertSlotAt(base:_TheBaseFieldData, slot:FieldSlot, pos:int):
 		"""Inserts a slot at a given position in the base field data."""
+
 		base.slots.insert(pos, slot)		# Native Python list method.
 		base._nSlots = base._nSlots + 1		# Increment number of slots.
+		base._changed = True				# Remember that the data has changed.
 
 
 	def move(base:_TheBaseFieldData, slot:FieldSlot, gravity:str, soft=False):
@@ -389,6 +401,7 @@ class _TheBaseFieldData:
 	
 	
 	def measure(inst):
+
 		"""Measure the size of the field in tokens.  This works by
 			Asking the AI's field view (which is the real view) to
 			render itself, then counting its size in tokens."""
@@ -415,6 +428,15 @@ class FieldView_:
 		inst._data = []		# Empty list of data items (strings).
 		inst._nChars = 0	# No characters initially.
 		inst._nTokens = 0	# No tokens initially.
+		inst._isNew = True	# Has the view changed since viewers last looked at it?
+
+	@property
+	def isNew(view):
+		return view._isNew
+
+	def markNew(view):
+		"""Mark this field view as having changed since its viewers last looked at it."""
+		view._isNew = True
 
 	@property
 	def baseData(this):
@@ -436,6 +458,12 @@ class TheAIFieldView(FieldView_):
 		# and just adding their images as items in the data set.
 		
 		base = view.baseData	# Get the base data.
+
+		# If the base data hasn't changed since we last rendered it,
+		# we don't actually have to do anything here.
+		if not base.hasChanged:
+			return
+
 		slots = base.slots		# Get the list of field slots.
 		
 		data = []	# Initialize data array to empty list.
@@ -451,6 +479,9 @@ class TheAIFieldView(FieldView_):
 		view._nChars = None			# Mark nChars as not-yet-computed.
 		view._nTokens = None		# Mark nTokens as not-yet-computed.
 	
+			# Mark the base data as having been seen now (by us at least).
+		base.markSeen()
+
 		_logger.debug(f"aiFieldView.render(): Just rendered field view as: [[{text}]]")
 
 	@property
@@ -517,7 +548,7 @@ class ReceptiveField_:
 			update the console display (the caller should do that)."""
 
 		thisReceptiveField._aiFieldView.render()
-		thisReceptiveField._humanFieldView.render()
+		#thisReceptiveField._humanFieldView.render()
 	
 	def addElement(thisReceptiveField, elem:object):
 	
@@ -651,7 +682,7 @@ class TheReceptiveField(ReceptiveField_):
 			#|		of the field.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		field.updateView()	# This updates the view from the base field data.
+		field.updateView()	# This updates the field view from the base field data.
 
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -712,14 +743,43 @@ class TheReceptiveField(ReceptiveField_):
 
 	def updateView(field:TheReceptiveField):
 
-		"""Tells the field to update its views because the base data has changed."""
+		"""Tells the field to update its views because we expect the base data has changed."""
 
-		field.view.render()		# Render the view of the field.
+		view = field.view
 
-		# If the console's attached, ask it to refresh its field display.
-		console = field.console
-		if console is not None:
-			console.refreshFieldDisplay()
+		view.render()		# Render the view of the field.
+
+		# Mark the field view as having changed since viewers last looked at it.
+		if not view.isNew:
+			view.markNew()
+
+		# Notify field viewers that the view of the field has changed.
+		field.updateViewers()
+
+
+	def updateViewers(field):
+
+		"""This method tells the field that now is a good time to tell
+			its viewers that the field's contents have changed, if they
+			haven't seen the latest changes already."""
+
+		view = field.view
+		if view.isNew:
+
+			# If the console's attached, ask it to refresh its field display.
+			console = field.console
+			if console is not None:
+				console.refreshFieldDisplay()
+
+			# NOTE: TODO: Notify the AI's mind that the field view has changed.
+			# This should wake up the AI (if sleeping) and give it a chance to
+			# repond to the new field contents.
+
+			# NOTE: TODO: Update the field displays of human users who may be
+			# attached to the GLaDOS server via local or remote terminals.
+
+		# Remember that our viewers have all seen the new field contents now.
+		view._isNew = False
 
 
 	def getData(theReceptiveField:TheReceptiveField):

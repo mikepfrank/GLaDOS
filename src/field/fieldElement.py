@@ -145,7 +145,7 @@ class FieldSlot:
 				# exists already).
 				
 				# This specifies how to place the new slot on the field:
-			placement:Placement=Placement.SLIDE_TO_BOTTOM,	
+			initPlacement:Placement=Placement.SLIDE_TO_BOTTOM,	
 					# By default, we slide all new slots to the bottom without anchoring 
 					# them (thereby displacing pre-placed unanchored slots upwards). The
 					# newly-placed slot is subsequently floating (thus easily displaced).
@@ -176,7 +176,7 @@ class FieldSlot:
 		base	= field.base
 
 		# Remember the given placement.
-		slot.placement = placement
+		slot.placement = initPlacement
 			# (The setter for the .placement property also automatically
 			# calculates the implied mode and gravity values.)
 		
@@ -359,7 +359,7 @@ class TheFieldHeader(FieldElement_):
 		(semi-) permanently located at the top of the entire field."""
 
 		# Need to get this from sys config instead.
-	bgChar = "*"	# Fill top line with this character.
+	bgChar = "="	# Fill top line with this character.
 	
 		# Need to get this from sys config instead.
 	fieldTitle = "GLaDOS Main Screen / GPT-3 Receptive Field"
@@ -374,9 +374,9 @@ class TheFieldHeader(FieldElement_):
 		# Calculate where to place title string to (roughly) center it.
 	titlePos = int((headerWidth - len(fieldTitle))/2)
 	
-		# Construct the full text string for the topper bar.
-	headerStr = overwrite(bgChar*headerWidth, titlePos, fieldTitle) + '\n'
-		
+		# Construct the full text string for the header bar.
+	headerStr = overwrite('/' + bgChar*(headerWidth-2) + '\\', titlePos, fieldTitle) + '\n\n'
+			# Note we add an extra newline at the end to give some vertical whitespace.
 
 	def __init__(newHeaderElem:TheFieldHeader, *args, **kwargs):
 
@@ -420,7 +420,7 @@ class ThePromptSeparator(FieldElement_):
 	instrPos = int((sepBarWidth - len(sepInstrs))/2)
 	
 		# Construct the full text string for the topper row.
-	sepBarStr = overwrite(bgChar*sepBarWidth, instrPos, sepInstrs) + '\n'
+	sepBarStr = overwrite('|' + bgChar*(sepBarWidth-2) + '|', instrPos, sepInstrs) + '\n'
 	
 	def __init__(psElem:ThePromptSeparator, *args, **kwargs):
 			# Mostly handled by FieldElement_ superclass, except that we specify
@@ -433,6 +433,8 @@ class ThePromptSeparator(FieldElement_):
 			# the actual prompt area, which should have been previously pinned.
 
 		psElem._image = '\n' + psElem.sepBarStr
+			# The extra newline above is just to help it stand out, and
+			# make sure it starts at the start of the line.
 
 
 class TheInputArea: pass
@@ -528,6 +530,11 @@ class WindowElement(FieldElement_):
 		wElem = newWinElem	# Shorter name for this field element.
 		wElem.win = win		# Remember the window we're holding.
 
+		where = win.placement
+
+		_logger.debug("winElem.__init__(): Initializing field element to contain "
+					  f"window '{win.title}' with placement '{where}',")
+
 		super(WindowElement, wElem).__init__(
 			f"Window '{win.title}'", win.placement, field)
 
@@ -535,8 +542,12 @@ class WindowElement(FieldElement_):
 	def image(thisWinElem):
 
 		"""Standard field element property to get the element's image.
-			For window field elements, just return the window's image."""
+			For window field elements, just return a view of the window's
+			image data structure."""
 
 		wElem = thisWinElem			# Shorter name for this field element.
-		return wElem.win.image		# Just return the window's image.
+		win = wElem.win				# Get the actual window this element is holding.
+		imageObj = win.image		# This is a WindowImage object with a raw image data structure.
+		viewTxt = imageObj.view()	# This asks that object for its content as a single string.
 
+		return viewTxt	# Returns the view text as the image string for this field element.

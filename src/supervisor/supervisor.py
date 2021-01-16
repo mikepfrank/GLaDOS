@@ -551,9 +551,9 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 		
 		TheActionNewsNetwork().addChannels(aiInputChannels)
 
-	def start(theSupervisor):
+	def startup(theSupervisor):
 	
-		"""This method 'starts' the supervisor, which puts it and all subsystems
+		"""This method 'starts up' the supervisor, which puts it and all subsystems
 			into an active operation mode.  This will kick off all of the various 
 			background subprocesses/threads in the system.  (Except for console-
 			related threads, which will already have started running when the 
@@ -565,12 +565,12 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 			# red in the console panel on the operator's system console display.
 			# It should also appear as an event in the AI's receptive field.
 	
-		#TheActionSystem().start()		# No background functionality yet.
-		#TheCommandInterface().start()	# No background functionality yet.
-		#TheWindowSystem().start()		# No background functionality yet.
-		#TheProcessSystem().start()		# No background functionality yet.
-		#TheAppSystem().start()			# No background functionality yet.
-		TheCognitiveSystem().start()	# Start the AI's cognitive system.
+		#TheActionSystem().startup()		# No background functionality yet.
+		#TheCommandInterface().startup()	# No background functionality yet.
+		#TheWindowSystem().startup()		# No background functionality yet.
+		#TheProcessSystem().startup()		# No background functionality yet.
+		TheAppSystem().startup()		# This doesn't really do much yet.
+		TheCognitiveSystem().startup()	# Start the AI's cognitive system.
 		
 			#|------------------------------------------------------------
 			#| Next, we just start the supervisor main loop. This runs in
