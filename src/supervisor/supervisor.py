@@ -296,7 +296,7 @@ class SupervisorThread(ThreadActor):
 		
 		superthread = thisSupervisorThread
 		
-		_logger.info("[Supervisor] Supervisor thread has started.")
+		_logger.info("  [Supervisor/Thread] Supervisor thread has started.")
 		
 			# Inform other threads that this thread is now running.
 		superthread.running.rise()	# Raise our "running" flag.
@@ -307,7 +307,7 @@ class SupervisorThread(ThreadActor):
 			# Inform other threads that this thread is no longer running.
 		superthread.running.fall()	# Lower our "running" flag.
 		
-		_logger.info("[Supervisor] Supervisor thread is exiting.")
+		_logger.info("  [Supervisor/Thread] Supervisor thread is exiting.")
 		
 		
 @singleton
@@ -381,7 +381,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 
 		supervisor = theSupervisor
 
-		_logger.info("[Supervisor] Initializing supervisory subsystem...")
+		_logger.info("  [Supervisor] Initializing supervisory subsystem...")
 		
 		# At this point, the main supervisor thread has not yet been started.
 		supervisor._thread = None
@@ -510,7 +510,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 			#|---------------------------------------------------------
 			#| At this point, we have finished initializing everything.
 		
-		_logger.info("[Supervisor] All subsystems have been initialized.")
+		_logger.info("  [Supervisor] All subsystems have been initialized.")
 		
 	#__/ End singleton instance initializer for class TheSupervisor.
 
@@ -576,7 +576,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 			#| Next, we just start the supervisor main loop. This runs in
 			#| its own background thread that is created for this purpose.
 		
-		_logger.info("[Supervisor] Starting main loop...")
+		_logger.info("  [Supervisor] Starting main loop...")
 		theSupervisor.startMainloop()
 		
 	
@@ -586,7 +586,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 			# system is starting up, then immediately initiates this 
 			# action that we just conceived of taking.  The action 
 			# processing system takes over from there.
-		_logger.debug("[Supervisor] Creating and initiating startup announcement action.")
+		_logger.debug("  [Supervisor] Creating and initiating startup announcement action.")
 		_AnnounceStartupAction().initiate()
 	
 	def startMainloop(theSupervisor):

@@ -90,10 +90,10 @@ RAW_DEBUG = False	# Change this to True as needed during initial development.
 
 global CONS_DEBUG, LOG_DEBUG	# These control debug-level output to console & log file.
 CONS_DEBUG = False	# Tell logmaster: Don't diplay debug-level output on console.
-LOG_DEBUG = True	# Tell logmaster: Do save debug-level output to log file.
+LOG_DEBUG = False	# Tell logmaster: Do save debug-level output to log file.
 
 global CONS_INFO	# These control info-level output to console.
-CONS_INFO = False	# Tell logmaster: Don't diplay info-level output on console.
+CONS_INFO = True	# Tell logmaster: Do diplay info-level output on console.
 
 
 # Before doing anything else, we start a virtual terminal and have it grab
@@ -418,7 +418,7 @@ def _main():
 			#| values to all of the other major packages.
 
 	if doInfo:
-		_logger.info("[Main/Init] Initializing system configuration and settings facility...")
+		_logger.info("  [Main/Init] Initializing system configuration and settings facility...")
 
 	config   = TheConfiguration()		# Loads the system configuration.
 	settings = TheSettingsFacility()	# Initializes the settings facility.
@@ -481,12 +481,12 @@ def _main():
 			# the system innards.
 	
 	if doNorm:
-		_logger.info(f"[Main/Init] Pausing to give system initialization time to finish...")
+		_logger.info(f"  [Main/Init] Pausing to give system initialization time to finish...")
 
 	sleep(1)	# It should only take a second.
 
 	if doInfo:
-		_logger.info("[Main/Init] Assuming system initialization is complete.")
+		_logger.info("  [Main/Init] Assuming system initialization is complete.")
 	
 
 		#|======================================================================
@@ -523,7 +523,7 @@ def _main():
 	setThreadRole('wait4exit')		# Denotes we just waiting to exit now.
 
 	if doNorm:
-		_logger.info(f"[Main/Wait] Waiting for the {systemName} Supervisor to exit...")
+		_logger.info(f"  [Main/Wait] Waiting for the {systemName} Supervisor to exit...")
 	setThreadRole('waiting')	# Denotes that we are just waiting.
 	supervisor.waitForExit()	# Waits for the Supervisor to exit.
 

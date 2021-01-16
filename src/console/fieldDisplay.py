@@ -260,7 +260,7 @@ class FieldDisplay:
 
 		"""Initialize the field display, including creating its panels."""
 		
-		_logger.info("[FieldDisplay] Initializing field display.")
+		_logger.info("    [Console/FieldDisp] Initializing field display.")
 
 		fieldDisp = newFieldDisplay
 		
@@ -346,7 +346,7 @@ class FieldDisplay:
 		if fdisp._launched:
 			return
 
-		_logger.info("[Field Display] Launching field display.")
+		_logger.info("    [Console/FieldDisp] Launching field display.")
 	
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	OK, at this point, both field panels are up and running, and are 
@@ -378,7 +378,7 @@ class FieldDisplay:
 		display = client.display
 		driver = display.driver
 
-		_logger.info("[Field Display] Refreshing field display.")
+		_logger.debug("[Console/FieldDisp] Refreshing field display.")
 
 		fdisp.queryField()		# Query the receptive field for its contents.
 		fdisp.refillPanels()	# Refill the field panels with data.

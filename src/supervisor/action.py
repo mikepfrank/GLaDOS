@@ -513,7 +513,7 @@ class ActionChannel_:
 		if name is None:
 			name = thisChannel.channelName
 
-		_logger.info(f"[ActionSystem] Initializing action channel '{name}'.")
+		_logger.info(f"        [ActionSystem/Init] Initializing action channel '{name}'.")
 
 		thisChannel._name = name
 		thisChannel._subscribers = set()
@@ -557,14 +557,14 @@ class TheLogReporter(ActionSubscriber_):
 	
 	def __init__(theLogReporter):
 
-		_logger.info("[ActionSystem] Intializing the log reporter...")
+		_logger.info("        [ActionSystem/Init] Intializing the log reporter...")
 
 		super(TheLogReporter.__wrapped__, theLogReporter).__init__(name="The Log Reporter")
 		
 		theLogReporter.subscribe(TheEverythingChannel())
 	
 	def notify(theLogReporter, status:str, action):
-		_logger.info(f"[ActionSystem] Log reporter: Action news update! Action [{action}] was {status}.")
+		_logger.debug(f"[ActionSystem] Log reporter: Action news update! Action [{action}] was {status}.")
 			# Note: Need to make sure actions convert to strings OK. 
 
 @singleton
@@ -581,7 +581,7 @@ class TheActionNewsNetwork:
 	
 	def addChannel(theANN, channel:ActionChannel_):
 
-		_logger.info(f"[ActionSystem] TANN (The Action News Network) is adding '{channel}' to its lineup.")
+		_logger.info(f"        [ActionSystem/Init] TANN (The Action News Network) is adding '{channel}' to its lineup.")
 		
 		theANN._actionChannels.add(channel)
 		
@@ -699,7 +699,7 @@ class TheActionSystem:
 
 	def __init__(inst):
 		
-		_logger.info("[ActionSystem] Intializing the action system...")
+		_logger.info("        [ActionSystem/Init] Intializing the action system...")
 
 		tann = TheActionNewsNetwork()	# Initialize the "Action News Network"
 		tap = TheActionProcessor()		# Initialize the action processor.

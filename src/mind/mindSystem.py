@@ -285,20 +285,20 @@ class The_CognoSys_Subscriber(ActionSubscriber_):
 		sub._cognoSys = mind
 
 			# First, do default initialization for all action subscribers.
-		super(The_CognoSys_Subscriber.__wrapped__, newSubscriber).__init__(name=name)
+		super(The_CognoSys_Subscriber.__wrapped__, sub).__init__(name=name)
 
 			# Now we do initialization specific to us.
 
 		TAICC = The_AI_Cognosphere_Channel()
 			# This channel will be our main news source.
 
-		newSubscriber.subscribe(TAICC)
+		sub.subscribe(TAICC)
 			# So, go ahead and subscribe to it.
 
 	def notify(thisSubscriber, status, action):
 
-		_logger.info("[Mind] Cognitive system is notified of status "
-					 f"'{status}' for action '{action}'.")
+		_logger.debug("[Mind] Cognitive system is notified of status "
+					  f"'{status}' for action '{action}'.")
 
 		tcSub = thisSubscriber		# The cognitive system subscriber.
 		tcSys = tcSub._cognoSys		# The cognitive system.
@@ -359,7 +359,7 @@ class TheCognitiveSystem:
 	
 		mind = theCognitiveSystem
 	
-		_logger.normal("[Mind/Init] The AI's cognitive system (Mind) is initializing...")
+		_logger.normal("        [Mind/Init] The AI's cognitive system (Mind) is initializing...")
 	
 		mind._console = None		# The system console is not attached at first.
 	
@@ -390,14 +390,14 @@ class TheCognitiveSystem:
 			# the GLaDOS system's input interface to the core AI's real receptive 
 			# field).
 		
-		_logger.info(f"[Mind/Init] Creating receptive field...")
+		_logger.info(f"            [Mind/Init] Creating receptive field...")
 		field = TheReceptiveField(entity)		# This figures out its own size.
 		mind._field = field				# Stash the field for later reference.
 		
 			# Now is probably a good time to attach ourselves to the console, so 
 			# that the operator can immediately see the field we just created.
 			
-		_logger.info("[Mind/Init] Attaching to console...")
+		_logger.info("            [Mind/Init] Attaching to console...")
 		if console is not None:
 			mind.setConsole(console)
 			
@@ -405,14 +405,14 @@ class TheCognitiveSystem:
 		#|--------------------------------------
 		#| Step 2:  Create our cognitive stream.
 		
-		_logger.info("[Mind/Init] Initializing cognitive stream...")
+		_logger.info("            [Mind/Init] Initializing cognitive stream...")
 		cogStream = TheCognitiveStream(mind)
 		mind._cogStream = cogStream
 		
 		#|---------------------------------------
 		#| Step 3:  Subscribe to notifications.
 		
-		_logger.info("[Mind/Init] Subscribing to notifications for actions in our cognitive sphere...")
+		_logger.info("            [Mind/Init] Subscribing to notifications for actions in our cognitive sphere...")
 		mind._subscriber = The_CognoSys_Subscriber(mind)
 			# This automatically subscribes itself to the AI Cognosphere Channel.
 		
@@ -468,7 +468,7 @@ class TheCognitiveSystem:
 			#| console just find the field directly from TheReceptiveField(), 
 			#| but it's perhaps a little cleaner to do things this way.
 			
-		_logger.debug("[Mind] Giving console access to cognitive system...")
+		_logger.debug("                    [Mind] Giving console access to cognitive system...")
 		console.setMind(mind)
 		
 

@@ -310,16 +310,40 @@ class Window:	# A text window within the GLaDOS window system.
 	#		- A command module for controlling this window when it is active.
 	
 	def __init__(self, 					# The window that's being initialized.
-			title="Untitled Window", 	# REQUIRED. Callers should *always* override this default.
-			app:Application_=None, 		# OPTIONAL. The application controlling this window (if any).
-			placement:Placement=None,	# REQUIRED. Where this window should be placed in the receptive field when first opened.
-			textBuf:TextBuffer=None,	# OPTIONAL. Existing text buffer to use for window contents (if None, a new one is created).
-			isActive=False, 			# OPTIONAL. Is this the currently active window? By default, not yet.
-			process:SubProcess=None, 	# OPTIONAL. Existing subprocess whose I/O will go in this window.  By default, none yet.
-			state:str='closed',			# OPTIONAL. Initial state of window. Normally all windows start closed, and are opened later.
-			viewSize=None,				# OPTIONAL. Initial view size within window, in rows. Default is 15.
-			stayVisible:bool=False, 	# OPTIONAL. Whether the window should try to stay visible in the receptive field. 
-				# (This means, if it floats to the top of the receptive field, it sticks and gets anchored there.)
+
+			title="Untitled Window",
+				 # REQUIRED. Callers should *always* override this default.
+
+			app:Application_=None,
+				 # OPTIONAL. The application controlling this window (if any).
+
+			placement:Placement=None,
+				 # REQUIRED. Where this window should be placed in the
+				 # receptive field when first opened.
+				 
+			textBuf:TextBuffer=None,
+				 # OPTIONAL. Existing text buffer to use for window contents
+				 # (if None, a new one is created).
+				 
+			isActive=False,
+				 # OPTIONAL. Is this the currently active window? By default, not yet.
+				 
+			process:SubProcess=None,
+				 # OPTIONAL. Existing subprocess whose I/O will go in this window.
+				 # By default, none yet.
+				 
+			state:str='closed',
+				 # OPTIONAL. Initial state of window. Normally all windows start closed,
+				 # and are opened later. (Other states may include: 'minimized', 'maximized'.)
+
+			viewSize=None,
+				 # OPTIONAL. Initial view size within window, in rows. Default is 15.
+				 
+			stayVisible:bool=False,
+				 # OPTIONAL. Whether the window should try to stay visible
+				 # in the receptive field. (This means, if it floats to the
+
+				 # top of the receptive field, it sticks and gets anchored there.)
 		):
 	
 			#-----------------------------------------------------------
@@ -332,10 +356,20 @@ class Window:	# A text window within the GLaDOS window system.
 		if viewSize is None:
 			viewSize = self._viewRows	# This is actually a class-level data member.
 
-		self._title			= title			# This gets displayed in the top decorator of the window image when it is rendered.
-		self._app			= app			# We reference this when general window commands need to talk to the app (e.g. to terminate it).
-		self._placement		= placement		# This gets used when the window is opened & placed on the field.
-		self._textBuffer	= textBuf		# All window content will get stored here, & it will be consulted for displaying the view.
+		self._title			= title
+			# This gets displayed in the top decorator of the window image when it is rendered.
+			
+		self._app			= app
+			# We reference this when general window commands need to
+			# talk to the window's underlying app (e.g. to terminate it).
+			
+		self._placement		= placement
+			# This gets used when the window is opened & placed on the field.
+			
+		self._textBuffer	= textBuf
+			# All window content will get stored here, & it will be consulted
+			# for displaying the view.
+			
 		self._isActive		= isActive		
 		self._process		= process
 		self._state			= state
@@ -352,6 +386,42 @@ class Window:	# A text window within the GLaDOS window system.
 
 		self._snapshots		= set()
 
+		self._fieldElem		= None
+			# This is a "field element" object to contain this window.
+
+	def title(thisWin):
+		return thisWin._title
+
+	def placement(thisWin):
+		return thisWin._placement
+
+	def image(thisWin):
+		return thisWin._image
+
+
+	def openWin(thisWin):
+
+		"""Tells the window to actually open itself up on the receptive field,
+			if not already open."""
+		
+		win = thisWin
+		
+		field = TheReceptiveField()
+
+			# Create a field element to contain this window.
+		wElem = WindowElement(field, win)
+				# This will automatically place itself on the field.
+				# Add that will automatically update the field view.
+		
+		# At this point, we still need to do two things:
+		#
+		#	(1) console.refreshFieldDisplay()
+		#
+		#	(2) Notify the AI's mind (if running) that the field has changed.
+		#			This should wake it up (if it was sleeping) and give it
+		#			a chance to respond to this event.
+
+	
 	def addText(self, text:str):
 		"""Add the given text to the window contents (at the end)."""
 	
@@ -477,7 +547,7 @@ class Window:	# A text window within the GLaDOS window system.
 		#__/ End if window active.
 			
 	#__/ End method window.renderBotDecorator().
-	
+
 	def redisplay(self):
 		"""Advises the window to re-display itself on the receptive field 
 			(if it's supposed to be visible)."""
@@ -507,7 +577,8 @@ class TheWindowSystem:
 	#		- Reference to the currently-active window, if any.
 	#		- List of windows present in the receptive field.
 	#		- List of windows anchored to the top of the receptive field.
-	#		- List of windows anchored to the bottom of the receptive field (usually there is just one, the presently active window).
+	#		- List of windows anchored to the bottom of the receptive field
+	#			(usually there is just one, the presently active window).
 
 	def __init__(self):
 		self._windows = Windows()

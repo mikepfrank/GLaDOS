@@ -402,11 +402,64 @@ class Application_:
 	#__/ End createCommandModule().
 
 	def start(self):	# Generic start method for apps.
+
 		# For generic apps, generally speaking, the only thing we need to do
-		# when we first start them up is 
-		pass	
+		# when we first start them up is mark them as being in the running state.
+		# In this state, the app's window might not yet be open.
+
+		self.state = 'running'
+
+
+	def openWins(thisApp):	# Subclasses should override this.
+
+		"""Tells this app to go ahead and automatically open up its window(s)
+			on the field, or at least, any windows that are currently designated
+			as being eligible to be opened.  Details are app-dependent."""
+
+		win = thisApp.window
+
+		win.openWin()	# Tells the window to open itself up.
+
+		thisApp.state = 'open'	# Running, with windows open.
+		
 
 #__/ End class Application.
+
+@singleton
+class The_AppSystem_Subscriber(ActionSubscriber_):
+
+	"""This subscribes to action news channels that the application system
+		is potentially interested in watching."""
+
+	def __init__(newSub, appSys, name="AppSys"):
+
+		sub = newSubscriber
+
+		sub._appSys = appSys
+
+		super(The_AppSystem_Subscriber.__wrapped__, sub).__init__(name=name)
+
+			# For now, we'll just subscribe to the everything channel.
+		TEC = TheEverythingChannel()	# Defined in the action module.
+		sub.subscribe(TEC)
+
+	def notify(thisSub, status, action):
+		
+		appSys = thisSub._appSys	# The application system.
+
+		# If the action report was that an announcement of the receptive
+		# field's existence was just completed, then we'll take that as 
+		# our due that it's a good time to display all of our app windows
+		# that are supposed to be open.
+
+		if status=='completed' and isinstance(action, _AnnounceFieldExistsAction):
+			
+			_logger.info("[Apps/Open] Received field-existence notification.")
+
+			appSys.displayWindows()
+				# This tells the application system, "OK, you can go ahead and
+				# display all of your existing open windows on the receptive field."
+
 
 class AppSystem_:
 	pass
@@ -421,15 +474,20 @@ class TheAppSystem(AppSystem_):
 
 	def __init__(self):		# One-time initializer for singleton instance.
 			
+		_logger.info("        [Apps/Init] Initializing applications system...")
+
 		self._appDict = {}
 		
 			# At this point, we register the applications that are
 			# listed as 'available' in our configuration information.
 				
+		_logger.info("        [Apps/Init]     Registering available apps...")
+
 		self._registerAvailableApps()
 
 
-	def _registerApp(self, appName:str, appClass:type, appAutoStart:bool, appAutoOpen:bool, appPlacement:Placement, appConfig:dict):
+	def _registerApp(self, appName:str, appClass:type, appAutoStart:bool,
+					 appAutoOpen:bool, appPlacement:Placement, appConfig:dict):
 			
 			# First, call the class constructor to actually create the application object.
 		app = appClass(appName, appAutoStart, appAutoOpen, appPlacement, appConfig)
@@ -444,9 +502,14 @@ class TheAppSystem(AppSystem_):
 		# This executes the startup sequence, which basically consists of starting up
 		# all of the apps that we tagged for auto-start.
 			
+	@property
+	def apps(thisAppSys):
+		return thisAppSys._appDict.values()
+
 	def startup(self):
-		for app in self._appDict.values():
+		for app in self.apps:
 			if app.autoStart:
+				_logger.info(f"        [Apps/Init]     Auto-starting '{app.name}' app...")
 				app.start()
 
 	def _registerAvailableApps(self):
@@ -456,16 +519,28 @@ class TheAppSystem(AppSystem_):
 			appName = app['name']
 			appClass = app['class']
 			
+			_logger.info(f"        [Apps/Init]         Registering app '{appName}'...")
+
 			appConfigs = TheConfiguration().appConfigs
 			
-			appAvailable = appConfigs[appName]['avail']	 		# Is the app marked as available to be registered?
-			appAutoStart = appConfigs[appName]['auto-start']	# Should the app be automatically started on system startup?
-			appAutoOpen	 = appConfigs[appName]['auto-open']		# Should the app window be automatically opened on field startup?
-			appPlacement = appConfigs[appName]['placement']		# Where should the app window (if any) initially be placed?
-			appConfig	 = appConfigs[appName]['conf']			# What's the app-specific data structure?
+			appAvailable = appConfigs[appName]['avail']
+				# Is the app marked as available to be registered?
+
+			appAutoStart = appConfigs[appName]['auto-start']
+				# Should the app be automatically started on system startup?
+
+			appAutoOpen	 = appConfigs[appName]['auto-open']
+				# Should the app window be automatically opened on field startup?
+
+			appPlacement = appConfigs[appName]['placement']
+				# Where should the app window (if any) initially be placed?
+
+			appConfig	 = appConfigs[appName]['conf']
+				# What's the app-specific data structure?
 			
 			if appAvailable:
-				self._registerApp(appName, appClass, appAutoStart, appAutoOpen, appPlacement, appConfig)
+				self._registerApp(appName, appClass, appAutoStart,
+								  appAutoOpen, appPlacement, appConfig)
 		
 		#__/ End loop over global _APP_LIST array.
 		
@@ -473,8 +548,25 @@ class TheAppSystem(AppSystem_):
 			# We might as well go ahead and start up all the apps that are 
 			# supposed to be launched immediately on system startup.
 			
+		_logger.info("        [Apps/Init] Starting up auto-start apps...")
+
 		self.startup()
 			
+	def displayWindows(thisAppSys):
+
+		"""Tells the application system that it's OK to actually display
+			any open application windows on the receptive field."""
+
+		_logger.info("[Apps/Open] Automatically opening auto-open app windows...")
+
+		for app in self.apps:
+			if app.autoOpen:
+				_logger.info(f"[Apps/Open] Auto-opening '{app.name}' app window(s)...")
+				app.openWins()
+					# This tells the app to go ahead and automatically open
+					# its window(s) on the receptive field.
+			
+
 #__/ End class AppSystem.
 		
 
@@ -576,6 +668,8 @@ class The_Info_App(Application_):
 		"""This method performs application-specific initialization 
 				for the Info application, at app creation time."""
 	
+		_logger.debug("infoApp.appSpecificInit(): Initializing Info app...")
+
 			#----------------------------------------------------------
 			# First, get the AI persona configuration, because it 
 			# contains # key information we need, such as the location

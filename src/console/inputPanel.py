@@ -152,7 +152,7 @@ class InputPanel(Panel):
 	
 	def __init__(newInputPanel:InputPanel, hanging:int=None):
 			
-		_logger.info("[InputPanel] Initializing input panel.")
+		_logger.info("    [Console/InputPanel] Initializing input panel.")
 		#_logger.debug("inputPanel.__init__(): Initializing input panel.")
 
 			# Use a shorter name for this new log panel.

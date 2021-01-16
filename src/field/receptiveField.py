@@ -510,6 +510,12 @@ class ReceptiveField_:
 		singleton class."""
 	
 	def refreshViews(thisReceptiveField):
+
+		"""This tells any currently extant view(s) of the receptive
+			field that they need to re-render themselves, because the
+			underlying field data has changed.  Does not automatically
+			update the console display (the caller should do that)."""
+
 		thisReceptiveField._aiFieldView.render()
 		thisReceptiveField._humanFieldView.render()
 	
@@ -571,9 +577,9 @@ class TheReceptiveField(ReceptiveField_):
 			TheFieldSettings.nominalWidth = nominalWidth
 			#TheFieldSettings.updateNominalWidth(nominalWidth)	# Don't need yet
 	
-		_logger.info("[Receptive Field] Initializing with the following settings:")
-		_logger.info(f"    Field size = {fieldSize} tokens.")
-		_logger.info(f"    Nominal width = {nominalWidth} characters.")
+		_logger.info("                [Field] Initializing with the following settings:")
+		_logger.info(f"                    Field size = {fieldSize} tokens.")
+		_logger.info(f"                    Nominal width = {nominalWidth} characters.")
 	
 			# Stash the important settings in instance data members.
 		field._fieldSize		= fieldSize
@@ -587,13 +593,13 @@ class TheReceptiveField(ReceptiveField_):
 			#| can be easily be displayed on the console.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
-		_logger.debug("[Receptive Field] Creating base field data object...")
+		_logger.debug("                [Field] Creating base field data object...")
 	
 			# Create the base field data object & store it.
 		baseFieldData 			= _TheBaseFieldData(fieldSize)
 		field._baseFieldData	= baseFieldData
 		
-		_logger.debug("[Receptive Field] Creating the AI's field view...")
+		_logger.debug("                [Field] Creating the AI's field view...")
 	
 			# Create and store field views for the AI & for humans.
 		field._aiFieldView		= TheAIFieldView(baseFieldData)
@@ -607,13 +613,13 @@ class TheReceptiveField(ReceptiveField_):
 			#| operator. They will also be shown to the AI in its main loop.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		_logger.info("[Receptive Field] Creating initial field elements...")
+		_logger.info("                [Field] Creating initial field elements...")
 
 				#|--------------------------------------------------------------
 				#| Create the "field header" element, which automatically pins
 				#| itself to the very top edge of the receptive field.
 				
-		_logger.debug("[Receptive Field] Creating the field header element...")
+		_logger.debug("                    [Field] Creating the field header element...")
 	
 		field._fieldHeader	= TheFieldHeader(field)
 		
@@ -621,7 +627,7 @@ class TheReceptiveField(ReceptiveField_):
 				#| Create the "input area" element, which automatically pins 
 				#| itself to the very bottom edge of the receptive field.
 				
-		#_logger.debug("[Receptive Field] Creating the input area element...")
+		_logger.debug("                    [Field] Creating the input area element...")
 	
 		field._inputArea	= TheInputArea(field, entity)
 			# We pass in the entity for the AI persona because its entity-id
@@ -635,7 +641,7 @@ class TheReceptiveField(ReceptiveField_):
 				#| separator). It automaticaly pins itself to the bottom of the
 				#| receptive field (just below the input box we just placed).
 
-		_logger.debug("[Receptive Field] Creating the prompt separator element...")
+		_logger.debug("                    [Field] Creating the prompt separator element...")
 	
 		field._promptSeparator	= ThePromptSeparator(field)
 
@@ -652,7 +658,7 @@ class TheReceptiveField(ReceptiveField_):
 			#| 5. Now we're done with field initialization.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		_logger.info("[Receptive Field] Field initialization is complete.")
+		_logger.info("                [Field] Field initialization is complete.")
 
 	#__/ End singleton instance initializer field.__init__().
 

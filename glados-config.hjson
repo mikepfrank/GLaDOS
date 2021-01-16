@@ -192,8 +192,19 @@
 			{
 				name:			Info
 				available:		true	# This app is implemented and available to the AI.
-				auto-start:		true	# This will become important later when the app has dynamic behavior.
-				auto-open:		true	# We want this to be the first thing the AI sees when it wakes up.
+
+				auto-start:		true
+					# Ensures that the app starts "running" (in the background) as soon
+					# as the app system is initialized.  This does nothing right now,
+					# but it will become important later when the app has some more
+					# dynamic behavior.
+
+				auto-open:		true
+					# This says that the app should open up its window(s) on the receptive
+					# field as soon as the receptive field becomes available.  We do this
+					# because we want this window to be the very first thing the AI sees
+					# when it first wakes up, to remind it who it is & what's the context.
+					
 				placement:		'pinned-to-top'		# We want this app to be prominent.
 					# This means, initially place the app's window at the very top of 
 					# the receptive field.

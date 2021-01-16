@@ -125,7 +125,7 @@ class ConsolePanel(Panel):
 
 	def __init__(newConsolePanel:ConsolePanel, virterm:VirTerm, initRows=None):
 
-		_logger.info("[ConsolePanel] Initializing console panel.")
+		_logger.info("    [Console/ConsPanel] Initializing console panel.")
 
 		panel = newConsolePanel
 
