@@ -78,10 +78,14 @@ global _component, _logger	# Software component name, logger for component.
 _component = path.basename(path.dirname(__file__))		# Our package name.
 _logger = getComponentLogger(_component)				# Create the component logger.
 
+from infrastructure.utils import overwrite
 
 			#|----------------------------------------------------------------
 			#|	The following modules are specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from	config.configuration		import	TheConfiguration
+	# We need this to get configuration parameters for the window system.
 
 from 	text.buffer					import	TextBuffer
 	# We use text buffers for both window contents and window images.
@@ -165,7 +169,7 @@ class WindowImage:
 	"""A rendered image of a text window. This is also a text buffer,
 		with decorations at the top and bottom (and maybe also the side)."""
 		
-	def __init__(self, win:Window, imgHt:int):
+	def __init__(self, win:Window, imgHt:int, imgWd:int = None):
 		
 		self._window		= win
 		self._imageHeight	= imgHt
@@ -173,7 +177,7 @@ class WindowImage:
 			# Create the text buffer to hold the window image.	Initially, 
 			# we set the buffer height to the image size, and don't set any
 			# maximum width.
-		self._textBuffer	= TextBuffer(maxLen = imgHt, maxWid = None)
+		self._textBuffer	= TextBuffer(maxLen = imgHt, maxWid = imgWd)
 		
 			# Paint the window image in our text buffer.
 		self.repaint()
@@ -212,6 +216,8 @@ class WindowImage:
 		self._textBuffer.addText(text)
 		
 	def addLine(self, line:str):
+		"""Adds a line to the window image. Differs from .addText()
+			in that we ensure that there's a newline at the end."""
 		self._textBuffer.addLine(line)
 	
 #__/ End class WindowImage.
@@ -293,11 +299,14 @@ class Window:	# A text window within the GLaDOS window system.
 		#| Class constant data members 						 [class section]
 		#|
 		#|		These constants provide default values of various
-		#|		parameters for the class.
+		#|		parameters for the class. Eventually these should
+		#|		maybe be settable by config parameters / settings.
 
 	_DEFAULT_WINDOW_DECORATOR_ROWS	= 2		# By default, just one line top, and one line bottom.
 	_DEFAULT_WINDOW_DECORATOR_WIDTH = 60	# Sixty columns of fixed-width text characters.
 	_DEFAULT_WINDOW_VIEW_ROWS 		= 15	# By default, display 15 rows worth of content initially.
+	_DEFAULT_LEFT_DECORATOR_STRING	= '| '	# Vertical bar and one space of interior padding.
+	_DEFAULT_RIGHT_DECORATOR_STRING = ' |'  # One space of interior padding, and a vertical bar.
 
 		#|------------------------------------------------------------------
 		#| Class variable data members 						 [class section]
@@ -309,7 +318,10 @@ class Window:	# A text window within the GLaDOS window system.
 	
 	_decoratorRows	= _DEFAULT_WINDOW_DECORATOR_ROWS
 	_decoratorWidth	= _DEFAULT_WINDOW_DECORATOR_WIDTH
-	_viewRows		= _DEFAULT_WINDOW_VIEW_ROWS			# By default, view the default number of rows (15).
+	_viewRows		= _DEFAULT_WINDOW_VIEW_ROWS
+		# By default, view the default number of rows (15).
+	_leftDecoratorStr  = _DEFAULT_LEFT_DECORATOR_STRING
+	_rightDecoratorStr = _DEFAULT_RIGHT_DECORATOR_STRING
 
 	# A window has:
 	#		- A title (textual label).
@@ -363,12 +375,46 @@ class Window:	# A text window within the GLaDOS window system.
 				 # top of the receptive field, it sticks and gets anchored there.)
 		):
 	
+		win = self
+		
+		win._wordWrap = False	# No word-wrapping by default.
+		win._autoSize = False	# No auto-sizing by default.
+
+			#---------------------------------------------------------------------
+			# Before doing anything else, we get some preferences from the window system
+			# that apply to all newly-created windows in the system.
+
+		winSys = TheWindowSystem()		# Get the sole instance of this singleton.
+
+		self._hasSideBorders = sideBorders = winSys.useSideDecorators
+			# This tells us whether to display the window with left-right borders.
+
+		# If the window has side borders, then this means that its entire image
+		# should have a fixed width that is the same as the width of its top &
+		# bottom decorators.  Otherwise, it should have no fixed width.
+		if sideBorders:
+			imageWidth = self._decoratorWidth
+		else:
+			imageWidth = None
+		self._imageWidth = imageWidth
+
+		# If the window has side borders and a fixed image width, then it should
+		# have a fixed content width that is equal to its image width minus enough
+		# space for the interior padding and borders.
+		if sideBorders and imageWidth is not None:
+			contentWidth = imageWidth - len(self._leftDecoratorStr) - len(self._rightDecoratorStr)
+		else:
+			contentWidth = None		# No limit on window content width by default.
+		self._contentWidth = contentWidth
+
+		_logger.info(f"Creating window '{title}' with image width = {imageWidth}, content width = {contentWidth}.")
+
 			#-----------------------------------------------------------
 			# A window automatically creates a text buffer to hold its 
 			# contents when it is first created, if one wasn't supplied.
 	
 		if textBuf is None:
-			textBuf = TextBuffer()
+			textBuf = TextBuffer(maxWid = contentWidth)
 
 		if viewSize is None:
 			viewSize = self._viewRows	# This is actually a class-level data member.
@@ -399,7 +445,7 @@ class Window:	# A text window within the GLaDOS window system.
 		self._viewPos		= 0		# Window is initially viewing the top of its text buffer.
 
 		self._image			= None	# No image initially--but we'll make one right now!
-		self._image			= WindowImage(self, viewSize + Window._decoratorRows)
+		self._image			= WindowImage(self, viewSize + Window._decoratorRows, imageWidth)
 
 		self._snapshots		= set()
 
@@ -407,6 +453,25 @@ class Window:	# A text window within the GLaDOS window system.
 			# This is a "field element" object to contain this window.
 
 		self._isOpen		= False		# New windows aren't initially open.
+
+	@property
+	def wordWrap(thisWin):
+		return thisWin._wordWrap
+
+	@wordWrap.setter
+	def wordWrap(thisWin, newValue:bool):
+		_logger.debug(f"Setting word wrapping on window 'thisWin.title' to {newValue}")
+		thisWin._wordWrap = newValue
+			# Also relay this setting to our text buffer.
+		thisWin._textBuffer.wordWrap = newValue
+
+	@property
+	def autoSize(thisWin):
+		return thisWin._autoSize
+
+	@autoSize.setter
+	def autoSize(thisWin, newValue:bool):
+		thisWin._autoSize = newValue
 
 	@property
 	def title(thisWin):
@@ -485,7 +550,12 @@ class Window:	# A text window within the GLaDOS window system.
 		self.renderContents()
 		self.renderBotDecorator()	# Render the decorator at the bottom of the window.
 	
+	def renderText(self, text:str):
+		self._image.addText(text)
+
 	def renderLine(self, line:str):
+		"""Renders a line to this window's image. Differs from .renderText()
+			in that we ensure that there's a newline at the end of what's added."""
 		self._image.addLine(line)
 	
 	def renderTopDecorator(self):
@@ -530,7 +600,43 @@ class Window:	# A text window within the GLaDOS window system.
 			This tells us (this window) to render the current view of our 
 			window contents in our window image.
 		"""
-		self._image.addText(self.getViewText())
+
+		# If this window does not have side borders, then this is extremely
+		# easy: We simply add the content view as raw text to the image.
+		# However, if this window does have side borders, we have to do
+		# more work, putting together each line using appropriate side
+		# border decorators.
+
+		if self._hasSideBorders:
+
+			vp = self._viewPort
+
+			topRow = vp._topPos
+			botRow = vp._botPos
+
+			# The following is a blank "template" consisting of a blank line filled
+			# with spaces in between the side decorators.  We're overwrite part with the
+			# actual contents of each line.
+			blankLine = self._leftDecoratorStr + ' '*self._contentWidth + self._rightDecoratorStr
+			startPos = len(self._leftDecoratorStr)
+
+			for rowIndex in range(topRow, botRow):
+
+				line = self._textBuffer.getLine(rowIndex, nlTerminated=False)
+					# Gets the raw line from the buffer, without a newline.
+			
+				if line is None:	# Could happen if content buffer is empty, say.
+					line = ''
+
+					# Now fill those contents into our blank template.
+				filledLine = overwrite(blankLine, startPos, line)
+
+					# Adds this 'filled-in' line with borders to the window image.
+				self.renderLine(filledLine)
+
+		else:
+			# No side borders, we can just display the raw text in the window view.
+			self._image.addText(self.getViewText())
 		
 	def getViewText(self):
 		"""
@@ -579,6 +685,8 @@ class Window:	# A text window within the GLaDOS window system.
 			#botDecStr = botDecStr[0:menuStrLoc] + menuStr + botDecStr[menuStrLoc+menuStrLen:]
 		#__/ End if window active.
 			
+		self.renderText(botDecStr)
+
 	#__/ End method window.renderBotDecorator().
 
 	def redisplay(self):
@@ -606,6 +714,7 @@ class WindowSnapshot:	# A static image of a text window at a given point in time
 class TheWindowSystem:
 
 	# The TheWindowSystem has:
+	#		- Various window-system-wide preferences.
 	#		- Set of all windows in the system.
 	#		- Reference to the currently-active window, if any.
 	#		- List of windows present in the receptive field.
@@ -614,7 +723,16 @@ class TheWindowSystem:
 	#			(usually there is just one, the presently active window).
 
 	def __init__(self):
+
+		sysConf = TheConfiguration()	# Get the system configuration.
+
+		self._useSideDecorators = sysConf.sideDecorators
+			# Boolean: Whether window images should include side decorators or not.
+
 		self._windows = Windows()
-			
+			# This creates the window set (initially empty).
 
-
+	@property
+	def useSideDecorators(winSys):
+		return winSys._useSideDecorators
+	

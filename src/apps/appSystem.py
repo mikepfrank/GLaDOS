@@ -823,14 +823,24 @@ class The_Info_App(Application_):
 		_logger.debug("Loaded inital info text:\n" + infoText)
 
 			#--------------------------------------------------
-			# Next, we size our window to exactly fit the text.
-				
-		self.window.nRows = countLines(infoText)
-		
+			# Next, we're going to turn on word-wrapping in our
+			# window so that the text will automatically wrap
+			# neatly to fit within our window width.  Also,
+			# we'll turn on auto-size so that the vertical size
+			# of the window will shrink or stretch to fit our
+			# text.
+
+		win = self.window
+
+		win.wordWrap = True		# Turn on word-wrapping.
+		win.autoSize = True		# Turn on auto-sizing
+
+		_logger.info(f"Window {win.title} has wordWrap={win.wordWrap}.")
+
 			#----------------------------------------------
 			# Finally, we have our window display the text.
 				
-		self.window.addText(infoText)
+		win.addText(infoText)
 
 	def start(inst):
 		"""Starts up the Info application."""

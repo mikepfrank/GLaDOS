@@ -487,6 +487,23 @@ class TheConfiguration:	# The GLaDOS server configuration.
 			theConfig.tabWidth = 4
 
 			#-----------------------------------------------------------------
+			# Extract the 'window-conf' parameter, which contains configuration
+			# parameters for the AI's text-based windowing system.
+
+		if 'window-conf' in conf:
+			theConfig.winConf = winConf = conf['window-conf']
+		else:
+			_logger.info("_parseConf(): The optional 'window-conf' parameter was "
+							"not provided. Using hard-coded defaults.")
+			winConf = dict()	# Empty dict by default.
+	 
+		if 'sideDecorators' in winConf:
+			theConfig.sideDecorators = sideDec = winConf['side-decorators']
+			_logger.normal(f"    [Config]    Window config: Use side decorators? = {sideDec}.")
+		else:
+			theConfig.sideDecorators = True
+
+			#-----------------------------------------------------------------
 			# Extract the 'field-conf' parameter, which contains configuration
 			# parameters for the receptive field facility.
 	 
@@ -844,7 +861,7 @@ class	TheAIPersonaConfig:
 		else:
 			_logger.warn("parseConf(): The required field-conf parameter "
 							"was not provided.")
-			theAIConfig.fieldConf = None
+			theAIConfig.fieldConf = dict()	# Empty dict by default.
 
 			#------------------------------------
 			# Extract the max-visible-tokens parameter.
@@ -873,7 +890,7 @@ class	TheAIPersonaConfig:
 		else:
 			_logger.warn("parseConf(): The required mind-conf parameter "
 							"was not provided.")
-			theAIConfig.mindConf = None
+			theAIConfig.mindConf = dict()	# Empty dict by default.
 
 			#------------------------------------
 			# Extract the model-family parameter.

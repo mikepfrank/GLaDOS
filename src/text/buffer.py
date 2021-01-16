@@ -4,6 +4,16 @@
 
 from	collections.abc		import	Iterable
 
+from os import path
+from infrastructure.logmaster	import getComponentLogger
+
+	# Go ahead and create or access the logger for this module.
+
+global _component, _logger	# Software component name, logger for component.
+
+_component = path.basename(path.dirname(__file__))		# Our package name.
+_logger = getComponentLogger(_component)				# Create the component logger.
+
 
 # We should probably move this to its own package because it isn't really
 # specific to the window system per se.  For example, it can also be used
@@ -91,7 +101,7 @@ class TextBuffer:		# A text buffer.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
 	def __init__(self, maxLen:int = 100, maxWid:int = 100, includeNewlines:bool=True,
-					wrapLines:bool = True, rows:Iterable=None):
+					wrapLines:bool = True, wordWrap:bool = False, rows:Iterable=None):
 		
 		"""textBuffer.__init__()					  [special instance method]
 		
@@ -137,6 +147,7 @@ class TextBuffer:		# A text buffer.
 		self._maxWid			= maxWid
 		self._includeNewlines	= includeNewlines
 		self._wrapLines			= wrapLines
+		self._wordWrap			= wordWrap
 
 		self._rows = None			# Buffer is empty initially. No row data.
 		
@@ -148,6 +159,15 @@ class TextBuffer:		# A text buffer.
 				
 	#__/ End TextBuffer.__init__().
 	
+	@property
+	def wordWrap(buf):
+		return buf._wordWrap
+
+	@wordWrap.setter
+	def wordWrap(buf, newVal:bool):
+		_logger.debug(f"Setting word wrapping on text buffer to {newVal}.")
+		buf._wordWrap = newVal
+
 	def view(self):
 
 		"""Returns a 'view' of this text buffer, which simply means, a single
@@ -287,6 +307,7 @@ class TextBuffer:		# A text buffer.
 			# the text ends up spilling over multiple lines.  We'll break out 
 			# of it when we're done.
 			
+		maxWid = self._maxWid
 		while True:
 			
 				# OK, now we simply append the given raw string onto the end of
@@ -298,27 +319,67 @@ class TextBuffer:		# A text buffer.
 				# become overlong!	If so, then we need to either truncate it or
 				# wrap it.
 			
-			if self._maxWid is not None:	# First, make sure there *is* a max width.
+			if maxWid is not None:	# First, make sure there *is* a max width.
 			
-				if self._effectiveStrLen(self._rows[-1]) > self._maxWid:	# Line (even ignoring any final newline) is too long.
+				line = self._rows[-1]
+
+				if self._effectiveStrLen(line) > maxWid:
+					# Line (even ignoring any final newline) is too long.
+
+					_logger.debug("The following line is longer than maxWid={maxWid}:\n" + line)
 				
-						# If we're supposed to be doing line wrapping, then we 
+					# Are we supposed to be doing wrapping? (Either character-based or word-based?)
+
+					wordWrap = self.wordWrap
+
+						# Normally if we're in word-wrap mode, that will override
+						# regular-style line wrapping.
+					lineWrap = self._wrapLines and not wordWrap
+
+					doWrapping = lineWrap or wordWrap
+
+						# If we're supposed to be doing wrapping, then we 
 						# need to remember the part of the line we're chopping 
 						# off, so that we can wrap it around to the next line 
 						# instead.
 						
-					if self._wrapLines:
-						chopped = self._rows[-1][self._maxWid:-1]		# Save what we're chopping off.
-					
-						# Now, we just chop the line short to fit.
-					self._rows[-1] = self._rows[-1][0:self._maxWid]
-					
-						# If we're line-wrapping, then at this point, we *have*
-						# to open a new line, because there's stuff left that
-						# has to go on the next line. This is the case where
-						# we have to continue the while loop.
+						# In word wrap mode, we have to search for the line-break location.
+					if wordWrap:
+						_logger.debug("Trying word-wrapping...")
+						# Determine where to insert line break.
+						found = False
+						for i in range(0, maxWid):
+							pos = (maxWid - 1) - i
+							char = line[pos]
+							if char == ' ':  # Look for space.
+								found = True
+								pos = pos + 1			# Insert break just after the space.
+									# Chop off everything after space.
+								chopped = line[pos:]
+								self._rows[-1] = line[:pos]
+								break	# Stop looking.
 						
-					if self._wrapLines:
+						if not found:
+							# Didn't find any spaces! Revert to regular line wrapping instead.
+							lineWrap = True 
+						
+					if lineWrap:	# We're in line-wrap mode, we or reverted to it.
+						chopped = line[maxWid:]		# Save what we're chopping off.
+					
+					# Unless we're doing word wrapping, the line that
+					# we're currently working on is going to be truncated
+					# to (just barely) fit on the current row.
+
+					if not wordWrap:
+						# Now, we just chop the line short to fit.
+						self._rows[-1] = line[:maxWid]
+					
+					# If we're wrapping at all, then at this point, we *have*
+					# to open a new line, because there's stuff left that
+					# has to go on the next line. This is the case where
+					# we have to continue the while loop.
+						
+					if doWrapping:
 						self._openNewLine()
 							# And, at this point, the chopped text becomes our new raw text, and we continue.
 						rawStr = chopped
@@ -421,9 +482,10 @@ class TextBuffer:		# A text buffer.
 	#__/ End ._openNewLine().
 	
 	
-	def getLine(self, rowIndex):
+	def getLine(self, rowIndex, nlTerminated=True):
 		"""Gets a line from the buffer. The returned line
-			will be newline-terminated."""
+			will be newline-terminated unless nlTerminated
+			is False."""
 	
 		if self._rows is None:
 			return None 
@@ -431,7 +493,18 @@ class TextBuffer:		# A text buffer.
 		bufLen = self.nRows()
 		if bufLen is 0: return None 
 		
-		return self.ensureLine(self._rows[rowIndex])
+		if rowIndex >= bufLen:
+			return None
+
+		lineWithNL = self.ensureLine(self._rows[rowIndex])
+
+		# Does caller want lines to be newline-terminated
+		if nlTerminated:
+			line = lineWithNL
+		else:
+			line = lineWithNL[:-1]	# Truncate off final NL.
+
+		return line
 			# Note this ensures that it will appear that the
 			# buffer contains explicit newlines, even if it doesn't.
 	

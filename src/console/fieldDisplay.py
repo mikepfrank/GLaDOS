@@ -23,6 +23,8 @@ _sw_component = sysName + '.' + _component
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+from display.colors	import PROMPT	# Render style to use for displaying AI's prompt.
+
 from display.exceptions import (
 
 		RenderExcursion
@@ -247,7 +249,18 @@ class FieldPanel(Panel):
 		data = panel.data
 
 		for item in data:
-			display.renderText(item, win=win)
+
+			# This is a hack to make the field stats appear in a different
+			# style from the field content.
+			prefix = "\n\nField has: "
+			lenPref = len(prefix)
+			if len(item) >= lenPref and item[0:lenPref] == prefix:
+				style = None		# Uses display's default style.
+			else:
+				style = PROMPT
+
+			# Actually render the item to the display.
+			display.renderText(item, win=win, defStyle = style)
 
 			# Now call the original method in Panel, which does some 
 			# general bookkeeping work needed for all panels.		
@@ -452,7 +465,7 @@ class FieldDisplay:
 
 				# Add to the end of the visible dataset an item showing the 
 				# current count of total characters and tokens in the field.
-			fdisp.addItem(f"\n\n[{nchars} characters, {ntoks} tokens]")
+			fdisp.addItem(f"\n\nField has: {nchars} characters, {ntoks} tokens")
 				# The double newline here is just to provide a blank line
 				# in between the AI's prompt and this data item.
 

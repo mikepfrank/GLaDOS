@@ -694,6 +694,7 @@ class TheReceptiveField(ReceptiveField_):
 	#__/ End singleton instance initializer field.__init__().
 
 	def addEvent(field:TheReceptiveField, event:TextEvent):
+
 		"""Given a text event, this adds it as a new element of our receptive field."""
 
 		# Create new text event element.
