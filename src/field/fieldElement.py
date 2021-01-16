@@ -517,3 +517,26 @@ class TextEventElement(FieldElement_):
 		teElem = thisTextEventElement
 
 		return '\n' + teElem._textEvent.display()
+
+
+class WindowElement(FieldElement_):
+
+	"""This is a field element for containing a window."""
+
+	def __init__(newWinElem, field, win):
+
+		wElem = newWinElem	# Shorter name for this field element.
+		wElem.win = win		# Remember the window we're holding.
+
+		super(WindowElement, wElem).__init__(
+			f"Window '{win.title}'", win.placement, field)
+
+	@property
+	def image(thisWinElem):
+
+		"""Standard field element property to get the element's image.
+			For window field elements, just return the window's image."""
+
+		wElem = thisWinElem			# Shorter name for this field element.
+		return wElem.win.image		# Just return the window's image.
+
