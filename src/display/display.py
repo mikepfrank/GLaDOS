@@ -1749,7 +1749,7 @@ class TheDisplay:
 
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	def renderText(theDisplay:TheDisplay, text:str="", win=None, hang:int=0,
-					promptChar = None):
+					promptChar = None, defStyle = None):
 		"""display.renderText()				  [sensitive public instance method]
 		
 				This method renders the given text to the given curses
@@ -1773,6 +1773,10 @@ class TheDisplay:
 					including the first occurrence of that character is
 					rendered in 'prompt' style by default.
 
+				defStyle [RenderStyle] - If this is provided, then the
+					given render-style is used for every character that
+					is not rendered in a special style.
+		
 
 			Return values:
 			~~~~~~~~~~~~~~
@@ -1857,7 +1861,7 @@ class TheDisplay:
 			if promptChar is not None and not promptDone:
 				style = PROMPT
 			else:
-				style = None	# Just uses the default style.
+				style = defStyle	# Just uses the default style.
 
 			# Use try/except here to catch if we try to draw 
 			# outside the window.

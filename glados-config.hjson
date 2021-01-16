@@ -43,9 +43,31 @@
 
 	tab-width:		4		# Typical modern value.  Would 8 be better?
 
-		/* The basic configuration structure for the receptive field. 
-			Note that these settings can be overridden in the AI-specific
-			configuration file. */
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| The configuration structure for the text windowing system that
+		#| we provide to the AI in its field display.  Note that these
+		#| settings can be overridden by preferences within the AI 
+		#| persona's "personal" configuration file.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	window-conf:	{
+
+				/* This is 'true' if windows should be displayed with
+					vertical decorators along their left and right sides;
+					otherwise 'false'.  The default vertical decorator
+					consists of a vertical bar ('|') with interior padding
+					(one space character by default). */
+
+			side-decorators:	true		# Defaults to true if not specified.
+
+		}
+	
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| The basic configuration structure for the receptive field. 
+		#| Note that these settings can be overridden in the AI-specific
+		#| configuration file.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	field-conf:		{
 			

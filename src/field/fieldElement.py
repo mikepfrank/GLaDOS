@@ -495,7 +495,7 @@ class TextEventElement(FieldElement_):
 
 		teElem = newTextEventElement
 
-		_logger.debug(f"textEventElement.__init___(): Initializing new text event field element for text event '{event.text}'.")
+		#_logger.debug(f"textEventElement.__init___(): Initializing new text event field element for text event '{event.text}'.")
 
 		teElem._textEvent = event
 

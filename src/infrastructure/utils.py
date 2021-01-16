@@ -198,6 +198,7 @@ def unsplit(strs, delim:str):
 #        result = "%s%s%s" % (result, delim, s)      # There must be an easier way to concatenate strings!
 #    return result
 
+# CHECK: Is there a built-in Python method for the following?
 def overwrite(botStr:str, pos:int, topStr:str, extend:bool=False):
 
 	"""Overwrite the given 'bottom string', starting at position 'pos', 

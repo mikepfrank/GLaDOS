@@ -390,7 +390,7 @@ class TheCognitiveSystem:
 			is called so that we notice the event at a higher level.  We respond
 			by notifying our receptive field to add this event to its display."""
 
-		_logger.info(f"[Mind] Noticing text event: '{textEvent.text}'")
+		#_logger.info(f"[Mind] Noticing text event: '{textEvent.text}'")
 
 		field = mind._field
 		field.addEvent(textEvent)
