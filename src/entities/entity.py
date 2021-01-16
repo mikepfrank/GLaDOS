@@ -1,8 +1,19 @@
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#|					 TOP OF FILE:	 entities/entity.py
+#|------------------------------------------------------------------------------
+#|	 The below module documentation string will be displayed by pydoc3.
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+"""
+"""
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#| End of module documentation string.
+#|------------------------------------------------------------------------------
+
 # entity.py
 # Main file for the entity system.
 
-# This is a collection of modules to facilitate representing and working with 
-# entities.  An 'entity,' within GLaDOS, denotes any active agent, being, 
+# This is a collection of classes to facilitate representing and working with 
+# so-called entities.  An 'entity,' within GLaDOS, denotes *any* active agent, being, 
 # process or system that is meaningful within the world that GLaDOS operates in.  
 # Examples of things that could be considered as entities within GLaDOS:
 #
@@ -20,6 +31,8 @@
 # which specific commands.  Also, actions and events within GLaDOS are
 # attributed to specific entities.
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
 #	Class hierarchy for the entity system:
 #	--------------------------------------
 #
@@ -83,44 +96,36 @@
 from infrastructure.decorators import singleton, classproperty
 	# This provides a @classproperty (getter) decorator.
 
-# Forward class declarations.
+#=====================================================
+# Forward class declarations. (For use in type hints.)
 
-class	Entity_:		pass
+class	Entity_:			pass	# Abstract base class (ABC) for general entities.
 
-	# AI entities.
-
-class	AI_Entity_:		pass
-class	AI_Persona:		pass
-class	AI_System:		pass
-class	AI_Subsystem:	pass
-
-class	Cognitive_System:	pass	# This AI subsystem is the entire cognitive system in GLaDOS.
-class	Cognitive_Stream:	pass	# This AI subsystem is a subsystem of the cognitive system.
-class	Receptive_Field:	pass	# This AI subsystem is a subsystem of the cognitive system.
-class	Memory_System:		pass	# This AI subsystem is a subsystem of the cognitive system.
-class	History_Buffer:		pass	# This AI subsystem is a subsystem of the cognitive system.
-
+	#~~~~~~~~~~~~~~~~~
 	# System entities.
 
-class	System_Entity_:		pass
-class	Subsystem_Entity:	pass
+class	System_Entity_:					pass	# Abstract base class (ABC) for entities associated with the GLaDOS system.
+class	Subsystem_Entity:				pass	# 	- Class of entities that are subsystems of the whole system.
 
-class	The_GLaDOS_Entity:		pass
+class	The_GLaDOS_Entity:				pass	# This is the entire GLaDOS system.
 
-class	The_SettingsFacility_Entity:	pass
-class	The_ConfigSystem_Entity:		pass
-class	The_Supervisor_Entity:			pass
-class	The_CommandInterface_Entity:	pass
-class	The_ProcessSystem_Entity:		pass
-class	The_WindowSystem_Entity:		pass
-class	The_AppSystem_Entity:			pass
+class	The_SettingsFacility_Entity:	pass	#	- This is a subsystem of GLaDOS.
+class	The_ConfigSystem_Entity:		pass	#	- This is a subsystem of GLaDOS.
+class	The_Supervisor_Entity:			pass	#	- This is a subsystem of GLaDOS.
+class	The_ActionSystem_Entity:		pass	#		This is a subsystem of the Supervisor.
+class	The_CommandInterface_Entity:	pass	#	- This is a subsystem of GLaDOS.
+class	The_ProcessSystem_Entity:		pass	#	- This is a subsystem of GLaDOS.
+class	The_WindowSystem_Entity:		pass	#	- This is a subsystem of GLaDOS.
+class	The_AppSystem_Entity:			pass	#	- This is a subsystem of GLaDOS.
+# In addition to these, the Cognitive_System (below) can also be considered a subsystem of GLaDOS.
 
+	#~~~~~~~~~~~~~~~~~~~~~~
 	# Application entities.
 
-class	Application_Entity_:		pass
+class	Application_Entity_:		pass	# ABC for entities representing applications within GLaDOS.
 
+class	The_InfoApp_Entity:			pass	#	- This is a specific application within GLaDOS.
 class	The_HelpApp_Entity:			pass
-class	The_InfoApp_Entity:			pass
 class	The_GoalsApp_Entity:		pass
 class	The_SettingsApp_Entity:		pass
 class	The_MemoryApp_Entity:		pass
@@ -128,6 +133,20 @@ class	The_ToDoApp_Entity:			pass
 class	The_DiaryApp_Entity:		pass
 class	The_BrowseApp_Entity:		pass
 class	The_CommsApp_Entity:		pass
+
+	# AI entities.
+
+class	AI_Entity_:			pass	# ABC for entities that represent an AI, or an aspect of an AI.
+class	AI_Persona:			pass	# 	- Class of entities representing specific AI personas.
+class	AI_System:			pass	#	- Class of entities representing entire AI systems.
+class	AI_Subsystem:		pass	#	- Class of entities representing subsystems of larger AI systems.
+class	AI_LanguageModel:	pass	#	- Class of entities representing AI language model subsystems.
+
+class	Cognitive_System:	pass	# This AI subsystem is the entire cognitive system in GLaDOS.
+class	Cognitive_Stream:	pass	# 	- This AI subsystem is a subsystem of the cognitive system.
+class	Receptive_Field:	pass	# 	- This AI subsystem is a subsystem of the cognitive system.
+class	Memory_System:		pass	# 	- This AI subsystem is a subsystem of the cognitive system.
+class	History_Buffer:		pass	# 	- This AI subsystem is a subsystem of the cognitive system.
 
 	# External entities.
 
@@ -269,9 +288,25 @@ class AI_Persona(AI_Entity_):
 		return AI_Persona
 
 class AI_System(AI_Entity_):
+
 	"""A complete artificially-intelligent system."""
+
 	_isAbstract = False
 	_ENTITY_NAME = "The AI"
+
+	def __inst__(newAiSystem:AI_System, personaEntity:AI_Persona):
+
+		"""Initializes a new instance of an AI_System entity that
+			represents an AI_System that is configured to work on
+			behalf of a particular AI persona."""
+
+		aiSystem = newAiSystem
+
+		aiSystem._personaEntity = personaEntity
+			# Record which AI persona this AI system is configured to exhibit.
+
+#__/ End AI entity class AI_System.
+
 
 class AI_Subsystem(AI_Entity_):
 	"""An entity that is a subsystem of an AI system."""
@@ -282,21 +317,86 @@ class AI_Subsystem(AI_Entity_):
 	def entityType(dynamicClass):
 		return AI_Subsystem
 
-#====================================================================
-# Entities for the AI's cognitive system and its various components.
+	#====================================================================
+	# Entities for the AI's cognitive system and its various components.
 
-class Cognitive_System(AI_Subsystem):
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class Cognitive_System(AI_Subsystem, Subsystem_Entity):
 
-	"""An instance of the cognitive system would mean, the cognitive system
-		when configured for a specific AI persona."""
+	"""Cognitive_System		         		 [singleton class--subsystem entity]
 
-	_isAbstract = False
-	_ENTITY_NAME = "Cognitive System"
-	_ENTITY_ID = "CognoSys"
-	partOf = AI_System
+			This is a class for entities representing the AI's cognitive
+			system.  Please note that this is not a singleton class--it
+			can have different instances, which would correspond to the
+			cognitive system when configured for use by a specific AI
+			persona. (At present, GLaDOS does not yet support multiple
+			simultaneously active AI personas, but, it may do so in some
+			future version.)
+
+			Please note that this entity is considered to be a subsystem
+			both of the AI as a whole, and of the GLaDOS operating system.
+
+			The explicit actions (detectable by other subsystems) that
+			the Supervisor conceives/initiates include the following:
+
+				* Announcing that the receptive field is available.
+					(mindSystem._AnnounceFieldExistsAction)
+																			 """
+	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	_isAbstract		= False		# Not an ABC. An instance is a specific entity.
+
+	_ENTITY_NAME	= "Cognitive System"
+	_ENTITY_ID		= "CognoSys"	# The ID is a short name used e.g. in prompts.
+	
+	# Note: The .partof attribute for this class is initialized on an
+	# instance-by-instance basis in the instance initializer method, below.
 	
 	def __inst__(thisCognitiveSystem:Cognitive_System, personaEntity:AI_Persona):
-		thisCognitiveSystem._personaEntity = personaEntity
+
+		csEntity = thisCognitiveSystem
+
+		csEntity._personaEntity = personaEntity
+
+			#==================================================================
+			# The congitive subsystem is special in that it is considered to be
+			# a part of both the "artifically intelligent system" as a whole
+			# (which includes the GPT-3 NLP model running in OpenAI's cloud),
+			# and of the GLaDOS operating system, which itself runs locally.
+			# Thus, our ".partof" attribute expresses a set of entities that 
+			# this entity is part of, rather than a single entity.  However,
+			# This doesn't matter very much right now, since the '.partof'
+			# attribute isn't actually used for anything yet.  So, consider it
+			# documentation for now.  In the future, we might enable the AI to
+			# inspect these relations, though.
+
+		csEntity.partof = supersystems = set()	# Initialize to empty set.
+			# Next, we'll actually create and add the elements to this set.
+
+			#-------------------------------------------------------------------
+			# This creates an entity that represents the entire larger AI System
+			# that this cognitive system instance is a part of.  It is working
+			# on behalf of the same AI persona that we are.
+
+		theAI = AI_System(personaEntity)
+
+			#------------------------------------------------------------
+			# This just retrieves the singleton entity defined above that
+			# represents the entire GLaDOS operating system.
+		
+		GLaDOS = The_GLaDOS_Entity()		# Singleton representing GLaDOS.
+
+			#-----------------------------------------------------------------
+			# OK, now this actually adds those entities to the set of "parent"
+			# entities that the present entity is declared to be a part of.
+
+		supersystems.add(theAI)		# This entity is part of the AI as a whole.
+		supersystems.add(GLaDOS)	# This entity is also a part of GLaDOS.
+		
+	#__/ End instance initializer for Cognitive_System class.
+
+#__/ End AI/subsystem entity class Cognitive_System.
+
 
 class Cognitive_Stream(AI_Subsystem):
 	_isAbstract = False
@@ -363,45 +463,101 @@ class Subsystem_Entity(System_Entity_):
 class The_SettingsFacility_Entity(Subsystem_Entity):
 	_isAbstract = False
 	_ENTITY_NAME = "Settings Facility"
-	partOf = The_GLaDOS_Entity
+	partOf = The_GLaDOS_Entity()
 
 @singleton
 class The_ConfigSystem_Entity(Subsystem_Entity):
 	_isAbstract = False
 	_ENTITY_NAME = "Configuration System"
-	partOf = The_GLaDOS_Entity
+	partOf = The_GLaDOS_Entity()
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
 class The_Supervisor_Entity(Subsystem_Entity):
-	_isAbstract = False
-	_ENTITY_NAME = "Supervisory Subsystem"
-	_ENTITY_ID = "Supervisor"
-	partOf = The_GLaDOS_Entity
+
+	"""The_Supervisor_Entity		         [singleton class--subsystem entity]
+
+			This entity singleton represents the Supervisor or Supervi-
+			sory Subsystem, which is a subsystem of GLaDOS.  It is the
+			subsystem that is in charge of starting up and managing the
+			other major subsystems.  Its code objects are contained in
+			the 'supervisor' package within the GLaDOS codebase.
+
+			The explicit actions (detectable by other subsystems) that
+			the Supervisor conceives/initiates include the following:
+
+				* Announcing that the system is starting up.
+					(supervisor._AnnounceStartupAction)
+
+			Subsystems of the Supervisory system include the following:
+
+				* The Action Processing Subsystem.							 """
+
+	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	_isAbstract		= False		# Not an ABC. The instance is a specific entity.
+
+	_ENTITY_NAME	= "Supervisory Subsystem"
+	_ENTITY_ID		= "Supervisor"	# The ID is a short name used e.g. in prompts.
+
+	partOf			= The_GLaDOS_Entity()	# This system is a subsytem of GLaDOS.
+
+#__/ End singleton subsystem entity class The_Supervisor_Entity.
+
 
 @singleton
 class The_CommandInterface_Entity(Subsystem_Entity):
 	_isAbstract = False
 	_ENTITY_NAME = "Command Interface"
-	partOf = The_GLaDOS_Entity
+	partOf = The_GLaDOS_Entity()
 	
 @singleton
 class The_ProcessSystem_Entity(Subsystem_Entity):
 	_isAbstract = False
 	_ENTITY_NAME = "Process System"
-	partOf = The_GLaDOS_Entity
+	partOf = The_GLaDOS_Entity()
 	
 @singleton
 class The_WindowSystem_Entity(Subsystem_Entity):
 	_isAbstract = False
 	_ENTITY_NAME = "Window System"
-	partOf = The_GLaDOS_Entity
+	partOf = The_GLaDOS_Entity()
 	
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
 class The_AppSystem_Entity(Subsystem_Entity):
-	_isAbstract = False
-	_ENTITY_NAME = "Applications System"
-	partOf = The_GLaDOS_Entity
+
+	"""The_AppSystem_Entity					 [singleton class--subsystem entity]
+
+			This entity singleton represents the AppSystem or application
+			subsystem of GLaDOS.  It is the subsystem that is responsible
+			for starting up an managing individual end-user applications
+			within GLaDOS.  (Note that in GLaDOS, the "end user" means the
+			AI, not a human--since GLaDOS is an OS designed for use by AIs.)
+
+			The explicit actions (detectable by other subsystems) that
+			the AppSystem conceives/initiates include the following:
+
+				* Auto-opening an application's window on startup.
+					(appSystem._AutoOpenWindowAction)
+
+			Subsystems of the Supervisory system include the following:
+
+				* Each individual application within GLaDOS can be
+					considered a subsystem of the application system.
+																			 """
+	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
+	_isAbstract		= False		# Not an ABC. The instance is a specific entity.
+
+
+	_ENTITY_NAME	= "Applications System"
+	_ENTITY_ID		= "AppSystem"	# The ID is a short name used e.g. in prompts.
+
+	partOf			= The_GLaDOS_Entity()	# This system is a subsytem of GLaDOS.
+	
+#__/ End singleton subsystem entity class.
+
 
 #=====================================================================
 # Entities associated with the host computer on which we are running.

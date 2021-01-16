@@ -89,6 +89,13 @@ from 	text.buffer					import	TextBuffer
 from	field.placement				import	Placement
 	# This is an enum type that we use for specifying window placement.
 
+from	field.fieldElement			import	WindowElement
+	# This is a field element that lets us put windows onto the field.
+
+from	field.receptiveField		import	TheReceptiveField
+	# We access this singleton from window.openWin() so that we can
+	# actually place newly-opening windows onto the receptive field.
+
 from 	commands.commandInterface	import	CommandModule
 	# We're going to extend CommandModule with various subclasses 
 	# specific to the windowing system.
@@ -173,6 +180,16 @@ class WindowImage:
 		
 	#__/ End windowImage.__init__().
 	
+	def view(self):
+		
+		"""Returns a 'view' of this window image, which simply means,
+			a single text string that renders the entire visual
+			appearance of the window image."""
+
+		winView = self._textBuffer.view()
+		return winView + '\n'
+			# Add final newline because textbuffer doesn't by default.
+
 	def repaint(self):
 		"""Tell the window image to repaint itself in its text buffer."""
 		
@@ -389,15 +406,25 @@ class Window:	# A text window within the GLaDOS window system.
 		self._fieldElem		= None
 			# This is a "field element" object to contain this window.
 
+		self._isOpen		= False		# New windows aren't initially open.
+
+	@property
 	def title(thisWin):
 		return thisWin._title
 
+	@property
 	def placement(thisWin):
 		return thisWin._placement
 
+	@property
 	def image(thisWin):
 		return thisWin._image
 
+	def view(thisWin):
+		"""Gets a 'view' of this window as a single text string."""
+		image = thisWin.image	# Get this window's image structure.
+		viewTxt = image.view()	# Convert it to a single text string.
+		return viewTxt			# And return that.
 
 	def openWin(thisWin):
 
@@ -413,14 +440,20 @@ class Window:	# A text window within the GLaDOS window system.
 				# This will automatically place itself on the field.
 				# Add that will automatically update the field view.
 		
-		# At this point, we still need to do two things:
-		#
-		#	(1) console.refreshFieldDisplay()
-		#
-		#	(2) Notify the AI's mind (if running) that the field has changed.
-		#			This should wake it up (if it was sleeping) and give it
-		#			a chance to respond to this event.
+			# Remember that we have opened this windo.
+		win._isOpen = True
 
+			# Tell the field that this is a good time for it to
+			# notify its viewers that its contents have changed.
+			# This will then update the console's field display,
+			# and the field displays of any other connected user
+			# terminals, and will also notify the AI's mind (if
+			# running) that the field has changed, which should
+			# wake up the AI (if sleeping) and give it a chance
+			# to respond to the new field contents.
+
+		field.updateView()
+		
 	
 	def addText(self, text:str):
 		"""Add the given text to the window contents (at the end)."""

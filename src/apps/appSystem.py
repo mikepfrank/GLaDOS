@@ -159,14 +159,23 @@ from infrastructure.utils		import	countLines
 			#|	The following modules are specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+from entities.entity			import	The_AppSystem_Entity, AI_Entity_
+
 from field.placement			import	Placement
 
 from config.configuration		import	TheConfiguration, TheAIPersonaConfig
 		# Singletons that provide the current GLaDOS system configuration
 		# and the configuration of the current AI persona.
 
+from supervisor.action			import	ActionSubscriber_, ActionBySystem_, TheEverythingChannel
+
 from windows.windowSystem		import	Window
 from processes.processSystem	import	SubProcess
+
+from mind.aiActions				import	AnnounceFieldExistsAction
+	# We need this so that we can watch for actions of this class,
+	# because that's what tells us that it's safe to go ahead and
+	# start opening up the windows for apps marked as auto-open.
 
 	#|==========================================================================
 	#|
@@ -325,6 +334,9 @@ class Application_:
 		self.autoOpen			= autoOpen
 		self.initialPlacement	= placement
 		
+		_logger.debug(f"Initializing application '{name}' with the following parameters:")
+		_logger.debug(f"\tautoStart = {autoStart}, autoOpen = {autoOpen}, placement = {placement}")
+
 			# Create a new window for this application, with a suitable title & placement.
 			# We don't actually display this window until the application is launched.
 		
@@ -431,13 +443,17 @@ class The_AppSystem_Subscriber(ActionSubscriber_):
 	"""This subscribes to action news channels that the application system
 		is potentially interested in watching."""
 
-	def __init__(newSub, appSys, name="AppSys"):
+	def __init__(newSubscriber, appSys, name="AppSys"):
+
+		_logger.debug("appSysSubscriber.__init__(): Initializing the AppSystem's subscriber...")
 
 		sub = newSubscriber
 
 		sub._appSys = appSys
 
 		super(The_AppSystem_Subscriber.__wrapped__, sub).__init__(name=name)
+
+		_logger.debug("appSysSubscriber.__init__(): Subscribing to The Everything Channel...")
 
 			# For now, we'll just subscribe to the everything channel.
 		TEC = TheEverythingChannel()	# Defined in the action module.
@@ -452,7 +468,7 @@ class The_AppSystem_Subscriber(ActionSubscriber_):
 		# our due that it's a good time to display all of our app windows
 		# that are supposed to be open.
 
-		if status=='completed' and isinstance(action, _AnnounceFieldExistsAction):
+		if status=='completed' and isinstance(action, AnnounceFieldExistsAction):
 			
 			_logger.info("[Apps/Open] Received field-existence notification.")
 
@@ -460,9 +476,77 @@ class The_AppSystem_Subscriber(ActionSubscriber_):
 				# This tells the application system, "OK, you can go ahead and
 				# display all of your existing open windows on the receptive field."
 
+class _AppSystemAction_: pass
+class _AppSystemAction_(ActionBySystem_):
+
+	"""This is a private (leading '_') abstract (trailing '_') base class
+		for actions taken by the application system.  Its functions include
+		setting the conceiver (the AppSystem)."""
+
+	defaultConceiver = The_AppSystem_Entity()
+
+	def __init__(new_AppSys_Action:_AppSystemAction_,
+				 
+			description:str="A generic action was taken by the application system.",
+				# REQUIRED. A description string. SUBCLASSES SHOULD OVERRIDE THIS VALUE.
+
+			conceiver:AI_Entity_=None,
+				 # The AI entity that conceived of taking this action.
+				 # If not provided, we'll default it to The_AppSystem_Entity().
+
+			importance:int=None
+			
+		):
+
+		asAction = new_AppSys_Action
+
+		super(_AppSystemAction_, asAction).__init__(description, conceiver=conceiver)
+
+
+class _AutoOpenWindowAction: pass
+class _AutoOpenWindowAction(_AppSystemAction_):
+
+	"""Class for the action of automatically opening an application's
+		window on application-system startup.  We make this an explicit
+		action to aid the AI's understanding of the fact that opening
+		this particular window was done as an automatic system action."""
+
+	def __init__(newAOWA:_AutoOpenWindowAction, app:Application_):
+
+		"""This instance initializer for new auto-open-window actions
+			simply sets the textual description of the action, and
+			remembers which app we are intending to auto-open the
+			window of."""
+
+		newAOWA._app = app		# Remember which app we're opening.
+
+		appName = app.name		# Get the name of the app.
+
+		description=f"Auto-opening the '{appName}' app's window..."
+
+		super(_AutoOpenWindowAction, newAOWA).__init__(description)
+
+	#__/ End instance initializer for class _AutoOpenWindowAction.
+
+	def executionDetails(thisAOWA:_AutoOpenWindowAction):
+
+		"""Since this is a system action, the action processor will
+			automatically execute it by calling this method.  In this
+			case, all we need to do is call the app's .openWins()
+			method, to tell it to actually open its windows."""
+
+		app = thisAOWA._app		# Get the app that this action is for.
+		app.openWins()			# Tell that app to open its windows.
+
+	#__/ End instance method aowa.executionDetails().
+
+#__/ End action class _AutoOpenWindowAction.
+
 
 class AppSystem_:
 	pass
+
+class TheAppSystem: pass
 
 @singleton
 class TheAppSystem(AppSystem_):
@@ -484,6 +568,20 @@ class TheAppSystem(AppSystem_):
 		_logger.info("        [Apps/Init]     Registering available apps...")
 
 		self._registerAvailableApps()
+
+			# Next, we have to create our action news subscriber, which will ensure
+			# that we are notified of important system actions that we want to be
+			# made aware of.  In particular, when the AI's cognitive system boots up
+			# to the extent that its receptive field is available, we want to know
+			# about it, because that's when we'll tell our auto-opening applications
+			# that they should go ahead and open up their windows on the field.
+
+		self._subscriber = The_AppSystem_Subscriber(self)
+			# We have to pass it a pointer to ourselves, so that later, when it
+			# actually starts receiving notifications, it can call our methods
+			# as needed.
+
+	#__/ End singleton instance initializer for class TheAppSystem.
 
 
 	def _registerApp(self, appName:str, appClass:type, appAutoStart:bool,
@@ -557,12 +655,29 @@ class TheAppSystem(AppSystem_):
 		"""Tells the application system that it's OK to actually display
 			any open application windows on the receptive field."""
 
-		_logger.info("[Apps/Open] Automatically opening auto-open app windows...")
+		appSys = thisAppSys
 
-		for app in self.apps:
+		_logger.info("[Apps/Open] Automatically opening 'auto-open' app windows...")
+
+		for app in appSys.apps:
 			if app.autoOpen:
+
 				_logger.info(f"[Apps/Open] Auto-opening '{app.name}' app window(s)...")
-				app.openWins()
+
+				# At this point, we could just call app.openWins directly, but
+				# instead, we conceive and then initiate an explicit action to
+				# do the job, namely, an instance of _AutoOpenWindowAction. We
+				# do this so that the event of this action's execution will be
+				# automatically incorporated into the AI's cognitive stream; i.e.,
+				# the AI will explicitly be made aware of the fact that this
+				# action occurred.  This is to help it to understand what's
+				# going on in this new operating environment it's in.  Also, this
+				# does some degree of automatic logging of the action.
+
+				aowi = _AutoOpenWindowAction(app)	# Construct (conceive) the action.
+				aowi.initiate()						# Tell it to initiate its execution.
+
+				#app.openWins()
 					# This tells the app to go ahead and automatically open
 					# its window(s) on the receptive field.
 			

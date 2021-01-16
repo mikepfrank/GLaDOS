@@ -298,9 +298,15 @@ class Action_:
 
 	@property
 	def text(thisAction):
+
 		"""This attribute gives a textual representation of the action, in a
 			form suitable for viewing by the AI.  May be overridden by subclasses."""
-		return thisAction.description
+
+			# The simplest, and default, thing to do is just to provide the
+			# action's description as its textual representation, followed by
+			# a newline to indicate where the text ends.
+
+		return thisAction.description + '\n'
 
 	def __str__(thisAction):
 		return thisAction.description
@@ -395,8 +401,8 @@ class AnnouncementAction_(Action_):
 	@property
 	def text(thisAnnouncementAction:AnnouncementAction_):
 
-		"""For announcement actions, we generate their text with a little highlighting
-			and a newline."""
+		"""For announcement actions, we generate their text with a little
+			highlighting (surroundings asterisks) and a newline."""
 
 		annAct = thisAnnouncementAction
 		text = f"*** {annAct.description} ***\n"
@@ -407,14 +413,17 @@ class AnnouncementAction_(Action_):
 
 		"""We don't need to do much here since an announcement is 
 			self-executing, in virtue of having its execution
-			reported to the cognosphere."""
+			reported to the cognosphere.  However, we also
+			display the announcement text on attached (human)
+			user terminals.  This includes the operator console
+			and also any attached terminals of individual users."""
 
 		annAct = thisAnnouncementAction
 
 		_logger.debug(f"Carrying out execution details of announcement action '{annAct.description}'.")
 
 			# Print the announcement to STDERR.
-		print('\n'+annAct.text, file=stderr)	# Extra newline before to make it stand out.
+		print('\n' + annAct.text, file=stderr)	# Extra newline before to make it stand out.
 			# This will actually go to the virterm and thence to the console panel.
 
 		# Eventually we should also send it to all attached terminal sessions.
@@ -467,14 +476,40 @@ class ActionByHuman_(Action_):
 	pass
 	
 class ActionBySystem_(Action_):
+
+	defaultConceiver = The_GLaDOS_Entity()
+
+	defaultImportance = 0
+		# This sets the default importance level for system actions.
+		# The default value of '0' is intended to represent a 'neutral'
+		# importance level: Not particularly important, but not
+		# particularly unimportant, either.  The default threshold for
+		# the AI to be made aware of actions is also set at 0, so the
+		# AI should be aware of these actions by default (but if it
+		# turns up its threshold at all, they'll be suppressed).
+
+
 	def __init__(thisSystemAction, 
+
 			description:str="A generic system action was taken.",
 				# REQUIRED. A description string. SUBCLASSES SHOULD OVERRIDE THIS VALUE.
-			conceiver:Entity_=The_GLaDOS_Entity,
-				# The entity that conceived of taking this action. Default to GLaDOS.
-			importance:int=0,			# Importance level (integer). Default is 0.
+
+			conceiver:Entity_=None,
+				 # The system entity that conceived of taking this action. 
+				 # If not provided, we'll default it to The_GLaDOS_Entity().
+
+			importance:int=None,	# Importance level (integer).
+				 # Default setting for this comes from 'defaultImportance' class variable.
 		):
 	
+		sysAction = thisSystemAction
+
+		if conceiver is None:
+			conceiver = sysAction.defaultConceiver
+
+		if importance is None:
+			importance = sysAction.defaultImportance
+
 			# Remember the declared importance level of this system action.
 		thisSystemAction._importance = importance
 	

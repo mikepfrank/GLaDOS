@@ -185,7 +185,7 @@ class ConsolePanel(Panel):
 
 		# If there are too many lines saved, trim the buffer.
 		if len(panel.lines) > panel._max_nlines:
-			panel._lines = panel.lines[-panel._max_nlines]
+			panel._lines = panel.lines[-panel._max_nlines:]
 
 		if display.isRunning:
 			driver(panel.redisplayContent, desc="Redisplay console panel to show new line")
