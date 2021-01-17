@@ -393,7 +393,7 @@ def _main():
 	if doNorm:
 		print() # Just visual whitespace; no need to log it.
 		_logger.normal(f"[Main] Welcome to the {systemName} server, v0.0 (pre-alpha).")
-		_logger.normal("[Main] Copyright (C) 2020 Metaversal Constructions.")
+		_logger.normal("[Main] Copyright (C) 2020-21 Metaversal Constructions.")
 		#_logger.normal("See the LICENSE.txt file for terms of use.")
 			# Commented out because this file doesn't exist yet.
 		print() # Just visual whitespace; no need to log it.
