@@ -93,7 +93,7 @@ CONS_DEBUG = False	# Tell logmaster: Don't diplay debug-level output on console.
 LOG_DEBUG = True	# Tell logmaster: Do save debug-level output to log file.
 
 global CONS_INFO	# These control info-level output to console.
-CONS_INFO = True	# Tell logmaster: Do diplay info-level output on console.
+CONS_INFO = False	# Tell logmaster: Do diplay info-level output on console.
 
 
 # Before doing anything else, we start a virtual terminal and have it grab

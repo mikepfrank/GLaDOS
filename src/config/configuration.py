@@ -356,13 +356,14 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		"""
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		_logger.info("    [Config] Loading system configuration...")
+		_logger.normal("    [Config] Loading system configuration...")
 
 		theConfig.reinit(*args, **kwargs)
 
 			# Also invoke the initializer for TheAIPersonaConfig.
 			# (Always checks its environment & reloads its config file.)
 			
+		_logger.normal("")
 		TheAIPersonaConfig()
 			
 	#__/ End singleton instance initializer method theConfiguration.__init__().
@@ -433,7 +434,8 @@ class TheConfiguration:	# The GLaDOS server configuration.
 			--------------------------------------------------------------------
 		"""
 	
-		_logger.normal(f"    [Config] Loading server configuration from {_CONFIG_PATHNAME}...")
+		_logger.normal("")
+		_logger.normal(f"    [Config]   Loading server configuration from {_CONFIG_PATHNAME}...")
 
 		with open(_CONFIG_PATHNAME) as cf:
 			conf = load(cf)			# Load structure from hjson file.
@@ -466,7 +468,7 @@ class TheConfiguration:	# The GLaDOS server configuration.
 
 		if 'timezone' in conf:
 			theConfig.timezone = timezone = conf['timezone']	# Expect a number of hours.
-			_logger.normal(f"    [Config]    System config: The time zone offset from UTC is {timezone} hours.")
+			_logger.normal(f"    [Config]      System config: The time zone offset from UTC is {timezone} hours.")
 		else:
 			_logger.warn("configuration._parseConf(): The 'timezone' parameter "
 							"was not supplied. Defaulting to +0 (UTC).")
@@ -480,7 +482,7 @@ class TheConfiguration:	# The GLaDOS server configuration.
 
 		if 'tab-width' in conf:
 			theConfig.tabWidth = tabWidth = conf['tab-width']	# Expect an integer.
-			_logger.normal(f"    [Config]    System config: The tab width is {tabWidth}.")
+			_logger.normal(f"    [Config]      System config: The tab width is {tabWidth}.")
 		else:
 			_logger.warn("configuration._parseConf(): The 'tab-width' parameter "
 							"was not provided. Defaulting to 4.")
@@ -497,9 +499,9 @@ class TheConfiguration:	# The GLaDOS server configuration.
 							"not provided. Using hard-coded defaults.")
 			winConf = dict()	# Empty dict by default.
 	 
-		if 'sideDecorators' in winConf:
+		if 'side-decorators' in winConf:
 			theConfig.sideDecorators = sideDec = winConf['side-decorators']
-			_logger.normal(f"    [Config]    Window config: Use side decorators? = {sideDec}.")
+			_logger.normal(f"    [Config]      Window config: Use side decorators? = {sideDec}.")
 		else:
 			theConfig.sideDecorators = True
 
@@ -797,7 +799,7 @@ class	TheAIPersonaConfig:
 		"""
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		_logger.info("    [Config] Loading AI persona configuration...")
+		_logger.normal("    [Config/AI] Loading AI persona configuration...")
 
 		theAIConfig.reinit(*args, **kwargs)
 
@@ -821,7 +823,7 @@ class	TheAIPersonaConfig:
 		"""
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
-		_logger.normal(f"      [Config/AI]     Loading AI configuration from {_CONFIG_PATHNAME}...")
+		_logger.normal(f"    [Config/AI]   Loading AI configuration from {_CONFIG_PATHNAME}...")
 
 		with open(_AI_CONFIG_PATHNAME) as cf:
 			conf = load(cf)			# Load structure from hjson file.
@@ -857,7 +859,7 @@ class	TheAIPersonaConfig:
 		if 'field-conf' in conf:
 			theAIConfig.fieldConf = fieldConf = conf['field-conf']
 				# TODO: Make sure value given is valid.
-			_logger.info(f"      [Config/AI]        AI config: The AI's field configuration is {fieldConf}.")
+			_logger.info(f"    [Config/AI]     AI config: The AI's field configuration is {fieldConf}.")
 		else:
 			_logger.warn("parseConf(): The required field-conf parameter "
 							"was not provided.")
@@ -869,7 +871,7 @@ class	TheAIPersonaConfig:
 		if 'max-visible-tokens' in fieldConf:
 			theAIConfig.maxVisibleTokens = maxTok = fieldConf['max-visible-tokens']
 				# TODO: Make sure value given is valid.
-			_logger.normal(f"      [Config/AI]        AI config: The AI's receptive field size is {maxTok}.")
+			_logger.normal(f"    [Config/AI]     AI config: The AI's receptive field size is {maxTok}.")
 		else:
 			_logger.warn("parseConf(): The required max-visible-tokens parameter "
 							"was not provided.")
@@ -886,7 +888,7 @@ class	TheAIPersonaConfig:
 		if 'mind-conf' in conf:
 			theAIConfig.mindConf = mindConf = conf['mind-conf']
 				# TODO: Make sure value given is valid.
-			_logger.debug(f"      [Config/AI]        AI config: The AI's mind configuration is {mindConf}.")
+			_logger.debug(f"    [Config/AI]     AI config: The AI's mind configuration is {mindConf}.")
 		else:
 			_logger.warn("parseConf(): The required mind-conf parameter "
 							"was not provided.")
@@ -898,7 +900,7 @@ class	TheAIPersonaConfig:
 		if 'model-family' in mindConf:
 			theAIConfig.modelFamily = modelFamily = mindConf['model-family']
 				# TODO: Make sure value given is valid.
-			_logger.normal(f"      [Config/AI]        AI config: The AI's model family is {modelFamily}.")
+			_logger.normal(f"    [Config/AI]     AI config: The AI's model family is {modelFamily}.")
 		else:
 			_logger.warn("parseConf(): The required model-family parameter "
 							"was not provided.")
@@ -911,7 +913,7 @@ class	TheAIPersonaConfig:
 		if 'model-version' in mindConf:
 			theAIConfig.modelVersion = modelVersion = mindConf['model-version']
 				# TODO: Make sure value given is valid.
-			_logger.normal(f"      [Config/AI]        AI config: The AI's model version is {modelVersion}.")
+			_logger.normal(f"    [Config/AI]     AI config: The AI's model version is {modelVersion}.")
 		else:
 			_logger.warn("parseConf(): The required model-version parameter "
 							"was not provided.")
@@ -924,7 +926,7 @@ class	TheAIPersonaConfig:
 		if 'sys-notification-threshold' in mindConf:
 			theAIConfig.sysNotifyThresh = sysNotifyThresh = mindConf['sys-notification-threshold']
 				# TODO: Make sure value given is valid.
-			_logger.normal(f"      [Config/AI]        AI config: The importance threshold for system notifications is {sysNotifyThresh}.")
+			_logger.normal(f"    [Config/AI]     AI config: The importance threshold for system notifications is {sysNotifyThresh}.")
 		else:
 			_logger.warn("parseConf(): The sys-notification-threshold parameter "
 							"was not provided. Defaulting to 0.")
@@ -988,8 +990,8 @@ class	TheAIPersonaConfig:
 
 			# Print this key info at NORMAL level.
 		
-		_logger.normal(f"      [Config/AI] The AI-specific data directory is set to {_AI_DATADIR}.")
-		_logger.normal(f"      [Config/AI] The AI-specific config file is set to {_AI_CONFIG_PATHNAME}.")
+		_logger.normal(f"    [Config/AI]   The AI-specific data directory is set to {_AI_DATADIR}.")
+		_logger.normal(f"    [Config/AI]   The AI-specific config file is set to {_AI_CONFIG_PATHNAME}.")
 			
 	#__/ End private singleton instance method theAIConfig._checkEnvironment().
 
