@@ -205,7 +205,8 @@
 	app-list:	[
 
 			# Application-specific config records. The order given here
-			# will also be the order of placement for auto-open windows. 
+			# happens to be the same as the order of placement for auto-open
+			# windows (currently hard-coded in apps.appSystem._APP_LIST).
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	NOTE: A few additional application concepts not yet explicitly
@@ -217,6 +218,92 @@
 		#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	
+			/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			  Clock										 [app config record]
+			  -----
+
+			  		The Clock app is the second	GLaDOS app to be
+					implemented.  (We're building it early because
+					Gladys requested us at one point not to include
+					the current time in her prompts, so we're going
+					to give her a separate Clock app which she can
+					bring up whenever she actually does want to check
+					the current time.)
+	
+					Unlike the case with most apps, the Clock config
+					record below sets its 'quiet-update' parameter to
+					true, which means that when this app updates its
+					display on the receptive field, which will happen
+					once per second (or minute), the AI won't be woken
+					up if it is in sleep mode.  (Sleeping wouldn't mean
+					very much if the AI was woken up at every single
+					tick of the clock.)  
+					
+					Application-specific settings for this app include
+					a 'mode' setting, which can be either 'minutes' or
+					'seconds' to determine whether the number of seconds
+					is displayed.
+
+					NOTE: This is one of the few apps that is generally
+					launched automatically at system startup.
+						
+			  vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+	
+		{
+			name:			Clock
+		
+			available:		true	# This app is about to be implemented.
+
+			auto-start:		true
+				#			  \
+				# This setting is important, because in order for the clock
+				# to be functional (i.e., regularly updating its display),
+				# we need to start up a background thread which will wake up
+				# once per second and update the display if needed (it will
+				# not always be needed if the clock is in 'minutes' mode).
+
+			auto-open:		true
+				#			  \
+				# This says that the app should automatically open up its
+				# window(s) on the receptive field as soon as the receptive
+				# field becomes available.  We do this because this way, the
+				# AI will always be able to remain aware of the current time.
+				# However, we will still allow the AI to minimize or close
+				# the clock app if it wants to.
+
+			auto-focus:		true
+				#			  \
+				# This says that the app will grab the command focus when
+				# it first opens its window on the field.  The only reason
+				# we do this is to allow the AI to practice using window
+				# commands (like '/Minimize,' or '/Close') on this window
+				# if it wants to.
+
+			quiet-update:	true
+				#			  \
+				# This says that when the app updates its field display, the
+				# A.I. will not automatically be woken up if it is sleeping,
+				# nor will it be poked if it is in hibernating mode (i.e.,
+				# waiting for field updates).
+
+			app-config:	{
+				
+				mode:	minutes
+					#		\
+					# We start up the Clock app in 'minutes' mode rather than
+					# 'seconds' mode by default, because there isn't much point
+					# in having it update its display once per second since we
+					# can't really afford to do a GPT-3 API call every second
+					# anyway, at least, not with the largest (DaVinci) model.
+					# (Maybe normally, when the AI is free-running, we'll
+					# configure its main loop to cycle once every 15 mins, or
+					# something of that nature.)
+
+			}
+
+		}
+					
+
 			/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			  Info 										 [app config record]
 			  ----
@@ -262,6 +349,15 @@
 				# window to be the very first thing the AI sees when it first
 				# wakes up, to remind it who it is & what's the context.
 					
+			auto-focus:		false
+				#			  \
+				# We want to make sure that the Info app doesn't grab the
+				# command focus, because it doesn't have any associated
+				# commands anyway: Because, we don't want the AI to even be 
+				# able to minimize it or close it, and the goal-editing
+				# function is going to be handled by a separate '/Goals'
+				# app anyway.
+
 			placement:		'pinned-to-top'		# We want this app to be prominent.
 				#				\
 				# This means, initially place the app's window near the top
@@ -280,83 +376,6 @@
 		},
 			
 
-			/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			  Clock										 [app config record]
-			  -----
-
-			  		The Clock app is the second	GLaDOS app to be
-					implemented.  (We're building it because Gladys
-					requested us at one point not to include the
-					current time in her prompts, so we're going to
-					give her a separate Clock app which she can bring
-					up whenever she actually does want to check the
-					current time.)
-	
-					Unlike the case with most apps, the Clock config
-					record below sets the 'quiet-update' parameter to
-					true, which means that when this app updates its
-					display on the receptive field, which will happen
-					once per second (or minute), the AI won't be woken
-					up if it is in sleep mode.  (Sleeping wouldn't mean
-					very much if the AI was woken up at every single
-					tick of the clock.)
-					
-					Application-specific settings for this app include
-					a 'mode' setting, which can be either 'minutes' or
-					'seconds' to determine whether the number of seconds
-					is displayed.
-
-					NOTE: This is one of the few apps that is generally
-					launched automatically at system startup.
-						
-			  vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
-	
-		{
-			name:			Clock
-		
-			available:		true	# This app is about to be implemented.
-
-			auto-start:		true
-				#			  \
-				# This setting is important, because in order for the clock
-				# to be functional (i.e., regularly updating its display),
-				# we need to start up a background thread which will wake up
-				# once per second and update the display if needed (it will
-				# not always be needed if the clock is in 'minutes' mode).
-
-			auto-open:		true
-				#			  \
-				# This says that the app should automatically open up its
-				# window(s) on the receptive field as soon as the receptive
-				# field becomes available.  We do this because this way, the
-				# AI will always be able to remain aware of the current time.
-				# However, we will still allow the AI to minimize or close
-				# the clock app if it wants to.
-
-			auto-focus:		true
-				#			  \
-				# This says that the app will grab the command focus when
-				# it first opens its window on the field.  The only reason
-				# we do this is to allow the AI to practice using window
-				# commands (like '/Minimize,' or '/Close') on the window.
-
-			app-config:	{
-				
-				mode:	minutes
-					#		\
-					# We start up the Clock app in 'minutes' mode rather than
-					# 'seconds' mode by default, because there isn't much point
-					# in having it update its display once per second since we
-					# can't really afford to do a GPT-3 API call every second
-					# anyway, at least, not with the largest (DaVinci) model.
-					# (Maybe normally, when the AI is free-running, we'll
-					# configure its main loop to cycle once every 15 mins, or
-					# something of that nature.)
-
-			}
-
-		}
-					
 		{
 			name:			Help
 

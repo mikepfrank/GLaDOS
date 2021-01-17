@@ -321,7 +321,8 @@ class Application_:
 			- launch()		- Starts the application running.
 	"""
 	
-	def __init__(self, name:str, autoStart:bool, autoOpen:bool, placement:Placement, conf:dict):
+	def __init__(self, name:str, autoStart:bool, autoOpen:bool, autoFocus:bool,
+				 loudUpdate:bool, placement:Placement, conf:dict):
 		#	name - The name of the application object.
 		#	autoStart - Whether to start the app on system startup.
 		#	placement - Where to place the app window in the receptive field.
@@ -330,24 +331,33 @@ class Application_:
 			# Remember the name of this application, & other generic parameters.
 
 		self.name 				= name
+
+		self._launched			= False			# Easy way to tell we've never been started.
+
 		self.autoStart			= autoStart
 		self.autoOpen			= autoOpen
+		self.autoFocus			= autoFocus
+		self.loudUpdate			= loudUpdate
 		self.initialPlacement	= placement
 		
 		_logger.debug(f"Initializing application '{name}' with the following parameters:")
-		_logger.debug(f"\tautoStart = {autoStart}, autoOpen = {autoOpen}, placement = {placement}")
+
+		_logger.debug(f"\tautoStart = {autoStart}, autoOpen = {autoOpen}, "
+					  f"autoFocus = {autoFocus}, loudUpdate = {loudUpdate}, "
+					  f"placement = {placement}")
 
 			# Create a new window for this application, with a suitable title & placement.
-			# We don't actually display this window until the application is launched.
+			# (We don't actually display this window until the application is launched
+			# and the receptive field is ready.)
 		
-		self.window = Window(name + ' Window', app=self, placement=placement)
+		self.window = Window(name + ' Window', app=self, placement=placement, loudUpdate=loudUpdate)
 		
 			# Create a subprocess (GLaDOS process) for this application, to run in that window.
 			# We don't actually start the process until the application is launched.
 	
 		self.process = SubProcess(name, self.window)
 		
-			# Designate the state of this application as not yet started.
+			# Designate the state of this application as "not yet started."
 		
 		self.state = 'not-yet-started'
 		
@@ -414,6 +424,16 @@ class Application_:
 	#__/ End createCommandModule().
 
 	def start(self):	# Generic start method for apps.
+
+		"""This method is called whenever an application is started,
+			whether this happens during system startup because it's
+			an auto-start application, or in response to an explicit
+			command. This default implementation just does some basic
+			bookkeeping. Subclasses that override this method should
+			do a super() call to this version, so as to extend it."""
+
+		# This just means the app has been started (for the first time).
+		self._launched = True
 
 		# For generic apps, generally speaking, the only thing we need to do
 		# when we first start them up is mark them as being in the running state.
@@ -585,10 +605,12 @@ class TheAppSystem(AppSystem_):
 
 
 	def _registerApp(self, appName:str, appClass:type, appAutoStart:bool,
-					 appAutoOpen:bool, appPlacement:Placement, appConfig:dict):
+					 appAutoOpen:bool, appAutoFocus:bool, appLoudUpdate:bool,
+					 appPlacement:Placement, appConfig:dict):
 			
 			# First, call the class constructor to actually create the application object.
-		app = appClass(appName, appAutoStart, appAutoOpen, appPlacement, appConfig)
+		app = appClass(appName, appAutoStart, appAutoOpen, appAutoFocus,
+					   appPlacement, appConfig)
 		
 			# Now add that app object to our dict of apps.
 		self._appDict[appName] = app
@@ -605,6 +627,12 @@ class TheAppSystem(AppSystem_):
 		return thisAppSys._appDict.values()
 
 	def startup(self):
+
+		"""This method handles startup activities for the application system.
+			It is called by the system supervisor during system startup."""
+
+		# So far, the only thing we have to do is start up all of the
+		# individual apps that are marked to be auto-started on startup.
 		for app in self.apps:
 			if app.autoStart:
 				_logger.info(f"        [Apps/Init]     Auto-starting '{app.name}' app...")
@@ -612,15 +640,22 @@ class TheAppSystem(AppSystem_):
 
 	def _registerAvailableApps(self):
 	
+		# NOTE: The below implementation implies that the placement
+		# order for auto-open apps is the same as the order in which
+		# they are listed in the _APP_LIST array defined in this file.
+
+		appConfigs = TheConfiguration().appConfigs
+			
 		for app in _APP_LIST:	 # These are simple dict structures.
 		
 			appName = app['name']
 			appClass = app['class']
 			
+			# Really we should do some error-checking here in case
+			# appName isn't in appConfigs, but... not done yet.
+
 			_logger.info(f"        [Apps/Init]         Registering app '{appName}'...")
 
-			appConfigs = TheConfiguration().appConfigs
-			
 			appAvailable = appConfigs[appName]['avail']
 				# Is the app marked as available to be registered?
 
@@ -630,6 +665,12 @@ class TheAppSystem(AppSystem_):
 			appAutoOpen	 = appConfigs[appName]['auto-open']
 				# Should the app window be automatically opened on field startup?
 
+			appAutoFocus = appConfigs[appName]['auto-focus']
+				# Should the app window grab the command focus when it opens?
+
+			appLoudUpdate = appConfig[appName]['loud-update']
+				# Should the app window wake up the A.I. when it updates its display?
+
 			appPlacement = appConfigs[appName]['placement']
 				# Where should the app window (if any) initially be placed?
 
@@ -638,7 +679,8 @@ class TheAppSystem(AppSystem_):
 			
 			if appAvailable:
 				self._registerApp(appName, appClass, appAutoStart,
-								  appAutoOpen, appPlacement, appConfig)
+								  appAutoOpen, appAutoFocus, appLoudUpdate,
+								  appPlacement, appConfig)
 		
 		#__/ End loop over global _APP_LIST array.
 		
@@ -660,6 +702,17 @@ class TheAppSystem(AppSystem_):
 		_logger.info("[Apps/Open] Automatically opening 'auto-open' app windows...")
 
 		for app in appSys.apps:
+
+			# If this particular application hasn't even been started yet,
+			# we can skip trying to auto-open its window.
+
+			if not app._launched:
+				continue
+
+			# Check to see if this particular app is configured to auto-open
+			# its window.  If so, then we do an auto-open action, and also we
+			# check whether we need to auto-focus.
+
 			if app.autoOpen:
 
 				_logger.info(f"[Apps/Open] Auto-opening '{app.name}' app window(s)...")
@@ -676,6 +729,10 @@ class TheAppSystem(AppSystem_):
 
 				aowi = _AutoOpenWindowAction(app)	# Construct (conceive) the action.
 				aowi.initiate()						# Tell it to initiate its execution.
+
+				# Check for auto-focus.
+				if app.autoFocus:
+					app.grabFocus()		# Tell the app to grab command focus.
 
 				#app.openWins()
 					# This tells the app to go ahead and automatically open
@@ -852,10 +909,20 @@ class The_Info_App(Application_):
 		# Right now, the start method for the Info app doesn't need
 		# to do anything particular, because the app has no dynamic 
 		# behavior yet.  So, just dispatch to our parent class.
+		# However, we may add some dynamic behavior to the app later.
 		super(The_Info_App.__wrapped__, inst).start()
 
 #__/ End class Info_App.
 
+
+@singleton
+class The_Clock_app(Application_):
+
+	"""
+	The 'Clock' app displays the current date and time.
+	"""
+
+	pass
 
 @singleton
 class The_Goals_App(Application_):
@@ -990,52 +1057,64 @@ class The_Unix_App(Application_):
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 _APP_LIST = [
+
+	# We list the Clock app first, so that when it auto-opens, it will pin itself
+	# to the very top of the receptive field (just after the header bar.
 		{
-			'name':			'Help',
+			'name':		'Clock',
+			'class':		The_Clock_app
+		},
+
+	# We list the Info app second, so that when it auto-opens, it will pin itself
+	# just under the Clock app.
+		{
+			'name':		'Info',					# First implemented 1/16/'21.
+			'class':		The_Info_App
+		},
+
+	#========== APPS BELOW THIS LINE ARE NOT YET IMPLEMENTED ==========
+		{
+			'name':		'Help',
 			'class':		The_Help_App
 		},
 		{		
-			'name':			'Apps',
+			'name':		'Apps',
 			'class':		The_Apps_App
 		},
 		{
-			'name':			'Info',
-			'class':		The_Info_App
-		},
-		{
-			'name':			'Goals',
+			'name':		'Goals',
 			'class':		The_Goals_App
 		},
 		{
-			'name':			'Settings',
+			'name':		'Settings',
 			'class':		The_Settings_App
 		},
 		{
-			'name':			'Memory',
+			'name':		'Memory',
 			'class':		The_Memory_App
 		},
 		{
-			'name':			'ToDo',
+			'name':		'ToDo',
 			'class':		The_ToDo_App
 		},
 		{
-			'name':			'Diary',
+			'name':		'Diary',
 			'class':		The_Diary_App
 		},
 		{
-			'name':			'Browse',
+			'name':		'Browse',
 			'class':		The_Browse_App
 		},
 		{
-			'name':			'Comms',
+			'name':		'Comms',
 			'class':		The_Comms_App
 		},
 		{
-			'name':			'Writing',
+			'name':		'Writing',
 			'class':		The_Writing_App
 		},
 		{
-			'name':			'Unix',
+			'name':		'Unix',
 			'class':		The_Unix_App
 		},
 	]
