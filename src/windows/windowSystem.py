@@ -274,6 +274,11 @@ class ViewPort:
 		self._topPos = 0 if topPos is None else topPos
 		self._botPos = self._topPos + self._size
 		
+	def resize(self, size:int):
+		"""Resize the viewport to the given size."""
+		self._size = size
+		self.update()
+
 	def update(self):
 		if self._mode == 'follow-bot':
 			
@@ -377,6 +382,8 @@ class Window:	# A text window within the GLaDOS window system.
 	
 		win = self
 		
+		win._isOpen	  = False	# New windows aren't initially open.
+
 		win._wordWrap = False	# No word-wrapping by default.
 		win._autoSize = False	# No auto-sizing by default.
 
@@ -444,15 +451,59 @@ class Window:	# A text window within the GLaDOS window system.
 		self._viewPort		= ViewPort(self, self._viewSize)
 		self._viewPos		= 0		# Window is initially viewing the top of its text buffer.
 
+			# Create the window's image.
+
 		self._image			= None	# No image initially--but we'll make one right now!
-		self._image			= WindowImage(self, viewSize + Window._decoratorRows, imageWidth)
+		self.createImage()
 
 		self._snapshots		= set()
 
 		self._fieldElem		= None
 			# This is a "field element" object to contain this window.
 
-		self._isOpen		= False		# New windows aren't initially open.
+	def createImage(win):
+		"""Creates this winow's image. Any previous image is discarded."""
+
+		viewSize = win._viewSize
+		decRows = win._decoratorRows
+		imgWidth = win._imageWidth
+
+			# Create a window image of the appropriate dimensions.
+		image = WindowImage(win, viewSize + decRows, imgWidth)
+			# Note that we make room for the top/bottom decorators.
+
+		win._image = image
+
+	def checkSize(win):
+
+		"""If we're in auto-resize mode, then, if needed, resize
+			the window to fit the current size of its content."""
+
+		if win.autoSize:
+			win.resizeToFitContent()
+
+	def resizeToFitContent(win):
+		
+		"""This method causes the window to resize itself to fit the
+			current size of its content buffer."""
+
+		curViewSize = win._viewSize		# Get current size of window's view in rows.
+
+		nContentRows = win._textBuffer.nRows()	# Get number of rows of content.
+		
+		if nContentRows != curViewSize:
+
+			# Change our view size to match the number of rows of content.
+			win._viewSize = viewSize = nContentRows
+
+			# Resize our viewport to match the new view size.
+			win._viewPort.resize(viewSize)
+		
+			# Re-create the window's image from scratch.
+			win.createImage()
+
+			# Re-display the window on the receptive field.
+			win.redisplay()
 
 	@property
 	def wordWrap(thisWin):
@@ -460,7 +511,7 @@ class Window:	# A text window within the GLaDOS window system.
 
 	@wordWrap.setter
 	def wordWrap(thisWin, newValue:bool):
-		_logger.debug(f"Setting word wrapping on window 'thisWin.title' to {newValue}")
+		_logger.debug(f"Setting word-wrapping on window 'thisWin.title' to {newValue}")
 		thisWin._wordWrap = newValue
 			# Also relay this setting to our text buffer.
 		thisWin._textBuffer.wordWrap = newValue
@@ -471,7 +522,15 @@ class Window:	# A text window within the GLaDOS window system.
 
 	@autoSize.setter
 	def autoSize(thisWin, newValue:bool):
+		_logger.debug(f"Setting auto-sizing on window 'thisWin.title' to {newValue}")
+
+		oldValue = thisWin.autoSize
+
 		thisWin._autoSize = newValue
+
+		# If auto-sizing is newly turned on, then go ahead and resize the window.
+		if newValue and not oldValue:
+			thisWin.resizeToFitContent()
 
 	@property
 	def title(thisWin):
@@ -496,9 +555,8 @@ class Window:	# A text window within the GLaDOS window system.
 		"""Tells the window to actually open itself up on the receptive field,
 			if not already open."""
 		
-		win = thisWin
-		
-		field = TheReceptiveField()
+		win		= thisWin
+		field	= TheReceptiveField()	# Gets the singleton instance.
 
 			# Create a field element to contain this window.
 		wElem = WindowElement(field, win)
@@ -517,7 +575,7 @@ class Window:	# A text window within the GLaDOS window system.
 			# wake up the AI (if sleeping) and give it a chance
 			# to respond to the new field contents.
 
-		field.updateView()
+		win.redisplay()
 		
 	
 	def addText(self, text:str):
@@ -531,6 +589,9 @@ class Window:	# A text window within the GLaDOS window system.
 		
 			# Now, ask our window image to repaint itself.
 		self._image.repaint()
+
+			# Also, check whether an auto-resize is needed.
+		self.checkSize()
 	
 	def addLine(self, line:str):
 		"""Add the given single line of text to the window contents (at the end)."""
@@ -543,6 +604,9 @@ class Window:	# A text window within the GLaDOS window system.
 		
 			# Now, ask our window image to repaint itself.
 		self._image.repaint()
+	
+			# Also, check whether an auto-resize is needed.
+		self.checkSize()
 	
 	def render(self):
 		"""Render this window in its image. Assumes image is initially clear."""
@@ -689,10 +753,12 @@ class Window:	# A text window within the GLaDOS window system.
 
 	#__/ End method window.renderBotDecorator().
 
-	def redisplay(self):
+	def redisplay(win:Window):
 		"""Advises the window to re-display itself on the receptive field 
 			(if it's supposed to be visible)."""
-		pass
+		# If the window is currently open, then tell the field to update its view.
+		if win._isOpen:
+			TheReceptiveField().updateView()
 		
 class Windows:
 	def Windows(self):

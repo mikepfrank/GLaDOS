@@ -818,7 +818,12 @@ class The_Info_App(Application_):
 			# appropriate data file in that directory.
 				
 		with open(infoPathname) as file:
-				infoText = "\n" + file.read() + "\n"
+			infoText = '\n' + file.read() # + "\n"
+				# Note: We are padding with blank lines both
+				# before and after the file contents. This is
+				# for visual appearance. But, alternatively
+				# we could have automated padding within the
+				# window.
 				
 		_logger.debug("Loaded inital info text:\n" + infoText)
 
