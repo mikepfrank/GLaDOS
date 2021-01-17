@@ -322,8 +322,18 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		#| Private class constant data members. 				 [class section]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
-		# Note: The following hard-coded default, and its associated configuration
-		# processing should really go into a new module windows/windowSettings.py.
+		# Note: The following hard-coded defaults, and their associated
+		# configuration processing should probably be moved into a new module
+		# apps.appSettings.
+
+		# By default, do apps grab the command focus when they first pop up
+		# their window?  (Not sure yet which default value makes more sense.)
+	_DEFAULT_APP_AUTO_FOCUS = False		# True could also make sense here.
+
+		# By default, do apps poke or wake up the A.I. when they update
+		# their field display.  (Not sure yet which value makes more sense.)
+	_DEFAULT_APP_LOUD_UPDATE = False	# True might also make sense here.
+
 	_DEFAULT_APP_INITIAL_PLACEMENT = Placement.MOVE_TO_BOTTOM
 			# Initially, new application windows will by default open up at
 			# the bottom of the receptive field (but above pinned slots).
@@ -565,27 +575,58 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		
 				_logger.debug(f"About to process app struct: \n" + pformat(appStruct))
 
+					#-----------------------------------------------
 					# The 'name' parameter is the application name.
 					# (Implicitly required to be present, but really 
 					# we should do some error-checking here.)
 		
 				appName = appStruct['name']
 				
+					#--------------------------------------------------
 					# Convert the 'available' parameter (also required)
 					# to a proper Boolean value. (Need error check.)
 			
 				appAvail = appStruct['available']
 				
+					#---------------------------------------------------
 					# Convert the 'auto-start' parameter (also required)
 					# to a proper Boolean value.
 					
 				appAutoStart = appStruct['auto-start']
 				
+					#--------------------------------------------------
 					# Convert the 'auto-open' parameter (also required)
 					# to a proper Boolean value.
 					
 				appAutoOpen = appStruct['auto-open']
 				
+					#--------------------------------------------------
+					# Our first optional parameter is 'auto-focus'.
+					# Default value comes from a class-level constant.
+
+				if 'auto-focus' in appStruct:
+					appAutoFocus = appStruct['auto-focus']
+				else:
+					appAutoFocus = theConfig._DEFAULT_APP_AUTO_FOCUS
+
+					#--------------------------------------------------
+					# Our next optional parameter is 'quiet-update'.
+					# Alternatively, user can supply 'loud-update'.
+					# Default value comes from a class-level constant.
+
+				if 'quiet-update' in appStruct:
+					appQuietUpdate = appStruct['quiet-update']
+					appLoudUpdate = not appQuietUpdate
+
+				elif 'loud-update' in appStruct:
+					appLoudUpdate = appStruct['loud-update']
+					appQuietUpdate = not appLoudUpdate
+
+				else:
+					appLoudUpdate = theConfig._DEFAULT_APP_LOUD_UPDATE
+					appQuietUpdate = not appLoudUpdate
+
+					#------------------------------------------------------
 					# If the 'placement' parameter is available, record it.
 					# Otherwise, we use MOVE_TO_BOTTOM as the default 
 					# initial placement for newly-started apps.
@@ -608,15 +649,20 @@ class TheConfiguration:	# The GLaDOS server configuration.
 				
 					# Construct an 'application attributes' dictionary.
 					# This is what we'll actually end up handing to the app.
+					# This should already have regularization of type values.
 				
 				appAttribs = {	
-					'name':			appName,  			# This one is not strictly necessary to include, but.
+					'name':			appName,	# This one is not strictly necessary to include, but.
 					'avail':		appAvail, 			# Is the app available to be registered?
 					'auto-start':	appAutoStart,		# Should the application auto-start?
 					'auto-open':	appAutoOpen,		# Should the application window auto-open?
-					'placement':	appInitPlacement, 	# Where should we initially place the window on the field?
+					'auto-focus':	appAutoFocus,		# Should the app window grab the command focus?
+					'loud-update':	appLoudUpdate,		# Should app window wake up AI when it updates?
+					'placement':	appInitPlacement,
+						# Where should we initially place the window on the field?
 						# (Allowed values for this are specified in the field.placement.Placement class.)
-					'conf':			appConfig	  		# App-specific configuration info.
+
+					'conf':			appConfig	  		# App-specific configuration record.
 				}
 				
 				_logger.debug(f"Setting attribs of '{appName}' app to:\n    " + 

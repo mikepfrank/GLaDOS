@@ -376,8 +376,11 @@ class Window:	# A text window within the GLaDOS window system.
 			stayVisible:bool=False,
 				 # OPTIONAL. Whether the window should try to stay visible
 				 # in the receptive field. (This means, if it floats to the
-
 				 # top of the receptive field, it sticks and gets anchored there.)
+
+			loudUpdate:bool=True,
+				 # Does the A.I. get woken up when this window changes its display
+				 # on the receptive field?  Yes by default (but see config module).
 		):
 	
 		win = self
@@ -386,6 +389,8 @@ class Window:	# A text window within the GLaDOS window system.
 
 		win._wordWrap = False	# No word-wrapping by default.
 		win._autoSize = False	# No auto-sizing by default.
+
+		win._loudUpdate = loudUpdate	# Set our loud-update attribute.
 
 			#---------------------------------------------------------------------
 			# Before doing anything else, we get some preferences from the window system
@@ -462,7 +467,8 @@ class Window:	# A text window within the GLaDOS window system.
 			# This is a "field element" object to contain this window.
 
 	def createImage(win):
-		"""Creates this winow's image. Any previous image is discarded."""
+
+		"""Creates this window's image. Any previous image is discarded."""
 
 		viewSize = win._viewSize
 		decRows = win._decoratorRows
@@ -753,12 +759,16 @@ class Window:	# A text window within the GLaDOS window system.
 
 	#__/ End method window.renderBotDecorator().
 
-	def redisplay(win:Window):
+	def redisplay(win:Window, loudly:bool=True):
+
 		"""Advises the window to re-display itself on the receptive field 
-			(if it's supposed to be visible)."""
+			(if it's supposed to be visible). If loudly=False is provided,
+			then we request the receptive field to please do it quietly
+			so as not to wake up the A.I."""
+
 		# If the window is currently open, then tell the field to update its view.
 		if win._isOpen:
-			TheReceptiveField().updateView()
+			TheReceptiveField().updateView(loudly=loudly)
 		
 class Windows:
 	def Windows(self):

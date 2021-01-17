@@ -742,9 +742,11 @@ class TheReceptiveField(ReceptiveField_):
 		return field._aiFieldView
 
 
-	def updateView(field:TheReceptiveField):
+	def updateView(field:TheReceptiveField, loudly:bool=True):
 
-		"""Tells the field to update its views because we expect the base data has changed."""
+		"""Tells the field to update its views because we expect the base
+			data has changed. If loudly=False is provided, then we do it
+			quietly, meaning that we try not to wake up the A.I."""
 
 		view = field.view
 
@@ -755,14 +757,15 @@ class TheReceptiveField(ReceptiveField_):
 			view.markNew()
 
 		# Notify field viewers that the view of the field has changed.
-		field.updateViewers()
+		field.updateViewers(loudly=loudly)
 
 
-	def updateViewers(field):
+	def updateViewers(field, loudly:bool=True):
 
 		"""This method tells the field that now is a good time to tell
 			its viewers that the field's contents have changed, if they
-			haven't seen the latest changes already."""
+			haven't seen the latest changes already.  If loudly=False is
+			provided, then we skip waking up the A.I."""
 
 		view = field.view
 		if view.isNew:
@@ -775,6 +778,8 @@ class TheReceptiveField(ReceptiveField_):
 			# NOTE: TODO: Notify the AI's mind that the field view has changed.
 			# This should wake up the AI (if sleeping) and give it a chance to
 			# repond to the new field contents.
+
+		#NOTE: Skip waking up the AI here if loudly=False.
 
 			# NOTE: TODO: Update the field displays of human users who may be
 			# attached to the GLaDOS server via local or remote terminals.
