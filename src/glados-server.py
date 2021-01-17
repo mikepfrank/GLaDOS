@@ -392,8 +392,8 @@ def _main():
 
 	if doNorm:
 		print() # Just visual whitespace; no need to log it.
-		_logger.normal(f"[Main] Welcome to the {systemName} server, v0.0 (pre-alpha).")
-		_logger.normal("[Main] Copyright (C) 2020-21 Metaversal Constructions.")
+		_logger.normal(f"Welcome to the {systemName} server, v0.0 (pre-alpha).")
+		_logger.normal("Copyright (C) 2020-21 Metaversal Constructions.")
 		#_logger.normal("See the LICENSE.txt file for terms of use.")
 			# Commented out because this file doesn't exist yet.
 		print() # Just visual whitespace; no need to log it.
@@ -406,7 +406,8 @@ def _main():
 		#|		subsystems as they are starting up.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	setThreadRole('init')	# Denotes we are initializing the server.
+	setThreadRole('init')
+		# This will denote, in log records, that we are now initializing the server.
 
 	if doNorm:
 		_logger.normal("[Main] (1) Initializing config/settings infrastructure...")
