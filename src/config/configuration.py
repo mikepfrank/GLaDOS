@@ -447,8 +447,12 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		_logger.normal("")
 		_logger.normal(f"    [Config]   Loading server configuration from {_CONFIG_PATHNAME}...")
 
-		with open(_CONFIG_PATHNAME) as cf:
-			conf = load(cf)			# Load structure from hjson file.
+		try:
+			with open(_CONFIG_PATHNAME) as cf:
+				conf = load(cf)			# Load structure from hjson file.
+		except:
+			_logger.error(f"Couldn't load config file {_CONFIG_PATHNAME}.")
+			return {}
 
 		pconf = pformat(conf, indent=4, width=224)
 
@@ -1075,7 +1079,11 @@ class	TheAIPersonaConfig:
 			#-----------------------------------------------------
 			# Now let's load our raw configuration data structure.
 				
-		confStruct = theAIConfig._loadConfig()
+		try:
+			confStruct = theAIConfig._loadConfig()
+		except:
+			_logger.error(f"Couldn't load AI config file {_AI_CONFIG_PATHNAME}.")
+			return
 			
 			#---------------------------------------------------------
 			# OK, let's remember the raw structure we're using in case

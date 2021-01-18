@@ -1,21 +1,21 @@
 #|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#|						TOP OF FILE:	gpt3/api.py
+#|                      TOP OF FILE:    gpt3/api.py
 #|------------------------------------------------------------------------------
-#|	 The below module documentation string will be displayed by pydoc3.
+#|   The below module documentation string will be displayed by pydoc3.
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 """
     MODULE NAME:    gpt3.api                                [Python 3 module]
 
-	IN PACKAGE:		gpt3
-	FULL PATH:		$GIT_ROOT/GLaDOS/src/gpt3/api.py
-	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
-	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
-	APP NAME:		GLaDOS.server (GLaDOS server application)
-	SW COMPONENT:	GLaDOS.gpt3 (GLaDOS GPT-3 interface component)
+    IN PACKAGE:     gpt3
+    FULL PATH:      $GIT_ROOT/GLaDOS/src/gpt3/api.py
+    MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
+    SYSTEM NAME:    GLaDOS (General Lifeform and Domicile Operating System)
+    APP NAME:       GLaDOS.server (GLaDOS server application)
+    SW COMPONENT:   GLaDOS.gpt3 (GLaDOS GPT-3 interface component)
 
 
-	MODULE DESCRIPTION:
-	-----------------
+    MODULE DESCRIPTION:
+    -----------------
 
         This module implements a convenience wrapper around OpenAI's API
         for accessing their GPT-3 language models.  The main feature that
@@ -50,13 +50,13 @@
             DEF_STOP    - Stop string or strings (3 newlines).
 
 
-	PUBLIC FUNCTIONS:
-	
-			countTokens()	- Counts tokens in a string using the
-								API.  Note that this operation is
-								expensive.  For most applications
-								you should use the method in the
-								tokenizer.tokenizer module instead.
+    PUBLIC FUNCTIONS:
+    
+            countTokens()   - Counts tokens in a string using the
+                                API.  Note that this operation is
+                                expensive.  For most applications
+                                you should use the method in the
+                                tokenizer.tokenizer module instead.
 
     EXAMPLES:
 
@@ -95,13 +95,69 @@
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
-#|==============================================================================
-#|  Module imports.                                           [code section]
-#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+    #|==========================================================================
+    #|
+    #|   1. Module imports.                                [module code section]
+    #|
+    #|          Load and import names of (and/or names from) various
+    #|          other python modules and pacakges for use from within
+    #|          the present module.
+    #|
+    #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+        #|======================================================================
+        #|  1.1. Imports of standard python modules.    [module code subsection]
+        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from    os          import  path    # Manipulate filesystem path strings.
+from    pprint      import  pprint, pformat     # Pretty-print complex objects.
+import  json
+
+        #|======================================================================
+        #|  1.2. Imports of modules to support GPT-3.   [module code subsection]
+        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 import openai       # OpenAI's Python bindings for their REST API to GPT-3.
 import backoff      # Utility module for exponential backoff on failures.
 
+        #|======================================================================
+        #|  1.3. Imports of custom application modules. [module code subsection]
+        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+            #|----------------------------------------------------------------
+            #|  The following modules, although custom, are generic utilities,
+            #|  not specific to the present application.
+            #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+    # A simple decorator for singleton classes.
+from infrastructure.decorators  import  singleton
+
+                #-------------------------------------------------------------
+                # The logmaster module defines our logging framework; we
+                # import specific definitions we need from it.  (This is a
+                # little cleaner stylistically than "from ... import *".)
+
+from infrastructure.logmaster import getComponentLogger, ThreadActor, sysName
+
+    # Go ahead and create or access the logger for this module.
+
+global _component, _logger      # Software component name, logger for component.
+
+_component = path.basename(path.dirname(__file__))  # Our package name.
+_logger = getComponentLogger(_component)            # Create the component logger.
+
+global _sw_component    # Full name of this software component.
+_sw_component = sysName + '.' + _component
+
+
+            #|----------------------------------------------------------------
+            #|  The following modules are specific to the present application.
+            #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from tokenizer.tokenizer import countTokens as local_countTokens
+    # Method to count tokens without an API call.
+
+from config.configuration import TheAIPersonaConfig
 
 #|==============================================================================
 #|  Global constants.                                           [code section]
@@ -132,7 +188,7 @@ __all__ = [
     'GPT3Core',         # Class: Instance of the API that remembers its config.
     
         # Module public functions.
-    'countTokens'       # Function to count tokens in a string.
+    'countTokens'       # Function to count tokens in a string. (Costs!)
     
     ]
 
@@ -144,12 +200,12 @@ __all__ = [
 global  DEF_ENGINE          # Default GPT-3 engine name.
 DEF_ENGINE  = 'davinci'     # I believe this is the biggest one.
 
-	#	NOTE: Current Model Pricing Per 1 million tokens (as of 12/24/'20):
-	#	-------------------------------------------------------------------
-	#		DaVinci:	$60.00	(175B params?)					$0.34/Bparam/Mtoken
-	#		Curie:		$ 6.00	(13B params?)					$0.46/Bparam/Mtoken
-	#		Babbage:	$ 1.20	(2.7B params? - or maybe 6.7B)	$0.44/Bparam/Mtoken
-	#		Ada:		# 0.80	(1.3B params?)					$0.61/Bparam/Mtoken
+    #   NOTE: Current Model Pricing Per 1 million tokens (as of 12/24/'20):
+    #   -------------------------------------------------------------------
+    #       DaVinci:    $60.00  (175B params?)                  $0.34/Bparam/Mtoken
+    #       Curie:      $ 6.00  (13B params?)                   $0.46/Bparam/Mtoken
+    #       Babbage:    $ 1.20  (2.7B params? - or maybe 6.7B)  $0.44/Bparam/Mtoken
+    #       Ada:        # 0.80  (1.3B params?)                  $0.61/Bparam/Mtoken
 
 
 global  DEF_TOKENS      # Default number of tokens to return.
@@ -161,9 +217,58 @@ DEF_TEMP    = 0.5       # Is this reasonable?
 global  DEF_STOP        # Default stop string (or list of up to 4).
 DEF_STOP    = "\n\n\n"  # Use 3 newlines (two blank lines) as stop.
 
+global  _ENGINES
+_ENGINES = ['ada', 'babbage', 'curie', 'davinci']
+
+global  _PRICE_MAP
+_PRICE_MAP = {  # US$ per 1,000 tokens
+        'ada':      0.0008,     # = $0.80 / 1M tokens
+        'babbage':  0.0012,     # = $1.20 / 1M tokens
+        'curie':    0.006,      # = $6.00 / 1M tokens
+        'davinci':  0.06,       # = $60.00 / 1M tokens
+    }
+
+global _STATS_FILENAME  # Name of file for saving/loading API usage statistics.
+_STATS_FILENAME = 'api-stats.json'
 
 #|==============================================================================
-#|  Global objects.                                             [code section]
+#|  Global variables.                                             [code section]
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+global inputToks, outputToks    # Cumulative tokens used since last reset.
+
+# Initialize two separate dicts to hold input & output token counts.
+
+inputToks = {
+        'ada':      0,
+        'babbage':  0,
+        'curie':    0,
+        'davinci':  0,
+    }
+
+outputToks = {
+        'ada':      0,
+        'babbage':  0,
+        'curie':    0,
+        'davinci':  0,
+    }
+
+global expenditures
+expenditures = {
+        'ada':      0,
+        'babbage':  0,
+        'curie':    0,
+        'davinci':  0,
+    }
+
+global totalCost
+totalCost = 0           # Initialize at load/save time.
+
+global _statsLoaded     # Have we attempted to load stats from the file?
+_statsLoaded = False    # We haven't tried to load stats from the file yet.
+
+#|==============================================================================
+#|  Global objects.                                               [code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 global  _theTokenCounterCore    # A core connection for counting tokens.
@@ -539,7 +644,7 @@ class Completion:
             if isinstance(arg,GPT3Core):
                 core = arg
         
-                # If there's a dict, assume it's a compleition object.
+                # If there's a dict, assume it's a completion object.
         
             if isinstance(arg,dict):
                 complStruct = arg
@@ -703,7 +808,43 @@ class Completion:
         """Private instance method to retrieve a completion from the
             core API, with automatic exponential backoff and retry."""
             
-        return openai.Completion.create(**apiArgs)
+        # If the usage statistics file hasn't been loaded already, do it now.
+        if not _statsLoaded:
+            loadStats()
+
+        self._accountForInput(apiArgs)
+
+        complStruct = openai.Completion.create(**apiArgs)
+        
+        self._accountForOutput(apiArgs['engine'], complStruct)
+
+        saveStats()
+
+        return complStruct
+
+
+    # Make these regular functions?
+    
+    def _accountForInput(self, apiArgs):
+        
+        engine = apiArgs['engine']
+        prompt = apiArgs['prompt']
+
+        nToks = local_countTokens(prompt)
+
+        _logger.debug(f"Counted {nToks} tokens in input text [{prompt}]")
+
+        inputToks[engine] = inputToks[engine] + nToks
+        
+    def _accountForOutput(self, engine, complStruct):
+
+        text = ''.join(complStruct['choices'][0]['text'])
+
+        nToks = local_countTokens(text)
+
+        _logger.debug(f"Counted {nToks} tokens in output text [{text}].")
+
+        outputToks[engine] = outputToks[engine] + nToks
 
 #__/ End class Completion.
 
@@ -895,21 +1036,188 @@ class GPT3Core:
 #| Module object initialization.                                [code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-_theTokenCounterCore = GPT3Core(engine='ada', echo=True, maxTokens=0, logProbs=0)
+_theTokenCounterCore = GPT3Core(engineId='ada', echo=True, maxTokens=0, logProbs=0)
     # This connection provides functionality needed to count tokens.
-	# Note we use the 'ada' engine because it is cheapest ($0.80/1M tokens).
+    # Note we use the 'ada' engine because it is cheapest ($0.80/1M tokens).
 
 #|==============================================================================
 #| Module function definitions.                                 [code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+def statsPathname():
+
+    """Constructs and returns the pathname to the api-stats.json file."""
+
+        #----------------------------------------------------------
+        # First, get the AI persona configuration, because it 
+        # contains key information we need, such as the location
+        # of the AI's data directory.
+
+    aiConf = TheAIPersonaConfig()
+        # Note this retrieves the singleton instance 
+        # of the TheAIPersonaConfig class.
+
+        #------------------------------------------------------
+        # Next, get the location of the AI's data directory,
+        # which is in the AI persona configuration object.
+                
+    aiDataDir = aiConf.aiDataDir
+        
+    _logger.debug(f"Got AI data directory = {aiDataDir}.")
+
+        #-----------------------------------------------------
+        # Next, we need to get the name of the stats json file
+        # (relative to that directory). At the moment, this
+        # comes from a module constant, defined above.
+                
+    statsFilename = _STATS_FILENAME
+        
+        #------------------------------------------------------
+        # Next, we need to construct the full pathname of the
+        # API statistics JSON file.
+        
+    statsPathname = path.join(aiDataDir, statsFilename)
+        
+        #-------------------------
+        # Return it to the caller.
+
+    return statsPathname
+
 def countTokens(text:str=None):
+
+    """Counts tokens in the given text using the online Ada model (pretty cheap)."""
+
     if text == None or text == "":
         return 0
     else:
             # Please note this is not free! It uses probably 2*text of quota.
         inputComplObj = _theTokenCounterCore.genCompletion(text)
         return inputComplObj.nTokens
+
+def loadStats():
+
+    """Loads the api-stats.json file from the AI's data directory."""
+
+    global _statsLoaded, inputToks, outputToks, expenditures, totalCost
+
+        # This constructs the full filesystem pathname to the stats file.
+    statsPath = statsPathname()
+
+    try:
+        with open(statsPath) as inFile:
+            stats = json.load(inFile)
+            inputToks = stats['input-tokens']
+            outputToks = stats['output-tokens']
+            expenditures = stats['expenditures']
+            totalCost = stats['total-cost']
+        
+        #_logger.normal(f"Loaded API usage stats from {statsPath}: \n{pformat(stats, width=25)}")
+
+    # Ignore file doesn't exist errors.
+    except:
+        _logger.warn(f"Couldn't open API usage statistics file {statsPath}--it might not exist yet.")
+        pass
+
+    finally:
+        _statsLoaded = True     # Hey, we tried at least!
+
+    displayStats()
+
+    return
+
+def displayStats():
+
+    """Displays usage statistics in an easily-readable format."""
+
+    _logger.normal("")
+    _logger.normal("             Token Counts")
+    _logger.normal("        -----------------------     USD")
+    _logger.normal(" Engine   Input  Output   Total    Cost")
+    _logger.normal("======= ======= ======= ======= =======")
+    
+    cumIn = cumOut = cumTot = 0
+    
+
+    for engine in _ENGINES:
+        
+        engStr = "%7s" % engine
+        inToks = inputToks[engine]
+        outToks = outputToks[engine]
+        total = inToks + outToks
+
+        inTokStr = "%7d" % inToks
+        outTokStr = "%7d" % outToks
+        totStr = "%7d" % total
+
+        cost = "$%6.2f" % expenditures[engine]
+
+        _logger.normal(f"{engStr} {inTokStr} {outTokStr} {totStr} {cost}")
+
+        cumIn = cumIn + inToks
+        cumOut = cumOut + outToks
+        cumTot = cumTot + total
+
+    cumInStr = "%7d" % cumIn
+    cumOutStr = "%7d" % cumOut
+    cumTotStr = "%7d" % cumTot
+
+    totStr = "$%6.2f" % totalCost
+
+    _logger.normal("------- ------- ------- ------- -------")
+    _logger.normal(f"TOTALS: {cumInStr} {cumOutStr} {cumTotStr} {totStr}")
+    _logger.normal("")
+
+def saveStats():
+
+    """Saves cumulative API usage statistics to the api-stats.json file
+        in the AI's data directory."""
+
+    global expenditures, totalCost
+
+        # This constructs the full filesystem pathname to the stats file.
+    statsPath = statsPathname()
+
+    with open(statsPath, 'w') as outFile:
+
+        (costs, dollars) = recalcDollars()
+
+        expenditures = costs
+        totalCost = dollars
+
+        stats = {
+                'input-tokens': inputToks,
+                'output-tokens': outputToks,
+                'expenditures': costs,
+                'total-cost': dollars
+            }
+
+        
+        _logger.debug(f"Saving API usage stats to {statsPath}: \n{pformat(stats, width=25)}")
+
+        json.dump(stats, outFile)
+
+    displayStats()
+            # Pretty-print it to the file.
+        #pprint(stats, width=25, stream=outFile)
+
+
+def recalcDollars():
+
+    costs = dict()
+    dollars = 0
+    for engine in _PRICE_MAP.keys():
+        nToks = inputToks[engine] + outputToks[engine]
+        engCost = nToks * _PRICE_MAP[engine]
+        costs[engine] = engCost
+        dollars = dollars + engCost
+        
+    return (costs, dollars)
+
+#|==============================================================================
+#| Module main load-time execution.                               [code section]
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+#loadStats()
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #|  END FILE:   gpt3/api.py
