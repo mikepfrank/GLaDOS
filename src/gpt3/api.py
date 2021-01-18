@@ -231,6 +231,9 @@ _PRICE_MAP = {  # US$ per 1,000 tokens
 global _STATS_FILENAME  # Name of file for saving/loading API usage statistics.
 _STATS_FILENAME = 'api-stats.json'
 
+global _aiPath
+_aiPath = None
+
 #|==============================================================================
 #|  Global variables.                                             [code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -1048,6 +1051,8 @@ def statsPathname():
 
     """Constructs and returns the pathname to the api-stats.json file."""
 
+    global _aiPath
+
         #----------------------------------------------------------
         # First, get the AI persona configuration, because it 
         # contains key information we need, such as the location
@@ -1062,6 +1067,8 @@ def statsPathname():
         # which is in the AI persona configuration object.
                 
     aiDataDir = aiConf.aiDataDir
+
+    _aiPath = aiDataDir
         
     _logger.debug(f"Got AI data directory = {aiDataDir}.")
 
@@ -1082,6 +1089,9 @@ def statsPathname():
         # Return it to the caller.
 
     return statsPathname
+
+def textPath():
+    return path.join(_aiPath, 'api-stats.txt')
 
 def countTokens(text:str=None):
 
@@ -1125,47 +1135,59 @@ def loadStats():
 
     return
 
+global _statFile
+_statFile = None
+
+def statLine(line):
+    _logger.normal(line)
+    print(line, file=_statFile)
+
 def displayStats():
 
-    """Displays usage statistics in an easily-readable format."""
+    """Displays usage statistics in an easily-readable format.
+        Also saves them to a file api-stats.txt."""
 
-    _logger.normal("")
-    _logger.normal("             Token Counts")
-    _logger.normal("        -----------------------     USD")
-    _logger.normal(" Engine   Input  Output   Total    Cost")
-    _logger.normal("======= ======= ======= ======= =======")
-    
-    cumIn = cumOut = cumTot = 0
-    
+    global _statFile
 
-    for engine in _ENGINES:
+    with open(textPath(), 'w') as _statFile:
+
+        statLine("")
+        statLine("             Token Counts")
+        statLine("        -----------------------     USD")
+        statLine(" Engine   Input  Output   Total    Cost")
+        statLine("======= ======= ======= ======= =======")
         
-        engStr = "%7s" % engine
-        inToks = inputToks[engine]
-        outToks = outputToks[engine]
-        total = inToks + outToks
-
-        inTokStr = "%7d" % inToks
-        outTokStr = "%7d" % outToks
-        totStr = "%7d" % total
-
-        cost = "$%6.2f" % expenditures[engine]
-
-        _logger.normal(f"{engStr} {inTokStr} {outTokStr} {totStr} {cost}")
-
-        cumIn = cumIn + inToks
-        cumOut = cumOut + outToks
-        cumTot = cumTot + total
-
-    cumInStr = "%7d" % cumIn
-    cumOutStr = "%7d" % cumOut
-    cumTotStr = "%7d" % cumTot
-
-    totStr = "$%6.2f" % totalCost
-
-    _logger.normal("------- ------- ------- ------- -------")
-    _logger.normal(f"TOTALS: {cumInStr} {cumOutStr} {cumTotStr} {totStr}")
-    _logger.normal("")
+        cumIn = cumOut = cumTot = 0
+        
+    
+        for engine in _ENGINES:
+            
+            engStr = "%7s" % engine
+            inToks = inputToks[engine]
+            outToks = outputToks[engine]
+            total = inToks + outToks
+    
+            inTokStr = "%7d" % inToks
+            outTokStr = "%7d" % outToks
+            totStr = "%7d" % total
+    
+            cost = "$%6.2f" % expenditures[engine]
+    
+            statLine(f"{engStr} {inTokStr} {outTokStr} {totStr} {cost}")
+    
+            cumIn = cumIn + inToks
+            cumOut = cumOut + outToks
+            cumTot = cumTot + total
+    
+        cumInStr = "%7d" % cumIn
+        cumOutStr = "%7d" % cumOut
+        cumTotStr = "%7d" % cumTot
+    
+        totStr = "$%6.2f" % totalCost
+    
+        statLine("------- ------- ------- ------- -------")
+        statLine(f"TOTALS: {cumInStr} {cumOutStr} {cumTotStr} {totStr}")
+        statLine("")
 
 def saveStats():
 
