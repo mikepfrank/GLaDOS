@@ -1,7 +1,7 @@
 # tokenizer.py
 
 	# A simple decorator for singleton classes.
-from infrastructure.decorators	import	singleton
+#from infrastructure.decorators	import	singleton
 
 	# Load OpenAI's GPT-2 tokenizer module.
 from .encoder 					import 	get_encoder
@@ -14,7 +14,7 @@ __all__ = [
 	'countTokens'	# Utility method to quickly count tokens.
 ]
 
-@singleton
+#@singleton
 class Tokenizer:
 	"""
 		This is a singleton class defining the tokenizer object.

@@ -272,6 +272,33 @@ class The_CognoSys_Subscriber(ActionSubscriber_):
 			tcStr.noticeAction(action)
 
 
+# $50/mo. / $0.06/1ktok = 833 ktok
+# 833 ktok / 2,048 = 407 fields / mo. = 58 fields/wk. = 8.3 fields/day
+
+class MindThread: pass
+class MindThread(ThreadActor):
+
+	defaultRole = 'Mind'
+	defaultComponent = _sw_component
+
+	def __init__(newMindThread:MindThread, mindSystem:TheCognitiveSystem):
+
+		"""This thread is responsible for executing the main loop of
+			the AI's mind.  The mind can be in any of several different
+			major states of consciousness:
+
+				awake - In this state, the AI wakes up at least once every
+							some number of minutes and does an action.
+
+				asleep - In this state, the AI is going to sleep for some
+							longer interval, and will not act until that
+							time is up unless it is woken up.
+
+				hibernating - In this state, the AI basically sleeps
+			   			indefinitely until something wakes it up.
+		"""
+
+
 @singleton
 class TheCognitiveSystem:
 	#---------------------------------------------------------------------------
@@ -324,9 +351,11 @@ class TheCognitiveSystem:
 	
 		mind._console = None		# The system console is not attached at first.
 	
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#| Step 0:  Fetch key configuration parameters from our config data.
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Step 0:  Fetch key configuration parameters from our config data.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		_logger.info(f"        [Mind/Init]     Configuring mind settings...")
 
 			# First, configure all of the default settings for the mind system.
 		settings = TheMindSettings.config()
@@ -335,52 +364,57 @@ class TheCognitiveSystem:
 		personaName = TheMindSettings.personaName
 		personaID	= TheMindSettings.personaID
 		
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#| Step 0.5:  Create an object to manage the AI's persona, and an 
-		#|	associated "entity" object to represent the persona.
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Step 0.5:  Create an object to manage the AI's persona, and an 
+			#|	associated "entity" object to represent the persona.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		mind._persona = persona = TheAIPersona(personaName, personaID)
 		mind._entity = entity = persona.entity
 	
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#| Step 1:  Create (the input interface to) our AI's receptive field.
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Step 1:  Create (the input interface to) our AI's receptive field.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
 			# Next, we create the receptive field (which actually just means, 
 			# the GLaDOS system's input interface to the core AI's real receptive 
 			# field).
 		
-		_logger.info(f"            [Mind/Init] Creating receptive field...")
+		_logger.info(f"        [Mind/Init]     Creating receptive field...")
 		field = TheReceptiveField(entity)		# This figures out its own size.
 		mind._field = field				# Stash the field for later reference.
 		
 			# Now is probably a good time to attach ourselves to the console, so 
 			# that the operator can immediately see the field we just created.
 			
-		_logger.info("            [Mind/Init] Attaching to console...")
+		_logger.info("        [Mind/Init]     Attaching to console...")
 		if console is not None:
 			mind.setConsole(console)
 			
 		
-		#|--------------------------------------
-		#| Step 2:  Create our cognitive stream.
+			#|--------------------------------------
+			#| Step 2:  Create our cognitive stream.
 		
-		_logger.info("            [Mind/Init] Initializing cognitive stream...")
+		_logger.info("        [Mind/Init]     Initializing cognitive stream...")
 		cogStream = TheCognitiveStream(mind)
 		mind._cogStream = cogStream
 		
-		#|---------------------------------------
-		#| Step 3:  Subscribe to notifications.
+			#|---------------------------------------
+			#| Step 3:  Subscribe to notifications.
 		
-		_logger.info("            [Mind/Init] Subscribing to notifications for actions in our cognitive sphere...")
+		_logger.info("        [Mind/Init]     Subscribing to notifi"
+					 "cations for actions in our cognitive sphere...")
 		mind._subscriber = The_CognoSys_Subscriber(mind)
 			# This automatically subscribes itself to the AI Cognosphere Channel.
 		
-		#|---------------------------------------
-		#| Step 4:  Create our cognitive process.
+			#|---------------------------------------
+			#| Step 4:  Create our cognitive process.
 		
-		## Not implemented yet.
+		# For now, this will just be a thread. Later on we will make
+		# it into a bona-fide GLaDOS process.
+
+		mind._thread = thread = MindThread(mind)
+		
 	
 	#__/ End singleton instance initializer theCognitiveSystem.__init__().
 

@@ -689,6 +689,24 @@ LOG_FORMATSTR = (	# Current time.
 				)								  
 
 
+# ALT_FORMATSTR = (	# Current time.
+# 				 "%(asctime)s | "										+
+# 					# Logger name.
+# 				 "%%(name)-%ds | "			% NAME_FIELDWIDTH			+	
+# 					# Thread & its logging context (role & component):
+# 				 "%%(threadName)%ds: "		% THREADNAME_FIELDWIDTH		+
+# 				 "               "		+
+# 				 "          | "			+
+# 					# Source code file, line #, and function/method name.
+# 				 "%%(module)%ds.py:"		% MODULE_FIELDWIDTH			+	
+# 				 "%(lineno)-4d: "										+
+# 				 "%%(funcName)-%ds | "		% FUNCNAME_FIELDWIDTH		+
+# 					# Log level and log message.
+# 				 "%%(levelname)%ds: "		% LEVELNAME_FIELDWIDTH		+	
+# 				 "%(message)s"
+# 				)								  
+
+
 				#|--------------------------------------------------------------
 				#|
 				#|	CONS_WARN, CONS_INFO,		[public global constant booleans]
@@ -1567,13 +1585,30 @@ class CleanFormatter(logging.Formatter):
 
 			# Shorten all the string fields of the record as necessary to fit within the designated field widths.
 		
-		if hasattr(record,'name'):			record.name			= _limitLength(record.name,			NAME_FIELDWIDTH)
-		if hasattr(record,'threadName'):	record.threadName	= _limitLength(record.threadName,	THREADNAME_FIELDWIDTH)
-		if hasattr(record,'component'):		record.component	= _limitLength(record.component,	COMPONENT_FIELDWIDTH)
-		if hasattr(record,'threadRole'):	record.threadrole	= _limitLength(record.threadrole,	THREADROLE_FIELDWIDTH)
-		if hasattr(record,'module'):		record.module		= _limitLength(record.module,		MODULE_FIELDWIDTH)
-		if hasattr(record,'funcName'):		record.funcName		= _limitLength(record.funcName+'()',FUNCNAME_FIELDWIDTH)
-		if hasattr(record,'levelname'):		record.levelname	= _limitLength(record.levelname,	LEVELNAME_FIELDWIDTH)
+		if hasattr(record,'name'):
+			record.name			= _limitLength(record.name,			NAME_FIELDWIDTH)
+
+		if hasattr(record,'threadName'):
+			record.threadName	= _limitLength(record.threadName,	THREADNAME_FIELDWIDTH)
+
+		if hasattr(record,'component'):
+			record.component	= _limitLength(record.component,	COMPONENT_FIELDWIDTH)
+		else:
+			record.component	= _limitLength("(unknown)",	COMPONENT_FIELDWIDTH)
+
+		if hasattr(record,'threadRole'):
+			record.threadrole	= _limitLength(record.threadrole,	THREADROLE_FIELDWIDTH)
+		else:
+			record.threadrole	= _limitLength("(unknown)",	THREADROLE_FIELDWIDTH)
+
+		if hasattr(record,'module'):
+			record.module		= _limitLength(record.module,		MODULE_FIELDWIDTH)
+
+		if hasattr(record,'funcName'):
+			record.funcName		= _limitLength(record.funcName+'()',FUNCNAME_FIELDWIDTH)
+
+		if hasattr(record,'levelname'):
+			record.levelname	= _limitLength(record.levelname,	LEVELNAME_FIELDWIDTH)
 		
 		return	logging.Formatter.format(self, record)
 	

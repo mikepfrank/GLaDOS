@@ -881,16 +881,16 @@ class The_Info_App(Application_):
 
 			#----------------------------------------------------------
 			# First, get the AI persona configuration, because it 
-			# contains # key information we need, such as the location
+			# contains key information we need, such as the location
 			# of the AI's data directory.
 
 		aiConf = TheAIPersonaConfig()
 			# Note this retrieves the singleton instance 
-			# of the Configuration class.
+			# of the TheAIPersonaConfig class.
 
 			#------------------------------------------------------
-			# First, get the location of the AI's data directory,
-			# which is in the system configuration.
+			# Next, get the location of the AI's data directory,
+			# which is in the AI persona configuration object.
 				
 		aiDataDir = aiConf.aiDataDir
 		
@@ -952,12 +952,11 @@ class The_Info_App(Application_):
 #__/ End class Info_App.
 
 
-class Clock_App_(Application_):
-	pass
+class Clock_App_(Application_):	pass
 
-class ClockThread_(ThreadActor): pass
+class ClockThread: pass
 
-class ClockThread(ClockThread_):
+class ClockThread(ThreadActor):
 
 	"""A simple thread to operate the clock. This just calls
 		the clock app's .doTick() method once per second."""
