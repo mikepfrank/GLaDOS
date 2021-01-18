@@ -416,7 +416,7 @@ class ThePromptSeparator(FieldElement_):
 	"""This is a special field element that is (semi-) permanently located at 
 		the top of the entire field."""
 	
-	bgChar = "#"	# Fill separator row with this character.
+	bgChar = '='	# Fill separator row with this character.
 	
 		# "Instructions" to embed in the separator bar.
 	sepInstrs = "Enter a command line or free-form text. (/Help)"
