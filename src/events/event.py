@@ -25,6 +25,8 @@
 from datetime import datetime, timezone, timedelta
 	# Needed for tracking the creation date and time of events.
 
+from infrastructure.time import tznow
+
 from config.configuration import TheConfiguration
 
 #from .author import Author	# Abstract superclass of author objects.
@@ -148,18 +150,6 @@ class SecondEventFormat(PromptedEventFormat):
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
 class TextEvent: pass
-
-def tznow():
-
-	"""Returns a current datetime object localized to the user's timezone."""
-	
-	config = TheConfiguration()		# System configuration.
-	tzConf = config.timezone		# User's time zone preference.
-	td = timedelta(hours=tzConf)	# Convert to a timedelta object.
-	tz = timezone(td)				# Create the timezone object.
-
-	return datetime.now(tz)
-		# The time will be displayed in the user's timezone by default.
 
 class TextEvent:
 	

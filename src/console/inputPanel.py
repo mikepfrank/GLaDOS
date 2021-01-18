@@ -110,6 +110,8 @@ class PromptTimer(ThreadActor):
 	
 	def __init__(newPromptTimer:PromptTimer, inputPanel:InputPanel):
 	
+		_logger.debug("[Input Panel] Creating thread to update prompt. ")
+
 		timer = newPromptTimer
 		timer._inputPanel = inputPanel
 		timer._exitRequested = False

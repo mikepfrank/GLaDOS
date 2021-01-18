@@ -189,6 +189,12 @@ class FieldSlot:
 			# Go ahead and place this slot, if possible.
 		slot.place()
 
+	def markChanged(slot):
+		"""Mark the contents of this slot as having changed
+			since the field was last rendered."""
+		base = slot.base
+		base.markChanged()
+
 	@property
 	def placement(this):
 		return this._placement
@@ -238,7 +244,6 @@ class FieldSlot:
 
 		thisSlot.place()	# Re-place this slot.
 
-
 	def place(slot:FieldSlot, 
 				# Where to place the slot on the field?
 			where:Placement=None):
@@ -267,6 +272,7 @@ class FieldSlot:
 		base.insertSlotAt(slot, pos)
 		slot._posIndex = pos			# Update the slot's index.
 	
+
 	def remove(slot:FieldSlot):
 		"""Removes this slot from the field."""
 		
@@ -332,6 +338,12 @@ class FieldElement_:
 		slot = FieldSlot(thisFE, where, field)
 		
 		thisFE._slot			= slot		# Remember our slot.
+
+	def markChanged(elem):
+		"""Mark the contents of this field element's slot as having changed
+			since the field was last rendered."""
+		slot = elem.slot
+		slot.markChanged()
 
 	@property
 	def slot(thisFE):
@@ -432,7 +444,8 @@ class ThePromptSeparator(FieldElement_):
 			# receptive field, except this will really end up being just above
 			# the actual prompt area, which should have been previously pinned.
 
-		psElem._image = '\n' + psElem.sepBarStr
+		psElem._image = psElem.sepBarStr
+		#psElem._image = '\n' + psElem.sepBarStr
 			# The extra newline above is just to help it stand out, and
 			# make sure it starts at the start of the line.
 
@@ -518,7 +531,7 @@ class TextEventElement(FieldElement_):
 
 		teElem = thisTextEventElement
 
-		return '\n' + teElem._textEvent.display()
+		return teElem._textEvent.display() + '\n'
 
 
 class WindowElement(FieldElement_):
@@ -548,6 +561,10 @@ class WindowElement(FieldElement_):
 		wElem = thisWinElem			# Shorter name for this field element.
 		win = wElem.win				# Get the actual window this element is holding.
 		imageObj = win.image		# This is a WindowImage object with a raw image data structure.
-		viewTxt = imageObj.view()	# This asks that object for its content as a single string.
+
+		viewTxt = imageObj.view() + '\n'
+			# This asks that object for its content as a single string.
+			# We append a newline to it to add a blank line after the window.
 
 		return viewTxt	# Returns the view text as the image string for this field element.
+

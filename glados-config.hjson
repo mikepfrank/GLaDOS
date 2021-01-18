@@ -74,7 +74,10 @@
 {	# This is the top-level record of the server config file, glados-config.hjson.
 
 		/* This is the timezone, expressed as a number of hours offset from
-			UTC, to be used for displaying times, e.g. in prompt strings. */
+			UTC, to be used for displaying times, e.g. in prompt strings.
+
+			NOTE: If you have set your 'TZ' environment variable, then it
+			will override this setting! */
 
 	timezone:		-7 		# U.S. Mountain Standard Time
 
@@ -271,6 +274,11 @@
 				# However, we will still allow the AI to minimize or close
 				# the clock app if it wants to.
 
+			placement:		'pinned-to-top'		# We want this app to be prominent.
+				#				\
+				# This means, initially place the app's window near the top
+				# edge of the receptive field (just below the field header).
+				
 			auto-focus:		true
 				#			  \
 				# This says that the app will grab the command focus when
@@ -288,6 +296,7 @@
 
 			app-config:	{
 				
+				#mode:	seconds		# Note this one is commented out.
 				mode:	minutes
 					#		\
 					# We start up the Clock app in 'minutes' mode rather than

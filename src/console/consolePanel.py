@@ -62,8 +62,12 @@ class ConsoleFeeder(ThreadActor):
 	defaultComponent = _sw_component
 
 	def __init__(newConsoleFeeder, panel:ConsolePanel=None):
+
+		_logger.debug("[Console Panel] Creating thread to feed console panel.")
+
 		feeder = newConsoleFeeder
 		feeder._panel = panel
+
 		feeder.exitRequested = False
 
 		feeder.defaultTarget = feeder._main
