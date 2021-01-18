@@ -222,13 +222,16 @@ class _TheBaseFieldData:
 		base._slots = []
 		base._nSlots = 0	# Zero slots on the field initially.
 
-		base._changed = True
+		base.markChanged()
 			# Has the base data changed since last rendered?
 
 	@property
 	def hasChanged(base):
 		return base._changed
 	
+	def markChanged(base):
+		base._changed = True
+
 	def markSeen(base):
 		"""Mark the base data as having been seen since it was last changed."""
 		base._changed = False
@@ -243,7 +246,7 @@ class _TheBaseFieldData:
 
 		base.slots.insert(pos, slot)		# Native Python list method.
 		base._nSlots = base._nSlots + 1		# Increment number of slots.
-		base._changed = True				# Remember that the data has changed.
+		base.markChanged()
 
 
 	def move(base:_TheBaseFieldData, slot:FieldSlot, gravity:str, soft=False):
@@ -457,6 +460,8 @@ class TheAIFieldView(FieldView_):
 		# This works by iterating through elements in the base data,
 		# and just adding their images as items in the data set.
 		
+		_logger.debug("Rendering the view of all receptive field elements...")
+
 		base = view.baseData	# Get the base data.
 
 		# If the base data hasn't changed since we last rendered it,
@@ -482,7 +487,7 @@ class TheAIFieldView(FieldView_):
 			# Mark the base data as having been seen now (by us at least).
 		base.markSeen()
 
-		_logger.debug(f"aiFieldView.render(): Just rendered field view as: [[{text}]]")
+		#_logger.debug(f"aiFieldView.render(): Just rendered field view as: [[{text}]]")
 
 	@property
 	def data(inst):
@@ -513,7 +518,7 @@ class TheAIFieldView(FieldView_):
 		if nTokens is None:		# Not calculated yet?
 			text = inst.text()	# Put together the complete text.
 
-			_logger.debug(f"About to count tokens in text: [{text}]")
+			#_logger.debug(f"About to count tokens in text: [{text}]")
 
 			inst._nTokens = nTokens = countTokens(text)
 		return nTokens
@@ -747,6 +752,8 @@ class TheReceptiveField(ReceptiveField_):
 		"""Tells the field to update its views because we expect the base
 			data has changed. If loudly=False is provided, then we do it
 			quietly, meaning that we try not to wake up the A.I."""
+
+		_logger.debug("Receptive field is updating its view...")
 
 		view = field.view
 

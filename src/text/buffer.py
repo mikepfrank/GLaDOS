@@ -190,7 +190,9 @@ class TextBuffer:		# A text buffer.
 		return len(self._rows)
 	
 	def clear(self):
+
 		"""Empties the text buffer of all content."""
+
 		self._rows = None
 		
 	def addText(self, text:str = None):

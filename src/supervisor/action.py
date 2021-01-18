@@ -402,10 +402,10 @@ class AnnouncementAction_(Action_):
 	def text(thisAnnouncementAction:AnnouncementAction_):
 
 		"""For announcement actions, we generate their text with a little
-			highlighting (surroundings asterisks) and a newline."""
+			highlighting (surroundings asterisks), and a newline."""
 
 		annAct = thisAnnouncementAction
-		text = f"*** {annAct.description} ***\n"
+		text = f"*** {annAct.description} ***" + '\n'
 
 		return text
 
@@ -423,7 +423,7 @@ class AnnouncementAction_(Action_):
 		_logger.debug(f"Carrying out execution details of announcement action '{annAct.description}'.")
 
 			# Print the announcement to STDERR.
-		print('\n' + annAct.text, file=stderr)	# Extra newline before to make it stand out.
+		print(annAct.text, file=stderr)	
 			# This will actually go to the virterm and thence to the console panel.
 
 		# Eventually we should also send it to all attached terminal sessions.

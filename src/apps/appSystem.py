@@ -124,7 +124,9 @@
 		#|	1.1. Imports of standard python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from os			import path				# Manipulate filesystem path strings.
+from threading	import RLock	# Re-entrant mutex lock.
+from time		import sleep	# Causes thread to give up control for a period.  Used in ClockThread
+from os			import path		# Manipulate filesystem path strings.
 
 
 		#|======================================================================
@@ -141,7 +143,7 @@ from os			import path				# Manipulate filesystem path strings.
 				# import specific definitions we need from it.	(This is a
 				# little cleaner stylistically than "from ... import *".)
 
-from infrastructure.logmaster	import getComponentLogger
+from infrastructure.logmaster	import sysName, getComponentLogger, ThreadActor
 
 		# Go ahead and create or access the logger for this module.
 
@@ -150,9 +152,12 @@ global _component, _logger		# Software component name, logger for component.
 _component = path.basename(path.dirname(__file__))	# Our package name.
 _logger = getComponentLogger(_component)			# Create the component logger.
 
+global _sw_component	# Full name of this software component.
+_sw_component = sysName + '.' + _component
 
 		# A simple decorator for singleton classes.
 from infrastructure.decorators	import	singleton
+from infrastructure.time		import	envTZ, timeZone, tznow, tzAbbr
 from infrastructure.utils		import	countLines
 
 			#|----------------------------------------------------------------
@@ -200,11 +205,16 @@ from mind.aiActions				import	AnnounceFieldExistsAction
 
 global __all__	# List of public symbols exported by this module.
 __all__ = [
-		'Application_',		# Abstract base class for deriving applications.
 		'AppSystem',		# Singleton class for the application system.
-		'The_Help_App',		# Application that manages the help system.
+
+		'Application_',		# Abstract base class for deriving applications.
+
+			# These apps have already been implemented:
 		'The_Info_App',		# Application that manages the information window.
+		'The_Clock_App',	# Application that manages the clock window.
+
 			# Add others as they are implemented.
+		'The_Help_App',		# Application that manages the help system.
 	]
 
 
@@ -332,7 +342,8 @@ class Application_:
 
 		self.name 				= name
 
-		self._launched			= False			# Easy way to tell we've never been started.
+		self._launched			= False		# Easy way to tell we've never been started.
+		self._hasFocus			= False		# No app has the focus yet when first created.
 
 		self.autoStart			= autoStart
 		self.autoOpen			= autoOpen
@@ -373,6 +384,16 @@ class Application_:
 	#__/ End initializer for class Application.
 			
 			
+	def grabFocus(app):
+
+		"""Tells the app to grab the command focus, if it doesn't already have it.
+			This also updates the window appearance to the focus-having style."""
+
+		app._hasFocus = True
+
+		# Here we need to tell the window system that our app's window has the focus now.
+		
+
 	def appSpecificInit(self, conf:dict): 
 	
 		""" 
@@ -610,7 +631,7 @@ class TheAppSystem(AppSystem_):
 			
 			# First, call the class constructor to actually create the application object.
 		app = appClass(appName, appAutoStart, appAutoOpen, appAutoFocus,
-					   appPlacement, appConfig)
+					   appLoudUpdate, appPlacement, appConfig)
 		
 			# Now add that app object to our dict of apps.
 		self._appDict[appName] = app
@@ -656,25 +677,28 @@ class TheAppSystem(AppSystem_):
 
 			_logger.info(f"        [Apps/Init]         Registering app '{appName}'...")
 
-			appAvailable = appConfigs[appName]['avail']
+			appConf = appConfigs[appName]
+				# Fetch the configuration record for this app.
+
+			appAvailable = appConf['avail']
 				# Is the app marked as available to be registered?
 
-			appAutoStart = appConfigs[appName]['auto-start']
+			appAutoStart = appConf['auto-start']
 				# Should the app be automatically started on system startup?
 
-			appAutoOpen	 = appConfigs[appName]['auto-open']
+			appAutoOpen	 = appConf['auto-open']
 				# Should the app window be automatically opened on field startup?
 
-			appAutoFocus = appConfigs[appName]['auto-focus']
+			appAutoFocus = appConf['auto-focus']
 				# Should the app window grab the command focus when it opens?
 
-			appLoudUpdate = appConfig[appName]['loud-update']
+			appLoudUpdate = appConf['loud-update']
 				# Should the app window wake up the A.I. when it updates its display?
 
-			appPlacement = appConfigs[appName]['placement']
+			appPlacement = appConf['placement']
 				# Where should the app window (if any) initially be placed?
 
-			appConfig	 = appConfigs[appName]['conf']
+			appConfig	 = appConf['conf']
 				# What's the app-specific data structure?
 			
 			if appAvailable:
@@ -817,28 +841,41 @@ class The_Apps_App(Application_):
 
 	pass
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
 class The_Info_App(Application_):
 		
-	"""
-	Info - The idea behind this app is that it maintains and 
-	displays certain critical contextual information that the A.I. 
-	needs to know, including its identity, life circumstances, and
-	its present high-level goals.  Its window normally remains pinned 
-	at the top of the A.I.'s receptive field.  When the Information app
-	is launched, it allows the A.I. to edit certain information such
-	as its high-level goals. NOTE: This is one of the few apps that
-	is generally launched automatically at system startup. 
-	"""
+	"""The_Info_App							  [public class--GLaDOS application]
+	   ------------
 
-		# NOTE: The feature to allow the AI to edit goals is not yet
-		# implemented. For now the Info app just displays the contents
-		# of a static text file.
+			The is a singleton class implementing the 'Info App' or
+			"information application" that is available within GLaDOS.
+	
+			The idea behind this app is that it maintains and displays
+			certain critical contextual information that the A.I. needs
+			to know, including its identity, life circumstances, and
+			its present high-level goals.  Its window normally remains
+			pinned near the top of the A.I.'s receptive field.
+
+			Once the Information app is launched, it allows the A.I. to
+			edit certain information such as its high-level goals.
+
+			NOTE: This is one of the few apps that is generally launched
+			automatically at system startup. 
+																			 """
+	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		# NOTE: The feature to allow the AI to view/edit goals is not
+		# yet implemented. For now the Info app just displays the
+		# contents of a static text file. Also, we've decided that the
+		# goal-editing function will be handled by a separate 'Goals' app.
 
 	def appSpecificInit(self, conf:dict):
 	
 		"""This method performs application-specific initialization 
-				for the Info application, at app creation time."""
+				for the Info application, at app creation time.  By
+				the time this is called, our window has already been
+				created, but is not yet displayed.."""
 	
 		_logger.debug("infoApp.appSpecificInit(): Initializing Info app...")
 
@@ -915,14 +952,198 @@ class The_Info_App(Application_):
 #__/ End class Info_App.
 
 
-@singleton
-class The_Clock_app(Application_):
-
-	"""
-	The 'Clock' app displays the current date and time.
-	"""
-
+class Clock_App_(Application_):
 	pass
+
+class ClockThread_(ThreadActor): pass
+
+class ClockThread(ClockThread_):
+
+	"""A simple thread to operate the clock. This just calls
+		the clock app's .doTick() method once per second."""
+
+	defaultRole = 'Clock'
+	defaultComponent = _sw_component
+
+	def __init__(newClockThread:ClockThread_, clockApp:Clock_App_):
+		
+		_logger.debug("[Clock Apps] Creating thread to drive clock updates.")
+
+		thread = newClockThread
+		thread.app = clockApp		# Remember pointer to app.
+
+		thread.exitRequested = False
+
+		thread.defaultTarget = thread._main
+		super(ClockThread, thread).__init__(daemon=True)
+
+	def _main(thisClockThread:ClockThread_):
+		
+		"""Main routine of clock thread. Pretty straightforward."""
+
+		thread = thisClockThread
+		app = thread.app
+
+		wakeupInterval = 1	# How many seconds between time checks.
+			# Since this is 1 second, our clock display will be accurate
+			# to within a second.
+
+		while not thread.exitRequested:
+		
+			sleep(wakeupInterval)	# Sleep until next wakeup.
+
+				# All we do is send a 'tick' event to the Clock app,
+				# and it does all the real work.
+			app.doTick()
+
+@singleton
+class The_Clock_App(Clock_App_):
+
+	"""The 'Clock' app displays the current date and time.
+		Right now, its only optional parameter setting is
+		its 'mode', which can be either 'minutes' or
+		'seconds', to control whether seconds are displayed."""
+
+		# Default format string to use in 'minutes' mode.
+	_DEFAULT_MINUTES_FORMAT = "%A, %B %d, %Y, %I:%M %p"
+			# This is like: Sunday, January 17, 2021, 12:02 PM MST
+
+		# Default format string to use in 'seconds' mode.
+	_DEFAULT_SECONDS_FORMAT = "%A, %B %d, %Y, %I:%M:%S %p"
+			# This is like: Sunday, January 17, 2021, 12:02:42 PM MST
+
+	def appSpecificInit(thisClockApp:Clock_App_, conf:dict):
+		
+		"""This method performs application-specific initialization 
+			for the Clock application, at app creation time."""
+	
+		app = thisClockApp
+		win = app.window		# Gets our window (already created).
+
+		app._lock = RLock()		# Reentrant mutex lock.
+
+		app._lastTime = None	# No time readings yet.
+		app._timeStr = None		
+
+			# Get the time zome preference from the system config.
+		tz = timeZone()
+
+			# We store the time zone object for later reference.
+		app._timezone = tz
+
+			# Get the mode config.
+		if 'mode' in conf:
+		 	mode = conf['mode']		# 'minutes' or 'seconds'
+		else:
+			mode = 'minutes'	# Default to 'minutes.'
+		
+		app._mode = mode
+
+			# Tell our window to please word-wrap and auto-size itself.
+		win.wordWrap = True		# However, time shouldn't overflow anyway.
+		win.autoSize = True
+
+			# Do one 'tick' initially at init time.
+			# Further ticks will be invoked by the clock thread (below).
+		app.doTick()
+		
+			# Create and start up the clock thread.
+		app._thread = thread = ClockThread(app)
+		thread.start()
+				# This starts the clock running in the background.
+
+	def doTick(thisClockApp):
+
+		"""This method is called when the clock ticks (which happens
+			once per second).  It updates the display if needed.
+			The time is accurate to the system clock within 1 second."""
+
+		app = thisClockApp
+
+			# Go ahead and make a note of the current time.
+		app.updateTime()
+		
+			# Go ahead and regenerate our time string.
+		app.updateTimeStr()
+				# This also updates the display if needed.
+
+	def updateTime(thisClockApp):
+		
+		app = thisClockApp
+
+		with app._lock:
+			app._lastTime = tznow()		# Updates our time record w. current time.
+
+
+	def updateTimeStr(thisClockApp):
+
+		app = thisClockApp
+
+		timeChanged = False
+		
+		# Do the following atomically to maintain consistency
+		# of data structures.
+
+		with app._lock:
+
+				# Retrieve the last saved time string.
+			oldTimeStr = app._timeStr
+
+				# Get the current time string.
+			newTimeStr = app.timeString()
+
+				# Are they different? Then time has changed.
+			if newTimeStr != oldTimeStr:
+
+				# Save the new time string.
+				app._timeStr = newTimeStr
+
+				timeChanged = True
+
+		# Did the time change? Then we need to update
+		# our window's underlying text buffer.
+		if timeChanged:
+
+			win = app.window
+			
+			# If the window already has some text, clear it first.
+			if win.nTextRows > 0:
+				win.clearText()		# Doesn't update image/display yet.
+
+			# Now we add the new text.
+			win.addText("The time is:  " + newTimeStr)
+				# Note this does update the image, field view & display.
+				# However, it does not notify the AI if our config
+				# record has quiet-update = true.
+		
+
+	def timeString(thisClockApp):
+
+		"""Returns the time string for the last saved time."""
+
+		app = thisClockApp
+		mode = app._mode
+
+		if mode == 'minutes':
+			fmtstr = app._DEFAULT_MINUTES_FORMAT
+		else:
+			fmtstr = app._DEFAULT_SECONDS_FORMAT
+		
+		# Is the 'TZ' environment variable set?
+		# If so, then we can add '(%Z)' (time zone abbreviation) to the format str.
+		if envTZ is not None:
+			fmtstr = fmtstr + " (%Z)"
+
+		with app._lock:
+			lastTime = app._lastTime
+			timeStr = lastTime.strftime(fmtstr)
+
+		# If 'TZ' was not set, then we have to try to guess the time zone name from the offset.
+		if envTZ is None:
+			tzAbb = tzAbbr()
+			timeStr = timeStr + f" ({tzAbb})"
+
+		return timeStr
 
 @singleton
 class The_Goals_App(Application_):
@@ -1062,7 +1283,7 @@ _APP_LIST = [
 	# to the very top of the receptive field (just after the header bar.
 		{
 			'name':		'Clock',
-			'class':		The_Clock_app
+			'class':		The_Clock_App
 		},
 
 	# We list the Info app second, so that when it auto-opens, it will pin itself

@@ -195,8 +195,11 @@ class WindowImage:
 			# Add final newline because textbuffer doesn't by default.
 
 	def repaint(self):
+
 		"""Tell the window image to repaint itself in its text buffer."""
 		
+		_logger.debug(f"Image of '{self._window.title}' window is repainting itself.")
+
 		self._textBuffer.clear()	# First, clear our text buffer.
 		
 			# Make sure our window knows how to find us.
@@ -385,12 +388,15 @@ class Window:	# A text window within the GLaDOS window system.
 	
 		win = self
 		
-		win._isOpen	  = False	# New windows aren't initially open.
+		win._isOpen	  	= False	# New windows aren't initially open.
 
-		win._wordWrap = False	# No word-wrapping by default.
-		win._autoSize = False	# No auto-sizing by default.
+		win._wordWrap 	= False	# No word-wrapping by default.
+		win._autoSize 	= False	# No auto-sizing by default.
 
 		win._loudUpdate = loudUpdate	# Set our loud-update attribute.
+
+		win._fieldElem	= None
+			# This is a "field element" object to contain this window. None exists initially
 
 			#---------------------------------------------------------------------
 			# Before doing anything else, we get some preferences from the window system
@@ -463,8 +469,18 @@ class Window:	# A text window within the GLaDOS window system.
 
 		self._snapshots		= set()
 
-		self._fieldElem		= None
-			# This is a "field element" object to contain this window.
+	@property
+	def nTextRows(win):
+
+		"""Returns the number of rows of text stored in the underlying
+			text buffer for the window content."""
+		
+		return win._textBuffer.nRows()
+
+	def clearText(win):
+		"""Clears the contents of the window's underlying text buffer,
+			but does not update its image quite yet."""
+		win._textBuffer.clear()
 
 	def createImage(win):
 
@@ -568,6 +584,7 @@ class Window:	# A text window within the GLaDOS window system.
 		wElem = WindowElement(field, win)
 				# This will automatically place itself on the field.
 				# Add that will automatically update the field view.
+		thisWin._fieldElem = wElem
 		
 			# Remember that we have opened this windo.
 		win._isOpen = True
@@ -598,6 +615,7 @@ class Window:	# A text window within the GLaDOS window system.
 
 			# Also, check whether an auto-resize is needed.
 		self.checkSize()
+
 	
 	def addLine(self, line:str):
 		"""Add the given single line of text to the window contents (at the end)."""
@@ -670,6 +688,8 @@ class Window:	# A text window within the GLaDOS window system.
 			This tells us (this window) to render the current view of our 
 			window contents in our window image.
 		"""
+
+		_logger.debug(f"Rendering '{self.title}' window contents in window image...")
 
 		# If this window does not have side borders, then this is extremely
 		# easy: We simply add the content view as raw text to the image.
@@ -759,12 +779,22 @@ class Window:	# A text window within the GLaDOS window system.
 
 	#__/ End method window.renderBotDecorator().
 
-	def redisplay(win:Window, loudly:bool=True):
+	def redisplay(win:Window, loudly:bool=None):
 
 		"""Advises the window to re-display itself on the receptive field 
 			(if it's supposed to be visible). If loudly=False is provided,
 			then we request the receptive field to please do it quietly
 			so as not to wake up the A.I."""
+
+		_logger.debug(f"Window '{win.title}' is redisplaying itself on the field...")
+
+		# If the 'loudly' flag was not set by the caller, retrieve it from window attribs.
+		if loudly is None:
+			loudly = win._loudUpdate
+
+		# If the window has a field element, tell it its contents have changed.
+		if win._fieldElem is not None:
+			win._fieldElem.markChanged()	# Informs base that field has changed.
 
 		# If the window is currently open, then tell the field to update its view.
 		if win._isOpen:
