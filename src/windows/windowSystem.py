@@ -310,9 +310,11 @@ class Window:	# A text window within the GLaDOS window system.
 		#|		parameters for the class. Eventually these should
 		#|		maybe be settable by config parameters / settings.
 
+	#_DEFAULT_WINDOW_DECORATOR_ROWS	= 0		# Temporarily trying without top/bottom decorators
 	_DEFAULT_WINDOW_DECORATOR_ROWS	= 2		# By default, just one line top, and one line bottom.
 	_DEFAULT_WINDOW_DECORATOR_WIDTH = 60	# Sixty columns of fixed-width text characters.
 	_DEFAULT_WINDOW_VIEW_ROWS 		= 15	# By default, display 15 rows worth of content initially.
+	_DEFAULT_HORIZ_BORDER_CHAR		= '~'	# By default, horizontal borders are made of these.
 	_DEFAULT_LEFT_DECORATOR_STRING	= '| '	# Vertical bar and one space of interior padding.
 	_DEFAULT_RIGHT_DECORATOR_STRING = ' |'  # One space of interior padding, and a vertical bar.
 
@@ -659,8 +661,10 @@ class Window:	# A text window within the GLaDOS window system.
 			
 		"""
 		
+		defHorizEdgeChar = self._DEFAULT_HORIZ_BORDER_CHAR
+
 			# First, figure out which character we're going to use for the horizontal window edge.
-		horizEdgeChar = '=' if self._isActive else '-'
+		horizEdgeChar = '=' if self._isActive else defHorizEdgeChar
 		
 			# Next, generate what the top decorator string would look like
 			# if there were no title included at all.
@@ -751,8 +755,10 @@ class Window:	# A text window within the GLaDOS window system.
 			where the commands shown are those provided in the window's command module.
 		"""
 		
+		defHorizEdgeChar = self._DEFAULT_HORIZ_BORDER_CHAR
+
 			# First, figure out which character we're going to use for the horizontal window edge.
-		horizEdgeChar = '=' if self._isActive else '-'
+		horizEdgeChar = '=' if self._isActive else defHorizEdgeChar
 		
 			# Next, generate what the bottom decorator string would look like
 			# if there were no command text included at all.

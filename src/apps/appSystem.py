@@ -964,7 +964,7 @@ class ClockThread(ThreadActor):
 	defaultRole = 'Clock'
 	defaultComponent = _sw_component
 
-	def __init__(newClockThread:ClockThread_, clockApp:Clock_App_):
+	def __init__(newClockThread:ClockThread, clockApp:Clock_App_):
 		
 		_logger.debug("[Clock Apps] Creating thread to drive clock updates.")
 
@@ -976,7 +976,7 @@ class ClockThread(ThreadActor):
 		thread.defaultTarget = thread._main
 		super(ClockThread, thread).__init__(daemon=True)
 
-	def _main(thisClockThread:ClockThread_):
+	def _main(thisClockThread:ClockThread):
 		
 		"""Main routine of clock thread. Pretty straightforward."""
 

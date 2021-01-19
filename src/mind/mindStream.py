@@ -49,6 +49,8 @@ _logger = getComponentLogger(_component)						# Create the component logger.
 
 from infrastructure.decorators import singleton
 
+from entities.entity import System_Entity_
+
 from events.event import DateEventFormat, TextEvent
 
 class Action_: pass
@@ -103,6 +105,10 @@ class TheCognitiveStream:
 		author = action.conceiver
 			# We consider the action to have been authored by the entity
 			# that originally conceived it.
+
+		# This causes us to ignore system actions.
+		if isinstance(author, System_Entity_):
+			return
 
 		creationTime = action.conceptionTime
 			# We consider the event to have been created at the time that

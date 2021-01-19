@@ -226,7 +226,8 @@ class DisplayDriver(RPCWorker):
 				#_logger.warn("displayDriver.withLock(): Display not running; ignoring task.")
 				if desc is None:
 					desc = "(no description)"
-				return DisplayNotRunning(f"displayDriver.withLock(): Display not running; task [{desc}] ignored.")
+				#return DisplayNotRunning(f"displayDriver.withLock(): Display not running; task [{desc}] ignored.")
+				return None
 				# Note: Callers who obtain a result should be prepared to handle results of this type.
 
 			#_logger.debug("About to call wrapped callable...")

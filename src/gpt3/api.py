@@ -737,7 +737,7 @@ class Completion:
     
         if self.core != None:
             if self.core.conf.logProbs != 0:
-                print("WARNING: .nTokens only works when logprobs=0!")
+                _logger.warn("WARNING: .nTokens only works when logprobs=0!")
                 
         return len(self.complStruct['choices'][0]['logprobs']['tokens'])
 
@@ -747,19 +747,19 @@ class Completion:
         """Returns the length of the prompt in tokens."""
         
         if self.prompt == None:
-            print("ERROR: .promptLen: Prompt not available.")
+            _logger.error("ERROR: .promptLen: Prompt not available.")
             return None
             
         if self.core == None:
-            print("ERROR: .promptLen: Core not available.")
+            _logger.error("ERROR: .promptLen: Core not available.")
             return None
             
         if self.core.conf.echo != True:
-            print("ERROR: .promptLen: Echo not set.")
+            _logger.error("ERROR: .promptLen: Echo not set.")
             return None
             
         if self.core.conf.logProbs != 0:
-            print("WARNING: .promptLen: Logprobs is not 0.")
+            _logger.error("WARNING: .promptLen: Logprobs is not 0.")
             
         resultPos = len(self.prompt)
         resultTokIndex = self.textPosToTokIndex(resultPos)
@@ -806,7 +806,7 @@ class Completion:
     @backoff.on_exception(backoff.expo,
                           (openai.error.APIError))
                           
-    def _createComplStruct(self,apiArgs):
+    def _createComplStruct(self, apiArgs):
     
         """Private instance method to retrieve a completion from the
             core API, with automatic exponential backoff and retry."""
@@ -816,6 +816,14 @@ class Completion:
             loadStats()
 
         self._accountForInput(apiArgs)
+
+        # Check to make sure that input+result length is not >2049; if so then
+        # we need to request a smaller result.
+        if _inputLength + apiArgs['max_tokens'] > 2049:
+
+            apiArgs['max_tokens'] = maxTok = 2049 - _inputLength
+
+            _logger.warn(f"[GPT3 API] Trimmed max_tokens to {maxTok}.")
 
         complStruct = openai.Completion.create(**apiArgs)
         
@@ -830,10 +838,14 @@ class Completion:
     
     def _accountForInput(self, apiArgs):
         
+        global _inputLength
+
         engine = apiArgs['engine']
         prompt = apiArgs['prompt']
 
         nToks = local_countTokens(prompt)
+
+        _inputLength = nToks
 
         _logger.debug(f"Counted {nToks} tokens in input text [{prompt}]")
 
@@ -928,7 +940,7 @@ class GPT3Core:
         if config == None:
             config = GPT3APIConfig(*args, **kwargs)
 
-        print("Creating new GPT3Core connection with configuration:\n", config)
+        _logger.info("Creating new GPT3Core connection with configuration:\n" + str(config))
 
         inst._configuration = config        # Remember our configuration.
     
@@ -971,7 +983,7 @@ class GPT3Core:
 
         kwargs['engine'] = conf.engineId    # This API arg. is required. Can't skip it.
                 
-		# Note here we have to match the exact keyword argument names supported by OpenAI's API.
+        # Note here we have to match the exact keyword argument names supported by OpenAI's API.
 
         if prompt                   != None:    kwargs['prompt']            = prompt
         if conf.maxTokens           != None:    kwargs['max_tokens']        = conf.maxTokens
@@ -988,7 +1000,7 @@ class GPT3Core:
         
         if conf.temperature != None and conf.topP != None:
             # Do some better error handling here. Warning and/or exception.
-            print("WARNING: Setting both temperature and top_p is not recommended.")
+            _logger.warn(f"WARNING: temp={conf.temperature}, topP={conf.topP}: Setting both temperature and top_p is not recommended.")
 
         return kwargs
 
@@ -1031,8 +1043,13 @@ class GPT3Core:
     
         """Generate a single completion string for the given prompt."""
             
-        resultCompletion = genCompletion(prompt)
-        return resultCompletion.text
+        resultCompletion = self.genCompletion(prompt)
+
+        text = resultCompletion.text
+
+        _logger.debug("[GPT-3/API] Server returned result string: [" + text + ']')
+
+        return text
 
 #__/ End class GPT3Core.
 
@@ -1108,11 +1125,11 @@ def countTokens(text:str=None):
 
 def loadStatsIfNeeded():
 
-	"""If the stats file hasn't been loaded from the filesystem yet,
-		this loads it."""
+    """If the stats file hasn't been loaded from the filesystem yet,
+        this loads it."""
 
-	if not _statsLoaded:
-		loadStats()
+    if not _statsLoaded:
+        loadStats()
 
 def loadStats():
 
@@ -1153,22 +1170,22 @@ _statStr = ""
 
 def statLine(line):
 
-	"""This quick-and-dirty utility method saves a lines of
-		the API statistics table to several places."""
+    """This quick-and-dirty utility method saves a lines of
+        the API statistics table to several places."""
 
-	global _statStr
+    global _statStr
 
-		# Log this line as an INFO-level log message.
+        # Log this line as an INFO-level log message.
     _logger.info(line)
-
-		# Append this line to the api-stats.txt file.
+    
+        # Append this line to the api-stats.txt file.
     print(line, file=_statFile)
 
-		# Also accumulate it in this global string.
-	_statStr = _statStr + line + '\n'
+        # Also accumulate it in this global string.
+    _statStr = _statStr + line + '\n'
 
 def stats():
-	"""After using the API"""
+    """After using the API"""
 
 def displayStats():
 
@@ -1177,15 +1194,15 @@ def displayStats():
 
     global _statFile, _statStr
 
-	_statStr = ""
+    _statStr = ""
 
     with open(textPath(), 'w') as _statFile:
 
         statLine("")
         statLine("             Token Counts")
-        statLine("        -----------------------     USD")
-        statLine(" Engine   Input  Output   Total    Cost")
-        statLine("======= ======= ======= ======= =======")
+        statLine("        -----------------------       USD")
+        statLine(" Engine   Input  Output   Total      Cost")
+        statLine("======= ======= ======= ======= =========")
         
         cumIn = cumOut = cumTot = 0
         
@@ -1201,7 +1218,7 @@ def displayStats():
             outTokStr = "%7d" % outToks
             totStr = "%7d" % total
     
-            cost = "$%6.2f" % expenditures[engine]
+            cost = "$%8.4f" % expenditures[engine]
     
             statLine(f"{engStr} {inTokStr} {outTokStr} {totStr} {cost}")
     
@@ -1213,9 +1230,9 @@ def displayStats():
         cumOutStr = "%7d" % cumOut
         cumTotStr = "%7d" % cumTot
     
-        totStr = "$%6.2f" % totalCost
+        totStr = "$%8.4f" % totalCost
     
-        statLine("------- ------- ------- ------- -------")
+        statLine("------- ------- ------- ------- ---------")
         statLine(f"TOTALS: {cumInStr} {cumOutStr} {cumTotStr} {totStr}")
         statLine("")
 
@@ -1259,7 +1276,7 @@ def recalcDollars():
     dollars = 0
     for engine in _PRICE_MAP.keys():
         nToks = inputToks[engine] + outputToks[engine]
-        engCost = nToks * _PRICE_MAP[engine]
+        engCost = (nToks/1000) * _PRICE_MAP[engine]
         costs[engine] = engCost
         dollars = dollars + engCost
         

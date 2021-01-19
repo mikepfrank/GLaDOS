@@ -104,8 +104,11 @@ class	Entity_:			pass	# Abstract base class (ABC) for general entities.
 	#~~~~~~~~~~~~~~~~~
 	# System entities.
 
-class	System_Entity_:					pass	# Abstract base class (ABC) for entities associated with the GLaDOS system.
-class	Subsystem_Entity:				pass	# 	- Class of entities that are subsystems of the whole system.
+class	System_Entity_:					pass
+	# Abstract base class (ABC) for entities associated with the GLaDOS system.
+
+class	Subsystem_Entity(System_Entity_):	pass
+	# 	- Class of entities that are subsystems of the whole system.
 
 class	The_GLaDOS_Entity:				pass	# This is the entire GLaDOS system.
 

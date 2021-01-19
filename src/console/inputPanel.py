@@ -66,6 +66,10 @@ from	display.keys	import (
 		KEY_CLEAR,		# Clear entire contents of text data.
 		KEY_REFRESH,	# Refresh the display.
 
+			# Function keys that we use for special purposes.
+
+		KEY_F1,			# "Soft-poke" the AI, to get its attention if awake.
+
 		# Classes.
 
 		KeyEvent,
@@ -497,6 +501,10 @@ class InputPanel(Panel):
 			panel.insertKey(newkeyevent)
 
 			_logger.info(f"Input Panel: Remapped {keyname} to literal {newkeyevent.ctlname}.")
+
+		elif keycode == KEY_F1:		# F1 = Get AI's attention.
+
+			panel.keyAttention()
 
 		# All other keys are just self-inserting by default.
 		else:
@@ -955,6 +963,17 @@ class InputPanel(Panel):
 		panel.setTxPos(0)
 		panel.setText(TERMINATOR)
 
+
+	def keyAttention(thisInputPanel:InputPanel):
+
+		"""This method handles the F1 key, which means, get the AI's attention."""
+
+		panel = thisInputPanel
+		client = panel.client
+		mind = client.mind
+		mindThread = mind.thread
+		
+		mindThread.softPoke()	# Just enough to get its attention if awake.
 
 #__/ End class InputPanel.
 

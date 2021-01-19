@@ -163,21 +163,37 @@ class VirOut:	# Virtual output-stream class.
 
 	def __init__(newVirOut, isErr:bool=False):
 		"""If isErr=True then this is marked as an 'error' stream."""
+
 			# Remember if this is marked as an error stream.
 		newVirOut._isErr = isErr
+
 			# Create and store a stream buffer to hold the data.
 		newVirOut._buffer = StreamBuf()
+
+			# Also open a file to copy error text to.
+		if isErr:
+			newVirOut._errFile = errFile = open('err.out', 'a')
+			print("\n================================================================================\n",
+				  file=errFile)
+			print("STARTING NEW ERROR TRANSCRIPT:\n", file=errFile)
 	
-	def addHandler(newVirOut, handler:Callable):
-		newVirOut._buffer.addHandler(handler)	# Delegate to buffer.
+	def addHandler(thisVirOut, handler:Callable):
+		thisVirOut._buffer.addHandler(handler)	# Delegate to buffer.
 	
 	def removeHandler(thisVirOut, handler:Callable):
 		thisVirOut._buffer.removeHandler(handler)
 
 		# write() method, expected by users of File objects.
-	def write(newVirOut, data):
+	def write(thisVirOut, data):
+
 		if data == "": return		# Empty strings are ignored and don't generate data records.
-		newVirOut._buffer.addData(data)
+
+		# Also send data to error log file.
+		if thisVirOut._isErr:
+			thisVirOut._errFile.write(data)
+			thisVirOut._errFile.flush()
+
+		thisVirOut._buffer.addData(data)
     
 		# flush() method, expected by users of File objects.
 	def flush(newVirOut):

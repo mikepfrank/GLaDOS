@@ -113,6 +113,7 @@
 					consists of a vertical bar ('|') with interior padding
 					(one space character by default). */
 
+			#side-decorators:	false		# Defaults to true if not specified.
 			side-decorators:	true		# Defaults to true if not specified.
 
 		}
