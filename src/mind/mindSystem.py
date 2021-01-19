@@ -272,32 +272,379 @@ class The_CognoSys_Subscriber(ActionSubscriber_):
 			tcStr.noticeAction(action)
 
 
+class The_GPT3_API: pass
+
+@singleton
+class The_GPT3_API:
+
+	"""This class is a convenience wrapper for the specific functionality
+		that we require out of the gpt3.api module.  It provides methods
+		for initializing the API based on the AI persona's configuration,
+		and..."""
+
+	def __init__(newAPI:The_GPT3_API):
+
+		api = newAPI
+
+			# Configures the GPT-3 API from the AI persona's config file.
+		api.configure()
+
+			# Creates a new "core connection" using that configuration.
+		api._core = core = GPT3Core(api.conf)
+
+			# Loads API usage statistics from the filesystem if needed.
+		loadStatsIfNeeded()
+
+			# Retrieves the API statistics as a human-readable table.
+		api._stats = stats()
+
+	def genResponse(thisAPI:The_GPT3_API, prompt:str):
+
+		"""This method uses the current core API configuration to
+			generate a response string in response to the given prompt
+			string."""
+
+		response = thisAPI.core.genString(prompt)
+
+			# Update our record of the API usage statistics.
+		thisAPI._stats = stats()
+
+			# Return the response string.
+		return response
+
+	@property
+	def stats(thisAPI:The_GPT3_API):
+		"""Gets a human-readable table of API usage statistics,
+			as a single multi-line string."""
+		return thisAPI._stats
+
+	@property
+	def core(thisAPI:The_GPT3_API):
+
+		"""Gets the GPT3Core object representing our current 'connection'
+			to the core GPT-3 servers."""
+
+		return thisAPI._core
+
+	def configure(thisAPI:The_GPT3_API):
+
+		"""This method configures the API based on the AI persona config."""
+
+			# This just loads the AI persona configuration from its file (e.g.,
+			# perhaps /opt/AIs/gladys/ai-config.hjson), if not already loaded.
+		aiConfig = TheAIPersonaConfig()
+		
+			# Here we set up a keyword argument dict for assembling arguments
+			# to the GPT3APIConfig() constructor, which will keep track of the
+			# current API configuration for us (in case we need to change it).
+
+		kwargs = dict()
+		
+		if aiConfig.modelVersion is not None:
+			kwargs['engineId'] = aiConfig.modelVersion
+
+		if aiConfig.maxReturnedTokens is not None:
+			kwargs['maxTokens'] = aiConfig.maxReturnedTokens
+
+		if aiConfig.temperature is not None:
+			kwargs['temperature'] = aiConfig.temperature
+		
+		if aiConfig.topP is not None:
+			kwargs['topP'] = aiConfig.topP
+
+		if aiConfig.nCompletions is not None:
+			kwargs['nCompletions'] = aiConfig.nCompletions
+		
+		if aiConfig.doStream is not None:
+			kwargs['stream'] = aiConfig.doStream
+
+		if aiConfig.logProbs is not None:
+			kwargs['logProbs'] = aiConfig.logProbs
+
+		if aiConfig.doEcho is not None:
+			kwargs['echo'] = aiConfig.doEcho
+
+		if aiConfig.stopSequences is not None:
+			kwargs['stop'] = aiConfig.stopSequences
+
+		if aiConfig.presencePenalty is not None:
+			kwargs['presencePenalty'] = aiConfig.presencePenalty
+
+		if aiConfig.frequencyPenalty is not None:
+			kwargs['frequencyPenalty'] = aiConfig.frequencyPenalty
+
+		if aiConfig.bestOf is not None:
+			kwargs['bestOf'] = aiConfig.bestOf
+
+		if aiConfig.personaName is not None
+			kwargs['name'] = f"GPT-3 API Configuration for '{}' Persona"
+
+			# Create an API config instance from those kwargs we just assembled.
+		gpt3apiConf = GPT3APIConfig(**kwargs)
+
+			# Store that conf for later reference.
+		thisAPI._conf = gpt3apiConf
+
+	@property
+	def conf(thisAPI:The_GPT3_API):
+		"""Gets the GPT3APIConfig object representing the
+			current configuration of the GPT-3 API."""
+		return thisAPI._conf
+
 # $50/mo. / $0.06/1ktok = 833 ktok
 # 833 ktok / 2,048 = 407 fields / mo. = 58 fields/wk. = 8.3 fields/day
 
 class MindThread: pass
 class MindThread(ThreadActor):
 
+	"""This thread is responsible for executing the main loop of
+		the AI's mind.  The mind can be in any of several different
+		major states of consciousness:
+
+				awake - In this state, the AI wakes up at least once every
+						some number of minutes and does an action.
+
+				asleep - In this state, the AI is going to sleep for some
+						longer interval, and will not act until that
+						time is up unless it is woken up.
+
+				hibernating - In this state, the AI basically sleeps
+		   			indefinitely until something wakes it up.
+
+		Some of our important properties include:
+
+			minActionInterval - This is a time in minutes which means,
+				when we are awake, but no outside entities are trying
+				to evoke an immediate response from us, what's the
+				minimum time that we have to wait between actions that
+				we take?  The reason this isn't zero is to limit the
+				"burn rate," in terms of costs run up by making calls
+				to the GPT-3 API.
+
+			nominalSleepPeriod - This is a time in hours which means,
+				when we go into sleep mode, what's the normal length
+				of time that we remain in sleep mode until we wake up
+				spontaneously?
+	"""
+
+	_DEFAULT_MIN_ACTION_INTERVAL = 60	# 60 minutes = 1 hours
+		# To limit costs, by default we only do 1 davinci query
+		# per hour, which is about $4 worth over a 16-hour day.
+		# (Assuming each one is a full 2,048-token query & reply.)
+
+	_DEFAULT_SLEEP_PERIOD = 8	# 8 hour nominal sleep period
+		# This is also a cost-limiting measure, and helps to make
+		# sure that the AI doesn't get too bored at night while
+		# the human operator can't respond.
+
 	defaultRole = 'Mind'
 	defaultComponent = _sw_component
 
 	def __init__(newMindThread:MindThread, mindSystem:TheCognitiveSystem):
 
-		"""This thread is responsible for executing the main loop of
-			the AI's mind.  The mind can be in any of several different
-			major states of consciousness:
+		thread = newMindThread
 
-				awake - In this state, the AI wakes up at least once every
-							some number of minutes and does an action.
+			# Set these varaibles to their default values.
+		thread._actionInterval = thread._DEFAULT_MIN_ACTION_INTERVAL
+		thread._sleepPeriod = thread._DEFAULT_SLEEP_PERIOD
 
-				asleep - In this state, the AI is going to sleep for some
-							longer interval, and will not act until that
-							time is up unless it is woken up.
+			# Remember our pointer to the whole cognitive system.
+		thread._mind = mind = mindSystem
 
-				hibernating - In this state, the AI basically sleeps
-			   			indefinitely until something wakes it up.
+		# First, we know that we're going to need to access the GPT-3 API,
+		# so go ahead and create an object encapsulating it for us.
+
+		thread._gpt3 = api = The_GPT3_API()		# Gets this singleton's instance.
+
+			# Set our initial mode to 'awake'.
+		thread._mode = 'awake'
+		thread._lastResponse = None
+		thread._lastActionTime = 0	# An arbitrary early time: Jan 1, 1970
+		thread._fellAsleepTime = 0
+		thread._startedHibernatingAt = 0
+
+			# This is just a simple flag for politely requesting shutdown.
+		thread._exitRequested = False
+
+		thread._attentionFlag = Flag()
+			# Raise this flag to cause the AI to respond immediately (that is,
+			# within a second or so) even if its normal minimum action interval
+			# has not yet expired.  However, if the AI is sleeping or
+			# hibernating, it might not respond to this flag.
+
+		thread._wakeUpFlag = Flag()
+			# Raise this flag to wake up the AI if it's sleeping.  If it's
+			# hibernating, it might not respond to this flag.
+
+		thread._pokeBearFlag = Flag()
+			# Raising this flag "pokes the bear," that is, it wakes up
+			# the AI even if it's currently in hibernation mode.
+
+		thread.defaultTarget = thread._main
+		super(MindThread, thread).__init__()
+			# Note we don't put this thread in daemon mode. It's too important!
+			# (We don't want the server to stop while it's still running.)
+
+	@property
+	def gpt3(thisMindThread:MindThread):
+		return thisMindThread._gpt3			# The_GPT3_API object.
+
+	@property
+	def mind(thisMindThread:MindThread):
+		return thisMindThread._mind			# TheCognitiveSystem object.
+
+	@property
+	def mode(thisMindThread:MindThread):
+		"""Get's the mind thread's mode: awake, asleep, or hibernating."""
+		return thisMindThread._mode
+
+	def _main(thisMindThread:MindThread):
+
+		"""Main routine of mind thread. Just periodically checks
+			whether it needs to do something."""
+
+		thread = thisMindThread
+		
+		pollingInterval = 1		# How many seconds between status checks.
+			# Since this is 1 second, the AI can respond to an external
+			# event as quickly as within 1 second.
+
+		while not thread.exitRequested:
+
+			sleep(pollingInterval)
+
+			thread.pollForInput()
+				# This method checks to see if there's an event we need to
+				# respond to, or if our refractory or sleep period has expired.
+
+	def pollForInput(thisMindThread:MindThread):
+		
+		"""This method checks whether it's time for the mind thread
+			to do something; if so then we do it."""
+
+		thread = thisMindThread
+
+		# If this thread need to respond to some input, then do it.
+		if thread.needsToRespond():
+			thread.respondNow()
+
+		mode = thread.mode
+
+	def needsToRespond(thisMindThread:MindThread):
+
+		"""Returns True if there's some event that the AI needs
+			to respond to."""
+
+		thread = thisMindThread
+		mode = thread.mode
+		curTime = time()
+
+		# First, if the AI is awake, this is our normal operation mode.
+		# We need to respond if our action interval has elapsed, or if
+		# someone's trying to get our attention.
+		
+		if mode == 'awake':
+			
+				# Has enough time elapsed since the last action we took?
+			timeToAct = ((curTime - thread._lastActionTime) > thread._actionInterval*60)
+
+				# If so, or if someone is trying to get our attention,
+				# then we need to respond.
+			return timeToAct or thread._attentionFlag()
+		
+		# Second, if the AI is asleep, then we don't need to respond
+		# unless our sleep period has elapsed or someone is trying to
+		# wake us up.
+
+		if mode == 'asleep':
+
+				# Has enough time elapsed since we fell asleep?
+			timeToWakeUp = ((curTime - thread._fellAsleepTime) > thread._sleepPeriod*60*60)
+
+				# If it's time to wake up, or if someone is
+				# waking us up, then yeah, we need to.
+			return timeToWakeUp or thread._wakeUpFlag()
+
+		# Thirdly, if the AI is hibernating, then we don't need to
+		# respond unless someoke pokes us.
+
+		if mode == 'hibernating':
+
+			return thread._pokeBearFlag()
+
+	def respondNow(thisMindThread:MindThread):
+
+		"""Tells the mind thread to wake up (if asleep or hiberating)
+			and respond to whatever's in front of it."""
+
+		thread = thisMindThread
+		mode = thread.mode
+
+		# If we were asleep or hibernating, then first do a wakeup
+		# action; this will inform other subsystems of GLaDOS that
+		# we are waking up now.
+		if mode == 'asleep' or mode == 'hibernating':
+			thread.wakeUp()
+
+		# Call the normal respond method. It does the real work.
+		thread.respond()
+			
+	def wakeUp(thisMindThread:MindThread):
+
+		thread._mode = 'awake'
+
+		# We should probably actually do this as a more explicit action.
+
+	def respond(thisMindThread:MindThread):
+
+		"""This causes the AI to look at the receptive field,
+			generate a response to it, and perform a 'speech
+			action' with the content of that response.  What
+			this done is context-dependent; e.g., if the AI is
+			currently using an application that takes over the
+			whole receptive field, the effect will be different
+			than in a normal mode where the speech action is
+			interpreted as a general one-line input.
 		"""
 
+		thread = thisMindThread		# Here's us, the mind thread.
+
+		mind = thread.mind			# The whole cognitive system.
+		field = mind.field			# Our receptive field.
+		view = field.view			# Our view of the field.
+		text = view.text			# One big text string with field data.
+		
+		gpt3 = thread.gpt3			# Our Big Daddy AI in the cloud.
+
+			# This asks GPT-3 to generate a response to the field text,
+			# using the current API parameters.
+
+		response = gpt3.genResponse(text)
+
+			# Remember the time that that last GPT-3 API call completed.
+		thread._lastActionTime = time()
+
+		thread._lastResponse = reponse
+
+			# This causes us to process the response. Generally this
+			# just conceives and initiates a corresponding speech action.
+		thread.processResponse(response)
+
+	def processResponse(thisMindThread:MindThread, response:str):
+
+		"""Given a raw output from the AI (as a string),
+			this turns it into an appropriate speech action,
+			"""
+
+		thread = thisMindThread
+		mind = thread.mind
+		persona = mind.persona
+		meEntity = persona.entity
+
+			# Conceive and initiate the action of actually saying
+			# what our underlying GPT-3 core is suggesting.
+		speechAct = AI_Speech_Action(response, meEntity)
+		speechAct.initiate()
 
 @singleton
 class TheCognitiveSystem:
@@ -417,6 +764,10 @@ class TheCognitiveSystem:
 		
 	
 	#__/ End singleton instance initializer theCognitiveSystem.__init__().
+
+	@property
+	def persona(mind):
+		return mind._persona
 
 	def noticeEvent(mind, textEvent:TextEvent):
 		

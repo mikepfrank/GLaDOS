@@ -403,14 +403,14 @@ class _TheBaseFieldData:
 	
 	
 	
-	def measure(inst):
-
-		"""Measure the size of the field in tokens.  This works by
-			Asking the AI's field view (which is the real view) to
-			render itself, then counting its size in tokens."""
-		
-		aiFieldView = TheAIFieldView()
-		aiFieldView.render()
+#	def measure(inst):
+#
+#		"""Measure the size of the field in tokens.  This works by
+#			Asking the AI's field view (which is the real view) to
+#			render itself, then counting its size in tokens."""
+#		
+#		aiFieldView = TheAIFieldView()
+#		aiFieldView.render()
 		
 	
 
