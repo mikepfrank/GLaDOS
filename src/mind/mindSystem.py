@@ -128,7 +128,9 @@
 		#|	1.1. Imports of standard python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from	os	import path
+from	threading	import	RLock
+from	time		import	sleep, time
+from	os			import	path
 
 		#|======================================================================
 		#|	1.2. Imports of custom application modules. [module code subsection]
@@ -147,7 +149,7 @@ from	infrastructure.decorators	import	singleton
 				# import specific definitions we need from it.	(This is a
 				# little cleaner stylistically than "from ... import *".)
 
-from 	infrastructure.logmaster 	import getComponentLogger
+from 	infrastructure.logmaster 	import sysName, getComponentLogger, ThreadActor
 
 	# Go ahead and create or access the logger for this module.
 
@@ -156,9 +158,27 @@ global _component, _logger		# Software component name, logger for component.
 _component = path.basename(path.dirname(__file__))				# Our package name.
 _logger = getComponentLogger(_component)						# Create the component logger.
 
+global _sw_component	# Full name of this software component.
+_sw_component = sysName + '.' + _component
+
+
+
+from	infrastructure.flag			import	Flag	# Waitable flag class.
+
 			#|----------------------------------------------------------------
 			#|	The following modules are specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from	gpt3.api				import	(
+
+			# Classes.
+
+		GPT3APIConfig, GPT3Core,
+
+			# Functions.
+
+		loadStatsIfNeeded, stats
+	)
 
 from 	config.configuration 	import	TheAIPersonaConfig
 	# This class specifies the configuration of the AI's persona.
@@ -183,6 +203,9 @@ from	.aiActions				import	(
 			# We need this so that we can generate this action in
 			# the .startup() method of The_Cognitive_System.
 	
+		AI_Speech_Action,
+			# These are the actions that the core AI directly conceives and initiates.
+
 	)
 
 from	.mindStream				import	TheCognitiveStream
@@ -368,16 +391,16 @@ class The_GPT3_API:
 			kwargs['stop'] = aiConfig.stopSequences
 
 		if aiConfig.presencePenalty is not None:
-			kwargs['presencePenalty'] = aiConfig.presencePenalty
+			kwargs['presPen'] = aiConfig.presencePenalty
 
 		if aiConfig.frequencyPenalty is not None:
-			kwargs['frequencyPenalty'] = aiConfig.frequencyPenalty
+			kwargs['freqPen'] = aiConfig.frequencyPenalty
 
 		if aiConfig.bestOf is not None:
 			kwargs['bestOf'] = aiConfig.bestOf
 
-		if aiConfig.personaName is not None
-			kwargs['name'] = f"GPT-3 API Configuration for '{}' Persona"
+		if aiConfig.personaName is not None:
+			kwargs['name'] = f"GPT-3 API Configuration for '{aiConfig.personaName}' Persona"
 
 			# Create an API config instance from those kwargs we just assembled.
 		gpt3apiConf = GPT3APIConfig(**kwargs)
@@ -442,11 +465,18 @@ class MindThread(ThreadActor):
 
 	def __init__(newMindThread:MindThread, mindSystem:TheCognitiveSystem):
 
+		_logger.debug("[MindThread] Initializing mind thread...")
+
 		thread = newMindThread
 
+		thread._lock = RLock()
+
 			# Set these varaibles to their default values.
-		thread._actionInterval = thread._DEFAULT_MIN_ACTION_INTERVAL
-		thread._sleepPeriod = thread._DEFAULT_SLEEP_PERIOD
+		thread._actionInterval = actInt = thread._DEFAULT_MIN_ACTION_INTERVAL
+		thread._sleepPeriod = sleepHrs = thread._DEFAULT_SLEEP_PERIOD
+
+		_logger.info(f"[MindThread] Action interval = Once every {actInt} minutes.")
+		_logger.info(f"[MindThread] Sleep period = {sleepHrs} hours.")
 
 			# Remember our pointer to the whole cognitive system.
 		thread._mind = mind = mindSystem
@@ -459,14 +489,15 @@ class MindThread(ThreadActor):
 			# Set our initial mode to 'awake'.
 		thread._mode = 'awake'
 		thread._lastResponse = None
+		thread._awakeSince = 0
 		thread._lastActionTime = 0	# An arbitrary early time: Jan 1, 1970
 		thread._fellAsleepTime = 0
 		thread._startedHibernatingAt = 0
 
 			# This is just a simple flag for politely requesting shutdown.
-		thread._exitRequested = False
+		thread.exitRequested = False
 
-		thread._attentionFlag = Flag()
+		thread._attentionFlag = Flag(True)
 			# Raise this flag to cause the AI to respond immediately (that is,
 			# within a second or so) even if its normal minimum action interval
 			# has not yet expired.  However, if the AI is sleeping or
@@ -485,6 +516,15 @@ class MindThread(ThreadActor):
 			# Note we don't put this thread in daemon mode. It's too important!
 			# (We don't want the server to stop while it's still running.)
 
+	def softPoke(thisMindThread:MindThread):
+
+		"""A "soft poke" (F1) is just enough to get the AI's attention
+			and make it respond before its action interval has expired.
+			But, it's not enough to wake it up if sleeping/hibernating."""
+
+			# Just raise its attention flag.
+		thisMindThread._attentionFlag.rise()
+
 	@property
 	def gpt3(thisMindThread:MindThread):
 		return thisMindThread._gpt3			# The_GPT3_API object.
@@ -502,6 +542,8 @@ class MindThread(ThreadActor):
 
 		"""Main routine of mind thread. Just periodically checks
 			whether it needs to do something."""
+
+		_logger.debug("[MindThread] Entered main routine of mind thread...")
 
 		thread = thisMindThread
 		
@@ -545,12 +587,22 @@ class MindThread(ThreadActor):
 		
 		if mode == 'awake':
 			
-				# Has enough time elapsed since the last action we took?
-			timeToAct = ((curTime - thread._lastActionTime) > thread._actionInterval*60)
+			with thread._lock:
+				if thread._attentionFlag():
+					_logger.info(f"[MindThread] I see someone raised my attention flag!")
+					thread._attentionFlag.fall()	# Lower the flag.
+					return True
 
-				# If so, or if someone is trying to get our attention,
-				# then we need to respond.
-			return timeToAct or thread._attentionFlag()
+			actInt = thread._actionInterval
+
+				# Has enough time elapsed since the last action we took?
+			timeToAct = ((curTime - thread._lastActionTime) > actInt*60)
+
+			if timeToAct:
+				_logger.info(f"[MindThread] {actInt}-minute action interval has expired; time to act!")
+			
+				# If so, then we need to respond now.
+			return timeToAct 
 		
 		# Second, if the AI is asleep, then we don't need to respond
 		# unless our sleep period has elapsed or someone is trying to
@@ -558,19 +610,34 @@ class MindThread(ThreadActor):
 
 		if mode == 'asleep':
 
-				# Has enough time elapsed since we fell asleep?
-			timeToWakeUp = ((curTime - thread._fellAsleepTime) > thread._sleepPeriod*60*60)
+			with thread._lock:
+				if thread._wakeUpFlag():
+					_logger.info(f"[MindThread] I see someone raised my wakeup flag!")
+					thread._wakeUpFlag.fall()	# Lower the flag.
+					return True
 
-				# If it's time to wake up, or if someone is
-				# waking us up, then yeah, we need to.
-			return timeToWakeUp or thread._wakeUpFlag()
+			sleepHrs = thread._sleepPeriod
+
+				# Has enough time elapsed since we fell asleep?
+			timeToWakeUp = ((curTime - thread._fellAsleepTime) > sleepHrs*60*60)
+
+			if timeToWakeUp:
+				_logger.info(f"[MindThread] I've been sleeping for {sleepHrs} hours; time to wake up!")
+			
+				# If it's time to wake up, then yeah, we need to.
+			return timeToWakeUp
 
 		# Thirdly, if the AI is hibernating, then we don't need to
 		# respond unless someoke pokes us.
 
 		if mode == 'hibernating':
 
-			return thread._pokeBearFlag()
+			poked = thread._pokeBearFlag() 
+
+			if poked:
+				_logger.info("[MindThread] Someone poked this hibernating bear! Better wake up!")
+
+			return poked
 
 	def respondNow(thisMindThread:MindThread):
 
@@ -591,7 +658,12 @@ class MindThread(ThreadActor):
 			
 	def wakeUp(thisMindThread:MindThread):
 
-		thread._mode = 'awake'
+		if thread._mode in {'asleep', 'hibernating'}:
+
+			_logger.info(f"[MindThread] Waking up from '{thread._mode}' mode...")
+
+			thread._mode = 'awake'
+			thread._awakeSince = time()
 
 		# We should probably actually do this as a more explicit action.
 
@@ -612,9 +684,11 @@ class MindThread(ThreadActor):
 		mind = thread.mind			# The whole cognitive system.
 		field = mind.field			# Our receptive field.
 		view = field.view			# Our view of the field.
-		text = view.text			# One big text string with field data.
+		text = view.text()			# One big text string with field data.
 		
 		gpt3 = thread.gpt3			# Our Big Daddy AI in the cloud.
+
+		_logger.debug("[MindThread] Asking GPT-3 to respond to prompt\n" + text)
 
 			# This asks GPT-3 to generate a response to the field text,
 			# using the current API parameters.
@@ -624,7 +698,8 @@ class MindThread(ThreadActor):
 			# Remember the time that that last GPT-3 API call completed.
 		thread._lastActionTime = time()
 
-		thread._lastResponse = reponse
+		_logger.debug("[MindThread] Got response: [" + response + ']')
+		thread._lastResponse = response
 
 			# This causes us to process the response. Generally this
 			# just conceives and initiates a corresponding speech action.
@@ -761,9 +836,12 @@ class TheCognitiveSystem:
 		# it into a bona-fide GLaDOS process.
 
 		mind._thread = thread = MindThread(mind)
-		
 	
 	#__/ End singleton instance initializer theCognitiveSystem.__init__().
+
+	@property
+	def thread(mind):
+		return mind._thread
 
 	@property
 	def persona(mind):
@@ -839,6 +917,8 @@ class TheCognitiveSystem:
 		"""Starts up the cognitive system (which will create a background
 			thread to run its main loop)."""
 		
+		mind = theCognitiveSystem
+
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| Before we go into our main loop, we'll take care of some necessary
 		#| startup tasks.
@@ -857,6 +937,13 @@ class TheCognitiveSystem:
 		# TO DO: Write more code here, including starting up other
 		# active subsystems of the cognitive system, and then creating
 		# and starting up the thread that will run our main loop.
+
+			#-----------------------------------------------------------
+			# At this point, we are ready to start the main mind thread.
+
+		thread = mind._thread
+		thread.start()			# Go, go, speed racer!
+		
 
 #__/ End singleton class TheCognitiveSystem.
 

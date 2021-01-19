@@ -873,7 +873,9 @@ class	TheAIPersonaConfig:
 		"""
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
-		_logger.normal(f"    [Config/AI]   Loading AI configuration from {_CONFIG_PATHNAME}...")
+		aiConfigPath = theAIConfig.aiConfigPathname
+
+		_logger.normal(f"    [Config/AI]   Loading AI configuration from {aiConfigPath}...")
 
 		with open(_AI_CONFIG_PATHNAME) as cf:
 			conf = load(cf)			# Load structure from hjson file.
@@ -1135,7 +1137,7 @@ class	TheAIPersonaConfig:
 			# Declare these names as globals that we'll reinitialize here.
 			# (It would really be cleaner to change these to class variables.)
 			
-		global _AI_DATADIR, _AI_CONFIG_FILENAME
+		global _AI_DATADIR, _AI_CONFIG_FILENAME, _AI_CONFIG_PATHNAME
 
 			# Update the location of the AI's data directory, 
 			# and the name of its config file, if they were 

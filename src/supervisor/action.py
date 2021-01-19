@@ -405,7 +405,7 @@ class AnnouncementAction_(Action_):
 			highlighting (surroundings asterisks), and a newline."""
 
 		annAct = thisAnnouncementAction
-		text = f"*** {annAct.description} ***" + '\n'
+		text = f"~~~ {annAct.description} ~~~" + '\n'
 
 		return text
 
@@ -450,7 +450,8 @@ class SpeechAction_(Action_):
 		this._speechText = speechText
 		
 			# Compose a description, pretty generic but acceptable.
-		description = f"{entStr} says: \"{speechText}\""
+		#description = f"{entStr} says: \"{speechText}\""
+		description = speechText
 
 			# Dispatch to Action_ base class to finish initialization.
 		super(SpeechAction_, this).__init__(description, utterer)

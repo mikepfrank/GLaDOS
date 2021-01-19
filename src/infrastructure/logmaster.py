@@ -1596,7 +1596,7 @@ class CleanFormatter(logging.Formatter):
 		else:
 			record.component	= _limitLength("(unknown)",	COMPONENT_FIELDWIDTH)
 
-		if hasattr(record,'threadRole'):
+		if hasattr(record,'threadrole'):
 			record.threadrole	= _limitLength(record.threadrole,	THREADROLE_FIELDWIDTH)
 		else:
 			record.threadrole	= _limitLength("(unknown)",	THREADROLE_FIELDWIDTH)
