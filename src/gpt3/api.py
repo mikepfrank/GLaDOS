@@ -971,6 +971,8 @@ class GPT3Core:
 
         kwargs['engine'] = conf.engineId    # This API arg. is required. Can't skip it.
                 
+		# Note here we have to match the exact keyword argument names supported by OpenAI's API.
+
         if prompt                   != None:    kwargs['prompt']            = prompt
         if conf.maxTokens           != None:    kwargs['max_tokens']        = conf.maxTokens
         if conf.temperature         != None:    kwargs['temperature']       = conf.temperature
@@ -1104,6 +1106,14 @@ def countTokens(text:str=None):
         inputComplObj = _theTokenCounterCore.genCompletion(text)
         return inputComplObj.nTokens
 
+def loadStatsIfNeeded():
+
+	"""If the stats file hasn't been loaded from the filesystem yet,
+		this loads it."""
+
+	if not _statsLoaded:
+		loadStats()
+
 def loadStats():
 
     """Loads the api-stats.json file from the AI's data directory."""
@@ -1138,16 +1148,36 @@ def loadStats():
 global _statFile
 _statFile = None
 
+global _statStr
+_statStr = ""
+
 def statLine(line):
-    _logger.normal(line)
+
+	"""This quick-and-dirty utility method saves a lines of
+		the API statistics table to several places."""
+
+	global _statStr
+
+		# Log this line as an INFO-level log message.
+    _logger.info(line)
+
+		# Append this line to the api-stats.txt file.
     print(line, file=_statFile)
+
+		# Also accumulate it in this global string.
+	_statStr = _statStr + line + '\n'
+
+def stats():
+	"""After using the API"""
 
 def displayStats():
 
     """Displays usage statistics in an easily-readable format.
         Also saves them to a file api-stats.txt."""
 
-    global _statFile
+    global _statFile, _statStr
+
+	_statStr = ""
 
     with open(textPath(), 'w') as _statFile:
 

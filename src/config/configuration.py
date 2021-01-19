@@ -81,7 +81,7 @@
 		The following environment variable are for configuring the AI persona.
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		
-			AI_DATADIR
+		AI_DATADIR
 				
 			The environment variable AI_DATADIR should be set to point to the
 			data directory in which all data specific to a given AI persona
@@ -913,7 +913,7 @@ class	TheAIPersonaConfig:
 		else:
 			_logger.warn("parseConf(): The required field-conf parameter "
 							"was not provided.")
-			theAIConfig.fieldConf = dict()	# Empty dict by default.
+			theAIConfig.fieldConf = fieldConf = dict()	# Empty dict by default.
 
 			#------------------------------------
 			# Extract the max-visible-tokens parameter.
@@ -933,7 +933,7 @@ class	TheAIPersonaConfig:
 				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
 			#------------------------------------
-			# Extract the mind-conf parameter.
+			# Extract the mind-conf record.
 		
 		if 'mind-conf' in conf:
 			theAIConfig.mindConf = mindConf = conf['mind-conf']
@@ -942,8 +942,48 @@ class	TheAIPersonaConfig:
 		else:
 			_logger.warn("parseConf(): The required mind-conf parameter "
 							"was not provided.")
-			theAIConfig.mindConf = dict()	# Empty dict by default.
+			theAIConfig.mindConf = mindConf = dict()	# Empty dict by default.
 
+
+			#------------------------------------
+			# Extract the persona-name parameter.
+		
+		if 'persona-name' in mindConf:
+			theAIConfig.personaName = personaName = mindConf['persona-name']
+				# TODO: Make sure value given is valid.
+			_logger.normal(f"    [Config/AI]     AI config: The AI persona's name is {personaName}.")
+		else:
+			_logger.warn("parseConf(): The required persona-name parameter "
+							"was not provided.")
+			theAIConfig.personaName = None
+
+	
+			#------------------------------------
+			# Extract the persona-id parameter.
+		
+		if 'persona-id' in mindConf:
+			theAIConfig.personaID = personaID = mindConf['persona-id']
+				# TODO: Make sure value given is valid.
+			_logger.normal(f"    [Config/AI]     AI config: The AI persona's short ID is {personaID}.")
+		else:
+			_logger.warn("parseConf(): The required persona-id parameter "
+							"was not provided.")
+			theAIConfig.personaID = None
+
+	
+			#------------------------------------
+			# Extract the persona-user-account parameter.
+		
+		if 'persona-user-account' in mindConf:
+			theAIConfig.personaUsername = personaUsername = mindConf['persona-user-account']
+				# TODO: Make sure value given is valid.
+			_logger.normal(f"    [Config/AI]     AI config: The AI persona's user account is {personaUsername}.")
+		else:
+			_logger.warn("parseConf(): The required persona-user-account parameter "
+							"was not provided.")
+			theAIConfig.personaUsername = None
+
+	
 			#------------------------------------
 			# Extract the model-family parameter.
 		
@@ -982,6 +1022,79 @@ class	TheAIPersonaConfig:
 							"was not provided. Defaulting to 0.")
 			theAIConfig.sysNotifyThresh = 0
 
+
+				#|====================================
+				#| Parse the api-conf substructure.
+				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		
+			#------------------------------------
+			# Extract the mind-conf record.
+		
+		if 'api-conf' in conf:
+			theAIConfig.apiConf = apiConf = conf['api-conf']
+				# TODO: Make sure value given is valid.
+			_logger.debug(f"    [Config/AI]     AI config: The AI's API configuration is {apiConf}.")
+		else:
+			_logger.warn("parseConf(): The required api-conf parameter "
+							"was not provided.")
+			theAIConfig.apiConf = apiConf = dict()	# Empty dict by default.
+
+		# Go ahead and pull out the parameter values from the API conf record.
+
+		if 'max-returned-tokens' in apiConf:
+			theAIConfig.maxReturnedTokens = apiConf['max-returned-tokens']
+		else:
+			theAIConfig.maxReturnedTokens = None # No default value provided in config file.
+
+		if 'temperature' in apiConf:
+			theAIConfig.temperature = apiConf['temperature']
+		else:
+			theAIConfig.temperature = None	# No default value provided in config file.
+
+		if 'top-p' in apiConf:
+			theAIConfig.topP = apiConf['top-p']
+		else:
+			theAIConfig.topP = None	# No default value provided in config file.
+
+		if 'n-completions' in apiConf:
+			theAIConfig.nCompletions = apiConf['n-completions']
+		else:
+			theAIConfig.nCompletions = None	# No default value provided in config file.
+
+		if 'do-stream' in apiConf:
+			theAIConfig.doStream = apiConf['do-stream']
+		else:
+			theAIConfig.doStream = None	# No default value provided in config file.
+
+		if 'log-probs' in apiConf:
+			theAIConfig.logProbs = apiConf['log-probs']
+		else:
+			theAIConfig.logProbs = None	# No default value provided in config file.
+
+		if 'do-echo' in apiConf:
+			theAIConfig.doEcho = apiConf['do-echo']
+		else:
+			theAIConfig.doEcho = None	# No default value provided in config file.
+
+		if 'stop-sequences' in apiConf:
+			theAIConfig.stopSequences = apiConf['stop-sequences']
+		else:
+			theAIConfig.stopSequences = None	# No default value provided in config file.
+
+		if 'presence-penalty' in apiConf:
+			theAIConfig.presencePenalty = apiConf['presence-penalty']
+		else:
+			theAIConfig.presencePenalty = None	# No default value provided in config file.
+
+		if 'frequency-penalty' in apiConf:
+			theAIConfig.frequencyPenalty = apiConf['frequency-penalty']
+		else:
+			theAIConfig.frequencyPenalty = None	# No default value provided in config file.
+
+		if 'best-of' in apiConf:
+			theAIConfig.bestOf = apiConf['best-of']
+		else:
+			theAIConfig.bestOf = None	# No default value provided in config file.
 
 		# NOTE: It would be nice to do some additional error-checking 
 		# here, such as warning the user if there are other parameters 
