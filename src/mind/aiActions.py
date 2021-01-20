@@ -25,9 +25,11 @@ from	entities.entity				import	(
 from	config.configuration		import	TheAIPersonaConfig
 
 from	supervisor.action			import	(
-		Action_, SpeechAction_, CommandAction_, ActionChannel_, ActionBySystem_, AnnouncementAction_
+		Action_, SpeechAction_, CommandAction_, ActionChannel_,
+		ActionBySystem_, AnnouncementAction_, ActionByHuman_
 	)
 
+# Forwards
 class	ActionByAI_:					pass
 class	AI_Speech_Action:				pass
 class	CommandByAI_:					pass
@@ -136,10 +138,10 @@ class AI_Speech_Action(SpeechAction_, ActionByAI_):
 			# Store the AI's output text for later reference.
 		this._aiTextOut = aiTextOut
 		
-			# Compose a description, pretty generic but that's fine for now. 
-		description = f"AI {aiStr} generated the text: [{aiTextOut}]"
+			# Compose an action description, pretty generic but that's fine for now. 
+		description = f"AI {aiStr} generated the text: [{aiTextOut}]."
 			# (Later on, if this speech action ends up getting parsed as a command string,
-			# then this action may get transmuted into a command action of some sort.)
+			# then this action may end up also invoking a command action of some sort.)
 			
 			# Dispatch to next class in inheritance chain to finish initialization.
 		super(AI_Speech_Action, this).__init__(aiTextOut, description, theAI)
@@ -148,8 +150,9 @@ class AI_Speech_Action(SpeechAction_, ActionByAI_):
 	# Note to self: Should we go ahead and add AI speech actions to the cognitive stream 
 	# immediately upon conception? Or wait until the command (if any) is interpreted?
 	# I'm thinking yes, we should go ahead and add them at execution time, and the 
-	# command (if any) should be treated as a second action that is consequent on the 
-	# first action. Use ".interpretedAs" and ".triggeredBy" members as appropriate.
+	# command (if any) should be treated as a second action that is consequent on
+	# ("invoked by") the first action. Use ".interpretedAs" and ".triggeredBy" members
+	# as appropriate.
 
 class CommandByAI_(AI_Speech_Action, CommandAction_):
 	pass
@@ -196,6 +199,9 @@ class The_AI_Cognosphere_Channel(ActionChannel_):
 		isAIAction = isinstance(action, ActionByAI_)
 		if isAIAction: 	return True
 		
+		isHumanAction = isinstance(action, ActionByHuman_)
+		if isHumanAction:	return True
+
 		# FUTURE: Check for actions by human users here (not implemented yet
 		# because we haven't implemented the login system).
 		

@@ -173,6 +173,12 @@ class FieldSlot:
 		"""
 
 		slot	= newFieldSlot
+		elem	= forElement
+		
+		name	= f"Field slot for element: '{forElement}'"
+		slot.name = name
+
+		
 		base	= field.base
 
 		# Remember the given placement.
@@ -182,12 +188,16 @@ class FieldSlot:
 		
 			# Initialize some additional private attributes.
 		slot._posIndex	= None			# Slot isn't placed yet.
-		slot._element	= forElement	# We contain the element that we were created to hold.
+		slot._element	= elem			# We contain the element that we were created to hold.
 		slot._field		= field			# This is the field that we will place ourselves on.
 		slot._base		= base			# This is the base field data structure.
 
 			# Go ahead and place this slot, if possible.
 		slot.place()
+
+	@property
+	def element(slot):
+		return slot._element
 
 	def markChanged(slot):
 		"""Mark the contents of this slot as having changed
@@ -266,6 +276,19 @@ class FieldSlot:
 			base.place(slot)
 	
 	
+	def unplace(slot):
+
+		"""Removes this slot from the field."""
+
+		base = slot.base
+
+		if base is not None:
+			base.unplace(slot)
+
+		elem = slot.element
+
+		elem.notifyUnplaced()
+
 	def insertAt(slot:FieldSlot, pos:int):
 		"""Insert this slot at a specific position on the field."""
 		base = slot.base
@@ -338,6 +361,14 @@ class FieldElement_:
 		slot = FieldSlot(thisFE, where, field)
 		
 		thisFE._slot			= slot		# Remember our slot.
+
+	@property
+	def name(elem):
+		return elem._name
+
+	def notifyUnplaced(elem):
+		"""Notify this element that its slot is no longer placed on the field."""
+		pass
 
 	def markChanged(elem):
 		"""Mark the contents of this field element's slot as having changed

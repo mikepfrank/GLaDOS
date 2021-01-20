@@ -98,6 +98,13 @@
 
 	tab-width:		4		# Typical modern value. (Would 8 be better?)
 
+		/* This Boolean states whether the user terminal's script is
+			capable of displaying Unicode box-drawing specials (code
+			page 2500-257F).  If so, then the console can try to use
+			them, and the field display might also use them. */
+			
+	has-box-chars:	True	# E.g., Everson Mono Bold font looks good.
+
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| The configuration structure for the text windowing system that
 		#| we provide to the AI in its field display.  Note that these
@@ -148,13 +155,13 @@
 					making up the entire header bar, apart from the title 
 					text itself.*/
 			
-			header-bar-bgchar:		'*'
+			header-bar-bgchar:		'='
 			
 				/* This character should be used as the "background" pattern
 					making up the entire prompt separator bar, apart from the
 					separator instruction text. */
 					
-			separator-bar-bgchar:	"#"
+			separator-bar-bgchar:	"="
 			
 				/* "Instruction" text to display in the prompt separator bar. */
 				

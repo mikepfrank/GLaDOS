@@ -38,6 +38,27 @@ _logger = getComponentLogger(_component)  # Create the component logger.
 global _sw_component	# Full name of this software component.
 _sw_component = sysName + '.' + _component
 
+from	entities.entity	import (
+
+		Operator_Entity,	# An entity representing the console operator (human).
+
+	)
+	
+from	events.event 	import (
+
+		TextEvent,			# For an event representing the operator's text input.
+		MinuteEventFormat,	
+			# The format we use by default for displaying this text event in 
+			# the inputPanel.  Includes the date/time and author (Operator).
+		
+	)
+
+from	supervisor.action	import (
+
+		Operator_Speech_Action		# We create these when the operator sends the panel text.
+
+	)
+
 from	display.keys	import (
 
 		#-------------------------------
@@ -68,7 +89,8 @@ from	display.keys	import (
 
 			# Function keys that we use for special purposes.
 
-		KEY_F1,			# "Soft-poke" the AI, to get its attention if awake.
+		KEY_F1,		# "Soft-poke" the AI, to get its attention if it's already awake.
+		KEY_F2,		# Send the contents of the text panel to the system.
 
 		# Classes.
 
@@ -83,21 +105,6 @@ from	display.panel	import (
 		
 	)
 	
-from	entities.entity	import (
-
-		Operator_Entity,	# An entity representing the console operator (human).
-
-	)
-	
-from	events.event 	import (
-
-		TextEvent,			# For an event representing the operator's text input.
-		MinuteEventFormat,	
-			# The format we use by default for displaying this text event in 
-			# the inputPanel.  Includes the date/time and author (Operator).
-		
-	)
-
 TERMINATOR = chr(ETX)	# This is a control-C or End-of-Text character.
 
 class PromptTimer: pass
@@ -464,7 +471,7 @@ class InputPanel(Panel):
 			panel.keyDelWordBack()
 
 		elif keycode == LF or keycode == KEY_LINEFEED:
-			# ^J = Jump to new line.
+			# ^J = Jump to new line. "Return" key on keyboard normally generates this.
 			panel.keyLineFeed()
 
 		elif keycode == VT or keycode == KEY_EOL:
@@ -502,11 +509,27 @@ class InputPanel(Panel):
 
 			_logger.info(f"Input Panel: Remapped {keyname} to literal {newkeyevent.ctlname}.")
 
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Below we handle function keys that we have mapped to special behaviors.
+		#|
+		#|	- F1 (Attention) - Provoke the AI to respond.
+		#|	- F2 (Send) - Sends the entered text to GLaDOS as a speech action.
+		#|  - F3...
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 		elif keycode == KEY_F1:		# F1 = Get AI's attention.
 
 			panel.keyAttention()
 
-		# All other keys are just self-inserting by default.
+		elif keycode == KEY_F2:		# F2 = Send text to GLaDOS.
+
+			panel.keySend()
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Catch-all case: All other keys are just self-inserting by default.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		
 		else:
 			panel.insertKey(keyevent)
 		
@@ -974,6 +997,33 @@ class InputPanel(Panel):
 		mindThread = mind.thread
 		
 		mindThread.softPoke()	# Just enough to get its attention if awake.
+
+
+	def keySend(thisInputPanel:InputPanel):
+
+		"""This method handles the F2 key, which means, send the text to the
+			system, by creating and initiating a speech action."""
+
+		panel = thisInputPanel
+		client = panel.client
+		text = panel.text
+		
+		_logger.info(f"[Input Panel] Operator is sending: [{text}]")
+
+
+		# Strip off the terminating ETX character to produce the actual
+		# intended content of the text to send.
+		textBody = text[:-1]
+
+			# Construct the speech action representing our input to the system.
+		opSpeechAct = Operator_Speech_Action(textBody)
+
+			# Go ahead and initiate the action. This injects it into the
+			# supervisor's action-processing subsystem.
+		opSpeechAct.initiate()
+
+			# Finally, we clear the panel contents.
+		panel.keyClear()
 
 #__/ End class InputPanel.
 

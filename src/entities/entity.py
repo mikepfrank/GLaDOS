@@ -350,7 +350,7 @@ class Cognitive_System(AI_Subsystem, Subsystem_Entity):
 	_isAbstract		= False		# Not an ABC. An instance is a specific entity.
 
 	_ENTITY_NAME	= "Cognitive System"
-	_ENTITY_ID		= "CognoSys"	# The ID is a short name used e.g. in prompts.
+	_ENTITY_ID		= "MindSys"	# The ID is a short name used e.g. in prompts.
 	
 	# Note: The .partof attribute for this class is initialized on an
 	# instance-by-instance basis in the instance initializer method, below.

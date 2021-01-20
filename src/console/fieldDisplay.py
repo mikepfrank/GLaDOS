@@ -11,7 +11,8 @@ from infrastructure.logmaster import (
 		ThreadActor,		# Blink timer thread is subclassed from this.
 		getComponentLogger,	# Used just below.
 		LoggedException,
-		WarningException,
+		WarningException,	# FieldUnavailable is one of these.
+		InfoException,		# FieldDataTooLarge is one of these.
 	)
 
 global _component, _logger	# Software component name, logger for component.
@@ -59,8 +60,19 @@ class ConsoleException(LoggedException):
 
 class FieldUnavailable(ConsoleException, WarningException):
 
-	"""This is an exception type that is thrown by the field display
-		when it is unable to access the receptive field facility."""
+	"""This is a warning exception type that is thrown by the
+		field display when it is unable to access the receptive
+		field facility."""
+
+	pass
+
+class FieldDataTooLarge(ConsoleException, InfoException):
+
+	"""Thie is an informational type of exception that is
+		thrown by the field display when the available field
+		data won't fit on the field display.  This prompts
+		the .refresh() method to discard the oldest data
+		item and retry."""
 
 	pass
 
@@ -174,7 +186,7 @@ class FieldPanel(Panel):
 		if not client.dispRunning or win is None:
 			# Go ahead and add the item onto the end of the data list.
 			panel._data.append(item)
-				# Accumulate the total number of characters.
+			# Accumulate the total number of characters.
 			panel._nChars = panel._nChars + nChars
 			return
 
@@ -291,6 +303,15 @@ class FieldDisplay:
 		fieldDisp._rFieldPanel	= rightFieldPanel 	= FieldPanel(fieldDisp, column='right')
 		fieldDisp._lFieldPanel	= leftFieldPanel	= FieldPanel(fieldDisp, column='left')
 	
+	def scrollData(thisFieldDisplay:FieldDisplay):
+
+		"""Scrolls our field data 'Up', which really just means,
+			get rid of the top-most data element."""
+
+		fdisp = thisFieldDisplay
+		with fdisp.lock:
+			fdisp._data = fdisp._data[1:]
+
 	@property
 	def client(thisFieldDisplay:FieldDisplay):
 		return thisFieldDisplay._client
@@ -394,7 +415,18 @@ class FieldDisplay:
 		_logger.debug("[Console/FieldDisp] Refreshing field display.")
 
 		fdisp.queryField()		# Query the receptive field for its contents.
-		fdisp.refillPanels()	# Refill the field panels with data.
+
+		# This attempts to display all the data, and if it doesn't all fit,
+		# keeps scrolling data up and off the display until it does.
+		while True:		# This "infinite loop" really stops when the data fits.
+			try:
+				fdisp.refillPanels()	# Refill the field panels with data.
+			except FieldDataTooLarge as e:
+				_logger.debug("[Field Display] Discarding oldest data item: [fdisp.data[0]] and retrying...")
+				fdisp.scrollData()
+				continue	# Loop back to top.
+			else:	# Everything fit!
+				break
 
 		# Has the field display actually been launched yet? (Both panels launched?)
 		if fdisp._launched:
@@ -510,13 +542,27 @@ class FieldDisplay:
 			
 			except RenderExcursion as excursion:
 				
-					# Remember that that panel is now full, so that we won't try to add
+					# Get the position in the text where the excursion event happened.
+				pos = excursion.pos
+
+					# Remember that this panel is now full, so that we won't try to add
 					# anything to it again.
 				panel.markFull()
 				
+				_logger.debug("[Field Display] Field panel overflowed! Reflowing "
+							  f"remainder of item, starting at position [{pos}], "
+							  "to next panel.")
+
 					# What we have left to add is the rest of the item after we ran out of room.
 				item = item[pos:]
 				
+				_logger.debug(f"[Field Display] Overflowed text is: [{item}]")
+
+				col = panel.column
+				if col == 'right':
+					# This is a problem; we don't actually have any more panels to overflow to.
+					raise FieldDataTooLarge("fieldDisplay.addItem(): Not enough room on field display.")
+
 				continue	# Go back to top and try adding the rest of the item.
 			
 			else:		# No exceptions?
