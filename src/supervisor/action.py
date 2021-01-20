@@ -159,7 +159,10 @@ from config.configuration	import  TheAIPersonaConfig
 
 from events.event import tznow		# datetime.now() in user's time zone
 
-from entities.entity	import	Entity_, The_GLaDOS_Entity, The_Supervisor_Entity
+from entities.entity	import	(
+		Entity_, The_GLaDOS_Entity, The_Supervisor_Entity, Human_Entity_,
+		Operator_Entity
+	)
 	# This is the abstract base class for all entity objects.
 
 # Can't import this--circularity!!
@@ -273,9 +276,16 @@ class Action_:
 		"""
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
-		thisAction._conceivedAt = tznow()	# Use current time as conception time.
 		thisAction._description	= description
-		thisAction._conceivedBy	= conceiver
+
+		thisAction._conceivedBy	= conceiver	# Who conceived of taking this action?
+		thisAction._conceivedAt = tznow()	# Use current time as conception time.
+
+		thisAction._initiatedBy = None			# Not yet initiated.
+		thisAction._initiatedAt = None
+
+		thisAction._executedBy  = None			# Not yet executed.
+		thisAction._executedAt	= None
 		
 		_logger.debug(f"_Action.__init__(): Constructed action '{description}'.")
 
@@ -286,11 +296,22 @@ class Action_:
 
 	@property
 	def conceiver(thisAction):
+		"""Returns the entity that first conceived of taking this action."""
 		return thisAction._conceivedBy
 
 	@property
 	def conceptionTime(thisAction):
 		return thisAction._conceivedAt
+
+	@property
+	def initiator(thisAction):
+		"""Returns the entity that actually initiated the execution of this action."""
+		return thisAction._initiatedBy
+
+	@property
+	def executor(thisAction):
+		"""Returns the entity that actually executed this action."""
+		return thisAction._executedBy
 
 	@property
 	def description(thisAction):
@@ -435,11 +456,13 @@ class SpeechAction_(Action_):
 
 	"""A speech action consists of some entity "saying something."
 		The important thing about speech actions is that they can
-		possibly sometimes be interpreted as commands to the system."""
+		possibly sometimes be interpreted as commands to the system,
+		which will be automatically interpreted by the command
+		interface."""
 
 	def __init__(this,
 			speechText:str=None,	# Speech uttered by entity, as a text string.
-			description:str=None,	# Description of the speech act.
+			description:str=None,	# Overall description of the speech act.
 			utterer:Entity_=None,	# The entity that is conceiving the speech act.
 		):
 
@@ -474,8 +497,72 @@ class SpeechAction_(Action_):
 
 
 class ActionByHuman_(Action_):
-	pass
+
+	defaultConceiver = None
+		# NOTE: No default conceiver. Subclasses may override this
+
+
+	def __init__(thisHumanAction, 
+
+			description:str="A generic action was taken by a human.",
+				# REQUIRED. A description string. SUBCLASSES SHOULD OVERRIDE THIS VALUE.
+
+			conceiver:Human_Entity_=None,
+				 # The human entity that conceived of taking this action. 
+
+		):
 	
+		humanAction = thisHumanAction
+
+		if conceiver is None:
+			conceiver = humanAction.defaultConceiver
+
+		super(ActionByHuman_, thisHumanAction).__init__(description, conceiver)
+
+	
+class ActionByOperator_(ActionByHuman_):
+
+	defaultConceiver = Operator_Entity()
+		# This is an entity to represent the (possibly anonymous) human
+		# operator that is physically sitting at the system console.
+
+
+class Operator_Speech_Action: pass
+class Operator_Speech_Action(SpeechAction_, ActionByOperator_):
+
+	"""Class for speech actions by the system operator, which means text
+		that the operator entered and sent to GLaDOS using, e.g., the input
+		panel within the system console client.
+
+		These actions are usually automatically initiated by the conceiver
+		right after being conceived (created)."""
+
+	def __init__(newOpSpeechAct:Operator_Speech_Action, opTextOut:str):
+		
+		action = newOpSpeechAct
+
+			# The operator entity is the default conceiver for
+			# all ActionByOperator_ instances; retrieve it.
+		opEntity = newOpSpeechAct.defaultConceiver
+
+			# Get a short string name representing the operator.
+		action._opStr = opStr = str(opEntity)
+
+			# Store the operators's output text for later reference.
+		action._opTextOut = opTextOut
+		
+		_logger.debug(f"[Action System] {opStr} is creating a speech action with text: [{opTextOut}].")
+
+			# Compose an action description, pretty generic but that's fine for now. 
+		description = f"{opStr} sent the text: [{opTextOut}]."
+			# (Later on, if this speech action ends up getting parsed as a command string,
+			# then this action may end up also invoking a command action of some sort.)
+
+			# Dispatch to next class in inheritance chain to finish initialization.
+		super(Operator_Speech_Action, action).__init__(opTextOut, description, opEntity)
+			# Note dispatch order goes first to SpeechAction_, then to ActionByOperator_.
+
+
 class ActionBySystem_(Action_):
 
 	defaultConceiver = The_GLaDOS_Entity()
@@ -710,7 +797,7 @@ class TheActionProcessor:
 		if isinstance(action, ActionBySystem_) or isinstance(action, AnnouncementAction_):
 			action.executionDetails()
 			
-			# For speech actions taken, we need to check whether committing
+			# For any speech actions taken, we need to check whether committing
 			# (executing) the speech act automatically invokes another action
 			# (such as a command action).  If so, then execute that action too.
 		elif isinstance(action, SpeechAction_):

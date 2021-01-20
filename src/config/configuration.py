@@ -502,6 +502,15 @@ class TheConfiguration:	# The GLaDOS server configuration.
 							"was not provided. Defaulting to 4.")
 			theConfig.tabWidth = 4
 
+		if 'has-box-chars' in conf:
+			theConfig.hasBoxChars = hasBoxChars = conf['has-box-chars']
+			_logger.normal("    [Config]      System config: has-box-chars is " +
+						   str(hasBoxChars) + '.')
+		else:
+			_logger.warn("configuration._parseConf(): The 'has-box-chars' parameter "
+							"was not provided. Defaulting to False.")
+			theConfig.hasBoxChars = False
+
 			#-----------------------------------------------------------------
 			# Extract the 'window-conf' parameter, which contains configuration
 			# parameters for the AI's text-based windowing system.
@@ -1024,6 +1033,10 @@ class	TheAIPersonaConfig:
 							"was not provided. Defaulting to 0.")
 			theAIConfig.sysNotifyThresh = 0
 
+		if 'min-query-tokens' in mindConf:
+			theAIConfig.minQueryTokens = minQueryTokens = mindConf['min-query-tokens']
+		else:
+			theAIConfig.minQueryTokens = 42		# Default
 
 				#|====================================
 				#| Parse the api-conf substructure.

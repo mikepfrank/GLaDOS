@@ -1842,11 +1842,28 @@ class TheDisplay:
 					# an effective 1-character pad on the right side.
 				
 					attr = style_to_attr(WHITESP)
-					win.addstr('\\', attr)	
+
+					try:
+
+						win.addstr('\\', attr)	
 						# Note this is actually a single blackslash character.
 						
-					win.addstr('\n' + hangPad)
+						win.addstr('\n' + hangPad)
 						# And this actually goes to the next line.
+
+					except curses.error as e:
+
+						msg = str(e)
+
+						_logger.debug("[Display] Overflowed window during line-wrap in .renderText().")
+				
+						excursion = RenderExcursion(
+							"display.renderText() got curses error: " + msg, 
+							ch, pos, Loc(cy, cx), yx2pos, pos2yx)
+				
+						# Throw that back to the caller.
+						raise excursion
+						
 
 			#__/ End if possible automatic line-wrap.
 		
@@ -1871,6 +1888,8 @@ class TheDisplay:
 			except curses.error as e:
 				msg = str(e)
 				
+				_logger.debug("[Display] Overflowed window in .renderText().")
+
 				# Wrap up some state information that the caller
 				# might want to know in a RenderExcursion exception.
 				excursion = RenderExcursion(
@@ -1921,7 +1940,7 @@ class TheDisplay:
 					# to move at all.  Otherwise, we output a
 					# real tab char to go to the next tab stop.
 				if cx % tabsize != 0:
-					win.addstr('\t')
+					win.addstr('\t')	# Still need to handle overflow.
 			
 			elif ch == VT:	# Move down one line, without CR.
 			
@@ -1934,21 +1953,34 @@ class TheDisplay:
 				(cy, cx) = win.getyx()
 				
 					# Move one cell down and to the left.
-				win.move(cy + 1, cx - 1)
+				win.move(cy + 1, cx - 1)	# Still need to handle excursion.
 				
 			elif ch == LF:	# Line feed: Suppress if we just output CR; otherwise just do a newline.
 			
 				if not lastCharWasCR:
-					win.addstr('\n' + hangPad)	# Output newline.
+					
+					# Output newline and indent, but catch overflow.
+					try:
+						win.addstr('\n' + hangPad)	# Output newline.
+					except curses.error as e:
+						msg = str(e)
+						_logger.debug("[Display] Overflowed window during LF in .renderText().")
+						excursion = RenderExcursion(
+							"display.renderText() got curses error: " + msg, 
+							ch, pos, Loc(cy, cx), yx2pos, pos2yx)
+						raise excursion
 			
 			elif ch == CR:	# Carriage return:  Output newline, and remember last char was CR.
 
+				# Still need to handle overflow.
 				win.addstr('\n' + hangPad)		# Output newline.
 					# Now remember we already did this, in case next character is NL.
+					# Still need to handle overflow.
 				lastCharWasCR = True	
 				
 			elif ch == FF:	# Newline, centered page separator, newline.
 
+				# Still need to handle overflow.
 				win.addstr('\n')
 				(ht, wd) = win.getmaxyx()
 				pageSep = "* * *"

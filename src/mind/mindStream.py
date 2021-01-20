@@ -77,6 +77,16 @@ class TheCognitiveStream:
 		cs._events = []		# Empty list of events initially.
 		cs._format = cs.defaultEventFormat	# Format for new events.
 
+
+	@property
+	def mind(thisCogStream:TheCognitiveStream):
+
+		"""Gets a reference to the larger cognitive system that this
+			cognitive-stream subsystem is a part of."""
+
+		return thisCogStream._mind
+
+
 	def addEvent(thisCogStream:TheCognitiveStream, textEvent:TextEvent):
 
 		"""This adds the given event to (the end of) our cognitive stream."""
@@ -101,14 +111,15 @@ class TheCognitiveStream:
 			of events."""
 
 		cs = thisCogStream
+		mind = cs.mind	    # Our entire over-arching cognitive system.
 
 		author = action.conceiver
 			# We consider the action to have been authored by the entity
 			# that originally conceived it.
 
 		# This causes us to ignore system actions.
-		if isinstance(author, System_Entity_):
-			return
+		#if isinstance(author, System_Entity_):
+		#	return
 
 		creationTime = action.conceptionTime
 			# We consider the event to have been created at the time that
@@ -118,9 +129,12 @@ class TheCognitiveStream:
 			# We ask the action itself to provide us its own text.  How this
 			# is generated, precisely, may depend on the class of action.
 
-		textEvent = TextEvent(text, author, cs._format, creationTime)
+		textEvent = TextEvent(text, author, cs._format, creationTime, action)
 			# This creates the new text-event object representing the event
 			# of the action's execution.
 
 		cs.addEvent(textEvent)
-			# Go ahead and add this event to our cognitive stream.
+			# Go ahead and add this event to our cognitive stream.  (This
+			# will, as a consequence, also make it appear on our receptive
+			# field.)
+

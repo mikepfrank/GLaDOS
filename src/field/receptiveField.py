@@ -225,6 +225,31 @@ class _TheBaseFieldData:
 		base.markChanged()
 			# Has the base data changed since last rendered?
 
+	def shrink(base, byHowMuch:int=None):
+
+		"""Tells the base field data structure to shrink itself however
+			possible."""
+
+		# Our first and simplest strategy for this is just:
+		# un-place the top-most text event element from the field.
+
+		for slot in base.slots:
+			
+			elem = slot.element		# Get the field element contained in this slot.
+
+			# Is it a text event element? Then tell its slot to scram.
+			if isinstance(elem, TextEventElement):
+
+				_logger.debug("[Field/Base] Rememing slot: \"{slot.name}\" from base data...")
+
+				slot.unplace()
+				break
+
+	def unplace(base, slot):
+		base.slots.remove(slot)
+		base._nSlots = base._nSlots - 1
+		base.markChanged()
+
 	@property
 	def hasChanged(base):
 		return base._changed
@@ -835,5 +860,22 @@ class TheReceptiveField(ReceptiveField_):
 			# Cache this in case needed for diagnostics.
 		
 		return nchars
+
+	def shrink(theReceptiveField:TheReceptiveField, byHowMuch:int=None):
+
+		"""Requests the field to shrink itself however possible.
+			After this is done, it should update its view."""
+
+		_logger.debug("[Receptive Field] Attempting to shrink myself by {byHowMuch} tokens...")
+
+		field = theReceptiveField
+
+			# Ask our base data structure to shrink itself.
+		field.base.shrink(byHowMuch)
+
+		_logger.debug("[Receptive Field] Updating my view after I shrank...")
+
+		field.updateView()	# Update your view(s), field!
+		
 
 #__/ End singleton class TheReceptiveField.

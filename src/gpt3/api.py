@@ -518,6 +518,20 @@ GPT3 Configuration{namestr}:
 #__/ End class GPT3APIConfig.
 
 
+class PromptTooLargeException(Exception):
+
+    def __init__(e, promptToks:int, maxToks:int):
+
+        byHowMuch = promptToks - maxToks
+
+        e.promptToks = promptToks
+        e.maxToks = maxToks
+        e.byHowMuch = byHowMuch
+
+        msg = f"GPT-3 API prompt string is {promptToks} tokens, max is {promptToks}, too large by {byHowMuch}."
+
+        super(PromptTooLargeException, e).__init__(msg)
+
     # Forward declaration of GPT3Core so we can reference it 
     # from within the Completion class definition.
 class GPT3Core:
@@ -806,22 +820,43 @@ class Completion:
     @backoff.on_exception(backoff.expo,
                           (openai.error.APIError))
                           
-    def _createComplStruct(self, apiArgs):
+    def _createComplStruct(self, apiArgs, minQueryToks:int=42):
     
         """Private instance method to retrieve a completion from the
             core API, with automatic exponential backoff and retry."""
             
+        if minQueryToks is None:
+            minQueryToks = 42
+
         # If the usage statistics file hasn't been loaded already, do it now.
         if not _statsLoaded:
             loadStats()
 
         self._accountForInput(apiArgs)
 
+        REAL_MAX = 2049     # Not 2048; not sure why.
+
         # Check to make sure that input+result length is not >2049; if so then
         # we need to request a smaller result.
-        if _inputLength + apiArgs['max_tokens'] > 2049:
+        if _inputLength + apiArgs['max_tokens'] > REAL_MAX:
 
-            apiArgs['max_tokens'] = maxTok = 2049 - _inputLength
+                # See how much space there is right now for our query result.
+            querySpace = REAL_MAX - _inputLength
+
+                # If there isn't enough space even for our minimum query,
+                # then we need to raise an exception, because whoever prepared
+                # our prompt made it too large.
+            if querySpace < minQueryToks:
+
+                effMax = REAL_MAX - minQueryToks
+
+                _logger.warn(f"[GPT-3 API] Prompt length of {_inputLength} exceeds "
+                             f"our effective maximum of {effMax}. Requesting field shrink.")
+
+                e = PromptTooLargeException(_inputLength, effMax)
+                raise e     # Complain to our caller hierarchy.
+
+            apiArgs['max_tokens'] = maxTok = REAL_MAX - _inputLength
 
             _logger.warn(f"[GPT3 API] Trimmed max_tokens to {maxTok}.")
 

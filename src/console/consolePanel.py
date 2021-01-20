@@ -123,7 +123,9 @@ class ConsolePanel(Panel):
 		console display.  This includes normal, info, warning, 
 		error messages, etc."""
 
-	_DEFAULT_INITROWS = 38		# Default initial height of panel.
+	_DEFAULT_INITROWS = 15		# Default initial height of panel.
+	#_DEFAULT_INITROWS = 19		# Default initial height of panel.
+	#_DEFAULT_INITROWS = 38		# Default initial height of panel.
 	#_DEFAULT_INITROWS = 8		# Default initial height of panel.
 	_DEFAULT_MAXLINES = 100
 

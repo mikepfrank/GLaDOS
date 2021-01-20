@@ -166,7 +166,7 @@ class TextEvent:
 	#\--------------------------------------------------------------------------
 
 	def __init__(inst, text:str=None, author:Entity_=None, defaultFormat=None,
-			when:datetime=None):
+				 when:datetime=None, action=None):
 	
 			# Default the creation time to right now if not provided.
 			
@@ -178,6 +178,11 @@ class TextEvent:
 		inst.creator		= author
 		inst.text			= text
 		inst.defaultFormat	= defaultFormat
+		inst.action			= action
+			# The action that caused this event. This can help the AI's mind
+			# to recognize events of specific sub-types; e.g., see the
+			# noticeEvent() method in TheCognitiveSystem class in the 
+			# mindSystem module in the mind package.
 	
 	def updateTime(thisEvent):
 

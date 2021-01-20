@@ -81,6 +81,10 @@ class RenderExcursion(DisplayException, InfoException):
 		exception._yx2pos = yx2pos
 		exception._pos2yx = pos2yx
 	
+	@property
+	def pos(excursion):
+		return excursion._pos
+
 	def __str__(exception):
 		return exception._msg
 	
