@@ -30,7 +30,7 @@ during development.)
 
 This section lists and documents the top-level files contained in the `GLaDOS` directory.
 
-### GIT Ignore file (`.gitignore`)
+### GIT Ignore file ([`.gitignore`](.gitignore ".gitignore file"))
 
 To the standard list, this adds the backup files `*~` created by Emacs, the `log/` 
 directory, and the `err.out` file.
@@ -41,7 +41,7 @@ While the system is running, any output that is sent to the system stderr
 stream is also echoed to this file.  This can be useful e.g. for seeing the
 call stack trace from a thread that has exited due to throwing an exception.
 
-### GLaDOS System Configuration File (`glados-config.hjson`)
+### GLaDOS System Configuration File ([`glados-config.hjson`](glados-config.hjson "glados-config.hjson file"))
 
 This is the main configuration file for the GLaDOS system, in human-readable JSON format
 (see [hjson.github.io](https://hjson.github.io/)).  If you would like to maintain
@@ -53,7 +53,7 @@ a given invocation of the system.  Alternatively, just set `GLADOS_CONFIG_PATH` 
 pathname (directory and file) of the config file you want to use.  (If `GLADOS_CONFIG_PATH` 
 is set, then `GLADOS_CONFIG_FILENAME` will be ignored.)
 
-### Installation Notes (`INSTALL-NOTES`)
+### Installation Notes ([`INSTALL-NOTES`](INSTALL-NOTES "INSTALL-NOTES file"))
 
 This is a plain ASCII text file with some human-readable notes on how to install GLaDOS.
 Right now, the only required steps (after cloning the repo) are to `pip install` several
@@ -64,7 +64,7 @@ you are using the Python 3 version of pip.
 
 This file, in GitHub's Markdown format (see [guides.github.com/features/mastering-markdown](https://guides.github.com/features/mastering-markdown/)).
 
-### Test Script (`test-server.sh`)
+### Test Script ([`test-server.sh`](test-server.sh "test-server.sh file"))
 
 This executable test script launches the main server application of GLaDOS, as a 
 foreground process.  It assumes `/bin/bash` points to your `sh`- or `bash`-compatible
