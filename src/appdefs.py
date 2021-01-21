@@ -107,16 +107,16 @@ __all__ = [
         #|      These globals are specific to the present module
         #|      and exported publicly to other modules that use it.
         #|
-	#|      User modules should do "from appdefs import *"
-	#|      to get immediate copies of these globals.
-	#|
-	#|      If users wish to modify these globals, they must also
-	#|      do "import appdefs" and then "appdefs.<global> = ..."
-	#|      (Warning: This will not affect the values of these
-	#|      globals seen by other modules that have already
-	#|      imported this module!)
-	#|
-	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		#|      User modules should do "from appdefs import *"
+		#|      to get immediate copies of these globals.
+		#|
+		#|      If users wish to modify these globals, they must also
+		#|      do "import appdefs" and then "appdefs.<global> = ..."
+		#|      (Warning: This will not affect the values of these
+		#|      globals seen by other modules that have already
+		#|      imported this module!)
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 global systemName, appName, topFile
     # Note this declaration doesn't really do anything at top level.
@@ -162,7 +162,7 @@ appName     =   systemName + ".server"
         #|
         #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-topFile = 'glados-server'    # Note that the .py is implicit here.
+topFile 	= 	'glados-server'    # Note that the .py is implicit here.
 
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
