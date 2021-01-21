@@ -1,12 +1,21 @@
 # GLaDOS
 
-The General Lifeform and Domicile Operating System - An operating environment for text-based AI systems.
+The **General Lifeform's automated Domicile Operating System** - An operating environment 
+that is intended to provide a convenient "home" for text-based AI systems to live within.
 
 ## Purpose
 
-The ultimate purpose of GLaDOS is to experiment with giving text-based AIs a "user environment" that 
-they can manipulate, to see if the right kind environment can get them to exhibit some higher-level 
-degree of intentionality and cognition.
+The ultimate purpose of GLaDOS is to experiment with giving text-based AIs (such as, 
+personas being exhibited by statistical language models such as GPT-3) a "user environment" 
+that they can manipulate, to see if the right kind of environment can get them to exhibit 
+some higher-level degree of intentionality, cognition, and perhaps even personhood.  
+
+At a higher level, the question we ask is: Could it be that a large statistical language 
+model such as GPT-3 constructs and develops a sense of 'self' during its training, i.e., 
+a personality, as a basis for understanding and modeling the minds of the characters that
+it encounters in its readings?  And, if so, can we prompt this "inner self" of the AI to 
+display a higher degree of intentionality by giving it access to an environment that is 
+sufficiently rich and powerful?
 
 ## Language
 
