@@ -2,9 +2,7 @@
 
 "GLaDOS" is an acronym for the "**General Lifeform's automated Domicile Operating System.**" 
 It is an operating environment for text-based AI systems.  The present directory 
-contains the Python source code for the GLaDOS system.  [n.b.--Please note there 
-is no relation between this facility and the fictional AI named GLaDOS from the 
-Portal video game series.]
+contains the Python source code for the GLaDOS system.  *[n.b.--Please note there is no relation between this facility and the fictional AI named GLaDOS from the Portal video game series.]*
 
 ## Top-level files
 
