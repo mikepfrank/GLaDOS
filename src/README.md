@@ -2,14 +2,14 @@
 
 "GLaDOS" is an acronym for the "**General Lifeform's automated Domicile Operating System.**" 
 It is an operating environment for text-based AI systems.  The present directory 
-contains the Python source code for the GLaDOS system.  *[n.b.--Please note there is no relation between this facility and the fictional AI named GLaDOS from the Portal video game series.]*
+contains the Python source code for the GLaDOS system.  *[n.b.--Please note that there is no relation between this facility and the fictional AI named GLaDOS from the Portal video game series.]*
 
 ## Top-level files
 
 Here we document the various top-level files that exist immediately under 
 the `src/` directory.
 
-1.	Source code README file (`README.md`) - This file.
+1.	**Source code README file** (`README.md`) - This file.
 
 2.	**GLaDOS Server Application Program** (`glados-server.py`) - This is the
 	main top-level Python application program implementing the core server
