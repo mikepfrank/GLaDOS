@@ -69,7 +69,7 @@
             # The persona-user-account is the user account name on the host
             # system under which the server process should be run.
 
-        persona-user-account:           "gladys"    # Not yet used.
+        persona-user-account:           'gladys'    # Not yet used.
 
             #-----------------------------------------------------------------
             # The model-family is a symbol specifying the general architecture
