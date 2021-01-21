@@ -7,7 +7,7 @@ a text-based AI system can "live" within.
 ## Purpose
 
 The ultimate purpose of GLaDOS is to experiment with giving text-based AIs (such as, 
-personas being exhibited by statistical language models such as GPT-3) a "user environment" 
+personas being emulated by statistical language models such as GPT-3) a "user environment" 
 that they can manipulate, to see if the right kind of environment can get them to exhibit 
 some higher-level degree of intentionality, cognition, and perhaps even personhood.  
 
