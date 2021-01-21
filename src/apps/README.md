@@ -7,18 +7,18 @@ roughly in the intended order of implementation.
 
 ## List of Applications (in order of intended implementation)
 
-1. **Clock** - This app brings up a small window at the top of the
-	AI's receptive field that displays the current time & keeps it 
-	updated.
-
-2. **Info** - The idea behind this app is that it maintains and 
+1. **Info** - The idea behind this app is that it maintains and 
 	displays certain critical contextual information that the A.I. 
 	needs to know, including its identity, life circumstances, and
 	its present high-level goals.  Its window normally remains pinned 
-	at the top of the A.I.'s receptive field.  When the Info app
+	near the top of the A.I.'s receptive field.  When the Info app
 	is launched, it allows the A.I. to edit certain information such
 	as its high-level goals. (Dispatched to the "Goals" app.)
 	
+2. **Clock** - This app brings up a small window at the top of the
+	AI's receptive field that displays the current time & keeps it 
+	updated.
+
 3. **Goals** - This is a simple tool to allow the A.I. to view and
 	edit its list of high-level goals. **[Not yet implemented.]**
 	

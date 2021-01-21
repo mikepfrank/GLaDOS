@@ -331,7 +331,7 @@
 		v0.2 (2016) - New revision for the Dynamic simulator, Sandia Labs,
 			Dept. 1425.	 (M. Frank)
 			
-		v0.3 (2020) - Importing into GLaDOS for use in that system.
+		v0.3 (2020-21) - Importing into GLaDOS for use in that system.
 		
   
 	Work to do/in progress:
@@ -345,8 +345,17 @@
 #| End of module documentation string.
 #|------------------------------------------------------------------------------
 
-global _RAW_DEBUG
-_RAW_DEBUG = False
+global _RAW_DEBUG		# Boolean: Whether to turn on low-level debug output.
+_RAW_DEBUG = False		# Don't use it by default; it's pretty disruptive.
+
+	#|===================================================================
+	#| The following allows user code to tell logmaster to use different
+	#| output streams in place of the usual STDOUT and STDERR streams,
+	#| without necessarily having to actually change sys.stdout/stderr.
+	#| So, for example, a curses application can reserve STDOUT for its
+	#| own use, while telling logmaster to send normal-level log messages
+	#| somewhere other than STDOUT for console display purposes.
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 global _alt_stdout, _alt_stderr
 _alt_stdout = None
@@ -357,11 +366,21 @@ def set_alt_stdout(alt_stdout):
 	_alt_stdout = alt_stdout
 
 def set_alt_stderr(alt_stderr):
+
 	global _alt_stderr
+
 	_alt_stderr = alt_stderr
 	updateStderr(alt_stderr)
 
-def outstr():
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	# Note that the following two functions are marked private (leading '_') 
+	# because they are only intended to be used from within logmaster itself.
+
+def _outstr():
+
+	"""Returns the current normal-output stream that 
+		logmaster should be using for output of normal-level
+		log messages to the 'console'."""
 
 	if _alt_stdout != None:
 		outstrm = _alt_stdout
@@ -370,7 +389,11 @@ def outstr():
 
 	return outstrm
 
-def errstr():
+def _errstr():
+
+	"""Returns the current error-output stream that logmaster
+		should be using for output of abnormal-level log 
+		messages to the 'console'."""
 
 	if _alt_stderr != None:
 		errstrm = _alt_stderr
@@ -437,7 +460,9 @@ def errstr():
 		#|	1.1. Imports of standard python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-import	os			 # Used in calculating _srcfile.
+from	os		import	path
+	# Used in calculating _srcfile, and also in getLoggerInfo().
+
 import	sys			 # For stdout/stderr, for console loghandler & internal debugging of logmaster.
 import	io			 # For TextIOBase, which we subclass in _NullOut.
 import	logging		 # General python logging facility.
@@ -508,6 +533,7 @@ __all__ = [
 	'testLogging', 'updateStderr',
 	'setThreadRole', 'setComponent',
 	'set_alt_stdout', 'set_alt_stderr',
+	'getLoggerInfo',
 ]
 
 
@@ -1003,7 +1029,7 @@ elif __file__[-4:].lower() in ['.pyc', '.pyo']:
 	_srcfile = __file__[:-4] + '.py'
 else:
 	_srcfile = __file__
-_srcfile = os.path.normcase(_srcfile)
+_srcfile = path.normcase(_srcfile)
 
 
 	#|==========================================================================
@@ -2528,7 +2554,9 @@ class NormalLogger(logging.Logger):
 		   then passing it on to the logging system for processing at
 		   the new NORMAL logging level."""
 		
-		print(message, file=outstr())		# Print the message to stdout.
+		print(message, file=_outstr())
+			# Print the message to our "normal" console output stream 
+			# (this may or may not be the same as sys.stdout currently).
 		
 		if inst.isEnabledFor(NORMAL):
 			if caller==None:								
@@ -2919,7 +2947,7 @@ def exception(msg:str, *args, **kwargs):
 		# We surround the traceback above and below with "vvvv", "^^^^"
 		# delimiter lines, to set it off from other output.
 	
-	errstrm = errstr()
+	errstrm = _errstr()
 
 	print("v"*70,file=errstrm)		
 	mainLogger.exception(msg, *args, caller=caller, **kwargs)
@@ -3268,7 +3296,7 @@ def initLogMaster(out=None, err=None):
 		# that are (typically) at warning level or higher.	This will ensure
 		# that these messages also appear on the stdout/stderr console.
 	
-	errstrm = errstr()
+	errstrm = _errstr()
 
 	consHandler = logging.StreamHandler(stream=errstrm)	   # The default stream handler uses stderr.
 	consHandler.addFilter(AbnormalFilter())	   # Add a filter to ignore NORMAL-level messages.
@@ -3495,6 +3523,79 @@ def _setDefaultRole():
 		# ugly.	 Fix it up by replacing it with ThreadActor's method.
 		thread.__str__ = lambda: ThreadActor.__str__(thread)
 	
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def getLoggerInfo(moduleFilename):
+	"""
+	getLoggerInfo()													  [function]
+	
+		Modules can call getLoggerInfo(__file__) to get back a tuple
+	
+								(logger, component)
+						
+		where <logger> is a logger with the path <sysName>.<appName>.<pkgName>
+		where <sysName> is the system name (from the appdefs module), <appName>
+		is the application name (also from appdefs), and <pkgName> is the (last 
+		part of) the name of the package containing the current file; that is, 
+		it's a dedicated logger for the package <pkgName>.  Meanwhile, <component>
+		is a dotted name for the current "software component;" this is just 
+		<sysName>.<pkgName>.  This can be used as the .defaultComponent attribute
+		of ThreadActor subclasses defined within the module.
+	
+	EXAMPLE USAGE:
+	
+			global _logger		# Logger for this module.
+			global _component	# Software component name, as <sysName>.<pkgName>.
+			
+			(_logger, _component) = getLoggerInfo(__file__)		# Fill in globals.
+	
+			...
+			
+			class MyThread(ThreadActor):
+			
+				defaultRole = 'play god'	# To appear in thread's log records.
+
+					#------------------------------------------------------------
+					# Set this class variable to fill in the component parameter
+					# automatically in all log records generated by this thread. 				
+					
+				defaultComponent = _component		
+						# Use value obtained earlier from getLoggerInfo().
+				
+				def myMethod(thread):
+					_logger.debug("Here I am!")		# Log record automatically includes package name.
+					...
+	"""
+	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| First, get the name of the package that the specified file is in.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+	packageName = path.basename(path.dirname(moduleFilename))
+			# The last component of the name of the directory that the
+			# given file is in, in the name of this file's package.
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Next, get a component logger (treed under the application logger)
+		#| for the caller's package.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+	logger = getComponentLogger(packageName)
+			# This is a logger whose path is <sysName>.<appName>.<pkgName>
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Finally, construct the component name for the caller's package.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+	swComponent = sysName + '.' + packageName	# Just <sysName>.<pkgName.
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Return the results to the caller.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	return (logger, swComponent)
+	
+#__/ End module function logmaster.getLoggerInfo().
 
 	#|--------------------------------------------------------------------------
 	#|
