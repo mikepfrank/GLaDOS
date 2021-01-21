@@ -18,7 +18,7 @@ it encounters during its readings?  And, if that is possible, could we prompt th
 self" of the AI to display a higher degree of intentionality by giving it access to an 
 environment that is sufficiently rich and powerful?
 
-At this point, GLaDOS is just an experiment, an experiment with perhaps a rather 
+At this point, GLaDOS is only an experiment, an experiment with perhaps a rather 
 questionable likelihood of success.
 
 ## Language
@@ -32,7 +32,8 @@ This section lists and documents the top-level files contained in the `GLaDOS` d
 
 ### GIT Ignore file (`.gitignore`)
 
-To the stanard list, this adds the backup files `*~` created by Emacs.
+To the standard list, this adds the backup files `*~` created by Emacs, the `log/` 
+directory, and the `err.out` file.
 
 ### Error Output File (`err.out`)
 
