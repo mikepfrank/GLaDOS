@@ -195,17 +195,29 @@ class The_AI_Cognosphere_Channel(ActionChannel_):
 			# more sophisticated way would be to actually look at the entity
 			# specified in the ._conceivedBy and/or ._initiatedBy members.
 			# However, we'll just use the simple method for now.
+			#
+			# NOTE: We make an exception here for the Field Exists action,
+			# since it seems to confuse Gladys.
 			
 		isAIAction = isinstance(action, ActionByAI_)
-		if isAIAction: 	return True
+		if isAIAction:
+
+			# Don't report the field-existence announcement.
+			if isinstance(action, AnnounceFieldExistsAction):
+				return False
+
+			return True
 		
+		# Human actions include those taken by the Operator on
+		# the system console, and a human logged in through a
+		# local or remote terminal.  Report those to the AI.
+
 		isHumanAction = isinstance(action, ActionByHuman_)
 		if isHumanAction:	return True
 
-		# FUTURE: Check for actions by human users here (not implemented yet
-		# because we haven't implemented the login system).
-		
-			# Next, check to see if this is a system-initiated action.
+		# Next, check to see if this is a system-initiated action.
+		# Anything else, we don't report yet.  But system actions
+		# will be reported as long as they're over threshold.
 			
 		isSystemAction = isinstance(action, ActionBySystem_)
 		if not isSystemAction:	return False
