@@ -39,7 +39,7 @@ the environment boots up.  It is intended to orient the AI to the context.
 
 This file is used to initialize the Goals app with that AI's initial list of
 high-level goals.  After modification by the AI, the goal list is subsequently
-maintained by the Goals app in the file `goals.json`.
+maintained by the Goals app in the file `cur-goals.json`.
 
 ### README File for the AI's Data Directory (`README.md`)
 
