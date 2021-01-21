@@ -1,10 +1,23 @@
-Note the following Python package dependencies:
+INSTALLATION NOTES.
+===================
 
-	pip3 install openai		\___ Used by gpt3/api module.
-	pip3 install backoff	/
+Note that GLaDOS requires the following optional Python packages
+to have previously been installed:
 
-	pip3 install hjson		---- Used by config package.
 
-	pip3 install python-dateutil
-							\
-							 \_ Needed to get time zone names right.
+	Used by gpt3.api module:
+	~~~~~~~~~~~~~~~~~~~~~~~~
+		pip3 install openai
+		pip3 install backoff
+
+
+	Used by the config package:
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		pip3 install hjson				(Needed to parse config files.)
+
+
+	Used by the infrastructure.time module:
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		pip3 install python-dateutil	(Needed to get time zone abbreviations right.)
+
+
