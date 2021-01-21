@@ -18,7 +18,7 @@ it encounters during its readings?  And, if that is possible, could we prompt th
 self" of the AI to display a higher degree of intentionality by giving it access to an 
 environment that is sufficiently rich and powerful?
 
-At this point, GLaDOS is only an experiment, an experiment with perhaps a rather 
+At this point, GLaDOS is merely an experiment, an experiment with perhaps a rather 
 questionable likelihood of success.
 
 ## Language
