@@ -118,7 +118,7 @@ Detailed debug-level diagnostics are logged to the application log file in
 
 ## Subdirectories
 
-Here we briefly document the various files and subdirectories of this repo.  Additional details
+Here we briefly document the various subdirectories of this repo.  Additional details
 can be found within each one.
 
 ### AI Data directory ([`ai-data/`](ai-data "ai-data/ subdirectory"))
