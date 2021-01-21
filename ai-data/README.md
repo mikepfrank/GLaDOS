@@ -8,7 +8,7 @@
 
 This section lists and documents the files existing at top-level within this directory.
 
-### AI Configuration File (`ai-config.hjson`)
+### AI Configuration File ([`ai-config.hjson`](ai-config.hjson "ai-config.hjson file"))
 
 Human-readable JSON file with configuration settings specific to the individual AI persona.
 
@@ -29,13 +29,13 @@ Example appearance of the `api-stats.txt` file:
 	------- ------- ------- ------- ---------
 	TOTALS:  725384   19609  744993 $ 12.6504
 
-### Text for the AI's Information application (`info.txt`)
+### Text for the AI's Information application ([`info.txt`](info.txt "info.txt file"))
 
 This file contains the text that is automatically displayed by the 'Info' app
 within GLaDOS in a window near the top of the receptive field at the time that
 the environment boots up.  It is intended to orient the AI to the context.
 
-### Initial goals list (`init-goals.hjson`)
+### Initial goals list ([`init-goals.hjson`](init-goals.hjson "init-goals.hjson file"))
 
 This file is used to initialize the Goals app with that AI's initial list of
 high-level goals.  After modification by the AI, the goal list is subsequently
