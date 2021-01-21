@@ -242,12 +242,10 @@ from mind.aiActions				import	AnnounceFieldExistsAction
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		#|======================================================================
-		#|
-		#|	Special globals.									[code subsection]
+		#|	2.1. Special globals.							   [code subsection]
 		#|
 		#|		These globals have special meanings defined by the
 		#|		Python language.
-		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 global __all__	# List of public symbols exported by this module.
@@ -266,12 +264,10 @@ __all__ = [
 
 
 		#|======================================================================
-		#|
-		#|	Private globals.								   [code subsection]
+		#|	2.2. Private globals.							   [code subsection]
 		#|
 		#|		These globals are not supposed to be accessed from
 		#|		outside of the present module.
-		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 			#|------------------------------------------------------------------
@@ -310,14 +306,15 @@ global _APP_LIST	# We could put this into the AppSystem class instead.
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-
 class	AppSystem_:		pass	# Abstract base class for application system.
 class	TheAppSystem:	pass	# Concrete singleton class to anchor this module.
 
 class	Application_:	pass	# Abstract base class for applications.
 
-class	The_Info_App:		pass
-class	The_Clock_App:		pass
+	# Concrete singleton classes for the various specific applications:
+
+class	The_Info_App:		pass	# First app to be implemented.
+class	The_Clock_App:		pass	# Second app to be implemented.
 class	The_Help_App:		pass
 class	The_Apps_App:		pass
 class	The_Goals_App:		pass
@@ -330,6 +327,7 @@ class	The_Comms_App:		pass
 class	The_Writing_App:	pass
 class	The_Unix_App:		pass
 
+
 	#|==========================================================================
 	#|
 	#|	4. Class definitions.							   [module code section]
@@ -341,7 +339,7 @@ class	The_Unix_App:		pass
 		#|======================================================================
 		#|	4.1. General classes.							   [code subsection]
 		#|
-		#|		These classes are not application-specific but apply
+		#|		These classes are not application-specific, but apply
 		#|		generally to the entire application system.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -349,14 +347,16 @@ class	The_Unix_App:		pass
 class Application_:
 	#---------------------------------------------------------------------------
 	"""
-	app.Application_							  [module public abstract class]
+	appSystem.Application_						  [module public abstract class]
 
 		This is the abstract superclass from which the class for each
 		specific GLaDOS application should be derived.
 
 		The class for a typical specific application should generally
-		be declared as a singleton class to ensure that there is only
-		one instance of each application in the system.
+		be declared as a singleton class, to ensure that there is only
+		one instance of each application extant within the system.
+		(Although, that might be changed later, if/when we want to 
+		support hosting of multiple AI personas simultaneously.)
 
 		Generically, an application has the following associated
 		elements:
@@ -367,7 +367,7 @@ class Application_:
 
 			- A window.
 
-			- A state (not-yet-started, running, not running).
+			- A state (not-yet-started, running, suspended).
 
 			- A data directory (within the AI's data directory).
 				This is used to preserve application state
@@ -377,15 +377,19 @@ class Application_:
 				Provides all of the commands associated with the
 				application.
 
-		And some methods are:
+		And some key methods are:
 
 			- launch()		- Starts the application running.
 	"""
 
 	def __init__(self, name:str, autoStart:bool, autoOpen:bool, autoFocus:bool,
 				 loudUpdate:bool, placement:Placement, conf:dict):
+
 		#	name - The name of the application object.
 		#	autoStart - Whether to start the app on system startup.
+		#	autoOpen - Whether to open the app automatically once the receptive field is created.
+		#	autoFocus - Whether the app should grab the command focus.
+		#	loudUpdate - Whether the app's window updates should wake up the AI.
 		#	placement - Where to place the app window in the receptive field.
 		#	conf - Application-specific dictionary object.
 
