@@ -38,7 +38,7 @@ directory, and the `err.out` file.
 ### Error Output File (`err.out`)
 
 While the system is running, any output that is sent to the system stderr
-stream is also echoed to this file.  This can be useful e.g. for seeing the
+stream is also appended to this file.  This can be useful e.g. for seeing the
 call stack trace from a thread that has exited due to throwing an exception.
 
 ### GLaDOS System Configuration File ([`glados-config.hjson`](glados-config.hjson "glados-config.hjson file"))
