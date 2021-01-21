@@ -30,6 +30,12 @@ This section lists and documents the top-level files contained in the `GLaDOS` d
 
 To the stanard list, this adds the backup files `*~` created by Emacs.
 
+### Error Output File (`err.out`)
+
+While the system is running, any output that is sent to the system stderr
+stream is also echoed to this file.  This can be useful e.g. for seeing the
+call stack trace from a thread that has exited due to throwing an exception.
+
 ### GLaDOS System Configuration File (`glados-config.hjson`)
 
 This is the main configuration file for the GLaDOS system, in [human-readable JSON format]
