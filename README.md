@@ -125,7 +125,7 @@ can be found within each one.
 
 This directory contains data files associated with a particular AI persona to be 
 hosted within the GLaDOS environment.  This includes the AI's configuration, 
-background information, goals, cognitive history, and long-term memory archives.  
+background information, goals, cognitive history, and long-term memory archives.
 API usage statistics are also kept here.  These files should be installed in some 
 persistent location such as `/opt/AIs/<persona>` owned by the AI's user ID; the 
 install location should also be pointed to by the `$AI_DATADIR` environment variable.
