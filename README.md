@@ -43,9 +43,9 @@ call stack trace from a thread that has exited due to throwing an exception.
 
 ### GLaDOS System Configuration File (`glados-config.hjson`)
 
-This is the main configuration file for the GLaDOS system, in [human-readable JSON format]
+This is the main configuration file for the GLaDOS system, in human-readable JSON format
 (see [hjson.github.io](https://hjson.github.io/)).  If you would like to maintain
-a customized version of the config file in some other location, simplify set the environment 
+a customized version of the config file in some other location, simply set the environment 
 variable `GLADOS_PATH` to point to the directory where it is located before launching 
 `glados-server.py`.  If you want to keep around several alternative configuration files, 
 simply set `GLADOS_CONFIG_FILENAME` to the name of the specific one that you want to use on 
@@ -56,9 +56,9 @@ is set, then `GLADOS_CONFIG_FILENAME` will be ignored.)
 ### Installation Notes (`INSTALL-NOTES`)
 
 This is a plain ASCII text file with some human-readable notes on how to install GLaDOS.
-Right now, the only required steps (after cloning the repo) are to pip install several
-packages: `openai`, `backoff`, and `hjson`.  Please make sure that you are using the 
-Python 3 version of pip.
+Right now, the only required steps (after cloning the repo) are to `pip install` several
+packages: `openai`, `backoff`, `hjson`, and `python-dateutil`.  Please make sure that 
+you are using the Python 3 version of pip.
 
 ### Top-Level README File (`README.md`)
 
@@ -121,7 +121,7 @@ Detailed debug-level diagnostics are logged to the application log file in
 Here we briefly document the various files and subdirectories of this repo.  Additional details
 can be found within each one.
 
-### Python source code (`src/`)
+### Python source code ([`src/`](src "src/ subdirectory"))
 
 This subdirectory contains the entire source code tree for the GLaDOS server (and auxilliary 
 utilities), written in the Python programming language (version 3).
