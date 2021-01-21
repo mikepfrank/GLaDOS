@@ -121,6 +121,24 @@ Detailed debug-level diagnostics are logged to the application log file in
 Here we briefly document the various files and subdirectories of this repo.  Additional details
 can be found within each one.
 
+### AI Data directory ([`ai-data/`](ai-data "ai-data/ subdirectory"))
+
+This directory contains data files associated with a particular AI persona.
+This includes the AI's configuration, background information, goals, cognitive
+history, and long-term memory archives.  API usage statistics are also kept here.
+These files should be installed in some persistent location such as `/opt/AIs/<persona>` 
+owned by the AI's user ID; the install location should also be pointed to by the 
+`$AI_DATADIR` environment variable.
+
+### System log directory ([`log/`](log "log/ subdirectory"))
+
+This directory will contain the main system log file, called `GLaDOS.server.log`.
+
+### Mock-ups directory ([`mockups/`](mockups "mockups/ subdirectory"))
+
+This directory contains text files comprising miscellaneous mockups and screenshots 
+of elements of the GLaDOS TUI (Text User Interface).
+
 ### Python source code ([`src/`](src "src/ subdirectory"))
 
 This subdirectory contains the entire source code tree for the GLaDOS server (and auxilliary 
