@@ -11,11 +11,11 @@ the `src/` directory.
 
 1.	**Source code README file** (`README.md`) - This file.
 
-2.	**GLaDOS Server Application Program** (`glados-server.py`) - This is the
+2.	**GLaDOS Server Application Program** ([`glados-server.py`](glados-server.py "glados-server.py file")) - This is the
 	main top-level Python application program implementing the core server
 	process of the GLaDOS system.  **NOTE:** This file is executable, but it 
 	should not be executed directly from within this directory, but rather 
-	from the parent directory `GLaDOS`, which contains the `log/` subdirectory, 
+	from the parent directory `GLaDOS/`, which contains the `log/` subdirectory, 
 	where we will create the system log file.
 
 3.	**Application Definitions File** (`appdefs.py`) - Used primarily by the
