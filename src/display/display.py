@@ -1843,31 +1843,47 @@ class TheDisplay:
 				
 					attr = style_to_attr(WHITESP)
 
+					#|==================================================
+					#|		 DO LINE-WRAP, WITH ERROR HANDLING
+					#|--------------------------------------------------
+					#| NOTE: A log of this exception-handling code ends
+					#| up getting repeated in a lot of different places
+					#| in this method, so we should probably thing about
+					#| whether we should try to abstract it out somehow.
+					#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 					try:
 
-						win.addstr('\\', attr)	
-						# Note this is actually a single blackslash character.
+						win.addstr('\\', attr)	# Render in dim (whitespace) style.
+							# Note this is actually a single blackslash character.
 						
 						win.addstr('\n' + hangPad)
-						# And this actually goes to the next line.
+							# And this actually goes to the next line.
 
 					except curses.error as e:
 
 						msg = str(e)
 
-						_logger.debug("[Display] Overflowed window during line-wrap in .renderText().")
+						_logger.debug("[Display] Overflowed window during line-wrap "
+									  "in .renderText().")
 				
 						excursion = RenderExcursion(
-							"display.renderText() got curses error: " + msg, 
+							"display.renderText() got curses error in line-wrap: " + msg, 
 							ch, pos, Loc(cy, cx), yx2pos, pos2yx)
 				
 						# Throw that back to the caller.
 						raise excursion
+
+					#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+					#|		 END LINE-WRAP, WITH ERROR HANDLING
+					#|==================================================
 						
 
 			#__/ End if possible automatic line-wrap.
 		
-				# Update pos <--> xy maps.
+				# Update pos <--> xy maps. This records where in the
+				# window the character that is about to be rendered
+				# will be rendered.
 			(cy, cx) = win.getyx()
 			yx2pos[(cy,cx)] = pos
 			pos2yx[pos] = (cy, cx)
@@ -1880,11 +1896,19 @@ class TheDisplay:
 			else:
 				style = defStyle	# Just uses the default style.
 
+			#|==================================================
+			#|		 RENDER CHARACTER, WITH ERROR HANDLING
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 			# Use try/except here to catch if we try to draw 
 			# outside the window.
 			try:
-				# This actually displays the current character.			
+					# This actually displays the current character.			
 				display.renderChar(ch, win=win, defStyle=style)
+					# The default style is as selected, but of course
+					# if the character is control, meta, or whitespace,
+					# this method will render it with special styling.
+				
 			except curses.error as e:
 				msg = str(e)
 				
@@ -1899,14 +1923,18 @@ class TheDisplay:
 				# Throw that back to the caller.
 				raise excursion
 			
+			#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+			#|		 END RENDER CHAR, WITH ERROR HANDLING
+			#|==================================================
+
 				# If we just rendered the prompt character, we're done
 				# with the prompt part of the string.
 			if promptChar is not None and ch == ord(promptChar):
 				promptDone = True
 
 			#/------------------------------------------------------------------
-			#|	Non-space whitespace characters need to be handled specially 
-			#|	here. Specifically:
+			#|	Whitespace characters other than SP (space) need to be handled
+			#|	specially here. Specifically:
 			#|
 			#|		HT (TAB) - If we're not already at a tab stop,
 			#|			then move forward to the next tab stop.
@@ -1929,6 +1957,7 @@ class TheDisplay:
 			if ch == TAB:	# Move forward to next tab stop, if needed.
 			
 				tabsize = 8
+					# Really this should come from the system config.
 				#tabsize = get_tabsize()		# Get current tab size.
 				
 					# Get current cursor position within window.
@@ -1940,8 +1969,23 @@ class TheDisplay:
 					# to move at all.  Otherwise, we output a
 					# real tab char to go to the next tab stop.
 				if cx % tabsize != 0:
-					win.addstr('\t')	# Still need to handle overflow.
-			
+
+					#|==================================================
+					#|		    INSERT TAB, WITH ERROR HANDLING
+					#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+					try:
+						win.addstr('\t')	# Still need to handle overflow.
+					except curses.error as e:
+						msg = str(e)
+						_logger.debug("[Display] Overflowed window on tab in .renderText().")
+					excursion = RenderExcursion(
+						"display.renderText() got curses error on tab: " + msg, 
+						ch, pos, Loc(cy, cx), yx2pos, pos2yx)
+					raise excursion
+					#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+					#|		 END RENDER CHAR, WITH ERROR HANDLING
+					#|==================================================
+
 			elif ch == VT:	# Move down one line, without CR.
 			
 				# Note that here, we are actually one column to the right of 
@@ -1959,35 +2003,70 @@ class TheDisplay:
 			
 				if not lastCharWasCR:
 					
+					#|==================================================
+					#|		    INSERT LF, WITH ERROR HANDLING
+					#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 					# Output newline and indent, but catch overflow.
 					try:
 						win.addstr('\n' + hangPad)	# Output newline.
 					except curses.error as e:
 						msg = str(e)
-						_logger.debug("[Display] Overflowed window during LF in .renderText().")
+						_logger.debug("[Display] Overflowed window during "
+									  "LF in .renderText().")
 						excursion = RenderExcursion(
-							"display.renderText() got curses error: " + msg, 
+							"display.renderText() got curses error in LF: " + msg, 
 							ch, pos, Loc(cy, cx), yx2pos, pos2yx)
 						raise excursion
+					#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+					#|		 END LINE FEED, WITH ERROR HANDLING
+					#|==================================================
 			
 			elif ch == CR:	# Carriage return:  Output newline, and remember last char was CR.
+				#|==================================================
+				#|		    INSERT CR, WITH ERROR HANDLING
+				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+				# CR maps to LF. Still need to handle overflow.
+				try:
+					win.addstr('\n' + hangPad)		# Output newline.
+					# Now remember we already did this, in case next character is LF.
+				except curses.error as e:
+					msg = str(e)
+					_logger.debug("[Display] Overflowed window during "
+								  "CR in .renderText().")
+					excursion = RenderExcursion(
+						"display.renderText() got curses error in CR: " + msg, 
+						ch, pos, Loc(cy, cx), yx2pos, pos2yx)
+					raise excursion
+				#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+				#|	   END CARRIAGE RETURN, WITH ERROR HANDLING
+				#|==================================================
 
-				# Still need to handle overflow.
-				win.addstr('\n' + hangPad)		# Output newline.
-					# Now remember we already did this, in case next character is NL.
-					# Still need to handle overflow.
 				lastCharWasCR = True	
 				
 			elif ch == FF:	# Newline, centered page separator, newline.
 
-				# Still need to handle overflow.
-				win.addstr('\n')
-				(ht, wd) = win.getmaxyx()
-				pageSep = "* * *"
-				nSpaces = int(((wd - 1)-len(pageSep))/2)
-				spaces = ' '*nSpaces
-				win.addstr(spaces + pageSep + '\n' + hangPad)
-
+				#|==================================================
+				#|		    INSERT FF, WITH ERROR HANDLING
+				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+				try:
+					# We denote a form feed specially: A newline,
+					# followed by a dashed line to indicate the
+					# page break, followed by another newline.
+					win.addstr('\n')
+					(ht, wd) = win.getmaxyx()	# Get win width wd.
+					dashedLine = "- "*(int(wd/2)-1)
+					win.addstr(dashedLine + '\n' + hangPad)
+				except curses.error as e:
+					msg = str(e)
+					_logger.debug("[Display] Overflowed window during "
+								  "FF in .renderText().")
+					excursion = RenderExcursion(
+						"display.renderText() got curses error in FF: " + msg, 
+						ch, pos, Loc(cy, cx), yx2pos, pos2yx)
+					raise excursion
+				#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+				#|	   END FORM FEED, WITH ERROR HANDLING
+				#|==================================================
 			
 			#__/ End if/elif for handling whitespace characters.
 			
