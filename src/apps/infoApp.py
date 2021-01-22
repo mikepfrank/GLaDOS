@@ -1,5 +1,25 @@
 # infoApp.py
 
+__all__ = [ 'The_Info_App' ]
+
+from os import path
+
+from infrastructure.logmaster	import getLoggerInfo, ThreadActor
+
+global _logger		# Logger serving the current module.
+global _component	# Name of our software component, as <sysName>.<pkgName>.
+			
+(_logger, _component) = getLoggerInfo(__file__)		# Fill in these globals.
+
+from	infrastructure.decorators	import	singleton
+		# A simple decorator for singleton classes.
+
+from	config.configuration		import	TheAIPersonaConfig
+		# Singleton that provides the configuration of the current AI persona.
+
+from	.application			import	Application_
+		# Base class from which we derive subclasses for specific applications.
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
 class The_Info_App(Application_):

@@ -160,11 +160,6 @@ __all__ = [
 		#|	1.1. Imports of standard python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from	threading	import	RLock	# Re-entrant mutex lock, used for thread-safety in Clock app.
-from	time		import	sleep	# Causes thread to give up control for a period. Used in ClockThread.
-from	os			import	path	# Manipulate filesystem path strings. Used in a couple of places.
-
-
 		#|======================================================================
 		#|	1.2. Imports of optional python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -186,7 +181,7 @@ from	hjson	import	OrderedDict
 				#| 1.3.1.1. The logmaster module defines our logging framework.
 				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from infrastructure.logmaster	import getLoggerInfo, ThreadActor
+from infrastructure.logmaster	import getLoggerInfo
 
 	#----------------------------------------------------------
 	# Go ahead and create or access the logger for this module,
@@ -204,11 +199,6 @@ global _component	# Name of our software component, as <sysName>.<pkgName>.
 from infrastructure.decorators	import	singleton
 		# A simple decorator for singleton classes.
 
-from infrastructure.time		import	envTZ, timeZone, tznow, tzAbbr
-		# Time-zone related functions we use in the Clock app.
-
-from infrastructure.utils		import	countLines		# Used in 'Help' app.
-
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#|	1.3.2. These modules are specific to the present application.
@@ -222,36 +212,8 @@ from entities.entity			import	The_AppSystem_Entity, AI_Entity_
 		# These are referenced in the _AppSystemAction_ ABC when creating new
 		# application actions on behalf of an AI, or the application system.
 
-
-	#---------------------------------------------------------------------------
-	# In general, applications need to be able to access the action subsystem
-	# of the supervisory system, so that they can inject actions into the action
-	# broadcasting facility, as well as receive action updates from other parts
-	# of the system.  We import just the specific definitions that we require.
-	
-from supervisor.action			import	(
-
-			# We are going to be generating system actions, and we need this to do that.
-		
-		ActionBySystem_,		# We subclass this with our own _AppSystemAction_ ABC.
-		
-			# We require action-subscriber capability to be able to receive action news updates.
-		
-		ActionSubscriber_, 		# We subclass this with our own The_AppSystem_Subscriber.
-		
-			# Until a channel is developed that narrows down the news to only those things
-			# that applications might need to know about, we'll just subscribe to this channel
-			# to make sure we don't miss anything important.
-			
-		TheEverythingChannel	# This channel broadcasts all action news updates in the system.
-		
-	)
-
 from field.placement			import	Placement
 		# This is needed to place application windows on the receptive field.
-
-from windows.windowSystem		import	Window		# Apps need to create their window(s).
-from processes.processSystem	import	SubProcess	# Apps need to create their subprocess(es).
 
 	#----------------------------------------------------
 	# Imports from sibling modules to the current module.

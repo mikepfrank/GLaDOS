@@ -619,4 +619,4 @@ class Human_Entity_(Entity_):
 class Operator_Entity(Human_Entity_):
 	_isAbstract = False
 	_ENTITY_NAME = "System Operator"
-	_ENTITY_ID = "Operator"
+	_ENTITY_ID = "Mike" #"Operator"

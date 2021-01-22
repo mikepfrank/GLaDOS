@@ -104,7 +104,7 @@ __all__ = [
 				#| 1.2.1.1. The logmaster module defines our logging framework.
 				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from infrastructure.logmaster	import getLoggerInfo, ThreadActor
+from	infrastructure.logmaster	import getLoggerInfo, ThreadActor
 
 	#----------------------------------------------------------
 	# Go ahead and create or access the logger for this module,
@@ -120,7 +120,7 @@ global _component	# Name of our software component, as <sysName>.<pkgName>.
 				#| 1.2.1.2. Here are some other infrastructure modules we use.
 				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from infrastructure.decorators	import	singleton
+from	infrastructure.decorators	import	singleton
 		# A simple decorator for singleton classes.
 
 
@@ -128,13 +128,15 @@ from infrastructure.decorators	import	singleton
 			#|	1.2.2. These modules are specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+from	entities.entity				import	The_AppSystem_Entity, AI_Entity_	# Entity for us..
+
 	#---------------------------------------------------------------------------
 	# In general, applications need to be able to access the action subsystem
 	# of the supervisory system, so that they can inject actions into the action
 	# broadcasting facility, as well as receive action updates from other parts
 	# of the system.  We import just the specific definitions that we require.
 	
-from supervisor.action			import	(
+from	supervisor.action		   import	(
 
 			# We are going to be generating system actions, and we need this to do that.
 		
@@ -152,12 +154,13 @@ from supervisor.action			import	(
 		
 	)
 
-from mind.aiActions				import	AnnounceFieldExistsAction
+from	mind.aiActions				import	AnnounceFieldExistsAction
 	# We need this so that we can watch for actions of this class,
 	# because that's what tells us that it's safe to go ahead and
 	# start opening up the windows for apps marked as auto-open.
 	# Used in the .notify method of _AppSystem_Subscriber_.
 
+from	.application				import	Application_	# ABC for apps.
 
 	#|==========================================================================
 	#|
@@ -262,7 +265,7 @@ class _AppSystem_Subscriber_(ActionSubscriber_):
 		This subscribes to action news channels that the application system
 		is potentially interested in watching."""
 
-	def __init__(newSubscriber:AppSystem_Subscriber_, appSys, name="AppSys"):
+	def __init__(newSubscriber:_AppSystem_Subscriber_, appSys, name="AppSys"):
 
 		_logger.debug("appSysSubscriber.__init__(): Initializing the AppSystem's subscriber...")
 
@@ -279,7 +282,7 @@ class _AppSystem_Subscriber_(ActionSubscriber_):
 		TEC = TheEverythingChannel()	# Defined in the action module.
 		sub.subscribe(TEC)
 
-	def notify(thisSub:AppSystem_Subscriber_, status, action):
+	def notify(thisSub:_AppSystem_Subscriber_, status, action):
 	
 		"""This method is called when this subscriber is being notified 
 			of an action report; i.e., an action status update."""
@@ -301,12 +304,12 @@ class _AppSystem_Subscriber_(ActionSubscriber_):
 
 
 @singleton
-class The_AppSystem_Subscriber(AppSystem_Subscriber_):
+class The_AppSystem_Subscriber(_AppSystem_Subscriber_):
 
 	"""This singleton subscribes to action news channels that the 
 		application system is potentially interested in watching."""
 
-	pass	# Code is in AppSystem_Subscriber_ above.
+	pass	# Code is in _AppSystem_Subscriber_ above.
 
 
 class _AppSystemAction_(ActionBySystem_):

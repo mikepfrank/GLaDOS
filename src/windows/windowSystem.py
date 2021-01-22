@@ -471,6 +471,10 @@ class Window:	# A text window within the GLaDOS window system.
 
 		self._snapshots		= set()
 
+	def notifyOfFocus(win):
+		"""Notify window it has been assigned the command focus. """
+		pass
+
 	@property
 	def nTextRows(win):
 

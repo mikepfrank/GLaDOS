@@ -1,5 +1,22 @@
 # helpApp.py
 
+__all__ = [ 'The_Help_App' ]
+
+from	infrastructure.logmaster	import getLoggerInfo, ThreadActor
+
+global _logger		# Logger serving the current module.
+global _component	# Name of our software component, as <sysName>.<pkgName>.
+			
+(_logger, _component) = getLoggerInfo(__file__)		# Fill in these globals.
+
+from	infrastructure.decorators	import	singleton
+		# A simple decorator for singleton classes.
+
+from	infrastructure.utils		import	countLines		# Used in 'Help' app
+
+from	.application			import	Application_
+		# Base class from which we derive subclasses for specific applications.
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
 class The_Help_App(Application_):

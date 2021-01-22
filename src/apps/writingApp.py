@@ -1,5 +1,11 @@
 # writingApp.py
 
+from	infrastructure.decorators	import	singleton
+		# A simple decorator for singleton classes.
+
+from	.application				import	Application_
+		# Base class from which we derive subclasses for specific applications.
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
 class The_Writing_App(Application_):
