@@ -135,6 +135,12 @@ from	time		import	sleep, time
 from	os			import	path
 
 		#|======================================================================
+		#|	1.2. Imports of external python modules.	[module code subsection]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from	openai.error	import	RateLimitError
+
+		#|======================================================================
 		#|	1.2. Imports of custom application modules. [module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -329,7 +335,11 @@ class The_GPT3_API:
 			generate a response string in response to the given prompt
 			string."""
 
-		response = thisAPI.core.genString(prompt)
+		try:
+			response = thisAPI.core.genString(prompt)
+		except RateLimitError as e:
+			_logger.error(f"[GPT3 API] Out of quota! (msg=[{str(e)}])")
+			return ""	# Empty string = no response.
 
 			# Update our record of the API usage statistics.
 		thisAPI._stats = stats()

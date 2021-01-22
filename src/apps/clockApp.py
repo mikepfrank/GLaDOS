@@ -1,5 +1,26 @@
 # clockApp.py
 
+__all__ = [ 'The_Clock_App' ]
+
+from	threading	import	RLock	# Re-entrant mutex lock, used for thread-safety in Clock app.
+from	time		import	sleep	# Causes thread to give up control for a period. Used in ClockThread.
+
+from	infrastructure.logmaster	import getLoggerInfo, ThreadActor
+
+global _logger		# Logger serving the current module.
+global _component	# Name of our software component, as <sysName>.<pkgName>.
+			
+(_logger, _component) = getLoggerInfo(__file__)		# Fill in these globals.
+
+from	infrastructure.decorators	import	singleton
+		# A simple decorator for singleton classes.
+
+from	infrastructure.time		import	envTZ, timeZone, tznow, tzAbbr
+		# Time-zone related functions we use in the Clock app.
+
+from	.application			import	Application_
+		# Base class from which we derive subclasses for specific applications.
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 class Clock_App_(Application_):	pass

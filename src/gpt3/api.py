@@ -1220,7 +1220,8 @@ def statLine(line):
     _statStr = _statStr + line + '\n'
 
 def stats():
-    """After using the API"""
+    """After using the API this returns a human-readable table of usage statistics."""
+    return _statStr
 
 def displayStats():
 

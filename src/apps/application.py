@@ -68,16 +68,20 @@ __all__ = [
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		#|======================================================================
-		#|	1.2. Imports of custom application modules. [module code subsection]
+		#|	1.2. Imports of optional python modules.	[module code subsection]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		#|======================================================================
+		#|	1.3. Imports of custom application modules. [module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 			#|==================================================================
-			#|	1.2.1. The following modules, although custom, are generic 
+			#|	1.3.1. The following modules, although custom, are generic 
 			#|		utilities, not specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 				#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-				#| 1.2.1.1. The logmaster module defines our logging framework.
+				#| 1.3.1.1. The logmaster module defines our logging framework.
 				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 from infrastructure.logmaster	import getLoggerInfo, ThreadActor
@@ -91,6 +95,17 @@ global _component	# Name of our software component, as <sysName>.<pkgName>.
 			
 (_logger, _component) = getLoggerInfo(__file__)		# Fill in these globals.
 
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#|	1.3.2. These modules are specific to the present application.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from field.placement			import	Placement
+		# This is needed to place application windows on the receptive field.
+
+from windows.windowSystem		import	Window		# Apps need to create their window(s).
+
+from processes.processSystem	import	SubProcess	# Apps need to create their subprocess(es).
 
 	#|==========================================================================
 	#|
