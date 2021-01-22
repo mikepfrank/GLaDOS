@@ -14,10 +14,12 @@ roughly in the intended order of implementation.
 	near the top of the A.I.'s receptive field.  When the Info app
 	is launched, it allows the A.I. to edit certain information such
 	as its high-level goals. (Dispatched to the "Goals" app.)
+	The implementation of this app was completed on 1/16/'21.
 	
 2. **Clock** - This app brings up a small window at the top of the
 	AI's receptive field that displays the current time & keeps it 
-	updated.
+	updated.  The implementation of this app was completed on 
+	1/17/'21.
 
 3. **Goals** - This is a simple tool to allow the A.I. to view and
 	edit its list of high-level goals. **[Not yet implemented.]**

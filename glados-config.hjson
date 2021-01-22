@@ -216,8 +216,7 @@
     app-list:   [
 
             # Application-specific config records. The order given here
-            # happens to be the same as the order of placement for auto-open
-            # windows (currently hard-coded in apps.appSystem._APP_LIST).
+            # determines the order of placement for auto-open windows.
 
         #/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         #|  NOTE: A few additional application concepts not yet explicitly

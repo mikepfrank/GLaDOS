@@ -140,9 +140,9 @@
 		#|	1.1. Imports of standard python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from os			import	getenv, path	# Access environment variables, build paths.
-from hjson		import	load			  # For loading data from .hjson files.
-from pprint		import	pformat			  # For pretty-printing structures for diagnostics.
+from os			import	getenv, path		# Access environment variables, build paths.
+from hjson		import	load, OrderedDict 	# For loading data from .hjson files.
+from pprint		import	pformat			  	# For pretty-printing structures for diagnostics.
 
 		#|======================================================================
 		#|	1.2. Imports of custom application modules. [module code subsection]
@@ -578,13 +578,15 @@ class TheConfiguration:	# The GLaDOS server configuration.
 			#| Process our raw .appList to form the .appConfigs dict of 
 			#| app configurations.
 
-		appConfigs = {}		# Initially empty dict.
+		appConfigs = OrderedDict()		# Initially empty ordered dict.
 
 		if theConfig.appList is not None:
 
 			_logger.debug(f"About to process {len(theConfig.appList)} apps...")
 
 			for appStruct in theConfig.appList:
+				# Note that appList is an actual list, so the enumeration order
+				# here is deterministic, and is the same as the order in the file.
 		
 				_logger.debug(f"About to process app struct: \n" + pformat(appStruct))
 
@@ -689,7 +691,7 @@ class TheConfiguration:	# The GLaDOS server configuration.
 			#__/ End loop over structures in appList.			
 		#__/ End if appList isn't None.
 		
-			# Store the appConfigs dict as an instance data member.
+			# Store the appConfigs ordered dict as an instance data member.
 		
 		theConfig.appConfigs = appConfigs
 	
