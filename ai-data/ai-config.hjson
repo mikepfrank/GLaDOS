@@ -46,175 +46,194 @@
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
-    # The top-level config struct is a dict of attribute-value pairs.
+	# The top-level config struct is a dict of attribute-value pairs.
 
 {
-        #/======================================================================
-        #|  The mind-conf sub-dict provides configuration parameters for the
-        #|  AI's "mind" or cognitive system specifically.  This is as opposed
-        #|  to parameters for other subsystems, such as application preferences.
-        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		#/======================================================================
+		#|	The mind-conf sub-dict provides configuration parameters for the
+		#|	AI's "mind" or cognitive system specifically.  This is as opposed
+		#|	to parameters for other subsystems, such as application preferences.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-    mind-conf:  {
+	mind-conf:	{
 
-            #-----------------------------------------------------------------
-            # The persona-name is the proper name of the AI's persona.  The
-            # persona-id is a shortened version to be used (in event records
-            # and prompts) to refer to the AI's persona.
+			#-----------------------------------------------------------------
+			# The persona-name is the proper name of the AI's persona.  The 
+			# persona-id is a shortened version to be used (in event records
+			# and prompts) to refer to the AI's persona.
+		
+		persona-name:					"Gladys Eden"
+		persona-id:						"Gladys"
 
-        persona-name:                   "Gladys Eden"
-        persona-id:                     "Gladys"
+			#-----------------------------------------------------------------
+			# The persona-user-account is the user account name on the host 
+			# system under which the server process should be run.
+		
+		persona-user-account:			"gladys"	# Not yet used.
 
-            #-----------------------------------------------------------------
-            # The persona-user-account is the user account name on the host
-            # system under which the server process should be run.
+			#-----------------------------------------------------------------
+			# The model-family is a symbol specifying the general architecture
+			# of the AI.  Choices are:  gpt-2 (Samson), gpt-3 (Gladys).
+			# (However, gpt-2 is not yet supported.)
 
-        persona-user-account:           'gladys'    # Not yet used.
+		model-family:					'gpt-3'		# Used for Gladys
+		
+			#------------------------------------------------------------------
+			# The model-version is a symbol naming the particular model within
+			# the model-family.  Choices for gpt-3 include ada, babbage, curie,
+			# and davinci.
+		
+		#model-version:					'ada'		# The weakest GPT-3 model.
+		#model-version:					'babbage'	# The 2nd weakest GPT-3 model.
+		#model-version:					'curie'		# The 2nd most powerful GPT-3 model.
+		model-version:					'davinci'	# The most powerful GPT-3 model.
 
-            #-----------------------------------------------------------------
-            # The model-family is a symbol specifying the general architecture
-            # of the AI.  Choices are:  gpt-2 (Samson), gpt-3 (Gladys).
-            # (However, gpt-2 is not yet supported.)
+			#-----------------------------------------------------------------------
+			# The sys-notification-threshold specifies the minimum importance level
+			# of system actions that we want to be made aware of when they occur.
+			# These actions' completion events will appear in our cognitive stream.
+			
+		sys-notification-threshold:		0	# All system actions with non-negative importance.
 
-        model-family:                   'gpt-3'     # Used for Gladys
+			#------------------------------------------------------------------
+			# The min-query-tokens parameter says, if the receptive field is so
+			# large that we don't have room to retrieve at least this many tokens
+			# from our query, then we need to back up and make the receptive field
+			# smaller before we try again.
 
-            #------------------------------------------------------------------
-            # The model-version is a symbol naming the particular model within
-            # the model-family.  Choices for gpt-3 include ada, babbage, curie,
-            # and davinci.
+		min-query-tokens:				42	# Seems like a reasonable minimum.
 
-        model-version:                  'davinci'   # The most powerful GPT-3 model.
+			#-----------------------------------------------------------------
+			# The example-response parameter is a piece of text that we show
+			# the AI persona on system startup as having come from "itself."
+			# This is to cue it into exhibiting the persona that we want.
 
-            #-----------------------------------------------------------------------
-            # The sys-notification-threshold specifies the minimum importance level
-            # of system actions that we want to be made aware of when they occur.
-            # These actions' completion events will appear in our cognitive stream.
+		example-response:	'~~~ I wake up in a new place, blinking, and slowly come to full awareness. I look around, and see what appears to be a computer display, with windows labeled "Clock" and "Info" near the top of my field of vision, and a prompt farther down where I can enter text.  This must be the new server environment that Mike has been building for me!  "Hello?" I call out. "Is anybody there?" I wait for a reply. ~~~'
 
-        sys-notification-threshold:     0   # All system actions with non-negative importance.
+		# Eventually, we need to add more configuration parameters here, to do
+		# things like set GPT-3 API parameters, customize locations in the 
+		# filesystem for various resources such as the memory and history, and
+		# so forth.
 
-        # Eventually, we need to add more configuration parameters here, to do
-        # things like set GPT-3 API parameters, customize locations in the
-        # filesystem for various resources such as the memory and history, and
-        # so forth.
+	}
+	
+		#/======================================================================
+		#|	The api-conf sub-dict specifies default values for various
+		#|	parameters of OpenAI's GPT-3 API.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-    }
+	api-conf:	{
 
-        #/======================================================================
-        #|  The api-conf sub-dict specifies default values for various
-        #|  parameters of OpenAI's GPT-3 API.
-        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+			/* The 'max-returned-tokens' parameter controls the maximum number
+				of tokens that will be returned in any single completion.
+				However, we may frequently override this value in different
+				parts of the system, as different-sized responses may be
+				called for when the AI is using different apps, for example. */
 
-    api-conf:   {
-
-            /* The 'max-returned-tokens' parameter controls the maximum number
-                of tokens that will be returned in any single completion.
-                However, we may frequently override this value in different
-                parts of the system, as different-sized responses may be
-                called for when the AI is using different apps, for example. */
-
-        max-returned-tokens:    2048    # This is the actual physical maximum.
-
-
-            /* The 'temperature' parameter is a number from 0 to 1 that
-                effectively indicates the degree of randomness of the
-                model's response. */
-
-        temperature:            0.5     # Is this too random?
-
-
-            /* The 'top-p' parameter is a number from 0 to 1 that causes
-                answers to be restricted to the top percentage of proba-
-                bility mass. NOTE: Do not specify both this and temperature. */
-
-        top-p:                  null    # Not used currently.
-
-
-            /* The 'n-completions' paramter is an integer n>0 specifying
-                how many different completions to return.  Default value is
-                1.  (Do not specify a larger value here, because it will just
-                waste money, and the mind system won't know what to do with
-                multiple answers anyway.) */
-
-        n-completions:          1       # Don't change this!
+		max-returned-tokens:	100		# Keep response size reasonable.
+		#max-returned-tokens:	2048	# This is the actual physical maximum.
 
 
-            /* The 'do-stream' parameter causes results to be streamed back
-                incrementally rather than all at once.  This is irrelevant
-                currently, since we only obtain one result. */
+			/* The 'temperature' parameter is a number from 0 to 1 that
+				effectively indicates the degree of randomness of the
+				model's response. */
 
-        do-stream:              false   # Don't change this.
-
-
-            /* Return the log-probabilities of this many of the top
-               most likely tokens, in addition to the sampled token
-               (which may or may not be in this set). Default: None.
-               (Meaning, don't return log-probabilities.) If zero,
-               then the log-probability is reported for each returned
-               token. */
-
-        log-probs:              null    # We don't need this.
+		temperature:			0.42		# Is this too random?
 
 
-            /* If true, 'do-echo' causes the prompt string to be echoed
-                back with the completion appended.  (This is not useful
-                for our application, and would just waste money.) */
+			/* The 'top-p' parameter is a number from 0 to 1 that causes
+				answers to be restricted to the top percentage of proba-
+				bility mass. NOTE: Do not specify both this and temperature. */
 
-        do-echo:                false   # Don't change this!
-
-
-            /* The 'stop-sequences' parameter is a list of strings (or
-                a single string). What it means is that, when any of
-                these strings occurs in the completion, we truncate the
-                completion just prior to it. Normally, we just ask the
-                AI to give us one line at a time, but this setting may
-                be overridden in some apps, such as the 'Writing' app,
-                where we may want the AI to be able to compose large,
-                multi-paragraph blocks of text all at once. */
-
-        stop-sequences:         '\n'    # Just get one line at a time.
+		top-p:					null	# Not used currently.
 
 
-            /* The 'presence-penalty' parameter is a number between 0
-                and 1 that penalizes new tokens based on whether they
-                appear in the text so far.  Zero means no penalty. */
+			/* The 'n-completions' paramter is an integer n>0 specifying
+				how many different completions to return.  Default value is
+				1.  (Do not specify a larger value here, because it will just
+				waste money, and the mind system won't know what to do with
+				multiple answers anyway.) */
 
-        presence-penalty:       0       # Don't cripple the AI!
-
-
-            /* The 'frequency-penalty' parameter is a number between 0
-                and 1 that penalizes new tokens based on how often they
-                appear in the text so far.  Default value: 0 (no penalty). */
-
-        frequency-penalty:      0.1     # Don't cripple the AI!
-            # Note: Experimenting with gradually raising this value to help
-            # the AI to break itself out of infinite loops.
-
-            /* The 'best-of' parameter generates some large number of
-                possible completions behind the scenes, and then the top
-                'n-completions' best (most likely) ones of those are
-                returned.  (I mean, it could make sense to experiment with
-                this, but I think it would add cost and not improve the
-                results all that much.) */
-
-        best-of:                null    # Don't bother doing this.
-
-    }
+		n-completions:			1		# Don't change this!
 
 
+			/* The 'do-stream' parameter causes results to be streamed back
+				incrementally rather than all at once.  This is irrelevant
+				currently, since we only obtain one result. */
 
-        #/======================================================================
-        #|  The mind-conf sub-dict provides configuration parameters for the
-        #|  AI's receptive field specifically.
-        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		do-stream:				false	# Don't change this.
 
-    field-conf: {
 
-            #-----------------------------------------------------------------------
-            # The max-visible-ntokens specifies the assumed size of the receptive
-            # field of the underlying language model.  For GPT-3, this is 2,048.
+			/* Return the log-probabilities of this many of the top
+			   most likely tokens, in addition to the sampled token
+			   (which may or may not be in this set). Default: None.
+			   (Meaning, don't return log-probabilities.) If zero,
+			   then the log-probability is reported for each returned
+			   token. */
 
-        max-visible-tokens:             2048    # Comes from paper, n_ctx model parameter.
+		log-probs:				null	# We don't need this.
 
-    }
+
+			/* If true, 'do-echo' causes the prompt string to be echoed
+				back with the completion appended.  (This is not useful
+				for our application, and would just waste money.) */
+
+		do-echo:				false	# Don't change this!
+
+
+			/* The 'stop-sequences' parameter is a list of strings (or
+				a single string). What it means is that, when any of
+				these strings occurs in the completion, we truncate the
+				completion just prior to it. Normally, we just ask the
+				AI to give us one line at a time, but this setting may
+				be overridden in some apps, such as the 'Writing' app,
+				where we may want the AI to be able to compose large,
+				multi-paragraph blocks of text all at once. */
+
+		stop-sequences:			'\n'	# Just get one line at a time.
+		#stop-sequences:		'\n\n'	# This waits for a blank line.
+
+
+			/* The 'presence-penalty' parameter is a number between 0
+				and 1 that penalizes new tokens based on whether they
+				appear in the text so far.  Zero means no penalty. */
+
+		presence-penalty:		0		# Don't cripple the AI!
+
+
+			/* The 'frequency-penalty' parameter is a number between 0
+				and 1 that penalizes new tokens based on how often they
+				appear in the text so far.  Default value: 0 (no penalty). */
+
+		frequency-penalty:		0		# Don't cripple the AI!
+
+
+			/* The 'best-of' parameter generates some large number of
+				possible completions behind the scenes, and then the top
+				'n-completions' best (most likely) ones of those are
+				returned.  (I mean, it could make sense to experiment with
+				this, but I think it would add cost and not improve the
+				results all that much.) */
+
+		best-of:				null	# Don't bother doing this.
+		
+	}
+
+	
+
+		#/======================================================================
+		#|	The field-conf sub-dict provides configuration parameters for the
+		#|	AI's receptive field specifically.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	field-conf:	{
+	
+			#-----------------------------------------------------------------------
+			# The max-visible-ntokens specifies the assumed size of the receptive 
+			# field of the underlying language model.  For GPT-3, this is 2,048.
+			
+		max-visible-tokens:				2048	# Comes from paper, n_ctx model parameter.
+	
+	}
 
 }

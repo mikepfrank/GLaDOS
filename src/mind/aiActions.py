@@ -202,9 +202,9 @@ class The_AI_Cognosphere_Channel(ActionChannel_):
 		isAIAction = isinstance(action, ActionByAI_)
 		if isAIAction:
 
-			# Don't report the field-existence announcement.
-			if isinstance(action, AnnounceFieldExistsAction):
-				return False
+			### Don't report the field-existence announcement.
+			##if isinstance(action, AnnounceFieldExistsAction):
+			##	return False
 
 			return True
 		

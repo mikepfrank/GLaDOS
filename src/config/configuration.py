@@ -1029,16 +1029,32 @@ class	TheAIPersonaConfig:
 		if 'sys-notification-threshold' in mindConf:
 			theAIConfig.sysNotifyThresh = sysNotifyThresh = mindConf['sys-notification-threshold']
 				# TODO: Make sure value given is valid.
-			_logger.normal(f"    [Config/AI]     AI config: The importance threshold for system notifications is {sysNotifyThresh}.")
+			_logger.normal("    [Config/AI]     AI config: The importance threshold for "
+						   f"system notifications is {sysNotifyThresh}.")
 		else:
 			_logger.warn("parseConf(): The sys-notification-threshold parameter "
 							"was not provided. Defaulting to 0.")
 			theAIConfig.sysNotifyThresh = 0
 
+			#--------------------------------------------------
+			# Extract the min-query-tokens parameter.
+
 		if 'min-query-tokens' in mindConf:
 			theAIConfig.minQueryTokens = minQueryTokens = mindConf['min-query-tokens']
+			_logger.normal("    [Config/AI]     AI config: The minimum size of "
+						   f"the response region is {minQueryTokens}.")
 		else:
 			theAIConfig.minQueryTokens = 42		# Default
+
+			#--------------------------------------------------
+			# Extract the example-response parameter.
+
+		if 'example-response' in mindConf:
+			theAIConfig.exampleResponse = exampleResponse = mindConf['example-response']
+			_logger.normal("    [Config/AI]     AI config: The example response "
+						   f" is: [{exampleResponse}].")
+		else:
+			theAIConfig.exampleResponse = None	# Default
 
 				#|====================================
 				#| Parse the api-conf substructure.
