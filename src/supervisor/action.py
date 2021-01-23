@@ -101,6 +101,46 @@
 #|------------------------------------------------------------------------------
 
 
+global	__all__
+__all__ = [
+		'Action_',		# Abstract base class for actions.
+
+			# Action subclasses.
+
+		'ActionBySystem_',		# Abstract base class for actions by system components.
+		'ActionByHuman_',		# Abstract base class for actions by individual humans.
+		'ActionByOperator_',	# Abstract base class for actions by the system operator.
+
+		'AnnouncementAction_',	# Abstract base class for announcement actions.
+		'CommandAction_',		# Abstract base class for command actions.
+		'SpeechAction_',		# Abstract base class for speech actions.
+
+		'Operator_Speech_Action',	# Class for speech actions taken by system operator.
+
+		'CommandByHuman_',		# Abstract base class for commands issued by a human..
+
+			# Action notification system classes.
+
+		'ActionSubscriber_',	# Abstract base class for subscribers to action channels.
+		'TheLogReporter',		# A subscriber that records action reports in the system log.
+
+		'ActionChannel_',		# A broadcast feed for notifying subscribers of action reports.
+		'TheEverythingChannel',	# A channel that broadcasts all action reports in the system.
+
+		'TheActionNewsNetwork',	# Central hub that dispatches reports to all channels.
+
+			# Action processing system.
+
+		'TheActionProcessor',	# Handles initiation and execution of all actions.
+
+			# Singleton class to anchor this entire module.
+
+		'TheActionSystem',	# Singleton class for action system as a whole.
+			# (Anchor point for this module.)
+
+	]
+
+
 	#|==========================================================================
 	#|
 	#|	 1. Module imports.								   [module code section]
@@ -170,12 +210,6 @@ from entities.entity	import	(
 	# We need to consult this when processing actions so that
 	# we can check to see if they're interpretable as commands.
 
-
-
-global	__all__
-__all__ = [
-		'Action_',		# Abstract base class for actions.
-	]
 
 
 
@@ -425,8 +459,11 @@ class AnnouncementAction_(Action_):
 		"""For announcement actions, we generate their text with a little
 			highlighting (surroundings asterisks), and a newline."""
 
+		annHighlightChar = '*'
+		annHighlight = annHighlightChar * 3
+
 		annAct = thisAnnouncementAction
-		text = f"~~~ {annAct.description} ~~~" + '\n'
+		text = f"{annHighlight} {annAct.description} {annHighlight}\n"
 
 		return text
 
@@ -450,6 +487,9 @@ class AnnouncementAction_(Action_):
 		# Eventually we should also send it to all attached terminal sessions.
 
 class CommandAction_(Action_):
+
+	"""Abstract base class for command actions."""
+
 	pass
 	
 class SpeechAction_(Action_):

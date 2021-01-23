@@ -447,7 +447,7 @@ class ThePromptSeparator(FieldElement_):
 	"""This is a special field element that is (semi-) permanently located at 
 		the top of the entire field."""
 	
-	bgChar = '='	# Fill separator row with this character.
+	bgChar = '~'	# Fill separator row with this character.
 	
 		# "Instructions" to embed in the separator bar.
 	sepInstrs = "Enter a command line or free-form text. (/Help)"
@@ -463,7 +463,7 @@ class ThePromptSeparator(FieldElement_):
 	instrPos = int((sepBarWidth - len(sepInstrs))/2)
 	
 		# Construct the full text string for the topper row.
-	sepBarStr = overwrite('|' + bgChar*(sepBarWidth-2) + '|', instrPos, sepInstrs) + '\n'
+	sepBarStr = overwrite(bgChar*(sepBarWidth), instrPos, sepInstrs) + '\n'
 	
 	def __init__(psElem:ThePromptSeparator, *args, **kwargs):
 			# Mostly handled by FieldElement_ superclass, except that we specify

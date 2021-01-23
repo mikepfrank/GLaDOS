@@ -12,7 +12,8 @@ from infrastructure.logmaster import (
 		getComponentLogger,	# Used just below.
 		LoggedException,
 		WarningException,	# FieldUnavailable is one of these.
-		InfoException,		# FieldDataTooLarge is one of these.
+		#InfoException,		# FieldDataTooLarge is one of these.
+		DebugException,		# FieldDataTooLarge is one of these.
 	)
 
 global _component, _logger	# Software component name, logger for component.
@@ -66,13 +67,16 @@ class FieldUnavailable(ConsoleException, WarningException):
 
 	pass
 
-class FieldDataTooLarge(ConsoleException, InfoException):
+class FieldDataTooLarge(ConsoleException, DebugException):
+	# NOTE: We log this exception at DEBUG level because it's
+	# such a routine event that it's not really worth logging
+	# at INFO level.
 
 	"""Thie is an informational type of exception that is
 		thrown by the field display when the available field
 		data won't fit on the field display.  This prompts
-		the .refresh() method to discard the oldest data
-		item and retry."""
+		the .refresh() method to discard the top-most data
+		item from the field display's dataset and retry."""
 
 	pass
 

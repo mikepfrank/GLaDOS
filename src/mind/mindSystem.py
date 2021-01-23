@@ -503,16 +503,20 @@ class MindThread(ThreadActor):
 
 			# Set our initial mode to 'awake'.
 		thread._mode = 'awake'
-		thread._lastResponse = None
+
+			# These are time values that keep track of awake/asleep/hibernating intervals.
 		thread._awakeSince = 0
-		thread._lastActionTime = 0	# An arbitrary early time: Jan 1, 1970
 		thread._fellAsleepTime = 0
 		thread._startedHibernatingAt = 0
+
+			# These will be changed on startup in .captureInitialResponse().
+		thread._lastResponse = None
+		thread._lastActionTime = 0
 
 			# This is just a simple flag for politely requesting shutdown.
 		thread.exitRequested = False
 
-		thread._attentionFlag = Flag(True)
+		thread._attentionFlag = Flag()	# False initially, to give human a chance to provide input.
 			# Raise this flag to cause the AI to respond immediately (that is,
 			# within a second or so) even if its normal minimum action interval
 			# has not yet expired.  However, if the AI is sleeping or
@@ -530,6 +534,29 @@ class MindThread(ThreadActor):
 		super(MindThread, thread).__init__()
 			# Note we don't put this thread in daemon mode. It's too important!
 			# (We don't want the server to stop while it's still running.)
+
+	def quell(thisMindThread:MindThread):
+
+		"""Forcibly lowers all of the cognitive thread's attention flags,
+			so as to remove its impulse to respond immediately."""
+
+		thread = thisMindThread
+
+			# Tell all of these flags to lower themselves.
+		thread._attentionFlag.fall()
+		thread._wakeUpFlag.fall()
+		thread._pokeBearFlag.fall()
+
+	# def captureInitialResponse(thisMindThread:MindThread):
+	# 	"""After the main cognitive system generates our initial "response",
+	# 		it calls this method so that the cognitive thread will be aware
+	# 		of its content & time."""
+
+	# 	thread._lastResponse = mind.initialResponse
+	# 	thread._lastActionTime = mind.initResponseTime
+	# 		# Thiis is the time at which mind.generateFirstAction() generated our example response.
+	# 		# We set this so that we don't think our refractory period is expired right away when
+	# 		# we start up.
 
 	def softPoke(thisMindThread:MindThread):
 
@@ -745,7 +772,8 @@ class MindThread(ThreadActor):
 			except PromptTooLargeException as e:
 					# Tell the receptive field it's too large and needs to shrink itself.
 
-				_logger.debug(f"[Mind/Thread] Oops; the receptive field is too large by {e.byHowMuch}! Attempting shrink...")
+				_logger.debug("[Mind/Thread] Oops; the receptive field is too large "
+							  f"by {e.byHowMuch}! Attempting shrink...")
 
 				field.shrink(e.byHowMuch)
 
@@ -756,15 +784,26 @@ class MindThread(ThreadActor):
 			else:
 				break
 
-			# Remember the time that that last GPT-3 API call completed.
-		thread._lastActionTime = time()
-
-		_logger.debug("[Mind/Thread] Got response: [" + response + ']')
-		thread._lastResponse = response
+		_logger.debug("[Mind/Thread] Got GPT-3 response: [" + response + ']')
+		thread.noteResponse(response)	# Note time & response for later reference.
 
 			# This causes us to process the response. Generally this
 			# just conceives and initiates a corresponding speech action.
 		thread.processResponse(response)
+
+	def noteResponse(thisMindThread:MindThread, response:str):
+
+		"""When this method is called, it takes note of this response of ours
+			and the time that it was generated, then processes the response."""
+
+		thread = thisMindThread		# Here's us, the mind thread.
+
+			# Remember the time that that last GPT-3 API call completed.
+		thread._lastActionTime = nowTime = time()
+
+		_logger.debug(f"[Mind/Thread] Recording last action time as: {nowTime}")
+
+		thread._lastResponse = response
 
 	def processResponse(thisMindThread:MindThread, response:str):
 
@@ -777,6 +816,7 @@ class MindThread(ThreadActor):
 		persona = mind.persona
 		meEntity = persona.entity
 
+		_logger.debug(f"[Mind/Thread] Processing our response: [{response}]")
 			# Conceive and initiate the action of actually saying
 			# what our underlying GPT-3 core is suggesting.
 		speechAct = AI_Speech_Action(response, meEntity)
@@ -896,6 +936,7 @@ class TheCognitiveSystem:
 		# For now, this will just be a thread. Later on we will make
 		# it into a bona-fide GLaDOS process.
 
+		_logger.info("        [Mind/Init]     Creating main cognitive thread...")
 		mind._thread = thread = MindThread(mind)
 	
 	#__/ End singleton instance initializer theCognitiveSystem.__init__().
@@ -916,7 +957,7 @@ class TheCognitiveSystem:
 			We also wake up the mind, if appropriate, depending on the type of
 			action that caused this event."""
 
-		#_logger.info(f"[Mind] Noticing text event: '{textEvent.text}'")
+		_logger.info(f"[Mind] Noticing text event: '{textEvent.text}'")
 
 		field = mind._field
 		field.addEvent(textEvent)
@@ -932,12 +973,14 @@ class TheCognitiveSystem:
 
 		# If the action was an announcement, then poke the mind normally to wake it up.
 		if isinstance(action, AnnouncementAction_):
+			_logger.debug("[Mind] This is an announcedment; telling cognitive thread to wake up and notice.")
 			mind.poke()
 
 		# Otherwise, unless this was an action that we took ourselves, we give the
 		# mind a "soft poke"; this will get its attention if it's already awake;
 		# but otherwise, it will on keep sleeping/hibernating.
 		elif not isSelfAction:
+			_logger.debug("[Mind] The actor wasn't ourselves; getting our cognitive thread's attention.")
 			mind.softPoke()
 
 	@property
@@ -1016,6 +1059,12 @@ class TheCognitiveSystem:
 		announcement = AnnounceFieldExistsAction()
 		announcement.initiate()
 
+			#-----------------------------------------------------------------
+			# Next, we generate a "canned" AI action just to try to get the
+			# AI started on the right foot.
+
+		mind.generateFirstAction()
+
 		# TO DO: Write more code here, including starting up other
 		# active subsystems of the cognitive system, and then creating
 		# and starting up the thread that will run our main loop.
@@ -1026,6 +1075,48 @@ class TheCognitiveSystem:
 		thread = mind.thread
 		thread.start()			# Go, go, speed racer!
 		
+
+	def generateFirstAction(mind:TheCognitiveSystem):
+
+		"""This method is called on mind startup to generate a 'canned' initial
+			response, just to try to get the AI started on the right track."""
+
+		persona = mind.persona
+		meEntity = persona.entity
+		thread = mind.thread
+
+		_logger.info("[Mind/Init] Auto-generating AI's initial example response...")
+
+		# See if the AI config provided an example response.
+		exampleResponse = TheAIPersonaConfig().exampleResponse
+
+			# If so it, generate it as an AI speech action.
+		if exampleResponse is not None:
+
+				# Cause the mind thread (which is not yet started)
+				# to note the time and content of the response.
+			thread.noteResponse(exampleResponse)
+
+				# Conceive and initiate the action of actually saying
+				# the example response, attributed to the AI persona itself.
+			thread.processResponse(exampleResponse)
+
+				# Store our initial response for later reference.
+			mind.initialResponse = exampleResponse
+			mind.initResponseTime = time()
+			
+				# This ensures that the mind thread isn't impelled to respond to
+				# stuff that was added to the field during startup; this is because
+				# we want it to think that it has already responded to those.
+			thread.quell()
+
+		else:
+			mind.initialResponse = None
+			mind.initResponseTime = 0		# Jan 1, 1970
+
+			# This just causes the cognitive thread to take note of this
+			# response and its generation time.
+		#thread.captureInitialResponse()
 
 		# These methods are just dispatched to the "mind thread" sub-object.
 	def softPoke(mind:TheCognitiveSystem):

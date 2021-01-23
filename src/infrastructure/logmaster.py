@@ -519,6 +519,7 @@ __all__ = [
 	'sysLogger', 'appLogger',
 	'logFormatter', 'consHandler',
 	'LoggedException', 'InfoException',		 # Public exception classes.
+	'DebugException',
 	'ExitException', 'WarningException', 
 	'WrongThreadWarning', 'ErrorException',
 	'CriticalException', 'FatalException',
@@ -1286,6 +1287,12 @@ class InfoException(LoggedException):
 	
 #__/ End class InfoException
 
+
+class DebugException(LoggedException):
+
+	"""Like InfoException, but is only logged at DEBUG level."""
+
+	loglevel = logging.DEBUG
 
 			#|------------------------------------------------------------------
 			#|
