@@ -59,6 +59,43 @@ class ActionByAI_(Action_):
 		super(ActionByAI_, thisAiAction).__init__(description, conceiver=conceiver)
 
 
+class FallAsleepAction: pass
+class FallAsleepAction(ActionByAI_):
+
+	"""Class for the action of the AI falling asleep."""
+
+	selfExecuting = True
+
+	def __init__(newFallAsleepAction:FallAsleepAction, thread, importance:int=7):
+		faAct = newFallAsleepAction
+		faAct._thread = thread
+		personaName = thread.personaName
+		description = f"{personaName} is falling asleep."
+		super(FallAsleepAction, faAct).__init__(description, importance)
+
+	def executionDetails(newFallAsleepAction:FallAsleepAction):
+		thread.executeFallAsleep()
+
+class WakeUpAction: pass
+class WakeUpAction(ActionByAI_):
+
+	"""Class for the action of the AI waking up (spontaneously)."""
+
+	selfExecuting = True
+
+	def __init__(newWakeUpAction:WakeUpAction, thread, importance:int=7):
+		waAct = newWakeUpAction
+		waAct._thread = thread
+		personaName = thread.personaName
+		description = f"{personaName} is waking up."
+		super(WakeUpAction, waAct).__init__(description, importance)
+
+	def executionDetails(newWakeUpAction:WakeUpAction):
+		thread.executeWakeUp()
+
+
+
+
 class _AiAnnouncementAction: pass
 class _AiAnnouncementAction(ActionByAI_, AnnouncementAction_):
 
@@ -105,6 +142,23 @@ class AnnounceFieldExistsAction(_AiAnnouncementAction):
 					  f"announcement action. Announcement text is: '{announcementText}'")
 
 		super(AnnounceFieldExistsAction, thisAction).__init__(
+			announcementText, importance)
+
+
+class AnnounceEnergyAction: pass
+class AnnounceEnergyAction(_AiAnnouncementAction):
+	
+	"""Class for the cognitive system to announce the AI's energy level."""
+
+	def __init__(thisAction:AnnounceEnergyAction,
+			announcementText:str="The AI's energy level is low.",
+			importance:int=3,	# Low energy message is somewhat important
+		):
+
+		_logger.debug("AnnounceEnergyAction.__init__(): Initializing energy "
+					  f"announcement action. Announcement text is: '{announcementText}'")
+
+		super(AnnounceEnergyAction, thisAction).__init__(
 			announcementText, importance)
 
 
