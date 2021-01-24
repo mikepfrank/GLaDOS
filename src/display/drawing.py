@@ -123,6 +123,8 @@ def addLineClipped(win, line:str, attrs:int, padRight:int=None):
 	
 	win.addstr(line, attrs)
 
+	# We could do a win.noutrefresh() here? Or leave it to caller
+
 #__/ End module public function drawing.addLineClipped().
 
 
@@ -159,6 +161,8 @@ def addTextClipped(win, text:str, attrs:int, padRight:int=None):
 	
 	#__/ End loop over lines.
 	
+	# We could do a win.noutrefresh() here? Or leave it to caller
+
 #__/ End module public function drawing.addLineClipped().
 
 

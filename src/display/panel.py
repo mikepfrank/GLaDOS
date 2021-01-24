@@ -85,11 +85,16 @@ from .client import (
 	)
 
 class PanelPlacement(Enum):
+
 	"""This enum lists the panel-placement specifiers presently supported."""
+
 	FILL_BOTTOM = 'fill-bottom'		# Occupy full width of display, at the bottom. Place this before columnar panels.
 	LOWER_RIGHT	= 'lower-right'		# Place this panel at the bottom of the right-hand column (but after previous LOWER_RIGHT panels).
 	FILL_RIGHT	= 'fill-right'		# This panel expands to fill all remaining space in the right-hand column.
 	FILL_LEFT	= 'fill-left'		# This panel expands to fill all remaining space in the left-hand column.
+
+	def __str__(pp):
+		return pp.value
 
 global FILL_BOTTOM, LOWER_RIGHT, FILL_RIGHT, FILL_LEFT
 FILL_BOTTOM = PanelPlacement.FILL_BOTTOM
@@ -102,22 +107,58 @@ class PanelClient: pass
 
 class Panel:
 
-	"""A non-overlapping region of a panel client's display area."""
+	"""A region of a panel client's display area that doesn't
+		overlap with other panels on the display, except possibly
+		that different panels can share edges."""
 	
 	def __init__(newPanel, 
-			title:str = "Untitled Panel",			# REQUIRED ARGUMENT. Panel title. CALLER MUST PROVIDE THIS.
+			title:str = "Untitled Panel",
+				 # REQUIRED ARGUMENT. Panel title. CALLER MUST PROVIDE THIS & OVERRIDE.
 			initPlacement:PanelPlacement = None,	# REQUIRED ARGUMENT, panel placement specifier.
-			initHeight:int = None,						# Initial internal panel height, in rows of text.
-			leftPad:int = 1,						# Internal padding at left side of panel (inside border).
+			initHeight:int = None,					# Initial internal panel height, in rows of text.
+			leftPad:int = 1,				# Internal padding at left side of panel (inside border).
+			hideTitle:bool = False,		# If true, then we don't display panel's title on its top edge.
 		):
 		newPanel._title		= title
 		newPanel._placement = initPlacement
 		newPanel._height	= initHeight		# This is our aspirational/initially-requested height.
 		newPanel._leftPad	= leftPad
+		newPanel._hideTitle = hideTitle
+
 		newPanel._client	= None				# It hasn't been placed in a client yet.
 		newPanel._placed 	= False				# Panel has not actually been placed yet.
 		newPanel._win 		= None				# It has no internal sub-window yet.
 		newPanel._launched 	= None				# Any subsidiary processes have not been started yet.
+
+	def expand(thisPanel:Panel, byHowMuch:int=1):
+
+		"""This method requests the panel to increase its vertical height by <byHowMuch> rows,
+			which defaults to 1.  The method assumes that the display is already running.  As
+			a side effect, it causes all panels to be re-placed and the entire display to be
+			re-painted."""
+
+		panel = thisPanel
+		client = panel.client
+		display = client.display
+		driver = display.driver
+
+			# This actually updates our internal specifier of the panel's size.
+		panel.height = panel.height + byHowMuch
+
+			# Expanding this panel could cause other panels have to be moved or resized, so at this
+			# point, the easiest way to figure this out is to just redo all the panel placements.
+		client.redoPlacements()
+
+			# This causes the client to regenerate its entire display.
+		#client.redisplay()
+			# This tells the console client to regenerate the entire console display on the screen.
+			# (We do this as a background task to avoid getting into an infinite loop here.)
+		#driver.do(client.redisplay)
+				# Pushes the redisplay task onto the tail end of the display driver's worklist.
+
+	@property
+	def hideTitle(thisPanel):
+		return thisPanel._hideTitle
 
 	@property
 	def title(thisPanel):
@@ -156,7 +197,7 @@ class Panel:
 
 		"""Assuming the panel already has a placement, make sure it has
 			an internal window, and that it's the correct size.  Subclasses
-			may extend this as needed to (re)configure any sub-windows."""
+			may extend this as needed to also (re)configure any sub-windows."""
 		
 		panel	= thisPanel
 		client	= panel.client
@@ -171,52 +212,89 @@ class Panel:
 
 		if win == None:	# No sub-window yet; create one.
 
-			panel._win = win = screen.subwin(panel.height, int_width, panel.top + 1, (panel.left + 1) + leftPad)
+			win_top = panel.top + 1
+			win_left = (panel.left +1) + leftPad
+
+			_logger.info(f"Creating window for panel '{panel.name}' with size "
+						 f"({panel.height}, {int_width}) at ({win_top}, {win_left}).")
+
+			panel._win = win = screen.subwin(panel.height, int_width, win_top, win_left)
+			#panel._win = win = newwin(panel.height, int_width, win_top, win_left)
 				# NOTE: <leftPad> gives a number of blank spaces to leave in between the panel's
 				# left border and its interior sub-window.
 		else:
 
-			#win.erase()		# Erase anything that was left over in the window's old geometry.
+				# First, we erase any content that may have been
+				# left over under the window's old geometry.
+			#win.erase()
+			
+				# Also, we make sure that the text cursor is
+				# positioned at the upper-left order of the window.
+			win.move(0,0)	
 
 				# Get the window's current size and position relative to its parent.
-
 			(cur_height, cur_width) = win.getmaxyx()
 			(cur_winy, cur_winx) = win.getparyx()
 
-				# Move the existing window in case the panel's position changed.
-
+				# Now, calculate its new position.
 			new_winy = panel.top + 1
 			new_winx = (panel.left + 1) + leftPad
+				
+				# At this point, we haven't actually moved or resized the panel's window yet.
+			win_moved = False
+			win_resized = False
 
-				# Before we try to move it, make sure it's needed.
+				#---------------------------------------------------------------
+				# Move the existing window if the panel's position changed.
 
+			# Before we try to move it, make sure its position actually changed.
 			if (new_winy != cur_winy) or (new_winx != cur_winx):
 
-				_logger.debug(f"panel.configWin(): Moving internal window to ({new_winy},{new_winx}).")
+				_logger.debug(f"panel.configWin(): Moving panel '{panel.name}' "
+							  f"internal window to ({new_winy},{new_winx}).")
 
 				try:
 					win.mvwin(new_winy, new_winx)
 				except error as e:
 					_logger.error(f"panel.configWin(): Move attempt generated curses error: {str(e)}")
+					raise
+				else:
+					win_moved = True
 
+				#----------------------------------------------------------
 				# Also, resize the window in case the panel's size changed.
 
 			if (height != cur_height) or (int_width != cur_width):
 
-				_logger.debug(f"panel.configWin(): Resizing internal window to ({height}, {int_width}).")
+				_logger.debug(f"panel.configWin(): Resizing panel '{panel.name}' "
+							  f"internal window to ({height}, {int_width}).")
 
 				try:
 					win.resize(height, int_width)
 				except error as e:
 					_logger.error(f"panel.configWin(): Resize attempt generated curses error: {str(e)}")
+					raise
+				else:
+					win_resized = True
 
-			# Mark the sub-window as needing refreshing.
+
+			# If we actually did either move or resize the window, then
+			# mark the entire window as needing to be redrawn on refresh.
+			if win_moved or win_resized:
+				win.redrawwin()
+
+			# Refresh the panel window; will take effect on next display update.
 		win.noutrefresh()
 	
 	def replace(thisPanel):
+
 		"""Same as .place() but for previously placed panels."""
+
 		panel = thisPanel
-		panel._placed = False	# Needed for .place() to do anything.
+
+		panel._placed = False
+			# This is needed in order for .place() to do anything.
+
 		panel.place()
 		
 	def place(thisPanel, panelClient:PanelClient = None):
@@ -332,6 +410,9 @@ class Panel:
 		
 		panel._placed = True	# Remember we've been placed.
 
+		# Now that the panel is placed, go ahead and paint it on the display.
+		panel.paint()
+
 	
 	def drawFrame(thisPanel):
 	
@@ -402,27 +483,35 @@ class Panel:
 
 			# First, place it, if it's not placed already.
 		if not panel._placed:
-			panel.place(panel._client)	# Assume this was set earlier at least.
+			panel.place(client)		# Assume client was set earlier at least.
 
 			# OK, next, draw the panel's frame.
 		panel.drawFrame()
 		
 			# Now draw the panel's title in its top frame, in border style.
-		if panel.title != None:
+		if panel.title != None and not panel.hideTitle:
 			paddedTitle = ' ' + panel.title + ' '
 			screen.addstr(panel.top, panel.left + 4, paddedTitle, style_to_attr(BORDER))
 		
-			# Now paint the panel's contents.  This method is implemented by its subclass.
+			# Now paint the panel's contents.  This method is implemented by the subclass.
 		panel.drawContent()
 	
 	
+	def clear(thisPanel):
+		"""Clear's the panel's interior window."""
+		panel = thisPanel
+		win = panel.win
+		win.clear()
+
+
 	def drawContent(thisPanel):
 	
 		"""Extend this method to draw actual content in the given panel.
 			This method should assume that the panel is initially erased,
 			and that it will be refreshed some time after it's finished.
-			Please note that extensions should use super() to call this 
-			method before they return."""
+			Please note that subclass implmentations overriding this method
+			should extend it by using super() to call this method before
+			they return."""
 	
 		panel = thisPanel
 		win = panel.win
@@ -431,6 +520,9 @@ class Panel:
 		#| EXTEND METHOD WITH ANY ADDITIONAL CODE BEFORE HERE.
 		#\----------------------------------------------------
 	
+			# Updates screen locations that were changed in panel's interior window.
+		#win.syncup()
+
 			# Tell the display the panel's window needs refreshing now.
 		win.noutrefresh()
 	
@@ -568,14 +660,19 @@ class PanelClient(DisplayClient):
 
 		client = thisPanelClient
 
-			# Re-initialize all of the layout constraints.
+			# Re-initialize all of the panel layout constraints.
 		client._resetLayout()
 
+		# Now, re-place each of the individual panels.
 		for panel in client._panels:	# For each panel in our list,
 			panel.replace()		# Redo the placement of this single panel.
 		
 			# Tell the client to tell its screen that, after all that, it needs refreshing.
+			# This is needed to make sure panel borders are updated.
 		client.requestRefresh()
+
+			# Now is a good time to update the panel client's physical display?
+		client.updateDisplay()
 
 
 	def handle_resize(thisPanelClient):
@@ -637,7 +734,12 @@ class PanelClient(DisplayClient):
 		screen.vline(sep_top, sep_pos, '|', sep_height)
 		screen.attrset(0)
 	
+	def redrawFrames(thisPanelClient):
+		"""This is line .paint(), except that it only redraws the panel frames,
+			but not the panel contents."""
+
 	def paint(thisPanelClient):
+
 		"""This paint method overrides the demo in DisplayClient.
 			
 			Context reminders: When this is called, all we know is that
@@ -661,7 +763,8 @@ class PanelClient(DisplayClient):
 			_logger.debug("panelClient.paint(): Display not yet running; exiting early.")
 			return
 		
-			# This is effectively a "lazy clear"--it waits until refresh to take effect.
+		# Erases what's on the main screen -- EVERYTHING IN BETWEEN THE PANEL INTERIOR WINDOWS.
+		# This is effectively a "lazy clear"--it waits until refresh to take effect.
 		display.erase()		# Marks all character cells as empty (and no attributes).
 				# (We do this so we don't have to worry about old junk hanging around.)
 
@@ -685,6 +788,10 @@ class PanelClient(DisplayClient):
 		except error as e:
 			_logger.error("panelClient.paint(): Got a curses error: " + str(e))
 	
+		# Not that it matters, since we have turned off the automatic cursor
+		# display in display._init(), but we "Home" the cursor to (0,0).
+		screen.move(0,0)
+
 	
 	def addPanel(thisPanelClient, panel:Panel):
 		"""Adds a panel to the set that is (or will be) displayed by this panel client."""

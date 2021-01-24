@@ -103,8 +103,11 @@ class FieldPanel(Panel):
 		elif column == 'left':
 			placement = FILL_LEFT		# Fill available space in left column.
 
+		title = column + " field panel"
+
 			# General panel initialization.
-		super(FieldPanel, panel).__init__(title=None, initPlacement=placement)
+		super(FieldPanel, panel).__init__(title=title, initPlacement=placement,
+										  hideTitle=True)
 			# Field panels are untitled by default, since they are the main focus
 			# of the server application in any case.
 
@@ -281,6 +284,7 @@ class FieldPanel(Panel):
 			# Now call the original method in Panel, which does some 
 			# general bookkeeping work needed for all panels.		
 		super(FieldPanel, panel).drawContent()
+				# One thing it does is a noutrefresh() on the panel window.
 		
 
 class FieldDisplay:

@@ -316,7 +316,8 @@ class LogPanel(Panel):
 			# Get the current size of the top-level interior panel window.
 		(height, width) = win.getmaxyx()			
 
-		_logger.debug(f"logPanel.configWin(): About to configure subwindows for interior size ({height}, {width}).")
+		_logger.debug(f"logPanel.configWin(): About to configure subwindows "
+					  f"for interior size ({height}, {width}).")
 
 			# Create or resize our sub-windows, as appropriate.
 			
@@ -324,16 +325,22 @@ class LogPanel(Panel):
 				
 				# Now create our sub-windows.
 				
-			panel._header_subwin = win.derwin(3, width, 0, 0)
+			panel._header_subwin = head_win = win.derwin(3, width, 0, 0)
 				# This means: The header sub-window is 3 rows tall,
 				# same width as the top-level panel window, and begins
-				# at the upper-left corner of the top-level window.
+				# at the upper-left corner of the panel's top-level window.
+
+			head_win.syncok(True)	# Changes propagate up
+			
 				
 			panel._data_subwin = data_win = win.derwin(3, 0)
 				# This means: The data subwindow begins on row 3 (i.e.,
 				# the 4th row of the window, under the header), column 0,	
 				# and extends all the way to the lower-right corner of the
 				# top-level interior window for the panel.
+
+			data_win.syncok(True)
+
 			data_win.scrollok(True)		# Allow window to scroll (for adding new lines at bottom)
 				# Does this do anything?
 			
@@ -372,7 +379,8 @@ class LogPanel(Panel):
 		panel = thisLogPanel		# Get the panel.
 		win = panel._header_subwin	# Get the subwin.
 		
-		attr = style_to_attr(HEADER)	# Get the attributes for the 'HEADER' rendering style. (Currently, bright white.)
+			# Get the attributes for the 'HEADER' rendering style. (Currently, bright white.)
+		attr = style_to_attr(HEADER)	
 
 		head_data = panel._header_data
 		if head_data is None:
@@ -392,10 +400,21 @@ class LogPanel(Panel):
 		
 			# OK, now we are finally ready to actually draw the header text.
 
+		win.erase()
 		win.move(0,0)	# Always start over at top-left corner.
 		addTextClipped(win, head_data, attr)
 			# This clips each line to the width of the window.
 	
+			# Why is this even needed?
+		win.syncup()
+
+			# Why is this even needed?
+		win.redrawwin()
+
+			# Mark the header-subwin as needing refreshing.
+		#win.noutrefresh()
+		win.refresh()
+
 	
 	def drawLogLine(thisLogPanel, logLine:str):
 
@@ -584,6 +603,7 @@ class LogPanel(Panel):
 		"""Fills in the content of a blank log panel."""
 		
 		panel = thisLogPanel
+
 		panel.drawHeader()
 		panel.drawData()
 		
