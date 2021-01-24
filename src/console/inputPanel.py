@@ -59,6 +59,13 @@ from	supervisor.action	import (
 
 	)
 
+from	display.exceptions	import (
+
+		RenderExcursion		# We need to catch this exception in inputPanel.drawContent().
+			# It tells that the text being input no longer fits in the panel window.
+
+	)
+
 from	display.keys	import (
 
 		#-------------------------------
@@ -207,7 +214,10 @@ class InputPanel(Panel):
 	#__/ End instance initializer method inputPanel.__init__().
 
 	def configWin(thisInputPanel:InputPanel):
+
 		panel = thisInputPanel
+		client = panel.client
+		display = client.display
 
 			# Do generic Panel configWin stuff.
 		super(InputPanel, panel).configWin()
@@ -215,6 +225,10 @@ class InputPanel(Panel):
 			# Make sure leaveok is true so cursor doesn't move too much.
 		win = panel.win
 		win.leaveok(True)
+
+			# Also make sure that the display knows that we are the window
+			# that has grabbed the cursor, so that it will blink the cursor in us.
+		display.setCursorWindow(win)
 
 
 	@property
@@ -366,25 +380,38 @@ class InputPanel(Panel):
 			# Get the displayable text representing that event.
 		displayText = textEvent.display()	# Uses event's default format.
 		
-			# Sweet; now have the display render it in the window.
-		(yx2pos, pos2yx) = display.renderText(
-			displayText, win=win, hang=panel._hanging, promptChar='>')
-			# Note this method does special stuff with various control
-			# and whitespace characters. Also it puts the prompt in a
-			# different color.  The return values map screen
-			# locations to positions in the string.
+		# Try rendering the text, but it might not fit in the window.
+		try:
 
-		panel._yx2pos = yx2pos
-		panel._pos2yx = pos2yx
+			# Now have the display render the display-text in the window.
+			(yx2pos, pos2yx) = display.renderText(
+				displayText, win=win, hang=panel._hanging, promptChar='>')
+				# Note this method does special stuff with various control
+				# and whitespace characters. Also it puts the prompt in a
+				# different color.  The return values map screen
+				# locations to positions in the string.
 
-			# Make sure the cursor is positioned where it should
-			# be according to the current text position.
-		panel.grabCursor()
+				# We remember the generated maps between text positions and
+				# window coordinates, which are needed to support editing.
+			panel._yx2pos = yx2pos
+			panel._pos2yx = pos2yx
 
-			# Call the original drawContent() method in Panel, which does 
-			# some general bookkeeping work needed for all panels.
-		super(InputPanel, panel).drawContent()
+				# Make sure the cursor is positioned where it should
+				# be according to the current text position.
+			panel.grabCursor()
+
+				# Call the original drawContent() method in Panel, which does 
+				# some general bookkeeping work needed for all panels.
+			super(InputPanel, panel).drawContent()
 			
+		# If we get a render excursion exception, then the text didn't fit.
+		except RenderExcursion as e:
+
+			_logger.warn("[Input Panel] Input text doesn't fit in window; expanding input panel.")
+
+			# So now, let's try expanding the panel.
+			panel.expand()	# By default, this increases height by 1 row.
+				
 	#__/ End instance method inputPanel.drawContent().
 
 
@@ -502,7 +529,8 @@ class InputPanel(Panel):
 			# ^U = Clear all text.
 			panel.keyClear()
 		
-		elif keycode >= 0xc0 and keycode <= 0xdf:	# Alt-Shift-'@' through Alt-Shift-'_' - Remap these to self-insert all A0 controls.
+		# Alt-Shift-'@' through Alt-Shift-'_' - Remap these to self-insert all A0 controls.
+		elif keycode >= 0xc0 and keycode <= 0xdf:	
 
 			newkeyevent = KeyEvent(keycode - 0xc0)
 			panel.insertKey(newkeyevent)

@@ -543,6 +543,14 @@ class TheDisplay:
 		
 		display = theDisplay	# Get a shorter name for the display.
 
+			#---------------------------------------------------------------
+			# "curWin" means the window that the text input cursor is
+			# currently supposed to be displayed in.  It is None initially
+			# because the display hasn't actually been started and so there
+			# are no windows yet.
+
+		display._curWin = None
+
 			#----------------------------------------------------------------
 			# Mark this display as not running yet, to make sure we don't try 
 			# to do anything with it until it's actually running.
@@ -603,6 +611,11 @@ class TheDisplay:
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	@property
+	def curWin(theDisplay:TheDisplay):
+		"""Which curses window currently has the cursor?"""
+		return theDisplay._curWin
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	@property
 	def running(theDisplay:TheDisplay):
@@ -857,7 +870,7 @@ class TheDisplay:
 		
 				# Call the standard curses wrapper on our private display management 
 				# method, below.
-				wrapper(theDisplay._manage)
+				wrapper(display._manage)
 				# ._manage() sets up the display and runs our main input loop.
 		
 		except TerminateServer as e:
@@ -1348,7 +1361,10 @@ class TheDisplay:
 			#| Cursor setup. By default, we turn the system cursor off so we can
 			#| control cursor display in a customized way.
 		curs_set(0)		# 0=invisible, 1=normal, 2=very visible
-		#screen.leaveok(True)	# Minimize cursor movement (do we need this?)
+		screen.leaveok(True)	# Minimize cursor movement (do we need this?)
+
+		# Sets the "background character" of the screen
+		#screen.bkgd('x')	# Just to aid debugging
 
 			#|------------------------------------------------------------------
 			#| This effectively first measures the size of the display, & then 
@@ -1502,6 +1518,8 @@ class TheDisplay:
 			#| the user can see the changes.
 		
 		display.refresh()		# Do it here so client doesn't have to.
+			# NOTE: This only updates the background screen, not any
+			# new client windows unless they have called noutrefresh()!
 	
 	#__/ End sensitive instance method display.paint().
 
@@ -1518,7 +1536,9 @@ class TheDisplay:
 		screen = display.screen
 		
 		if screen is not None:
-			screen.refresh()
+			screen.noutrefresh()	# Mark screen as needing refresh.
+
+		display.update()
 
 	#__/ End sensitive public instance method display.refresh().
 	
@@ -1978,10 +1998,10 @@ class TheDisplay:
 					except curses.error as e:
 						msg = str(e)
 						_logger.debug("[Display] Overflowed window on tab in .renderText().")
-					excursion = RenderExcursion(
-						"display.renderText() got curses error on tab: " + msg, 
-						ch, pos, Loc(cy, cx), yx2pos, pos2yx)
-					raise excursion
+						excursion = RenderExcursion(
+							"display.renderText() got curses error on tab: " + msg, 
+							ch, pos, Loc(cy, cx), yx2pos, pos2yx)
+						raise excursion
 					#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 					#|		 END RENDER CHAR, WITH ERROR HANDLING
 					#|==================================================
@@ -2086,13 +2106,23 @@ class TheDisplay:
 	def setBlinkOn(theDisplay:TheDisplay):
 		
 		display = theDisplay
-		screen = display.screen
-		
+		curWin = display.curWin		# Window that currently has the cursor.
+
+		if curWin is not None:
+
+			attrs = style_to_attr(BRIGHT_CURSOR)
+			curWin.chgat(1, attrs)
+
+			curWin.refresh()	# Updates physical display as well.
+
+		else:
+
+			_logger.warn("[Display] Can't blink cursor because curWin isn't set.")
+
+		# Clunkier implementation below.
+
 		#(sy, sx) = getsyx()					# Get cursor screen coordinates.
 		#_logger.debug(f"Blink ON at ({sy},{sx})")
-
-		attrs = style_to_attr(BRIGHT_CURSOR)
-		screen.chgat(1, attrs)
 
 		#cursdata = screen.inch(sy, sx)		# Fetch data from screen at cursor loc.
 		#attrs = cursdata >> 8				# Get just the attrs part.
@@ -2105,13 +2135,19 @@ class TheDisplay:
 	def setBlinkOff(theDisplay:TheDisplay):
 
 		display = theDisplay
-		screen = display.screen
+		curWin = display.curWin		# Window that currently has the cursor.
 		
+		if curWin is not None:
+
+			attrs = style_to_attr(DIM_CURSOR)
+			curWin.chgat(1, attrs)
+
+			curWin.refresh()	# Updates physical display as well.
+
+		# Clunkier implementation below.
+
 		#(sy, sx) = getsyx()					# Get cursor screen coordinates.
 		#_logger.debug(f"Blink OFF at ({sy},{sx})")
-
-		attrs = style_to_attr(DIM_CURSOR)
-		screen.chgat(1, attrs)
 
 		#cursdata = screen.inch(sy, sx)		# Fetch data from screen at cursor loc.
 		#attrs = cursdata >> 8				# Get just the attrs part.
@@ -2120,6 +2156,16 @@ class TheDisplay:
 		#screen.refresh()					# Refresh screen to push change.
 		#curs_set(1)
 
+
+	def setCursorWindow(thisDisplay:TheDisplay, newCurWin):
+
+		"""This method tells the display which curses window it should locate
+			the (blinking) cursor in. This may not be the top-level screen if
+			the display client created its own windows."""
+
+		display = thisDisplay
+		display._curWin = newCurWin
+		
 
 #__/ End singleton class TheDisplay.
 

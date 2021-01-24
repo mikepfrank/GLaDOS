@@ -250,9 +250,18 @@ class DisplayClient:
 		display = thisClient.display
 		display.paint()
 
-	#__/ End sensitive public instance method client.requestRefresh().
+	#__/ End sensitive public instance method client.redisplay().
 	
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	def updateDisplay(thisClient):
+		
+		"""Updates the physical display to reflect any recent behind-the scenes
+			changes to the client's main screen and/or other windows."""
 
+		client = thisClient
+		display = client.display
+
+		display.update()
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	client.addChar()			  	  [sensitive public instance method]
