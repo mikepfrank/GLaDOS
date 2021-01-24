@@ -244,6 +244,9 @@ class Action_:
 	"""
 	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+		# Actions are not self-executing by default. Some subclasses override this.
+	selfExecuting = False
+
 	#/--------------------------------------------------------------------------
 	#|	Private instance data members.			   [class documentation section]
 	#|
@@ -453,6 +456,8 @@ class AnnouncementAction_(Action_):
 		a message in several places (e.g., STDERR on each attached
 		console or user terminal, in the A.I.'s cognitive stream)."""
 
+	selfExecuting = True
+
 	@property
 	def text(thisAnnouncementAction:AnnouncementAction_):
 
@@ -606,6 +611,8 @@ class Operator_Speech_Action(SpeechAction_, ActionByOperator_):
 class ActionBySystem_(Action_):
 
 	defaultConceiver = The_GLaDOS_Entity()
+
+	selfExecuting = True
 
 	defaultImportance = 0
 		# This sets the default importance level for system actions.
@@ -829,12 +836,14 @@ class TheActionProcessor:
 		# steps that are specific to the particular action subclass and details 
 		# of the action.
 		
-			# First off, if it's a system action or any announcement action
-			# (including announcements from the AI), we just go ahead and run
-			# its more specific execution method. (We don't need to second-guess 
-			# what else needs to be done.)
+			# First off, if it's a self-executing action such as a system action
+			# or any announcement action (including announcements from the AI),
+			# we just go ahead and run its more specific execution method. (We
+			# don't need to second-guess what else needs to be done.)
 		
-		if isinstance(action, ActionBySystem_) or isinstance(action, AnnouncementAction_):
+		#if isinstance(action, ActionBySystem_) or isinstance(action, AnnouncementAction_):
+		if action.selfExecuting:
+
 			action.executionDetails()
 			
 			# For any speech actions taken, we need to check whether committing

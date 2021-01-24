@@ -167,6 +167,8 @@ class InputPanel(Panel):
 
 	"""Panel for prompting for and accepting input from the operator."""
 
+	_INIT_HEIGHT = 5	# When it was 4, I ran out of space too much.
+
 	_DEFAULT_HANGING = 4				# Default hanging indent. (Is 8 better?)
 	eventFormat = MinuteEventFormat		# Format for displaying the working "input event."
 	
@@ -177,9 +179,12 @@ class InputPanel(Panel):
 
 			# Use a shorter name for this new log panel.
 		panel = newInputPanel
+
+			# Get the initial height (this could be a config parameter).
+		initHeight = panel._INIT_HEIGHT
 		
 			# First we do general panel initialization.
-		super(InputPanel, panel).__init__("Operator Input", LOWER_RIGHT, 4)
+		super(InputPanel, panel).__init__("Operator Input", LOWER_RIGHT, initHeight)
 			# By default, the input panel appears at the bottom of the right column.
 			# A default height of 4 for this panel is fine.  It can grow if needed.
 		

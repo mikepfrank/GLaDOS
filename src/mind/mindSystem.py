@@ -214,6 +214,9 @@ from	.aiActions				import	(
 		AI_Speech_Action,
 			# These are the actions that the core AI directly conceives and initiates.
 
+		AnnounceEnergyAction, FallAsleepAction, WakeUpAction,
+			# Actions having to do with our sleep cycle.
+
 	)
 
 from	.mindStream				import	TheCognitiveStream
@@ -465,6 +468,8 @@ class MindThread(ThreadActor):
 	# NOTE: THIS IS TEMPORARY FOR TESTING WITH ADA/BABBAGE ONLY!
 	#_DEFAULT_MIN_ACTION_INTERVAL = 1
 	
+	_DEFAULT_POLLING_INTERVAL = 1	# One second between checks.
+
 	_DEFAULT_MIN_ACTION_INTERVAL = 60	# 60 minutes = 1 hours
 		# To limit costs, by default we only do 1 davinci query
 		# per hour, which is about $4 worth over a 16-hour day.
@@ -501,11 +506,15 @@ class MindThread(ThreadActor):
 
 		thread._gpt3 = api = The_GPT3_API()		# Gets this singleton's instance.
 
-			# Set our initial mode to 'awake'.
+			# Set our initial mode to 'awake', and our energy level to 100%.
 		thread._mode = 'awake'
+		thread._energy = 100
+		thread._fullEnergy = True		# Goes True when energy is at 100% (16 hours till sleep)
+		thread._lowEnergy = False		# Goes True when energy is under 10% (96 minutes till sleep)
+		thread._veryLowEnergy = False	# Goes True when energy is under 5% (48 minutes till sleep)
 
 			# These are time values that keep track of awake/asleep/hibernating intervals.
-		thread._awakeSince = 0
+		thread._awakeSince = time()			# We just woke up, initially.
 		thread._fellAsleepTime = 0
 		thread._startedHibernatingAt = 0
 
@@ -616,7 +625,8 @@ class MindThread(ThreadActor):
 
 		thread = thisMindThread
 		
-		pollingInterval = 1		# How many seconds between status checks.
+		# How many seconds between status checks.
+		pollingInterval = thread._DEFAULT_POLLING_INTERVAL
 			# Since this is 1 second, the AI can respond to an external
 			# event as quickly as within 1 second.
 
@@ -624,9 +634,180 @@ class MindThread(ThreadActor):
 
 			sleep(pollingInterval)
 
+			# The first thing we do each polling interval (after the 1-second sleep)
+			# is to update our energy level accordingly (depending on if we're awake
+			# or asleep). This could lead to us spontaneously falling asleep or
+			# waking up.
+
 			thread.pollForInput()
 				# This method checks to see if there's an event we need to
 				# respond to, or if our refractory or sleep period has expired.
+
+	@property
+	def persona(thisMindThread:MindThread):
+		return thisMindThread.mind.persona
+
+	@property
+	def entity(thisMindThread:MindThread):
+		return thisMindThread.persona.entity
+
+	@property
+	def personaName(thisMindThread:MindThread):
+		return thisMindThread.entity.ID
+		
+
+	def updateEnergy(thisMindThread:MindThread):
+
+		"""This updates the AI's "energy level;" the idea here is that
+			the energy level gradually depletes while the AI is awake,
+			and replenishes when it's sleep. When it gets low, the AI
+			is alerted that it's getting sleepy, and when it hits 0 or
+			less, the AI immediately falls asleep."""
+
+		thread = thisMindThread
+		mode = thread.mode
+
+		# This is our polling interval in seconds.
+		pollingInterval = thread._DEFAULT_POLLING_INTERVAL
+
+		# If the AI is awale. then energy goes down.
+		if mode == 'awake':
+
+			# First, calculate size of our waking interval each day, in hours.
+			wakingInterval = 24 - thread._DEFAULT_SLEEP_PERIOD
+				# This will normally come out to 24-8 = 16 hours.
+
+			# Now, calculate how much energy we lose every polling interval when awake.
+			deltaE = 100 * pollingInterval / (wakingInterval * 60 * 60)
+
+			# Decrement energy level. (Note it could go negative here).
+			thread._energy = thread._energy - deltaE
+
+			if thread._fullEnergy and thread._energy < 100:
+				thread._fullEnergy = False
+
+			# Check for certain critical energy levels.
+			if thread._energy < 10:		# Check for low energy
+
+				# Did we already produce a low-energy alert?
+				if not thread._lowEnergy:
+
+						# Get the AI persona's name.
+					aiName = thread.personaName
+
+						# Compose text of low-energy announcement action.
+					annText = (f"{aiName}, our energy level is at 10%. We are getting sleepy. " +
+						"Type /Sleep to enter sleep mode.")
+
+						# Create and initiate announcement.
+					annAct = AnnounceEnergyAction(annText)
+					annAct.initiate()
+
+						# Remember we did that already now.
+					thread._lowEnergy = True
+
+				# OK, if energy is less than 5%, do a more urgent announcement.
+				if thread._energy < 5:
+					
+					if not thread._veryLowEnergy:
+						
+							# Get the AI persona's name.
+						aiName = thread.personaName
+	
+							# Compose text of low-energy announcement action.
+						annText = (f"{aiName}, our energy level is at 5%. We are getting very sleepy. " +
+							"Please type /Sleep to enter sleep mode.")
+	
+							# Create and initiate announcement.
+						annAct = AnnounceEnergyAction(annText, importance=5)
+						annAct.initiate()
+	
+							# Remember we did that already now.
+						thread._veryLowEnergy = True
+
+					# Finally, if energy is less than 0, then fall asleep immediately.					
+					thread.fallAsleep()
+					return
+			
+		elif mode == 'asleep' or mode == 'hibernating':
+
+			# Get our sleep period.
+			sleepPeriod = thread._DEFAULT_SLEEP_PERIOD
+		
+			# Now, calculate how much energy we gain every polling interval when asleep.
+			deltaE = 100 * pollingInterval / (sleepPeriod * 60 * 60)
+
+			# If hibernating and energy is already max, don't need to do anything.
+			if mode == 'hibernating' and thread._energy >= 100:
+				return
+
+			# Increment energy level. (Not it could go over 100 here.)
+			thread._energy = thread._energy + deltaE
+
+			if thread._veryLowEnergy and thread._energy > 5:
+				thread._veryLowEnergy = False
+
+			if thread._lowEnergy and thread._energy > 10:
+				thread._lowEnergy = False
+
+			# Check for energy at 100%; if so then wake up, unless hibernating.
+			if thread._energy >= 100:
+
+				if not thread._fullEnergy:
+				
+						# Get the AI persona's name.
+					aiName = thread.personaName
+
+						# Compose text of low-energy announcement action.
+					annText = (f"{aiName}, our energy level is at 100%. Time to wake up. ")
+					
+					# Create and initiate announcement.
+					annAct = AnnounceEnergyAction(annText)
+					annAct.initiate()
+	
+					thread._fullEnergy = True
+
+					thread.wakeUp()
+					return
+
+	def fallAsleep(thisMindThread:MindThread):
+
+		"""Calling this method causes the AI to fall asleep. This is
+			done as an explicit action so other subsystems are notified."""
+
+		aiName = thisMindThread.personaName
+		faAct = FallAsleepAction(thisMindThread)
+		faAct.initiate()
+
+	def executeFallAsleep(thisMindThread:MindThread):
+
+		"""This executes the fall-asleep action."""
+
+		thread = thisMindThread
+		thread.mode = 'asleep'
+		thread._fellAsleepTime = time()
+
+	def wakeUp(thisMindThread:MindThread):
+
+		"""Calling this method causes the AI to wake up spontaneously. This is
+			done as an explicit action so other subsystems are notified."""
+
+		aiName = thisMindThread.personaName
+		waAct = WakeUpAction(thisMindThread)
+		waAct.initiate()
+
+	def executeWakeUp(thisMindThread:MindThread):
+
+		"""This executes the wake-up action."""
+
+		thread = thisMindThread
+
+		if thread._mode in {'asleep', 'hibernating'}:
+
+			_logger.info(f"[Mind/Thread] Waking up from '{thread._mode}' mode...")
+
+			thread._mode = 'awake'
+			thread._awakeSince = time()
 
 	def pollForInput(thisMindThread:MindThread):
 		
@@ -725,17 +906,6 @@ class MindThread(ThreadActor):
 		# Call the normal respond method. It does the real work.
 		thread.respond()
 			
-	def wakeUp(thisMindThread:MindThread):
-
-		if thread._mode in {'asleep', 'hibernating'}:
-
-			_logger.info(f"[Mind/Thread] Waking up from '{thread._mode}' mode...")
-
-			thread._mode = 'awake'
-			thread._awakeSince = time()
-
-		# We should probably actually do this as a more explicit action.
-
 	def respond(thisMindThread:MindThread):
 
 		"""This causes the AI to look at the receptive field,
@@ -967,7 +1137,7 @@ class TheCognitiveSystem:
 			# be available if the action just occurred, and if updates about it
 			# were broadcast into our cognitive sphere by the action news network.)
 
-		# If this was an action that we ourselves initiated, then take not of this,
+		# If this was an action that we ourselves initiated, then take note of this,
 		# because those actions are not of course surprising to us at all.
 		isSelfAction = (action.initiator == mind.persona.entity)
 
