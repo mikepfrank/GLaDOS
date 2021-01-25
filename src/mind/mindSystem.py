@@ -638,7 +638,9 @@ class MindThread(ThreadActor):
 			# is to update our energy level accordingly (depending on if we're awake
 			# or asleep). This could lead to us spontaneously falling asleep or
 			# waking up.
+			thread.updateEnergy()
 
+			# Next, we actually poll for external input, if needed.
 			thread.pollForInput()
 				# This method checks to see if there's an event we need to
 				# respond to, or if our refractory or sleep period has expired.
@@ -919,6 +921,8 @@ class MindThread(ThreadActor):
 		"""
 
 		thread = thisMindThread		# Here's us, the mind thread.
+
+		_logger.normal("[Mind/Thread] The AI's energy level is %0.3f%%" % thread._energy)
 
 		mind = thread.mind			# The whole cognitive system.
 		field = mind.field			# Our receptive field.

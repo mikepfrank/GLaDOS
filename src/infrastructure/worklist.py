@@ -1420,8 +1420,8 @@ class Worker(ThreadActor):
 							 % (current_thread(), e))
 				raise
 
-			except InfoException:
-				_logger.warn("%s: Worker.do1job(): Task exited by throwing an INFO-level exception.	 Ignoring." % current_thread())
+			except InfoException as e:
+				_logger.warn(f"{current_thread()}: Worker.do1job(): Task exited by throwing an INFO-level exception. The message was: [{str(e)}].  Ignoring.")
 
 			except WarningException:
 				_logger.warn("%s: Worker.do1job(): Task exited by throwing a WARNING-level exception.  Re-raising it in case caller wants to know about it." % current_thread())

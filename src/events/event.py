@@ -127,18 +127,18 @@ class DateEventFormat(TimedEventFormat_):
 
 class MinuteEventFormat(TimedEventFormat_):
 
-	"""This class provides a timed event format in which the date is given,
-		and also the time of day, down to the minute."""
+	"""This class provides a timed event format in which the time of day is given,
+		down to the minute."""
 
-	formatStr = '%Y-%m-%d %H:%M'	# Date & time, down to the minute.
+	formatStr = '%I:%M %p'	# 12-hour time, down to the minute.
 
 
-class SecondEventFormat(PromptedEventFormat):
+class SecondEventFormat(TimedEventFormat_):
 
-	"""This class provides a timed event format in which the date is given,
-		and also the time of day, down to the second."""
+	"""This class provides a timed event format in which the date of day is given,
+		down to the second."""
 
-	formatStr = '%Y-%m-%d %H:%M:%S'	# Complete date & time, down to the second.
+	formatStr = '%I:%M:%S %p'	# 12-hour time,, down to the second.
 
 	
 	#|--------------------------------------------------------------------------
