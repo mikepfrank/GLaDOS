@@ -73,11 +73,12 @@ from	entities.entity				import	AI_Persona		# Class for our AI persona entity.
 from	events.event 	import (
 
 		TextEvent,			# For an event representing the operator's text input.
-		DateEventFormat,	
+		#DateEventFormat,	
 			# The format we use by default for displaying the AI's text event in 
 			# TheInputArea field element.  Includes the date and author (Operator).
 			# (Gladys specifically requested that the time not be included in her
 			# prompt, apparently for privacy reasons.)
+		MinuteEventFormat,
 		
 	)
 
@@ -491,8 +492,8 @@ class TheInputArea(FieldElement_):
 	"""This is a field element that provides a space where the AI's input prompt 
 		appears, and where, conceptually, the AI is 'typing' its input in response."""
 		
-	eventFormat = DateEventFormat		# Format for displaying the working "input event."
-		# Note this format shows the current date and the entity ID.
+	eventFormat = MinuteEventFormat		# Format for displaying the working "input event."
+		# Note this format shows the current time and the entity ID.
 	
 	def __init__(inputArea:TheInputArea, field:TheReceptiveField, personaEntity:AI_Persona):
 		
