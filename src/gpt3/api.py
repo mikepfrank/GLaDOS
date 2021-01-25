@@ -1244,9 +1244,9 @@ def displayStats():
 	with open(textPath(), 'w') as _statFile:
 
 		statLine("")
-		statLine("			   Token Counts")
-		statLine("		  -----------------------		USD")
-		statLine(" Engine	Input  Output	Total	   Cost")
+		statLine("             Token Counts")
+		statLine("        -----------------------       USD")
+		statLine(" Engine   Input  Output   Total      Cost")
 		statLine("======= ======= ======= ======= =========")
 		
 		cumIn = cumOut = cumTot = 0
