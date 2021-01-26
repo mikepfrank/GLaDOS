@@ -130,7 +130,7 @@
 				parts of the system, as different-sized responses may be
 				called for when the AI is using different apps, for example. */
 
-		max-returned-tokens:	100		# Keep response size reasonable.
+		max-returned-tokens:	150		# Keep response size reasonable.
 		#max-returned-tokens:	2048	# This is the actual physical maximum.
 
 
@@ -138,7 +138,7 @@
 				effectively indicates the degree of randomness of the
 				model's response. */
 
-		temperature:			0.42		# Is this too random?
+		temperature:			0.5		# Is this too random?
 
 
 			/* The 'top-p' parameter is a number from 0 to 1 that causes
@@ -171,7 +171,7 @@
 			   then the log-probability is reported for each returned
 			   token. */
 
-		log-probs:				null	# We don't need this.
+		log-probs:				null	# Don't change this!
 
 
 			/* If true, 'do-echo' causes the prompt string to be echoed
@@ -198,14 +198,21 @@
 				and 1 that penalizes new tokens based on whether they
 				appear in the text so far.  Zero means no penalty. */
 
-		presence-penalty:		0		# Don't cripple the AI!
+		presence-penalty:		0.2		
+					# With this value, we are trying to suppress repeats
+					# a bit, because the first repeat can lead to others.
+					# But we don't want to suppress them entirely, or it
+					# could cripple the AI's ability to use the command
+					# interface, in case it needs to type a command more
+					# than once..
 
 
 			/* The 'frequency-penalty' parameter is a number between 0
 				and 1 that penalizes new tokens based on how often they
 				appear in the text so far.  Default value: 0 (no penalty). */
 
-		frequency-penalty:		0		# Don't cripple the AI!
+		frequency-penalty:		0.6
+			# Currently calibrating this number to help her break out of loops..
 
 
 			/* The 'best-of' parameter generates some large number of
