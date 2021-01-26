@@ -328,7 +328,7 @@ class TextBuffer:		# A text buffer.
 				if self._effectiveStrLen(line) > maxWid:
 					# Line (even ignoring any final newline) is too long.
 
-					_logger.debug("The following line is longer than maxWid={maxWid}:\n" + line)
+					_logger.debug(f"The following line is longer than maxWid={maxWid}:\n" + line)
 				
 					# Are we supposed to be doing wrapping? (Either character-based or word-based?)
 
