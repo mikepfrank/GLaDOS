@@ -339,7 +339,25 @@ class The_GPT3_API:
 			string."""
 
 		try:
+
+
+			# If the prompt had a space at the end, trim it off,
+			# because it prevents GPT-3 from generating tokens
+			# that normally would include a leading space.
+			trimmedSpace = False
+			if len(prompt) >= 1 and prompt[-1] == ' ':
+				trimmedSpace = True
+				prompt = prompt[:-1]
+			
+				# Generate the response using the lower-level API wrapped.
 			response = thisAPI.core.genString(prompt)
+
+			# If we trimmed a space at the start of the prompt,
+			# but then the response started with a space, we remove
+			# it because it's reflected in the prompt already.
+			if len(response) >= 1 and response[0] == ' ':
+				response = response[1:]
+
 		except RateLimitError as e:
 			_logger.error(f"[GPT3 API] Out of quota! (msg=[{str(e)}])")
 			return ""	# Empty string = no response.

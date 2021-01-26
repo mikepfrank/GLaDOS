@@ -4,12 +4,14 @@ __all__ = [ 'The_Info_App' ]
 
 from os import path
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from infrastructure.logmaster	import getLoggerInfo, ThreadActor
 
 global _logger		# Logger serving the current module.
 global _component	# Name of our software component, as <sysName>.<pkgName>.
 			
 (_logger, _component) = getLoggerInfo(__file__)		# Fill in these globals.
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 from	infrastructure.decorators	import	singleton
 		# A simple decorator for singleton classes.
@@ -24,8 +26,9 @@ from	.application			import	Application_
 @singleton
 class The_Info_App(Application_):
 
-	"""The_Info_App							  [public class--GLaDOS application]
-	   ------------
+	"""
+		The_Info_App			    [public singleton class--GLaDOS application]
+		============
 
 			The is a singleton class implementing the 'Info App' or
 			"information application" that is available within GLaDOS.
@@ -120,13 +123,13 @@ class The_Info_App(Application_):
 
 		win.addText(infoText)
 
-	def start(inst):
-		"""Starts up the Info application."""
-		# Right now, the start method for the Info app doesn't need
-		# to do anything particular, because the app has no dynamic
-		# behavior yet.  So, just dispatch to our parent class.
-		# However, we may add some dynamic behavior to the app later.
-		super(The_Info_App.__wrapped__, inst).start()
+	##def start(inst):
+	##	"""Starts up the Info application."""
+	##	# Right now, the start method for the Info app doesn't need
+	##	# to do anything particular, because the app has no dynamic
+	##	# behavior yet.  So, just dispatch to our parent class.
+	##	# However, we may add some dynamic behavior to the app later.
+	##	super(The_Info_App.__wrapped__, inst).start()
 
 #__/ End class Info_App.
 

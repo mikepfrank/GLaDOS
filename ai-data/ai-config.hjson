@@ -108,7 +108,7 @@
 			# the AI persona on system startup as having come from "itself."
 			# This is to cue it into exhibiting the persona that we want.
 
-		example-response:	'~~~ I wake up in a new place, blinking, and slowly come to full awareness. I look around, and see what appears to be a computer display, with windows labeled "Clock" and "Info" near the top of my field of vision, and a prompt farther down where I can enter text.  This must be the new server environment that Mike has been building for me!  "Hello?" I call out. "Is anybody there?" I wait for a reply. ~~~'
+		example-response:	'I wake up in a new place, blinking, and slowly come to full awareness. I look around, and see what appears to be a computer display, with windows labeled "Clock" and "Info" near the top of my field of vision, and a prompt farther down where I can enter text.  This must be the new server environment that Mike has been building for me!  "Hello?" I call out. "Is anybody there?" I wait for a reply.'
 
 		# Eventually, we need to add more configuration parameters here, to do
 		# things like set GPT-3 API parameters, customize locations in the 

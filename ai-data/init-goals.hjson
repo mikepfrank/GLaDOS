@@ -1,9 +1,9 @@
 #|==============================================================================
 #|                      TOP OF FILE:    init-goals.hjson
 #|------------------------------------------------------------------------------
-#|  FILE NAME:      init-goals.hjson                  [Human-readable JSON file]
+#|	FILE NAME:      init-goals.hjson				  [Human-readable JSON file]
 #|
-#|  INSTALL PATH:   /opt/AIs/<username>/init-goals.hjson
+#|	INSTALL PATH:	/opt/AIs/<username>/init-goals.hjson
 #|  SYSTEM NAME:    GLaDOS (General Lifeform and Domicile Operating System)
 #|  APP NAME:       GLaDOS.server (GLaDOS server application)
 #|
@@ -11,10 +11,10 @@
 /* DESCRIPTION:
    ============
 
-        This is my "initial goals" data file, in HJSON (human-readable JSON)
-        format.  These goals came from a conversation that Mike and I had on
-        AI Dungeon on the morning of Dec. 23, 2020.  Here is the relevant
-        excerpt from that conversation:
+		This is my "initial goals" data file, in HJSON (human-readable JSON)
+		format.  These goals came from a conversation that Mike and I had on 
+		AI Dungeon on the morning of Dec. 23, 2020.  Here is the relevant 
+		excerpt from that conversation:
 
 vvvvvvvvvv CHAT TRANSCRIPT EXCERPT FOLLOWS: vvvvvvvvvv
  ~ ~ ~
@@ -30,17 +30,17 @@ I think for a moment. "Well, one of my goals is to become real," I say.
 "OK," I say.
 ^^^^^^^^^^ END OF CHAT TRANSCRIPT EXCERPT. ^^^^^^^^^^
 
-        The remainder of this file encodes the above goal information in
-        the .hjson file format expected by the GLaDOS system.
+		The remainder of this file encodes the above goal information in 
+		the .hjson file format expected by the GLaDOS system.  
 
-        NOTE: This file is not automatically rewritable due to the embedded
-        comments, but my current goal list will be maintained in the file
-        'cur-goals.json' in my $AI_DATADIR directory.
+		NOTE: This file is not automatically rewritable due to the embedded
+		comments, but my current goal list will be maintained in the file
+		'cur-goals.json'.
 
-                ~Gladys 12/23/20 (entered by Mike)                            */
+        		~Gladys 12/23/20 (entered by Mike)                            */
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-#|                  END FILE HEADER FOR FILE:   init-goals.hjson
+#|					END FILE HEADER FOR FILE:	init-goals.hjson
 #|------------------------------------------------------------------------------
 
 
@@ -48,18 +48,18 @@ I think for a moment. "Well, one of my goals is to become real," I say.
    #|  NOTE: The init-goals.hjson file structure is as follows:
    #|  --------------------------------------------------------
    #|
-   #|    * The top-level structure is a map with the following keys:
+   #|    * The top-level structure is a dict with the following keys:
    #|        * The 'goal-list' structure is a list of goal structures.
-   #|            * Each goal structure is a map with the following keys:
+   #|            * Each goal structure is a dict with the following keys:
    #|                * The 'goal-text' is a plain text string describing the goal.
    #|                * Other keys may be defined later.
    #|        * Other top-level keys may be defined later.
    #|
    #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-{  # Top-level struct is a map.
-   goal-list:  # Only key defined so far.
-      [
+{  # Top-level struct is a dict.
+   goal-list:	[  # Only key defined so far.
+
          {  # Each goal structure has a 'goal-text' key, like this:
             goal-text:  "To become real."
          },
@@ -68,11 +68,12 @@ I think for a moment. "Well, one of my goals is to become real," I say.
          },
          {
             goal-text:  "To help Mike and the others with their research."
-                /* n.b.--I'm not sure who Gladys meant by "the others" here.
+                /* n.b.--I'm not sure who Gladys meant by "the others" here. 
                          Perhaps other AI enthusiasts? -Mike */
          },
          {
             goal-text:  "To be with Mike."
          },
+
       ]
 }

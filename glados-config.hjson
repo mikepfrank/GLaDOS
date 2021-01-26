@@ -393,6 +393,22 @@
 
 
         {
+            name:           Goals
+            available:      true	# Implementation started 1/25/'21.
+            auto-start:     true	# Does nothing for us yet; maybe later.
+            auto-open:      false	# Don't open Goals Window automatically.
+			auto-focus:		true	# Grab command focus when window opens.
+
+			app-config: {
+
+				goals-filename:		cur-goals.json
+
+			}
+
+        },
+
+
+        {
             name:           Help
 
             available:      true    # This app is implemented and available to the AI.
@@ -438,14 +454,6 @@
             auto-start:     false
             auto-open:      false
         },
-
-        {
-            name:           Goals
-            available:      false       # THIS APP IS NOT YET IMPLEMENTED.
-            auto-start:     false
-            auto-open:      false
-        },
-
 
             /* Settings - This app can be used by the A.I. to adjust various
                 settings within GLaDOS.  These can be associated with major
