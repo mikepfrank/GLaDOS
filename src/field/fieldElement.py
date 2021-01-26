@@ -515,13 +515,24 @@ class TheInputArea(FieldElement_):
 			# field, so that the AI will perceive the prompt as what it's completing.
 
 	@property
+	def aiTextEvent(inputArea:TheInputArea):
+		return inputArea._aiTextEvent
+
+	@property
 	def image(inputArea:TheInputArea):
 	
 		"""This standard field element property gives the (textual) image of the 
 			element.  For an input area element, we just ask the AI text event to
 			display itself, which renders it using its default format."""
 			
-		return inputArea._aiTextEvent.display()
+		textEvent = inputArea.aiTextEvent
+
+			# First, we need to update the time of the prompt event in case it's
+			# in minutes or seconds format, so that it's close to the right time.
+		textEvent.updateTime()
+
+			# Then we just ask the event to display itself in its default format.
+		return textEvent.display()
 		
 
 class TextEventElement: pass
@@ -556,12 +567,19 @@ class TextEventElement(FieldElement_):
 			# but then allow them to subsequently float upwards.
 
 	@property
+	def textEvent(thisTextEventElement:TextEventElement):
+
+		teElem = thisTextEventElement
+		return teElem._textEvent
+
+	@property
 	def image(thisTextEventElement:TextEventElement):
 
 		"""Standard field element property to get the element's image.
 			We do this by just asking the text event to display itself."""
 
 		teElem = thisTextEventElement
+		event = teElem.textEvent
 
 		return teElem._textEvent.display() + '\n'
 
