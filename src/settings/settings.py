@@ -349,17 +349,17 @@ class	TheSettingsFacility(_SettingsFacility_):
 			# Call the constructor for the private singleton class 
 			# _TheRootSettingsModule, which initializes the root 
 			# setings module.  Link it from an instance attribute.
-		theSettingsFacility.rootSettingsModule = _TheRootSettingsModule()
+		theSettingsFacility._rootModule = _TheRootSettingsModule()
 	
 	def addToplevelModule(theSettingsFacility:TheSettingsFacility,
 			settingsModule=SettingsModule	# The settings module to add at top level.
 		):
 		
 			# Install the provided module directly under the root module.
-		theSettingsFacility._rootSettingsModule.installSubmodule(settingsModule)
+		theSettingsFacility._rootModule.installSubmodule(settingsModule)
 
 	def resetAllToDefaults(theSettingsFacility:TheSettingsFacility):
 		"""Resets all settings in the system back to their default values."""
-		rootModule = theSettingsFacility._rootSettingsModule
+		rootModule = theSettingsFacility._rootModule
 		rootModule.resetToDefaults(recurive=True)
 		

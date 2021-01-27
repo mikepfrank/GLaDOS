@@ -267,6 +267,29 @@ class Command:
 #__/ End class Command.
 
 
+class Subcommand(Command):
+
+	"""A subcommand is a type of command that is really just a special
+		case of a more general command. For example, in the Goals app,
+		the command module includes a '/Goals' command whose overall
+		format descriptor looks something like this:
+
+			/goal (add|change|delete|insert|move) [<N> [to <M>]] ["<desc>"]
+
+		Each of the command words that may appear after '/goal' denotes
+		a subcommand; for example, one of the subcommands is:
+
+			/goal add ["<description>"]
+
+		which is considered a special case of the '/goal' command.
+
+		Detailed documentation for how to use commands and subcommands
+		is provided by means of the Help system; although individual apps
+		may also provide hints about their commands in their on-screen text.
+
+	"""
+
+
 class Commands:
 
 	"""

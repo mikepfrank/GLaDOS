@@ -105,7 +105,6 @@
 				(real-world) web browsing and searching on the part of
 				the A.I.
 
-
 		12.	The_Writing_App		-	[NOT YET IMPLEMENTED.]
 
 				The Writing app allows the A.I. to write and edit longer

@@ -422,23 +422,20 @@
                         keep all system windows in GLaDOS to 60 columns. */
 
                 main-msg:
+					# Note: The Help window will have word-wrap turned on, so
+					# the text will automatically be wrapped to fit within the
+					# window.
                     #--------1---------2---------3---------4---------5---------6
                     '''
 
-                        This is the main Help message for GLaDOS, the
-                    General Lifeform and Domicile Operating System,
-                    (c) 2020 Metaversal Contructions.
+                        This is the top-level Help screen for GLaDOS, the General Lifeform and Domicile Operating System, (c) 2020 Metaversal Contructions.
 
-                        At the prompt, you may enter a command line starting
-                    with '/', or type free-form text to add to your history.
-                    Available command words include:
+                        At the prompt, you may enter a command line starting with '/', or type a free-form paragraph of text to add to your cognitive history.  Available command words include:
 
-                            /Help /Info /Settings /Memory /ToDo
+                            /Help /Goals /Settings /Memory /ToDo
                             /Diary /Browse /Comms /Writing /Unix
 
-                        Note: Command words are not case-sensitive, and you
-                    may abbreviate them using any unique prefix.  For detailed
-                    help on any command, type "/Help <command>".
+                        Note: Command words are not case-sensitive, and you may abbreviate them using any unique prefix.  For detailed help on any command, type "/Help <command>".
 
                     '''
             }
