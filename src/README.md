@@ -133,14 +133,14 @@ This package interfaces to OpenAI's core GPT-3 system through its REST API.
 The `api` module provides a fairly low-level wrapper to OpenAI's module; a 
 slightly higher-level abstraction also exists within the `mind` system.
 
-### 10. Help system ([`help/`](help "help/ directory"))
+### 10. Help system ([`helpsys/`](helpsys "helpsys/ directory"))
 
 **[NOT YET IMPLEMENTED]** The "help system" provides for a navigable
 system of hierarchically-organized help screens or modules that provide
 detailed assistance on specific topics or sub-topics regarding how to
 use the GLaDOS system.  Other subsystems of GLaDOS may install their own
 help modules in this hierarchy. The help system is accessed using the 
-Help app.
+Help app in the `apps` package..
 
 ### 11. History buffer ([`history/`](history "history/ directory"))
 

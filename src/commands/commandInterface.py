@@ -383,10 +383,24 @@ class Commands:
 class CommandModule:
 
 	def __init__(self):
+
 		self._commands = Commands()
+			# This gives this command module an initially-empty command set.
+
 			# Command modules are initially inactive until activated.
 		self._isActive = False			
 		
+			# Go ahead and populate this command module with its commands.
+		self.populate()
+
+	def populate(self):
+
+		"""To "populate" a command module means to flesh it out by adding
+			to it all the individual commands it is supposed to contain.
+			Subclasses should implement this virtual method."""
+
+		pass
+
 	def menuStr(self):
 		"""
 			Returns a string that can serve as a 'menu'
