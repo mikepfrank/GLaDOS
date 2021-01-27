@@ -133,7 +133,16 @@ This package interfaces to OpenAI's core GPT-3 system through its REST API.
 The `api` module provides a fairly low-level wrapper to OpenAI's module; a 
 slightly higher-level abstraction also exists within the `mind` system.
 
-### 10. History buffer ([`history/`](history "history/ directory"))
+### 10. Help system ([`help/`](help "help/ directory"))
+
+**[NOT YET IMPLEMENTED]** The "help system" provides for a navigable
+system of hierarchically-organized help screens or modules that provide
+detailed assistance on specific topics or sub-topics regarding how to
+use the GLaDOS system.  Other subsystems of GLaDOS may install their own
+help modules in this hierarchy. The help system is accessed using the 
+Help app.
+
+### 11. History buffer ([`history/`](history "history/ directory"))
 
 **[NOT YET IMPLEMENTED]** A "history buffer" is an indefinitely-large buffer 
 (in memory, but also backed in a persistent data store) that tracks a 
@@ -143,7 +152,7 @@ as 'events'; see the package of that name, above.  At some point, older
 events in the history buffer may be spooled over into the long-term 
 memory bank (see the `memory` package, below) for archival purposes.
 
-### 11. Infrastructure facility ([`infrastructure/`](infrastructure "infrastructure/ directory"))
+### 12. Infrastructure facility ([`infrastructure/`](infrastructure "infrastructure/ directory"))
 
 This package provides a set of modules that provide useful infrastructure
 for implementing any complex multithreaded system in Python.  In GLaDOS,
@@ -157,14 +166,14 @@ thread handoffs, (7) time/date and time zone support modules,
 (8) TCP/IP-based communication support, (9) other generally useful utilities 
 and services to be added as needed.
 
-### 12. Memory system ([`memory/`](memory "memory/ directory"))
+### 13. Memory system ([`memory/`](memory "memory/ directory"))
 
 **[NOT YET IMPLEMENTED.]** This package implements a searchable long-term memory 
 facility, which is maintained in the filesystem, in a directory hierarchy.  
 In general, the data in the memory system may be organized as a database of 
 event objects, but flat text files may also be supported.
 
-### 13. Core cognitive system ([`mind/`](mind "mind/ directory"))
+### 14. Core cognitive system ([`mind/`](mind "mind/ directory"))
 
 The "mind" subsystem of GLaDOS includes a "process" (implemented as a thread) 
 that runs the main loop of the AI's cognitive process.  The essence of this 
@@ -178,7 +187,7 @@ interval has passed. (5) Go to sleep until the alarm goes off or an input
 message is received from an external user on the system. (6) Repeat.  For
 more details, see the `README.md` file within the `mind/` subdirectory.
 
-### 14. Process system ([`processes/`](processes "processes/ directory"))
+### 15. Process system ([`processes/`](processes "processes/ directory"))
 
 **[NOT YET IMPLEMENTED.]** This package implements a system of "processes" that 
 the AI can interact with.  A "process" is an automated subsystem that the AI 
@@ -191,20 +200,20 @@ such as the memory system, or the settings interface, which lets the AI modify
 the configuration of the GLaDOS system.  Another goal is to create a 
 book-authoring system that the A.I. can use to write and edit entire books.  
 
-### 15. Settings management system ([`settings/`](settings "settings/ directory"))
+### 16. Settings management system ([`settings/`](settings "settings/ directory"))
 
 **[INCOMPLETE.]** The purpose of this package is to support a 'Settings' app, 
 which allows the AI itself to browse and manipulate the preferences/settings 
 of various systems and subsystems of GLaDOS.
 
-### 16. Supervisor system ([`supervisor/`](supervisor "supervisor/ directory"))
+### 17. Supervisor system ([`supervisor/`](supervisor "supervisor/ directory"))
 
 The Supervisor system is the main top-level subsystem of GLaDOS as a whole.
 It creates and manages the principal other subsystems, including: (1) The 
 command interface (`commands/`), (2) The process system (`processes`), (3) 
 The mind system (`mind/`), (4) The window system (`windows`).
 
-### 17. Terminal system ([`terminal/`](terminal "terminal/ directory"))
+### 18. Terminal system ([`terminal/`](terminal "terminal/ directory"))
 
 **[NOT YET IMPLEMENTED.]** This package implements a terminal interface for use 
 by human users who are interacting with an instance of the GLaDOS system.  
@@ -213,19 +222,20 @@ terminal.  It runs under the user's account, and uses inter-process
 communication to interact with the GLaDOS process, which runs under the AI's 
 user account.
 
-### 18. Text tools ([`text/'](text "text/ directory"))
+### 19. Text tools ([`text/'](text "text/ directory"))
 
 This package contains low-level tools for working with raw text, including
 a basic text buffer module that itself may be used in several places in GLaDOS,
 including in the window system and the receptive field facility.
 
-### 19. Tokenizer ([`tokenizer/`](tokenizer "tokenizer/ directory"))
+### 20. Tokenizer ([`tokenizer/`](tokenizer "tokenizer/ directory"))
 
 This package provides a local implementation of the GPT-2/GPT-3 tokenizer,
-so that a REST API call to the OpenAI cloud server isn't needed simply to 
-measure the length of a string in tokens.
+so that a whole REST API call to the OpenAI cloud server (which costs money!) 
+isn't needed simply to do things such as, e.g., measuring the length of a
+string in tokens.
 
-### 20. Text-based windowing system ([`windows/`](windows "windows/ directory"))
+### 21. Text-based windowing system ([`windows/`](windows "windows/ directory"))
 
 This package implements a facility that supports the existence of 
 interactive "windows" embedded within the AI's receptive field.  

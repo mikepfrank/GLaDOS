@@ -425,6 +425,20 @@ def _main():
 	settings = TheSettingsFacility()	# Initializes the settings facility.
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Next, we initialize the Help system, because many of the
+			#| remaining subsystems may want to install help modules when
+			#| they initialize themselves, so, we want the help facility to
+			#| already be ready before they start initializing themselves.
+			#| (Note that if the settings facility wants to install a help
+			#| module, we'll have to do this later, because the help facility
+			#| may need to access the settings facility as well.)
+
+	if doInfo:
+		_logger.info("  [Main/Init] Initializing help system...")
+
+	helpSys = TheHelpSystem()	# Creates & initializes the help system.
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#| Next, before starting up the "real meat" of the core system
 			#| components, we start up our TUI-based "console" display, so that
 			#| the operator can use it to monitor our progress.  "TUI" means
