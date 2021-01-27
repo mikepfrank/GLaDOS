@@ -25,27 +25,45 @@ from	infrastructure.decorators	import	singleton, classproperty
 from	config.configuration		import	TheAIPersonaConfig
 		# Singleton that provides the configuration of the current AI persona.
 
+from	commands.commandInterface	import	CommandModule	# We'll subclass this.
+
+from	helpsys.helpSystem			import	HelpModule	# We'll subclass this.
+
 from	.application				import	Application_
 		# Base class from which we derive subclasses for specific applications.
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+class The_Goals_App: pass		# Anchor point for this module.
+
+class The_Goals_CmdModule: pass		# Command module for the Goals app.
+class The_Goals_HelpModule: pass	# Help module for the Goals app.
+
+class GoalList: pass			# List-of-goals structure.
+class Goal: pass				# And individual goal
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 class Goal:
 
+		# Class variable: How many goals have been created?
 	_nGoals = 0
 	
 	@classproperty
 	def nGoals(thisCls):
 		return thisCls._nGoals
 
+	@classmathod
 	def inc_nGoals(thisCls):
 		thisCls._nGoals = thisCls.nGoals + 1
 
 	def __init__(goal, goalRec:dict):
+
 		goalText = goalRec['goal-text']
 		goal.text = goalText
-		goal.num = goal.nGoals	# Assign sequence number
+
 		goal.inc_nGoals()		# Increment seq no
+		goal.num = goal.nGoals	# Assign sequence number
 
 	def setNum(goal, n:int):
 		goal.num = n
@@ -83,6 +101,8 @@ class GoalList:
 
 
 class The_Goals_App: pass
+
+# TO DO: IMPLEMENT The_Goals_CmdModule, The_Goals_HelpModule
 
 @singleton
 class The_Goals_App(Application_):
@@ -208,7 +228,7 @@ class The_Goals_App(Application_):
 
 		goalsText = goalList.display()
 
-		_logger.info("[GoalsApp] Loaded the following list of goals:\n\n" + goalsText)
+		_logger.info(f"[GoalsApp] Loaded the following list of goals from {goalsPathname}:\n\n" + goalsText)
 
 			#---------------------------------
 			# Add the goal list to the window.
@@ -225,11 +245,15 @@ class The_Goals_App(Application_):
 
 		win.addText(goalsText)
 
-			#=============================================
-			# Next major initialization task is to install
-			# our command module. 
+		#|==================================================
+		#| Our next major initialization task is to create
+		#| & install our command module & our help module.
 
-		# IMPLEMENT THIS NEXT
+			# Create our command module (self-installs).
+		app._cmdModule = The_Goals_CmdModule()
+
+			# Create our help module (self-installs).
+		app._helpModule = The_Goals_HelpModule()
 
 	def parseGoals(theGoalsApp:The_Goals_App, goalsRec:dict):
 
