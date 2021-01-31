@@ -1,4 +1,4 @@
-#|==============================================================================
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #|                TOP OF FILE:    commands/commandInterface.py
 #|------------------------------------------------------------------------------
 #|   The below module documentation string will be displayed by pydoc3.
@@ -6,13 +6,13 @@
 """
     FILE NAME:      commands/commandInterface.py     [Python module source file]
 
-    IN PACKAGE:		commands
 	MODULE NAME:    commands.commandInterface
+    IN PACKAGE:		commands
     FULL PATH:      $GIT_ROOT/GLaDOS/src/commands/commandInterface.py
     MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
-    SYSTEM NAME:    GLaDOS (Generic Lifeform and Domicile Operating System)
-    APP NAME:       GLaDOS.server (GLaDOS server application)
-	SW COMPONENT:	GLaDOS.commands (command interface component)
+    SYSTEM NAME:    GLaDOS (General Lifeform and Domicile Operating System)
+    APP NAME:       GLaDOS.server (Main GLaDOS server application)
+	SW COMPONENT:	GLaDOS.commands (Command interface component)
 
 
 	MODULE DESCRIPTION:
