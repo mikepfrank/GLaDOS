@@ -100,9 +100,24 @@ class GoalList:
 		return displayStr
 
 
-class The_Goals_App: pass
+@singleton
+class The_Goals_CmdModule(CommandModule):
 
-# TO DO: IMPLEMENT The_Goals_CmdModule, The_Goals_HelpModule
+	"""This singleton class implements the command module for the
+		Goals app. It provides the '/Goals' command (which launches
+		the app), as well as the '/goal' command which is used 
+		within the app, and its subcommands."""
+
+	pass	# TO DO: Fill in implementation.
+
+@singleton
+class The_Goals_HelpModule(HelpModule):
+
+	"""This singleton class implements the help module for the Goals
+		app. It provides an overview of the app, and documents its
+		associated commands and subcommands."""
+
+	pass	# TO DO: Fill in implementation.
 
 @singleton
 class The_Goals_App(Application_):
