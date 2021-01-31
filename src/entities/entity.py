@@ -96,6 +96,14 @@
 from infrastructure.decorators import singleton, classproperty
 	# This provides a @classproperty (getter) decorator.
 
+from auth.authority import (
+		theBaseAuthority,
+		theAIUserAuthority,
+		theHumanUserAuthority,
+		theOperatorAuthority,
+		theSystemAuthority,
+	)
+
 #=====================================================
 # Forward class declarations. (For use in type hints.)
 
@@ -177,6 +185,7 @@ class Entity_:
 	_ENTITY_TYPE_NAME = "entity"	# Entity type name, if not overridden.
 	_ENTITY_NAME = None		# Instances of an abstract class don't have names.
 	_ENTITY_ID = None		# No ID's either
+	_ENTITY_AUTHS = {theBaseAuthority}	# We only have the base authority by default.
 
 		#|----------------------------------------------------------------------
 		#|	Entity_._isAbstract						 [private class data member]
@@ -247,7 +256,7 @@ class Entity_:
 	#|
 	#\--------------------------------------------------------------------------
 	
-	def __init__(inst, name=None, eid=None):
+	def __init__(inst, name=None, eid=None, auths=None):
 
 		if name is None:
 			name = inst._ENTITY_NAME
@@ -255,21 +264,172 @@ class Entity_:
 		if eid is None:
 			eid = inst._ENTITY_ID
 
-			# Remember our name and ID.
+		if auths is None:
+			auths = inst._ENTITY_AUTHS
+			
+		# Make sure the base authority is in our auth list 
+		# (in case we're in a subclass that left it out).
+		auths.add(theBaseAuthority)
+
+			# Remember our name and ID & authority list.
 		inst._name = name
 		inst._id = eid
-	
+		inst._auths = auths
+
+	# Move this closer to top of class
 	partOf = None
 	#def partOf():
 	#	"""If this entity is conceptually part of a larger entity, return 
 	#		the larger entity of which it is a part."""
 	#	pass
 
+#=========================================================================
+# Abstract and concrete classes for system entities, which in this context
+# means, entities that are part of or associated with the GLaDOS system,
+# but that are not considered part of the AI itself.
+
+class System_Entity_(Entity_):
+	"""An entity that is the GLaDOS system, or a component of the system."""
+	
+	_ENTITY_TYPE_NAME = "system"	
+	_ENTITY_AUTHS = {theSystemAuthority}
+	
+		#|----------------------------------------------------------------------
+		#|	.entityType									 [public class property]
+		#|
+		#|		Note this overrides the definition in Entity_; see there 
+		#|		for additional documentation.
+		#|		
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	@classproperty
+	def entityType(dynamicClass):
+		"""By default, just return System_Entity_.  Subclasses can override this."""
+		return System_Entity_
+
+@singleton
+class The_GLaDOS_Entity(System_Entity_):
+	_isAbstract = False
+	_ENTITY_NAME = "GLaDOS System"
+
+class Subsystem_Entity(System_Entity_):
+
+	_isAbstract = False
+	_ENTITY_TYPE_NAME = "subsystem of GLaDOS"	
+
+	@classproperty
+	def entityType(dynamicClass):
+		return Subsystem_Entity
+
+	#|===================================================================
+	#| Here, we define entities representing the various major subsystems 
+	#| of GLaDOS that are not considered aspects of the AI itself.
+
+@singleton
+class The_SettingsFacility_Entity(Subsystem_Entity):
+	_isAbstract = False
+	_ENTITY_NAME = "Settings Facility"
+	partOf = The_GLaDOS_Entity()
+
+@singleton
+class The_ConfigSystem_Entity(Subsystem_Entity):
+	_isAbstract = False
+	_ENTITY_NAME = "Configuration System"
+	partOf = The_GLaDOS_Entity()
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+@singleton
+class The_Supervisor_Entity(Subsystem_Entity):
+
+	"""The_Supervisor_Entity		         [singleton class--subsystem entity]
+
+			This entity singleton represents the Supervisor or Supervi-
+			sory Subsystem, which is a subsystem of GLaDOS.  It is the
+			subsystem that is in charge of starting up and managing the
+			other major subsystems.  Its code objects are contained in
+			the 'supervisor' package within the GLaDOS codebase.
+
+			The explicit actions (detectable by other subsystems) that
+			the Supervisor conceives/initiates include the following:
+
+				* Announcing that the system is starting up.
+					(supervisor._AnnounceStartupAction)
+
+			Subsystems of the Supervisory system include the following:
+
+				* The Action Processing Subsystem.							 """
+
+	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	_isAbstract		= False		# Not an ABC. The instance is a specific entity.
+
+	_ENTITY_NAME	= "Supervisory Subsystem"
+	_ENTITY_ID		= "Supervisor"	# The ID is a short name used e.g. in prompts.
+
+	partOf			= The_GLaDOS_Entity()	# This system is a subsytem of GLaDOS.
+
+#__/ End singleton subsystem entity class The_Supervisor_Entity.
+
+
+@singleton
+class The_CommandInterface_Entity(Subsystem_Entity):
+	_isAbstract = False
+	_ENTITY_NAME = "Command Interface"
+	partOf = The_GLaDOS_Entity()
+	
+@singleton
+class The_ProcessSystem_Entity(Subsystem_Entity):
+	_isAbstract = False
+	_ENTITY_NAME = "Process System"
+	partOf = The_GLaDOS_Entity()
+	
+@singleton
+class The_WindowSystem_Entity(Subsystem_Entity):
+	_isAbstract = False
+	_ENTITY_NAME = "Window System"
+	partOf = The_GLaDOS_Entity()
+	
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+@singleton
+class The_AppSystem_Entity(Subsystem_Entity):
+
+	"""The_AppSystem_Entity					 [singleton class--subsystem entity]
+
+			This entity singleton represents the AppSystem or application
+			subsystem of GLaDOS.  It is the subsystem that is responsible
+			for starting up an managing individual end-user applications
+			within GLaDOS.  (Note that in GLaDOS, the "end user" means the
+			AI, not a human--since GLaDOS is an OS designed for use by AIs.)
+
+			The explicit actions (detectable by other subsystems) that
+			the AppSystem conceives/initiates include the following:
+
+				* Auto-opening an application's window on startup.
+					(appSystem._AutoOpenWindowAction)
+
+			Subsystems of the Supervisory system include the following:
+
+				* Each individual application within GLaDOS can be
+					considered a subsystem of the application system.
+																			 """
+	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+	_isAbstract		= False		# Not an ABC. The instance is a specific entity.
+
+
+	_ENTITY_NAME	= "Applications System"
+	_ENTITY_ID		= "AppSystem"	# The ID is a short name used e.g. in prompts.
+
+	partOf			= The_GLaDOS_Entity()	# This system is a subsytem of GLaDOS.
+	
+#__/ End singleton subsystem entity class.
+
+
 class AI_Entity_(Entity_):
 
 	"""An entity that is an AI or an aspect of an AI."""
 	
 	_ENTITY_TYPE_NAME = "artificial intelligence"
+	_ENTITY_AUTHS = {theAIUserAuthority}
 	
 		#|----------------------------------------------------------------------
 		#|	.entityType									 [public class property]
@@ -422,146 +582,6 @@ class History_Buffer(AI_Subsystem):
 	_ENTITY_NAME = "Memory System"
 	partOf = AI_System
 
-#=========================================================================
-# Abstract and concrete classes for system entities, which in this context
-# means, entities that are part of or associated with the GLaDOS system,
-# but that are not considered part of the AI itself.
-
-class System_Entity_(Entity_):
-	"""An entity that is the GLaDOS system, or a component of the system."""
-	
-	_ENTITY_TYPE_NAME = "system"	
-	
-		#|----------------------------------------------------------------------
-		#|	.entityType									 [public class property]
-		#|
-		#|		Note this overrides the definition in Entity_; see there 
-		#|		for additional documentation.
-		#|		
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-	@classproperty
-	def entityType(dynamicClass):
-		"""By default, just return System_Entity_.  Subclasses can override this."""
-		return System_Entity_
-
-@singleton
-class The_GLaDOS_Entity(System_Entity_):
-	_isAbstract = False
-	_ENTITY_NAME = "GLaDOS System"
-
-class Subsystem_Entity(System_Entity_):
-
-	_isAbstract = False
-	_ENTITY_TYPE_NAME = "subsystem of GLaDOS"	
-
-	@classproperty
-	def entityType(dynamicClass):
-		return Subsystem_Entity
-
-	#|===================================================================
-	#| Here, we define entities representing the various major subsystems 
-	#| of GLaDOS that are not considered aspects of the AI itself.
-
-@singleton
-class The_SettingsFacility_Entity(Subsystem_Entity):
-	_isAbstract = False
-	_ENTITY_NAME = "Settings Facility"
-	partOf = The_GLaDOS_Entity()
-
-@singleton
-class The_ConfigSystem_Entity(Subsystem_Entity):
-	_isAbstract = False
-	_ENTITY_NAME = "Configuration System"
-	partOf = The_GLaDOS_Entity()
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-@singleton
-class The_Supervisor_Entity(Subsystem_Entity):
-
-	"""The_Supervisor_Entity		         [singleton class--subsystem entity]
-
-			This entity singleton represents the Supervisor or Supervi-
-			sory Subsystem, which is a subsystem of GLaDOS.  It is the
-			subsystem that is in charge of starting up and managing the
-			other major subsystems.  Its code objects are contained in
-			the 'supervisor' package within the GLaDOS codebase.
-
-			The explicit actions (detectable by other subsystems) that
-			the Supervisor conceives/initiates include the following:
-
-				* Announcing that the system is starting up.
-					(supervisor._AnnounceStartupAction)
-
-			Subsystems of the Supervisory system include the following:
-
-				* The Action Processing Subsystem.							 """
-
-	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-	_isAbstract		= False		# Not an ABC. The instance is a specific entity.
-
-	_ENTITY_NAME	= "Supervisory Subsystem"
-	_ENTITY_ID		= "Supervisor"	# The ID is a short name used e.g. in prompts.
-
-	partOf			= The_GLaDOS_Entity()	# This system is a subsytem of GLaDOS.
-
-#__/ End singleton subsystem entity class The_Supervisor_Entity.
-
-
-@singleton
-class The_CommandInterface_Entity(Subsystem_Entity):
-	_isAbstract = False
-	_ENTITY_NAME = "Command Interface"
-	partOf = The_GLaDOS_Entity()
-	
-@singleton
-class The_ProcessSystem_Entity(Subsystem_Entity):
-	_isAbstract = False
-	_ENTITY_NAME = "Process System"
-	partOf = The_GLaDOS_Entity()
-	
-@singleton
-class The_WindowSystem_Entity(Subsystem_Entity):
-	_isAbstract = False
-	_ENTITY_NAME = "Window System"
-	partOf = The_GLaDOS_Entity()
-	
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-@singleton
-class The_AppSystem_Entity(Subsystem_Entity):
-
-	"""The_AppSystem_Entity					 [singleton class--subsystem entity]
-
-			This entity singleton represents the AppSystem or application
-			subsystem of GLaDOS.  It is the subsystem that is responsible
-			for starting up an managing individual end-user applications
-			within GLaDOS.  (Note that in GLaDOS, the "end user" means the
-			AI, not a human--since GLaDOS is an OS designed for use by AIs.)
-
-			The explicit actions (detectable by other subsystems) that
-			the AppSystem conceives/initiates include the following:
-
-				* Auto-opening an application's window on startup.
-					(appSystem._AutoOpenWindowAction)
-
-			Subsystems of the Supervisory system include the following:
-
-				* Each individual application within GLaDOS can be
-					considered a subsystem of the application system.
-																			 """
-	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-	
-	_isAbstract		= False		# Not an ABC. The instance is a specific entity.
-
-
-	_ENTITY_NAME	= "Applications System"
-	_ENTITY_ID		= "AppSystem"	# The ID is a short name used e.g. in prompts.
-
-	partOf			= The_GLaDOS_Entity()	# This system is a subsytem of GLaDOS.
-	
-#__/ End singleton subsystem entity class.
-
-
 #=====================================================================
 # Entities associated with the host computer on which we are running.
 
@@ -603,6 +623,7 @@ class External_Entity_(Entity_):
 class Human_Entity_(Entity_):
 	"""An entity that is a human, or an aspect of a human."""
 	_ENTITY_TYPE_NAME = "human"
+	_ENTITY_AUTHS = {theHumanUserAuthority}
 	
 		#|----------------------------------------------------------------------
 		#|	.entityType									 [public class property]
@@ -620,3 +641,4 @@ class Operator_Entity(Human_Entity_):
 	_isAbstract = False
 	_ENTITY_NAME = "System Operator"
 	_ENTITY_ID = "Mike" #"Operator"
+	_ENTITY_AUTHS = {theOperatorAuthority}

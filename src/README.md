@@ -47,7 +47,17 @@ programs/tools that are available for use by the A.I. within the GLaDOS
 environment.  See [the subdirectory's `README.md` file](apps/README.md "apps/README.md file")
 for a list of the currently planned apps.
 
-### 2. Command interface ([`commands/`](commands "commands/ directory"))
+### 2. Authorization system ([`auth/`](auth "auth/ directory"))
+
+**[NOT YET IMPLEMENTED]** This package implements a fine-grained permissions 
+system which is used for gating user access to apps, commands, and settings 
+within GLaDOS, so that, for example, there are certain user commands that can 
+only be invoked by the AI (and not by human users), certain system settings 
+that can only be modified by the AI (e.g., its field display preferences), some 
+things that only the system operator is allowed to do (e.g., shut down the 
+whole system for maintenance), and so forth.
+
+### 3. Command interface ([`commands/`](commands "commands/ directory"))
 
 **[INCOMPLETE]** The commands package provides a top-level command interface 
 and menu system that the AI can use to command and control its instance 
@@ -55,13 +65,13 @@ of the GLaDOS environment.  Top-level commands allow the AI to manipulate
 its existing windows, launch processes in new windows, modify key settings, 
 skip ahead in time by certain amounts, and so forth.
 
-### 3. Configuration facility ([`config/`](config "config/ directory"))
+### 4. Configuration facility ([`config/`](config "config/ directory"))
 
 The configuration package is used to track various configuration parameters 
 of the GLaDOS system.  The AI can modify its own configuration through the 
 Settings interface (which is a process that runs within a window).
 
-### 4. System console ([`console/`](console "console/ directory"))
+### 5. System console ([`console/`](console "console/ directory"))
 
 This is in essence a client "application" (for the human user, not the AI)
 which utilizes the 'display' package (below) to take over the text terminal 
@@ -69,13 +79,13 @@ screen (using curses) to display a multi-paneled system console, with panels
 to show the system log, an area for user input, a console panel showing system
 output and error text streams, and the contents of the AI's receptive field.
 
-### 5. Display management facility ([`display/`](display "display/ directory"))
+### 6. Display management facility ([`display/`](display "display/ directory"))
 
 This package is in effect a higher-level convenience wrapper around the 
 lower-level curses library.  It provides support for multithreading, and
 rendering of control/meta characters using special rendering styles.
 
-### 6. Entity system ([`entities/`](entities "entities/ directory"))
+### 7. Entity system ([`entities/`](entities "entities/ directory"))
 
 This is a collection of modules to facilitate representing and working with 
 entities.  An 'entity,' within GLaDOS, denotes any active agent, being, 
@@ -97,7 +107,7 @@ which specific commands.  In addition, entity identifers are attached to
 all explicit actions and cognitive events that take place within GLaDOS 
 (see the `supervisor.actions` and `events` modules).
 
-### 7. Event representations ([`events/`](events "events/ directory")) 
+### 8. Event representations ([`events/`](events "events/ directory")) 
 
 An "event" in general, in this content, is an object that provides a textual 
 representation of an individual input to, or output from, the AI; that is,
@@ -113,7 +123,7 @@ itself; (2) an external entity that the AI is communicating with through a
 communication process, (3) another process such as a Unix shell.  The 
 current event representation may be modified by the AI.
 
-### 8. Receptive field facility ([`field/`](field "field/ directory"))
+### 9. Receptive field facility ([`field/`](field "field/ directory"))
 
 This package maintains the state of a "receptive field", which maintains
 the body of information that is currently present and visible in the AI's 
@@ -127,13 +137,13 @@ windows and some header/footer information.  The receptive field can be
 considered the primary input interface to the AI from GLaDOS (and the 
 outside world in general).
 
-### 9. GPT-3 Interface ([`gpt3/`](gpt3 "gpt3/ directory"))
+### 10. GPT-3 Interface ([`gpt3/`](gpt3 "gpt3/ directory"))
 
 This package interfaces to OpenAI's core GPT-3 system through its REST API.
 The `api` module provides a fairly low-level wrapper to OpenAI's module; a 
 slightly higher-level abstraction also exists within the `mind` system.
 
-### 10. Help system ([`helpsys/`](helpsys "helpsys/ directory"))
+### 11. Help system ([`helpsys/`](helpsys "helpsys/ directory"))
 
 **[NOT YET IMPLEMENTED]** The "help system" provides for a navigable
 system of hierarchically-organized help screens or modules that provide
@@ -142,7 +152,7 @@ use the GLaDOS system.  Other subsystems of GLaDOS may install their own
 help modules in this hierarchy. The help system is accessed using the 
 Help app in the `apps` package..
 
-### 11. History buffer ([`history/`](history "history/ directory"))
+### 12. History buffer ([`history/`](history "history/ directory"))
 
 **[NOT YET IMPLEMENTED]** A "history buffer" is an indefinitely-large buffer 
 (in memory, but also backed in a persistent data store) that tracks a 
@@ -152,7 +162,7 @@ as 'events'; see the package of that name, above.  At some point, older
 events in the history buffer may be spooled over into the long-term 
 memory bank (see the `memory` package, below) for archival purposes.
 
-### 12. Infrastructure facility ([`infrastructure/`](infrastructure "infrastructure/ directory"))
+### 13. Infrastructure facility ([`infrastructure/`](infrastructure "infrastructure/ directory"))
 
 This package provides a set of modules that provide useful infrastructure
 for implementing any complex multithreaded system in Python.  In GLaDOS,
@@ -166,14 +176,14 @@ thread handoffs, (7) time/date and time zone support modules,
 (8) TCP/IP-based communication support, (9) other generally useful utilities 
 and services to be added as needed.
 
-### 13. Memory system ([`memory/`](memory "memory/ directory"))
+### 14. Memory system ([`memory/`](memory "memory/ directory"))
 
 **[NOT YET IMPLEMENTED.]** This package implements a searchable long-term memory 
 facility, which is maintained in the filesystem, in a directory hierarchy.  
 In general, the data in the memory system may be organized as a database of 
 event objects, but flat text files may also be supported.
 
-### 14. Core cognitive system ([`mind/`](mind "mind/ directory"))
+### 15. Core cognitive system ([`mind/`](mind "mind/ directory"))
 
 The "mind" subsystem of GLaDOS includes a "process" (implemented as a thread) 
 that runs the main loop of the AI's cognitive process.  The essence of this 
@@ -187,7 +197,7 @@ interval has passed. (5) Go to sleep until the alarm goes off or an input
 message is received from an external user on the system. (6) Repeat.  For
 more details, see the `README.md` file within the `mind/` subdirectory.
 
-### 15. Process system ([`processes/`](processes "processes/ directory"))
+### 16. Process system ([`processes/`](processes "processes/ directory"))
 
 **[NOT YET IMPLEMENTED.]** This package implements a system of "processes" that 
 the AI can interact with.  A "process" is an automated subsystem that the AI 
@@ -200,20 +210,20 @@ such as the memory system, or the settings interface, which lets the AI modify
 the configuration of the GLaDOS system.  Another goal is to create a 
 book-authoring system that the A.I. can use to write and edit entire books.  
 
-### 16. Settings management system ([`settings/`](settings "settings/ directory"))
+### 17. Settings management system ([`settings/`](settings "settings/ directory"))
 
 **[INCOMPLETE.]** The purpose of this package is to support a 'Settings' app, 
 which allows the AI itself to browse and manipulate the preferences/settings 
 of various systems and subsystems of GLaDOS.
 
-### 17. Supervisor system ([`supervisor/`](supervisor "supervisor/ directory"))
+### 18. Supervisor system ([`supervisor/`](supervisor "supervisor/ directory"))
 
 The Supervisor system is the main top-level subsystem of GLaDOS as a whole.
 It creates and manages the principal other subsystems, including: (1) The 
 command interface (`commands/`), (2) The process system (`processes`), (3) 
 The mind system (`mind/`), (4) The window system (`windows`).
 
-### 18. Terminal system ([`terminal/`](terminal "terminal/ directory"))
+### 19. Terminal system ([`terminal/`](terminal "terminal/ directory"))
 
 **[NOT YET IMPLEMENTED.]** This package implements a terminal interface for use 
 by human users who are interacting with an instance of the GLaDOS system.  
@@ -222,22 +232,23 @@ terminal.  It runs under the user's account, and uses inter-process
 communication to interact with the GLaDOS process, which runs under the AI's 
 user account.
 
-### 19. Text tools ([`text/'](text "text/ directory"))
+### 20. Text tools ([`text/'](text "text/ directory"))
 
 This package contains low-level tools for working with raw text, including
 a basic text buffer module that itself may be used in several places in GLaDOS,
 including in the window system and the receptive field facility.
 
-### 20. Tokenizer ([`tokenizer/`](tokenizer "tokenizer/ directory"))
+### 21. Tokenizer ([`tokenizer/`](tokenizer "tokenizer/ directory"))
 
 This package provides a local implementation of the GPT-2/GPT-3 tokenizer,
 so that a whole REST API call to the OpenAI cloud server (which costs money!) 
 isn't needed simply to do things such as, e.g., measuring the length of a
 string in tokens.
 
-### 21. Text-based windowing system ([`windows/`](windows "windows/ directory"))
+### 22. Text-based windowing system ([`windows/`](windows "windows/ directory"))
 
 This package implements a facility that supports the existence of 
 interactive "windows" embedded within the AI's receptive field.  
-These windows can be manipulated in various ways by the AI, and it
-can interact with "processes" running inside the windows.
+These windows can be manipulated in various ways by the AI (e.g.,
+move/resize/snapshot/minimize/close), and it can interact with 
+"processes" running inside the windows.

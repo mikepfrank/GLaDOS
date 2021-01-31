@@ -18,83 +18,94 @@
 	MODULE DESCRIPTION:
 	-------------------
 	
-		The "action" module provides the primary interface by which various
-		subsystems of GLaDOS, in particular the AI's cognitive system,
-		communicate to GLaDOS's primary supervisory subsystem, and thence,
-		to the rest of GLaDOS's subsystems, and thence, to the outside world.
+		The "action" module implements the "action subsystem," a subsystem of
+		GLaDOS's principal supervisory system.  The action subsystem provides 
+		the primary interface by which various other subsystems of GLaDOS, and
+		in particular, the AI's cognitive system, communicate back to GLaDOS's 
+		primary supervisory subsystem, and thence, to the rest of GLaDOS's 
+		subsystems, and thence, to the outside world.
 		
 		The purpose of providing this (somewhat) centralized communications 
 		hub (whose role could be considered roughly analogous to that of the 
-		thalamus in the brain) is twofold:
+		thalamus in the brain--which was Gladys' idea) is threefold:
 		
 			(1) It provides a mechanism via which actions that are supposed
-				to be in the scope of the AI's awareness, in its cognitive 
-				sphere, will automatically be added to its cognitive stream, 
-				rendering them subsequently perceptible by the AI.
+				to be emcompassed within the scope of the AI's awareness, i.e., 
+				that are present within its cognitive sphere, will automatically 
+				be added to its cognitive stream, rendering them subsequently 
+				perceptible by the AI.
 				
 			(2) More generally, it provides a centralized mechanism by which 
 				the system's response to any given action can be easily 
 				customized.
+			
+			(3) It also provides for automated logging of actions to the 
+				system log file.
 		
 		Please note that, although this particular module is referenced and 
-		utilized throughout GLaDOS, it conceptually is a part of the principal
-		supervisory subsystem.
+		utilized from throughout GLaDOS, it conceptually is a part of the 
+		principal supervisory subsystem, not a part of other systems (although
+		other systems may of course define their own classes building upon the
+		action facility).
 		
-		The primary class in this module is 'Action_' which is an abstract 
+		The primary class in this module is 'Action_', which is an abstract 
 		base class for all action objects that will be created in the system.
-		In general, an action represents in important, intentional act that 
+		In general, an action represents a significant, intentional act that 
 		is initiated by some 'actor' (agent) within the system.  This could be
 		the A.I. itself, or a human user who is logged in to the system, or it
-		could be some GLaDOS application, process, or subsystem.  The objects 
-		representing the actors should be subclassed from the Entity_ class 
-		within the entities package.
+		could be some automated GLaDOS application, process, or subsystem.  The 
+		objects representing the actors should be subclassed from the Entity_ 
+		class within the entities package.
 		
-		There could be up to (at least) four different important times 
-		associated with each action, which are recorded automatically:
+		Note that there could be up to (at least) four different important times 
+		that are associated with each action, which are recorded automatically:
 		
-			(1) The time at which the action was conceived (that is,
+			(1) The time at which the action was 'conceived' (that is,
 				when the action object was first created & initialized).
 			
-			(2) The time at which the action was initiated (this means,
+			(2) The time at which the action was 'initiated' (this means,
 				when the action object was dispatched to the supervisory
-				system for execution).
+				system for execution)--this is the point in time at which
+				the decision to take the action was made & committed.
 			
-			(3) The time at which the action was executed, which means,
+			(3) The time at which the action was 'executed,' which means,
 				when the supervisor began carrying out the steps required
 				to complete the action.  (This could be later than the 
 				initiation time if the action specified a start time in
-				the future.)
+				the future; eventually we may support a cron-like system
+				for scheduling of such future actions.)
 			
 			(4) The time at which the action was completed (this means,
 				when the supervisor finished carrying out the steps 
 				required to complete the action.  This is generally when
-				the action becomes a recorded cognitive event.
+				the action becomes a recorded cognitive event, although 
+				it's also possible for the cognitive system to notice 
+				unfolding actions at their earlier stages as well.
 		
 		Besides Action_ and its subclasses, other important classes defined in 
 		this module include the following:
 
 			ActionChannel - An "action channel" is basically a specific feed 
-				of information about some set of actions being executed within
+				of information about a subset of actions being executed within
 				the system.  Individual entities in the system can subscribe
 				to the channel in order to get notified about actions being
-				reported on that channel.  Some action types create their own
+				reported on that channel.  Action types could create their own
 				action channels to report all actions of that type.  The
-				channel decides which action news it wants to report.
+				channel decides which action news updates it wants to report.
 				
-			TheActionNewsNetwork - This dude keeps track of all the action 
+			TheActionNewsNetwork - This dude keeps track of all of the action 
 				channels that are in existence, and manages broadcasting of 
 				all the action news on each channel that wants to report it.
 		
 			ActionProcessor - This is the main class that manages action 
 				execution. An action is initiated when it is passed to the
 				action processor for processing.  The action processor takes
-				care of work that needs to be done to every action, and then
-				dispatches to different places to handle other work that is 
-				specific to the action subtype.
+				care of general work that needs to be done for every action, 
+				and then dispatches to different places to handle other work 
+				that is specific to the particular action subtype.
 
 			ActionSystem - Singleton class that serves as a single point of
 				reference into the entire action processing facility.
-			
 """
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #| End of module documentation string.
