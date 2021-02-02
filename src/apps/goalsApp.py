@@ -99,7 +99,14 @@ class GoalList:
 
 		return displayStr
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+@singleton
+class	The_Goals_Command(Command):
 
+	"""The '/Goals' command launches the Goals app (if not already launched),
+		moves its window to the bottom of the receptive field, and """
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
 class The_Goals_CmdModule(CommandModule):
 
@@ -107,6 +114,14 @@ class The_Goals_CmdModule(CommandModule):
 		Goals app. It provides the '/Goals' command (which launches
 		the app), as well as the '/goal' command which is used 
 		within the app, and its subcommands."""
+
+	def __init__(theNewGoalsCmdModule:The_Goals_CmdModule):
+
+		"""Singleton instance initializer for the The_Goals_CmdModule class.
+			Its job is to construct the command module by adding all of its
+			individual commands and subcommands to it."""
+		
+		pass
 
 	pass	# TO DO: Fill in implementation.
 

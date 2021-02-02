@@ -399,7 +399,8 @@ class AppSystem_:
 		_logger.info("        [Apps/Init] Initializing applications system...")
 
 		appSys._appDict = OrderedDict()
-			# Ordered dictionary of registered applications: Maps app name to app object.
+			# Ordered dictionary of registered applications: Maps app name to 
+			# app object. The order reflects order of appearance in app-list.
 
 			#-------------------------------------------------------------------
 			# At this point, we register the applications that are listed in 
@@ -408,6 +409,25 @@ class AppSystem_:
 		_logger.info("        [Apps/Init]     Registering available apps...")
 
 		appSys._registerAvailableApps()
+
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Next, we create, install, and activate the app-system command 
+			#| module. This creates, installs, and activates all of the commands
+			#| for launching individual manually-launchable applications.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+			# First, create the app-system's command module.
+		appSys_cmdMod = The_AppSys_CmdModule()	# Creates & returns the singleton.
+		appSys._cmdMod = appSys_cmdMod			# Remember it for later reference.
+		
+			# Next, install that module into the GLaDOS command interface.
+		cmdIface = TheCommandInterface()		# Gets this singleton.
+		cmdIface.installModule(appSys_cmdMod)	# Plug this module into it.
+		
+			# Finally, activate the command module.
+		appSys_cmdMod.activate()	# This enables all commands in the module.
+
 
 			#-------------------------------------------------------------------
 			# Next, we have to create our action news subscriber, which will 
@@ -541,7 +561,8 @@ class AppSystem_:
 		# individual apps that are marked to be auto-started on startup.
 		for app in self.apps:
 			if app.autoStart:
-				_logger.info(f"        [Apps/Init]     Auto-starting '{app.name}' app...")
+				_logger.info("        [Apps/Init]     Auto-starting "
+					f"'{app.name}' app...")
 				app.start()
 
 
@@ -609,6 +630,6 @@ class TheAppSystem(AppSystem_):
 #__/ End public singleton class TheAppSystem.
 
 
-#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #|					 END OF FILE:	apps/appSystem.py
-#|=============================================================================
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -279,7 +279,7 @@
                 # field becomes available.  We do this because this way, the
                 # AI will always be able to remain aware of the current time.
                 # However, we will still allow the AI to minimize or close
-                # the clock app if it wants to.
+                # the clock app if it wants to. [That last part is still TBD.]
 
             placement:      'pinned-to-top'     # We want this app to be prominent.
                 #               \
