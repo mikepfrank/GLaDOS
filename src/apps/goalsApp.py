@@ -240,7 +240,7 @@ class The_Goals_App(Application_):
 
 		except:	# Assume this is a file not found error.
 
-				#_logger.warn(f"[GoalsApp] Unable to open {goalsPathname}; reverting to init-goals.hjson.")
+				_logger.warn(f"[GoalsApp] Unable to open {goalsPathname}; reverting to init-goals.hjson.")
 
 					# Revert to this file if cur-goals.json doesn't exist.
 				goalsPathname = path.join(aiDataDir, 'init-goals.hjson')
