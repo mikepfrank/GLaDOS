@@ -211,6 +211,8 @@ from entities.entity			import	The_AppSystem_Entity, AI_Entity_
 		# These are referenced in the _AppSystemAction_ ABC when creating new
 		# application actions on behalf of an AI, or the application system.
 
+from commands.commandInterface	import	TheCommandInterface		# Anchor singleton.
+
 from field.placement			import	Placement
 		# This is needed to place application windows on the receptive field.
 
@@ -228,6 +230,9 @@ from	.appActions				import	(
 		AutoOpenWindowAction,
 			# We create & initiate this action to auto-open a app window.
 	)
+
+from	.appCommands			import	The_AppSys_CmdModule, the_appSys_cmdModule	# Second one here is a special constructor to avoid singleton circularity
+		# Anchor point for the command module for the application system.
 
 	# Import all of the various specific applications that exist.
 
@@ -418,8 +423,9 @@ class AppSystem_:
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 			# First, create the app-system's command module.
-		appSys_cmdMod = The_AppSys_CmdModule()	# Creates & returns the singleton.
-		appSys._cmdMod = appSys_cmdMod			# Remember it for later reference.
+		appSys_cmdMod = the_appSys_cmdModule(appSys)	# Creates & returns the 'singleton' for our command module.
+				# ^ It's very important that we're calling this function instead of a normal singleton class constructor.
+		appSys._cmdMod = appSys_cmdMod					# Remember it for later reference.
 		
 			# Next, install that module into the GLaDOS command interface.
 		cmdIface = TheCommandInterface()		# Gets this singleton.

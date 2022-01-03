@@ -111,7 +111,7 @@ class _TheRootHelpModule(HelpModule):
 			   "you can drill down into them by typing the topic number.")
 
 			# This calls the default instance initializer for all help modules.
-		super(_TheRootHelpModule, rootModule).__init__(name='root-module',
+		super(_TheRootHelpModule.__wrapped__, rootModule).__init__(name='root-module',
 		   topic="How to Use the GLaDOS Operating Environment", intro=intro)
 
 		
@@ -126,7 +126,7 @@ class TheHelpSystem:
 
 	def __init__(theHelpSystem:TheHelpSystem):
 
-		helpSys = thehelpsystem
+		helpSys = theHelpSystem
 		
 		# Create and store the root help module.
 		helpSys._rootModule = _TheRootHelpModule()

@@ -25,7 +25,7 @@ from	infrastructure.decorators	import	singleton, classproperty
 from	config.configuration		import	TheAIPersonaConfig
 		# Singleton that provides the configuration of the current AI persona.
 
-from	commands.commandInterface	import	CommandModule	# We'll subclass this.
+from	commands.commandInterface	import	Command,CommandModule	# We'll subclass these.
 
 from	helpsys.helpSystem			import	HelpModule	# We'll subclass this.
 
@@ -53,7 +53,7 @@ class Goal:
 	def nGoals(thisCls):
 		return thisCls._nGoals
 
-	@classmathod
+	@classmethod
 	def inc_nGoals(thisCls):
 		thisCls._nGoals = thisCls.nGoals + 1
 
@@ -240,7 +240,7 @@ class The_Goals_App(Application_):
 
 		except:	# Assume this is a file not found error.
 
-				_logger.warn(f"[GoalsApp] Unable to open {goalsPathname}; reverting to init-goals.hjson.")
+				#_logger.warn(f"[GoalsApp] Unable to open {goalsPathname}; reverting to init-goals.hjson.")
 
 					# Revert to this file if cur-goals.json doesn't exist.
 				goalsPathname = path.join(aiDataDir, 'init-goals.hjson')
