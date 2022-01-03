@@ -2,6 +2,35 @@
 # This module defines command types that apply to all apps 
 # or to the app system as a whole.
 
+from sys import stderr
+
+		#|======================================================================
+		#|	1.3. Imports of custom application modules. [module code subsection]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+			#|==================================================================
+			#|	1.3.1. The following modules, although custom, are generic 
+			#|		utilities, not specific to the present application.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+				#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+				#| 1.3.1.1. The logmaster module defines our logging framework.
+				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from infrastructure.logmaster	import getLoggerInfo
+
+	#----------------------------------------------------------
+	# Go ahead and create or access the logger for this module,
+	# and obtain the software component name for our package.
+
+global _logger		# Logger serving the current module.
+global _component	# Name of our software component, as <sysName>.<pkgName>.
+			
+(_logger, _component) = getLoggerInfo(__file__)		# Fill in these globals.
+
+#from infrastructure.decorators	import	singleton
+		# A simple decorator for singleton classes.
+
 from	commands.commandInterface	import	(
 
 		Command,		# We subclass this.
@@ -9,12 +38,49 @@ from	commands.commandInterface	import	(
 		
 	)
 
-# Dummy class declarations. (Definitions not available in this module.)
-class Application_: pass
+# Dummy class declarations. (Definitions not available in this module. Used only as type designators.)
+class Application_: pass	# Abstract class for applications.
+class AppSystem_: pass		# Abstract class for the whole application system.
 
 # Forward declarations.
 class AppLaunchCommand: pass		# Class for app-launch commands.
 class The_AppSys_CmdModule: pass	# Top-level command module for app system.
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	# NOTE: Normally, we wouldn't need this global, but there's a problem which
+	# is that the singleton constructor gets called recursively from within itself
+	# before it's finished being created, which leads to it being created twice,
+	# which causes unexpected results (._appSys member not being available).
+	# This global is added as a hack to work around this problem.
+
+_the_appSys_cmdModule = None	# Not yet created
+
+	# Here's a special "constructor" function for the above global variable to 
+	# work around the above-mentioned issue with the singleton construction.
+def the_appSys_cmdModule(appSys:AppSystem_ = None):
+	
+	global _the_appSys_cmdModule
+
+	_logger.info("        [Apps/Init] Entered the_appSys_cmdModule() to create/retrieve the command module for the application system.")
+
+		# If the global 'singleton' object isn't yet initialized, then we need to initialize it here.
+	if _the_appSys_cmdModule is None:
+
+		_logger.info("        [Apps/Init] the_appSys_cmdModule(): The application "
+					 "system's command module hasn't been created yet, so I'll create it.")
+
+		_the_appSys_cmdModule = The_AppSys_CmdModule(appSys)	# Call 'singleton' (not really) constructor.
+			# This assignment is redundant because the constructor also does it. But this is harmless
+
+		return _the_appSys_cmdModule	# Now return it.
+
+	else:
+		_logger.info("        [Apps/Init] the_appSys_cmdModule(): The application system's command module is already being initialized, so I'll just return it.")
+
+		return _the_appSys_cmdModule	# It's already started being created; just return it. 
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class AppLaunchCommand(Command):
@@ -91,12 +157,13 @@ class AppLaunchCommand(Command):
 		fmtStr = f"^/{appName}(?:\\s+(\\S.*)?)?$"
 		
 			# We already know what command module we're in...
-		appSysCmdMod = The_AppSys_CmdModule()	# Fetch this singleton.
+		appSysCmdMod = the_appSys_cmdModule()	# Fetch this 'singleton'.
+				# Note this isn't actually a @singleton due to a circularity problem.
 
 		# Now dispatch to default initialization for Command instances.
 		super(AppLaunchCommand, cmd).__init__(
 			name = appName,		# Use the app's name as the command name.
-			format = fmtStr,	# This was assembled above.
+			cmdFmt = fmtStr,	# This was assembled above.
 			unique = True,		# App-launch commands are intended to be unique.
 			handler = cmd.handler,	# Command handler method (defined below).
 			module = appSysCmdMod)	# The app-sys command module singleton.
@@ -118,7 +185,12 @@ class AppLaunchCommand(Command):
 			# not it was launched.)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-@singleton
+
+
+# Normally we would make this a singleton class, but this breaks badly due to a circulaty problem.
+# Instead, use the function the_appSys_cmdModule() above like a constructor.
+#@singleton
+
 class	The_AppSys_CmdModule(CommandModule):
 
 	"""The app-sys command module is responsible for managing all of the
@@ -126,13 +198,35 @@ class	The_AppSys_CmdModule(CommandModule):
 		includes the app-launch commands for all of the individual apps 
 		in the system."""
 	
-	def __init__(theNewAppSysCmdMod:The_AppSys_CmdModule, appSys:AppSystem_):
+	def __init__(theNewAppSysCmdMod:The_AppSys_CmdModule, appSys:AppSystem_=None):
 		"""Extends CommandModule's instance initalizer to also remember a 
 			pointer to the overarching application system."""
+
+		global _the_appSys_cmdModule	# Reference special global as a hack to handle recursive construction.
+
+		_logger.info("        [Apps/Init] The_AppSys_CmdModule(): Trying to create the app-system command module.")
+
 		module = theNewAppSysCmdMod
-		module._appSys = appSys
+
+			# Go ahead and 'install' this object (if new) before we even finish initializing it.
+		if _the_appSys_cmdModule is None:
+			_logger.info("        [Apps/Init] The_AppSys_CmdModule(): I'm stashing this nascent object for later use.")
+			_the_appSys_cmdModule = module	# Remember a reference to this new object we're constructing so we don't try to re-construct it.
+		else:								# We shouldn't really get here, but just in case.
+			return _the_appSys_cmdModule	# Just return the existing one.
+
+			# If ._appSys is not already initialized, initialize it from our optional argument.
+		if not hasattr(module, '_appSys'):
+			if appSys is None:
+				_logger.error("        [Apps/Init] The_AppSys_CmdModule(): Trying to initialize "
+							  "the app-system command module with a null app-system!")
+			else:
+				_logger.info("        [Apps/Init] The_AppSys_CmdModule(): The app-system command "
+							 "module is being initialized for a (non-null) app-system.")
+				module._appSys = appSys
+
 			# Default initialization for command modules.
-		super(The_AppSys_CmdModule, module).__init__()
+		super(The_AppSys_CmdModule, module).__init__()		# .__wrapped__ isn't needed because this isn't really a singleton.
 	
 	def populate(thisAppSysCmdMod:The_AppSys_CmdModule):
 	

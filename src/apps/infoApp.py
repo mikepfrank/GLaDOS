@@ -101,7 +101,7 @@ class The_Info_App(Application_):
 				# we could have automated padding within the
 				# window.
 
-		_logger.debug("Loaded inital info text:\n" + infoText)
+		#_logger.debug("Loaded inital info text:\n" + infoText)
 
 			#--------------------------------------------------
 			# Next, we're going to turn on word-wrapping in our

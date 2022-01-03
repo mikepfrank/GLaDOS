@@ -61,7 +61,7 @@
 from 	enum						import	Enum	# Support for enumerated types.
 from	collections.abc				import	Iterable
 from	infrastructure.decorators	import	singleton
-from	entities.entity				import	Entity_
+#from	entities.entity				import	Entity_
 from	.capability					import	Capability
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -93,7 +93,7 @@ class Authority_:	# Abstract base class.
 		# Recursive case. Return True if any of our immediate includes,
 		# includes the other auth.
 		for incAuth in auth._includes:
-			if incAuth.includes(otherAuth)
+			if incAuth.includes(otherAuth):
 				return True
 				
 		# If we get here, then we couldn't find the other auth in our
@@ -227,6 +227,8 @@ class The_Godlike_Authority:
 	name = "Godlike Authority"
 	_includes = [theOmniscientAuthority, theOmnipotentAuthority]
 		# The Godlike authority is both omniscient and omnipotent, by definition.
+
+theGodlikeAuthority = The_Godlike_Authority()	# Create the singleton.
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton

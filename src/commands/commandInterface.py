@@ -1,17 +1,17 @@
 #|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#|                TOP OF FILE:    commands/commandInterface.py
+#|				  TOP OF FILE:	  commands/commandInterface.py
 #|------------------------------------------------------------------------------
-#|   The below module documentation string will be displayed by pydoc3.
+#|	 The below module documentation string will be displayed by pydoc3.
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 """
-    FILE NAME:      commands/commandInterface.py     [Python module source file]
+	FILE NAME:		commands/commandInterface.py	 [Python module source file]
 
-	MODULE NAME:    commands.commandInterface
-    IN PACKAGE:		commands
-    FULL PATH:      $GIT_ROOT/GLaDOS/src/commands/commandInterface.py
-    MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
-    SYSTEM NAME:    GLaDOS (General Lifeform and Domicile Operating System)
-    APP NAME:       GLaDOS.server (Main GLaDOS server application)
+	MODULE NAME:	commands.commandInterface
+	IN PACKAGE:		commands
+	FULL PATH:		$GIT_ROOT/GLaDOS/src/commands/commandInterface.py
+	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
+	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
+	APP NAME:		GLaDOS.server (Main GLaDOS server application)
 	SW COMPONENT:	GLaDOS.commands (Command interface component)
 
 
@@ -23,7 +23,7 @@
 		and have them be executed by the system.
 		
 		The command interface is organized into "command modules" associated
-		with specific facilities, processes, or apps within the GLaDOS system.  
+		with specific facilities, processes, or apps within the GLaDOS system.	
 		New command modules can be added dynamically into the interface.  In 
 		the main loop of the system, when the A.I. generates a text event, it 
 		is parsed to see if it matches a command template, and if so, then 
@@ -36,15 +36,15 @@
 
 
 	#|==========================================================================
-    #|
-    #|  0. Module exports.                             	   [module code section]
-    #|
-    #|      Here we define the list of public names that are exported from
+	#|
+	#|	0. Module exports.								   [module code section]
+	#|
+	#|		Here we define the list of public names that are exported from
 	#|		this module to any other modules that do
 	#|
 	#|					from commands.commandInterface import *
-    #|
-    #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 global __all__	# List of public symbols exported by this module.
 __all__ = [
@@ -70,21 +70,21 @@ __all__ = [
 	]
 
 
-    #|==========================================================================
-    #|
-    #|   1. Module imports.                                [module code section]
-    #|
-    #|          Load and import names of (and/or names from) various
-    #|          other python modules and pacakges for use from within
-    #|          the present module.
-    #|
-    #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	#|==========================================================================
+	#|
+	#|	 1. Module imports.								   [module code section]
+	#|
+	#|			Load and import names of (and/or names from) various
+	#|			other python modules and pacakges for use from within
+	#|			the present module.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-        #|======================================================================
-        #|  1.1. Imports of standard python modules.    [module code subsection]
-        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		#|======================================================================
+		#|	1.1. Imports of standard python modules.	[module code subsection]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from os					import	path  			# Manipulate filesystem path strings.
+from os					import	path			# Manipulate filesystem path strings.
 from collections		import	OrderedDict		# Dictionary that maintains item order.
 from collections.abc	import	Iterable		# Used in type hints.
 
@@ -96,9 +96,9 @@ import re					# Standard regular expression facility.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
-        #|======================================================================
-        #|  1.3. Imports of custom application modules. [module code subsection]
-        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		#|======================================================================
+		#|	1.3. Imports of custom application modules. [module code subsection]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# A simple decorator for singleton classes.
 from infrastructure.decorators	import	singleton
@@ -131,17 +131,17 @@ global _component	# Name of our software component, as <sysName>.<pkgName>.
 from	supervisor.action	import	Action_		# Abstract base class for actions.
 
 
-    #|==========================================================================
-    #|
-    #|   2. Globals					    				   [module code section]
-    #|
-    #|      Declare and/or define various global variables and
-    #|      constants.  Note that top-level 'global' statements are
+	#|==========================================================================
+	#|
+	#|	 2. Globals										   [module code section]
+	#|
+	#|		Declare and/or define various global variables and
+	#|		constants.	Note that top-level 'global' statements are
 	#|		not strictly required, but they serve to verify that
-	#|      these names were not previously used, and also serve as 
+	#|		these names were not previously used, and also serve as 
 	#|		documentation.
-    #|
-    #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		#|======================================================================
 		#|	
@@ -156,7 +156,7 @@ from	supervisor.action	import	Action_		# Abstract base class for actions.
 	#|	_DEFAULT_COMMAND_REGEX			 [private module-level global constant]
 	#|
 	#|		This constant contains the standard default regular expression
-	#|		that is used for parsing command lines.  The normal format for 
+	#|		that is used for parsing command lines.	 The normal format for 
 	#|		these in GLaDOS is, to describe it simplistically:
 	#|
 	#|				/<cmdWord> <argument>*
@@ -243,11 +243,11 @@ class Command:
 			An object of this class represents a specific type of command.
 			A command type has an associated symbolic name (identifier).
 			It also has a command format, which is a regular expression 
-			used to parse the command text.  Normally this consists of a 
+			used to parse the command text.	 Normally this consists of a 
 			command escape character like '/' to denote that this text 
 			constitutes a command to the GLaDOS system, followed by the 
 			command name, followed by whitespace and the command's 
-			argument list.  However, divergences from this standard format 
+			argument list.	However, divergences from this standard format 
 			are possible.
 		
 		Instance public data members:
@@ -264,7 +264,7 @@ class Command:
 			.unique [bool]	- 
 			
 				Boolean that is True if the format regex is supposed to 
-				uniquely identify this particular command type.  That is,
+				uniquely identify this particular command type.	 That is,
 				matching command lines should not match any other command 
 				types.
 				
@@ -278,11 +278,11 @@ class Command:
 	"""
 
 	def __init__(newCmd:Command,	# Newly-created command object to be initialized.
-				name:str=None, 		# Symbolic name of this command pattern.
-				format:str=None, 	# Format string for parsing this command.
+				name:str=None,		# Symbolic name of this command pattern.
+				cmdFmt:str=None,	# Format string for parsing this command.
 				unique:bool=False,		# True if format is supposed to be unique.
-				handler:callable=None, 			# Callable to execute the command.
-				cmdModule:CommandModule=None	# Command module this command is in.
+				handler:callable=None,		# Callable to execute the command.
+				module:CommandModule=None	# Command module this command is in.
 			):
 		
 		"""
@@ -298,8 +298,8 @@ class Command:
 										intended to be unique in a given context.
 										[NOT YET IMPLEMENTED; DELETE THIS?]
 					
-					format [string]	- An 're' style regular expression format 
-										string for parsing the command.  If not 
+					cmdFmt [string]	- An 're' style regular expression format 
+										string for parsing the command.	 If not 
 										supplied, a simple default command-line 
 										format is used.
 										
@@ -315,7 +315,7 @@ class Command:
 											by the format regex.
 					
 					cmdModule [CommandModule] - The CommandModule instance that this
-											command is associated with.  This
+											command is associated with.	 This
 											is optional.
 											
 																			"""
@@ -323,23 +323,23 @@ class Command:
 		cmd = newCmd	# Shorter name for the new command.
 		
 		# If command format is not provided, revert to the default pattern.
-		if format == None:
-			format = _DEFAULT_COMMAND_REGEX
+		if cmdFmt == None:
+			cmdFmt = _DEFAULT_COMMAND_REGEX
 			unique = False	# The default regex is most definitely NOT unique.
 		
 			# Store initializer arguments in instance attributes.
 		
-		cmd.name 		= name
-		cmd.format		= format
+		cmd.name		= name
+		cmd.cmdFmt		= cmdFmt
 		cmd.unique		= unique
 		cmd.handler		= handler
-		cmd.cmdModule	= cmdModule
+		cmd.cmdModule	= module
 		
 			# Automatically add this newly-created command to its command 
 			# module (if known).
 		
-		if cmdModule != None:
-			cmdModule.addCommand(cmd)
+		if module != None:
+			module.addCommand(cmd)
 			
 	#__/ End initializer for class Command.
 
@@ -376,8 +376,8 @@ class Commands:
 	"""commandInterface.Commands								  [public class]
 	
 			This is a container class for an ordered list of commands
-			(i.e., instances of the Command class).  It facilitates fast 
-			lookup of commands using their symbolic names.  It also 
+			(i.e., instances of the Command class).	 It facilitates fast 
+			lookup of commands using their symbolic names.	It also 
 			provides features for more general command lookup using trial 
 			regular expression matching.  A constraint is enforced that 
 			only one command having any given symbolic name can be stored, 
@@ -451,7 +451,7 @@ class Commands:
 
 	def addCommand(inst, cmd:Command):
 		"""Adds the given command to the end of the command list."""
-		self._cmdOD[cmd.name.casefold()] = cmd
+		inst._cmdOD[cmd.name.casefold()] = cmd
 			# Convert name to lowercase for indexing purposes.
 			# .casefold() is an interlingual equivalent of .lower()
 
@@ -471,6 +471,14 @@ class CommandModule:
 			# Command modules are initially inactive until activated.
 		self._isActive = False			
 		
+		# NOTE: The below causes a serious circularity problem, which is that
+		# if the constructor for a given system tries to construct its command
+		# module, and that command module tries to populate itself, and the
+		# populate method creates commands that try to reference the singleton
+		# for the given system, this fails because the system hasn't even 
+		# finished being initialized yet. Annoying workarounds are needed.
+		# Need a better design.
+
 			# Go ahead and populate this command module with its commands.
 		self.populate()
 
@@ -544,7 +552,7 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 		====================================
 		
 			This is a singleton class; its sole instance represents the 
-			entire command interface subsystem of the GLaDOS server system.  
+			entire command interface subsystem of the GLaDOS server system.	 
 			The command interface maintains a set of pluggable command 
 			modules, as well as an index of all commands that are presently 
 			actively accessible within the system.
@@ -556,7 +564,7 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 			.commandModules [CommandModules]	-
 				
 				This data object contains the list of command modules that 
-				are presently installed in this command interface.  Some 
+				are presently installed in this command interface.	Some 
 				may be active, some inactive.  Modules installed earlier 
 				take priority over ones installed later.
 	"""
@@ -588,13 +596,13 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 			commandInterface.__init__()				   [special instance method]
 		
 				This is the singleton instance initializer for the 
-				TheCommandInterface class.  Note that because this class
+				TheCommandInterface class.	Note that because this class
 				is a singleton class, this will only be called once,
 				to initialize the first and only instance of the class.
 		
 				The functionality of this method is simply to create
 				an initially-empty command interface (with no command
-				modules initially loaded yet).  Creates a command list and 
+				modules initially loaded yet).	Creates a command list and 
 				command module set, both initially empty.
 		"""
 		
@@ -637,5 +645,5 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-#|                END OF FILE:   commands/commandInterface.py
+#|				  END OF FILE:	 commands/commandInterface.py
 #|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
