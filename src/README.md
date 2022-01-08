@@ -46,9 +46,10 @@ not yet, as of this writing).
 ### 1. Applications system ([`apps/`](apps "apps/ directory"))
 
 This package gathers together modules implementing various application
-programs/tools that are available for use by the A.I. within the GLaDOS 
-environment.  See [the subdirectory's `README.md` file](apps/README.md "apps/README.md file")
-for a list of the currently planned apps.
+programs/tools that are available for use by the A.I. within the
+GLaDOS environment.  See [the subdirectory's `README.md`
+file](apps/README.md "apps/README.md file") for a list of the
+currently planned apps.
 
 ### 2. Authorization system ([`auth/`](auth "auth/ directory"))
 
@@ -168,8 +169,7 @@ that name, above.  At some point, older events in the history buffer
 may be spooled over into the long-term memory bank (see the `memory`
 package, below) for archival purposes.
 
-### 13. Infrastructure facility ([`infrastructure/`](infrastructure
-    "infrastructure/ directory"))
+### 13. Infrastructure facility ([`infrastructure/`](infrastructure "infrastructure/ directory"))
 
 This package provides a set of modules that provide useful
 infrastructure for implementing any complex multithreaded system in
@@ -228,8 +228,7 @@ main GLaDOS program, but eventually they (or some of them, at least)
 may be spun off into their own real, separate (Unix-level) processes
 which will communicate with the central server via some form of IPC.
 
-### 17. Settings management system ([`settings/`](settings "settings/
-    directory"))
+### 17. Settings management system ([`settings/`](settings "settings/ directory"))
 
 **[INCOMPLETE.]** The purpose of this package is to support a
 'Settings' app, which allows the AI itself to browse and manipulate
