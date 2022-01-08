@@ -104,7 +104,8 @@ class GoalList:
 class	The_Goals_Command(Command):
 
 	"""The '/Goals' command launches the Goals app (if not already launched),
-		moves its window to the bottom of the receptive field, and """
+		moves its window to the bottom of the receptive field (if not already
+		there) to call attention to it, and sets the input focus to it."""
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton

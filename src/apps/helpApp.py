@@ -12,10 +12,20 @@ global _component	# Name of our software component, as <sysName>.<pkgName>.
 from	infrastructure.decorators	import	singleton
 		# A simple decorator for singleton classes.
 
+from	commands.commandInterface	import	Command,CommandModule	# We'll subclass these.
+
 from	infrastructure.utils		import	countLines		# Used in 'Help' app
 
 from	.application			import	Application_
 		# Base class from which we derive subclasses for specific applications.
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+@singleton
+class	The_Help_Command(Command):
+
+	"""The '/Help' command launches the Help app (if not already launched),
+		moves its window to the bottom of the receptive field (if not
+		already there) to call attention to it, and sets the input focus to it."""
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
@@ -59,15 +69,23 @@ class The_Help_App(Application_):
 
 		helpMsg = self._helpMsg
 
+		win = self.window
+
+		win.wordWrap = True		# Turn on word-wrapping.
+		win.autoSize = True		# Turn on auto-sizing
+
+		_logger.info(f"Window {win.title} has wordWrap={win.wordWrap}.")
+
 			# Now we can go ahead and tell our window to display
 			# the help message contents.
 
 			# First, size the window the exactly fit the message.
+		#win.nRows = countLines(helpMsg) # No longer needed due to autoSize
 
-		self.window.nRows = countLines(helpMsg)
 			# .nRows should be a property
 			# countLines() should go in infrastructure/utils
 
 			# Now, display the text.
-		self.window.addText(helpMsg)
+		win.addText(helpMsg)
 
+#__/ End class The_Help_App.
