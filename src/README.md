@@ -261,13 +261,13 @@ interface to the underlying Unix terminal.  It runs under the user's
 account, and uses inter-process communication to interact with the
 GLaDOS process, which runs under the AI's user account.
 
-### 20. Test programs ([`test/'](test "test/ directory"))
+### 20. Test programs ([`test/`](test "test/ directory"))
 
 This subdirectory (not really a package) contains miscellaneous
 top-level Python programs (other than the main `glados-server`
 program) for testing various aspects of the GLaDOS codebase.
 
-### 21. Text tools ([`text/'](text "text/ directory"))
+### 21. Text tools ([`text/`](text "text/ directory"))
 
 This package contains low-level tools for working with raw text,
 including a basic text buffer module that itself may be used in
