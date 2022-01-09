@@ -14,6 +14,8 @@ from	infrastructure.decorators	import	singleton
 
 from	commands.commandInterface	import	Command,CommandModule	# We'll subclass these.
 
+from	helpsys.helpSystem			import	HelpModule	# We'll subclass this.
+
 from	infrastructure.utils		import	countLines		# Used in 'Help' app
 
 from	.application			import	Application_
@@ -26,6 +28,75 @@ class	The_Help_Command(Command):
 	"""The '/Help' command launches the Help app (if not already launched),
 		moves its window to the bottom of the receptive field (if not
 		already there) to call attention to it, and sets the input focus to it."""
+
+	initName = 'Help'	# Initialize name of this command to 'Help'.
+
+		# Rather than writing a regex like the below for each prefix-invokable
+		# command, wouldn't it be a heckuva lot better to just code up a general
+		# recipe for recognizing these kinds of commands? Just, like, specify
+		# that it's a property of a given command that it's prefix-invocable,
+		# and then either generate the regex automatically, or use some non-
+		# regex-based algorithm to identify the command.
+		#
+		# ^ NOTE: Automatic regex generation is implemented now, supposedly.
+		#		(See Command._autoInitCmdFormat().)
+
+	#initCmdFmt = '^[^/]*/[Hh]([Ee]([Ll](Pp)?)?)?(?:\\s+(\\S.*))?$'
+		# Beginning of line, any number of non-slash characters, followed
+		# by a slash and then any initial prefix of 'Help' (case-independent),
+		# optionally followed by whitespace and then anything else to end of line.
+
+	def initHandler(restOfLine:str):
+		"""Initial invocation handler for the Help command. This should
+			launch the Help app (if not already launched), move its window
+			to the bottom of the receptive field (if not already there) to
+			call attention to it, and set the input focus to it."""
+
+		pass	# Implement me.
+
+	#def __init__(theHelpCommand:The_Help_Command):
+	#	"""Instance initializer for the /Help command. Just passes appropriate
+	#		arguments to"""
+
+	#pass	# TO DO: Fill in implementation.
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+@singleton
+class	The_Help_CmdModule(CommandModule):
+
+	"""This singleton class implements the command module for the Help app.
+		It provides the '/Help' command, which both launches the app and
+		navigates to the help screens for various individual commands."""
+
+	#def __init__(theNewHelpCmdModule:The_Help_CmdModule):
+	#
+	#	"""Singleton instance initializer for the The_Help_CmdModule class.
+	#		Its job is to construct the command module by adding all of its
+	#		individual commands and subcommands to it."""
+	#	
+	#	cmdmod = theNewHelpCmdModule
+	#
+	#		# Calls the default instance initializer for CommandModules.
+	#	super(The_Help_CmdModule, cmdmod).__init__()
+
+	def populate(theHelpCmdModule):
+
+		The_Help_Command(module=Thehelpcmdmodule)
+			# Creates the '/Help' command.
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Note to self: Does the 'Help' app really even need its own help module?  Or is
+# the top-level screen of the help system already sufficient?
+@singleton
+class The_Help_HelpModule(HelpModule):
+
+	"""This singleton class implements the help module for the Help
+		app. It provides an overview of the app, and documents its
+		associated commands and subcommands."""
+
+	pass	# TO DO: Fill in implementation.
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton

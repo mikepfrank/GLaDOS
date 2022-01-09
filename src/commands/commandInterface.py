@@ -60,10 +60,16 @@ __all__ = [
 			# Container class for a set of currently-loaded command modules.
 			
 		'CommandModule',	
-			# A CommandModule is a set of commands associated with a specific facility.
+			# A CommandModule is a set of commands associated with a specific
+			# facility or application within GLaDOS.
 		
 		'Commands',			
-			# Special container class for a set of commands to allow fast lookup.
+			# Special container class for a set of commands to allow fast lookup,
+			# as well as ordering of commands. We use this both to store the
+			# list of commands within an individual module, as well as the union
+			# of all commands presently defined within the GLaDOS system. In the
+			# event of a conflict between mutliple commands demanding uniqueness,
+			# the most recently-added command takes priority.
 		
 		'Command',		# Class for a specific named command type.
 
@@ -84,11 +90,16 @@ __all__ = [
 		#|	1.1. Imports of standard python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from os					import	path			# Manipulate filesystem path strings.
-from collections		import	OrderedDict		# Dictionary that maintains item order.
-from collections.abc	import	Iterable		# Used in type hints.
+from os					import	path
+	# Manipulate filesystem path strings.
 
-import re					# Standard regular expression facility.
+from collections		import	OrderedDict
+	# Dictionary that maintains item order. We use this in the Commands class.
+
+from collections.abc	import	Iterable
+	# Used in type hints.
+
+import re	# Standard regular expression facility.
 
 
 		#|======================================================================
@@ -249,38 +260,70 @@ class Command:
 			command name, followed by whitespace and the command's 
 			argument list.	However, divergences from this standard format 
 			are possible.
+
 		
 		Instance public data members:
-		-----------------------------
+		=============================
 			
-			.name [str]		- 
-			
-				Symbolic name for this command pattern.
+			.name:str - Symbolic name for this command pattern. Usually
+				(but not necessarily always) this is also an alphanumeric
+				word that invokes the command if following a slash ('/').
 				
-			.format [str]	- 
-			
-				Regex format string for parsing this command pattern.
+			.caseSensitive:bool=False - If this is True, then any automatic
+				matching of the command name from its name is case-sensitive.
+
+			.prefixInvocable:bool=True - If this is True, then any unique
+				prefix of the command name will automatically invoke the
+				command.
+
+			.format:str	- Regex-format string for parsing this command
+				pattern. This may be supplied manually (for custom parsing)
+				or automatically generated.
 				
-			.unique [bool]	- 
-			
-				Boolean that is True if the format regex is supposed to 
-				uniquely identify this particular command type.	 That is,
-				matching command lines should not match any other command 
-				types.
+			.unique:bool=True - Boolean that is True if the format regex is
+				supposed to uniquely identify this particular command type.
+				That is, matching command lines should not match any other
+				command types. If this is True and there are multiple matches,
+				that also have this set to True, then we have to disambiguate
+				between those (via an error message leading to a further
+				interaction with the user). If this is False, then the system
+				invokes the matching command type that was most recently
+				installed. (Is this the behavior we want? Seems logical.)
+	
 				
-			.handler [callable]	- 
-			
-				Command execution handler.
+			.handler:callable - Command execution handler. This is passed any
+				arguments (regex groups) from the format specifier.
 				
-			.cmdModule [CommandModule]	- 
-			
-				Command module to which this command is associated.
+			.cmdModule:CommandModule - Command module to which this
+				command is associated.
+
+
+		Subclasses may define:
+		======================
+
+			.initName:str - If defined, this is used to initialize .name.
+
+			.initCaseSens:bool - If defined, this is used to initialize .caseSensitive.
+
+			.initPrefInvoc:bool - If defined, this is used to initialize .prefixInvocable.
+
+			.initFormat:str - If defined, this is used to initialize .format.
+
+			.initUnique:bool - If defined, this is used to initialize .unique.
+
+			.initHandler:callable - If defined, this is used to initialize .handler.
+
+			.initCmdModule:CommandModule - If defined, this is used to initialize .cmdModule.
+
+
 	"""
 
-	def __init__(newCmd:Command,	# Newly-created command object to be initialized.
-				name:str=None,		# Symbolic name of this command pattern.
-				cmdFmt:str=None,	# Format string for parsing this command.
-				unique:bool=False,		# True if format is supposed to be unique.
+	def __init__(newCmd:Command,			# Newly-created command object to be initialized.
+				name:str=None,				# Symbolic name of this command pattern.
+				caseSens:bool=None,			# True -> command name should be treated as case-sensitive.
+				prefInvoc:bool=None,		# True -> any unique prefix can be used to invoke the command.
+				cmdFmt:str=None,			# Custom format string for parsing this command.
+				unique:bool=None,			# True -> format is supposed to be unique.
 				handler:callable=None,		# Callable to execute the command.
 				module:CommandModule=None	# Command module this command is in.
 			):
@@ -291,61 +334,228 @@ class Command:
 				Arguments:
 				----------
 				
-					name [string]	- A symbolic name (required). Converted to
-										all-lowercase for indexing purposes.
+					name:string - A symbolic name (required). Converted to
+						all-lowercase for indexing purposes, unless caseSens
+						(below) is True.
 					
-					abbrev [string] - A shortened abbreviation for the command,
-										intended to be unique in a given context.
-										[NOT YET IMPLEMENTED; DELETE THIS?]
-					
-					cmdFmt [string]	- An 're' style regular expression format 
-										string for parsing the command.	 If not 
-										supplied, a simple default command-line 
-										format is used.
+					caseSens:bool=False - If this is True, then matching of the
+						command name is case-sensitive.
+
+					prefInvoc:bool=True - If this is True, then any unique
+						prefix of the command name can also be used to invoke
+						the command.
+
+					cmdFmt:string - A custom 're' style regular expression format
+						string for parsing the command.	If not supplied, a simple
+						default command-line format is used.
 										
-					unique [boolean] - This is True if the given format string is
-											supposed to uniquely identify this
-											command.  Defaults to False.  The
-											value provided (if any) is ignored if 
-											no format string was supplied.
+					unique:boolean=True - This is True if the given format string is
+						supposed to uniquely identify this command. If False, then
+						this command can be easily overridden. Defaults to True. The
+						value provided (if any) is ignored if no format string was
+						supplied.
 					
-					handler [callable] - This is a callable object that is 
-											called to execute the command.
-											It is passed the groups captured
-											by the format regex.
+					handler:callable - This is a callable object that is called to
+						execute the command. It is passed the groups captured
+						by the format regex.
 					
-					cmdModule [CommandModule] - The CommandModule instance that this
-											command is associated with.	 This
-											is optional.
+					cmdModule:CommandModule - The CommandModule instance that this
+						command is associated with.	This is optional. If not
+						provided, then this command is "free-standing" (not
+						associated with a specific command module).
 											
 																			"""
 		
 		cmd = newCmd	# Shorter name for the new command.
 		
-		# If command format is not provided, revert to the default pattern.
-		if cmdFmt == None:
-			cmdFmt = _DEFAULT_COMMAND_REGEX
-			unique = False	# The default regex is most definitely NOT unique.
+			# Initialize initializer arguments from instance attributes,
+			# if not provided by caller, but provided by subclass definition.
 		
+		if name is None 		and hasattr(cmd,'initName'):
+
+			name = cmd.initName
+
+		if caseSens is None:
+
+			if hasattr(cmd, 'initCaseSens'):
+				caseSens = cmd.initCaseSens
+			else:
+				caseSens = False	# Commands are non-case sensitive by default.
+
+		if prefInvoc is None:
+
+			if hasattr(cmd, 'initPrefInvoc'):
+				prefInvoc = cmd.initPrefInvoc
+			else
+				prefInvoc = True	# Commands are prefix-invocable by default.
+
+		if cmdFmt is None 		and hasattr(cmd,'initCmdFmt'):
+
+			cmdFmt = cmd.initCmdFmt
+
+		if unique is None:
+
+			if hasattr(cmd,'initUnique'):
+				unique = cmd.initUnique
+			else:
+				unique = True	# Assume command types are unique by default.
+
+		if handler is None:
+
+			if hasattr(cmd,'initHandler'):
+				handler = cmd.initHandler
+
+		if cmdModule is None:
+			if hasattr(cmd,'initModule'):
+				module = cmd.initModule
+
+
 			# Store initializer arguments in instance attributes.
 		
-		cmd.name		= name
-		cmd.cmdFmt		= cmdFmt
-		cmd.unique		= unique
-		cmd.handler		= handler
-		cmd.cmdModule	= module
+		cmd.name			= name
+		cmd.caseSensitive 	= caseSens
+		cmd.prefixInvocable = prefInvoc
+		cmd.cmdFmt			= cmdFmt
+		cmd.unique			= unique
+		cmd.handler			= handler
+		cmd.cmdModule		= module
 		
-			# Automatically add this newly-created command to its command 
-			# module (if known).
+		# If command format was not provided, try to generate it automatically.
+		if cmdFmt is None:
+			cmd._autoInitCmdFormat()	# Call private method defined below.
 		
-		if module != None:
+		# If a command handler wasn't provided, use a default one.
+		if cmd.handler is None:					# We weren't provided with this?
+			cmd.handler = cmd._defaultHandler	# -> Just use the default handler.
+
+		# Automatically add this newly-created command to its command 
+		# module (if known).
+		if module is not None:
 			module.addCommand(cmd)
 			
 	#__/ End initializer for class Command.
 
+	def _autoInitCmdFormat(cmd):
+
+		"""This private method may be called by the instance initializer
+			to automatically initialize the command format in cases where
+			no custom format specifier was provided."""
+
+		if cmd.cmdFormat is not None:
+			return	# A format specifier already exists; we have nothing to do.
+
+		name = cmd.name		# Shorter variable name for the command name.
+
+		# If a command name isn't even provided, we can't do much.
+		if name is None:
+			cmd.cmdFmt = _DEFAULT_COMMAND_REGEX	 # Just use generic default format.
+			unique = False	# The default regex is most definitely NOT unique.
+			return
+			
+		# Make sure the command name contains at least one character.
+		if len(name) == 0:
+			# This is an error condition, and we should do something sensible.
+			# Like log-reporting it.
+			return	# For now, just return.
+
+		regex = '^[^/]*/'
+			# The format always starts with beginning-of-line followed by any
+			# number of non-slash characters, followed by a slash.
+
+		def optRestRE(rest:str):
+			# <rest> is a suffix of a command word; this function returns
+			# a regular expression that matches it if it's present.
+			
+			"""A recursive inner helper function to generate a regular
+				expression for matching as much of the rest of the
+				command word as is present."""
+
+			if len(rest) == 0:	# Nothing left?
+				return ""		# Then we don't need any more RE, either.
+
+			if len(rest) == 1:	# Only 1 character left?
+				return rest + '?'	# Match just that 1 character, optionally.
+
+			firstChar = rest[0]	 # First character of rest (should be in [A-Za-z_]).
+			restChars = rest[1:] # Remainder of string after first char.
+
+				# The following line builds up the desired R.E. recursively.
+			return '(?:' + firstChar + optRestRE(restChars) + ')?'
+				#|
+				#| Explanation:
+				#|
+				#|		1. The '(?:' begins a non-capturing group.
+				#|			(There's no reason to save the rest of the
+				#|			command word, if it's present.)
+				#|
+				#|		2. The first character of the rest of the command
+				#|			word must be present, in order for this group
+				#|			to match. (If the command isn't case-sensitive,
+				#|			The command word should have been previously
+				#|			downcased, and the entire regex-matching
+				#|			process should be taking place in a case-
+				#|			insensitive mode.)
+				#|
+				#|		3. Here, include a regular expression that
+				#|			optionally matches any initial prefix of
+				#|			the rest of the rest of the command word,
+				#|			after its first character, if it is present.
+				#|			This is generated by a recursive call to this
+				#|			very same helper function.
+				#|
+				#|		4. The ')?' closes the non-capturing group, and
+				#|			says, match it optionally, meaning 0 or 1 times.
+
+		#__/ End internal recursive function optRestRE().
+
+		firstChar = name[0]		# Extract first character of command name.
+		restChars = name[1:]	# Remaining characters of command name, if any.
+
+		# Note: First char should be alphanumeric or '_'.
+
+		regex = regex + firstChar + optRestRE(restChars) + '(?:\\s+(\\S.*)?)?$'
+			#| Explanation:
+			#|
+			#|		1. The previous regex scanned everything through the '/'.
+			#|
+			#|		2. Next, we must have *at least* the first character of
+			#|			the command name.
+			#|
+			#|		3. Next, we may have any number of successive characters
+			#|			from the rest of the command name.
+			#|
+			#|		4. Next, '(?:\\s+ starts a non-capturing group beginning
+			#|			with one or more whitespace characters.
+			#|
+			#|		5. Next '(\\S.*)?' is a capturing group consisting of
+			#|			a non-whitespace character and zero or more additional
+			#|			characters -- this is the command's argument list, if
+			#|			it is present.
+			#|
+			#|		6. Next ')?$' end the entire non-capturing group
+			#|			that started with the whitespace, says that whole
+			#|			thing is optional, and that now we must be at the end
+			#|			of the line.
+			
+		cmd.cmdFormat = regex	# Store that regex as our automatic command format.
+		cmd.unique = True		# Ideally this should be unique...
+
+	#__/ End method 
+
+	def _defaultHandler(cmd, groups):
+
+		"""This is a default command handler that can be used in cases when
+			no other command handler has been defined."""
+
+		# A sensible thing to do here would be to report a system error
+		# like 'the <name> command has not yet been implemented.'
+
+		pass
+
 #__/ End class Command.
 
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class Subcommand(Command):
 
 	"""A subcommand is a type of command that is really just a special
@@ -377,15 +587,25 @@ class Commands:
 	
 			This is a container class for an ordered list of commands
 			(i.e., instances of the Command class).	 It facilitates fast 
-			lookup of commands using their symbolic names.	It also 
-			provides features for more general command lookup using trial 
-			regular expression matching.  A constraint is enforced that 
-			only one command having any given symbolic name can be stored, 
-			to avoid confusion.
+			lookup of commands using their symbolic names, or prefixes of
+			such. (Is this really necessary?).  It also provides features
+			for more general command lookup using trial regular expression
+			matching.
+
+			If multiple commands match a given line of input (which can
+			happen if a non-unique command word prefix is provided, or if
+			custom command regexes don't guarantee uniqueness more generally),
+			then we can return all matching commands, or the first matching
+			command that demands its own uniqueness.
+
+			A constraint is enforced that only one command having any given
+			exact symbolic name can be stored, to avoid confusion. Warnings
+			are issued if the user of this class tries to add another command
+			under a name that already exists.
 		
 		
 		Public instance methods:
-		------------------------
+		========================
 			
 			.addCommand(cmd:Command) -
 				
@@ -399,6 +619,10 @@ class Commands:
 				Return the command in the list having the given name, or 
 				None if there is none with that name.
 				
+			.lookupByPrefix(prefix:str) -
+
+				Returns a list of all commands having the given prefix.
+
 			.matches(text:str) -
 				
 				Returns an iterable containing all of the commands whose 
