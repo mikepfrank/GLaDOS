@@ -386,7 +386,7 @@ class Command:
 
 			if hasattr(cmd, 'initPrefInvoc'):
 				prefInvoc = cmd.initPrefInvoc
-			else
+			else:
 				prefInvoc = True	# Commands are prefix-invocable by default.
 
 		if cmdFmt is None 		and hasattr(cmd,'initCmdFmt'):
@@ -405,7 +405,7 @@ class Command:
 			if hasattr(cmd,'initHandler'):
 				handler = cmd.initHandler
 
-		if cmdModule is None:
+		if module is None:
 			if hasattr(cmd,'initModule'):
 				module = cmd.initModule
 
