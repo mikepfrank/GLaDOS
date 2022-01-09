@@ -33,9 +33,11 @@ from	.application				import	Application_
 		# Base class from which we derive subclasses for specific applications.
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Forward declarations that allow us to use these names as type hints early on.
 
 class The_Goals_App: pass		# Anchor point for this module.
 
+class The_Goals_Command: pass		# The /Goals command.
 class The_Goals_CmdModule: pass		# Command module for the Goals app.
 class The_Goals_HelpModule: pass	# Help module for the Goals app.
 
@@ -107,6 +109,9 @@ class	The_Goals_Command(Command):
 		moves its window to the bottom of the receptive field (if not already
 		there) to call attention to it, and sets the input focus to it."""
 
+	pass	# TO DO: Fill in implementation.
+
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
 class The_Goals_CmdModule(CommandModule):
@@ -126,6 +131,7 @@ class The_Goals_CmdModule(CommandModule):
 
 	pass	# TO DO: Fill in implementation.
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
 class The_Goals_HelpModule(HelpModule):
 
@@ -135,6 +141,7 @@ class The_Goals_HelpModule(HelpModule):
 
 	pass	# TO DO: Fill in implementation.
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
 class The_Goals_App(Application_):
 
