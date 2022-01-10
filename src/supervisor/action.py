@@ -506,6 +506,8 @@ class CommandAction_(Action_):
 
 	"""Abstract base class for command actions."""
 
+	# TODO: Finish implementing.
+
 	pass
 	
 class SpeechAction_(Action_):
@@ -824,9 +826,10 @@ class TheActionProcessor:
 			# as well.  The resulting command action will have the same conceiver 
 			# and initiator as the action it was derived from.
 		commandIface = theActionProcessor._commandInterface
-		commandIface.checkForCommand(action)
-		
-		# WRITE MORE CODE HERE
+		cmdAction = commandIface.checkForCommand(action)
+
+		if cmdAction is not None:
+			# WRITE MORE CODE HERE
 		
 		# For now, just execute all actions immediately.
 		action.execute()
