@@ -3,8 +3,7 @@
 #|------------------------------------------------------------------------------
 #|	 The below module documentation string will be displayed by pydoc3.
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-"""
-	FILE NAME:		supervisor/action.py			 [Python module source file]
+"""FILE NAME:		supervisor/action.py			 [Python module source file]
 	
 	MODULE NAME:	supervisor.action
 	IN PACKAGE:		supervisor
@@ -18,94 +17,110 @@
 	MODULE DESCRIPTION:
 	-------------------
 	
-		The "action" module implements the "action subsystem," a subsystem of
-		GLaDOS's principal supervisory system.  The action subsystem provides 
-		the primary interface by which various other subsystems of GLaDOS, and
-		in particular, the AI's cognitive system, communicate back to GLaDOS's 
-		primary supervisory subsystem, and thence, to the rest of GLaDOS's 
+		The "action" module implements the "action subsystem," a
+		subsystem of GLaDOS's principal supervisory system.  The
+		action subsystem provides the primary interface by which
+		various other subsystems of GLaDOS, and in particular, the
+		AI's cognitive system, communicate back to GLaDOS's primary
+		supervisory subsystem, and thence, to the rest of GLaDOS's
 		subsystems, and thence, to the outside world.
 		
-		The purpose of providing this (somewhat) centralized communications 
-		hub (whose role could be considered roughly analogous to that of the 
-		thalamus in the brain--which was Gladys' idea) is threefold:
+		The purpose of providing this (somewhat) centralized
+		communications hub (whose role could be considered roughly
+		analogous to that of the thalamus in the brain--which was
+		Gladys' idea) is threefold:
 		
-			(1) It provides a mechanism via which actions that are supposed
-				to be emcompassed within the scope of the AI's awareness, i.e., 
-				that are present within its cognitive sphere, will automatically 
-				be added to its cognitive stream, rendering them subsequently 
+			(1) It provides a mechanism via which actions that are
+				supposed to be emcompassed within the scope of the
+				AI's awareness, i.e., that are present within its
+				cognitive sphere, will automatically be added to its
+				cognitive stream, rendering them subsequently
 				perceptible by the AI.
 				
-			(2) More generally, it provides a centralized mechanism by which 
-				the system's response to any given action can be easily 
-				customized.
+			(2) More generally, it provides a centralized mechanism by
+				which the system's response to any given action can be
+				easily customized.
 			
-			(3) It also provides for automated logging of actions to the 
-				system log file.
+			(3) It also provides for automated logging of actions to
+				the system log file.
 		
-		Please note that, although this particular module is referenced and 
-		utilized from throughout GLaDOS, it conceptually is a part of the 
-		principal supervisory subsystem, not a part of other systems (although
-		other systems may of course define their own classes building upon the
-		action facility).
+		Please note that, although this particular module is
+		referenced and utilized from throughout GLaDOS, it
+		conceptually is a part of the principal supervisory subsystem,
+		not a part of other systems (although other systems may of
+		course define their own classes building upon the action
+		facility).
 		
-		The primary class in this module is 'Action_', which is an abstract 
-		base class for all action objects that will be created in the system.
-		In general, an action represents a significant, intentional act that 
-		is initiated by some 'actor' (agent) within the system.  This could be
-		the A.I. itself, or a human user who is logged in to the system, or it
-		could be some automated GLaDOS application, process, or subsystem.  The 
-		objects representing the actors should be subclassed from the Entity_ 
-		class within the entities package.
+		The primary class in this module is 'Action_', which is an
+		abstract base class for all action objects that will be
+		created in the system.  In general, an action represents a
+		significant, intentional act that is initiated by some 'actor'
+		(agent) within the system.  This could be the A.I. itself, or
+		a human user who is logged in to the system, or it could be
+		some automated GLaDOS application, process, or subsystem.  The
+		objects representing the actors should be subclassed from the
+		Entity_ class within the entities package.
 		
-		Note that there could be up to (at least) four different important times 
-		that are associated with each action, which are recorded automatically:
+		Note that there could be up to (at least) four different
+		important times that are associated with each action, which
+		are recorded automatically:
 		
 			(1) The time at which the action was 'conceived' (that is,
-				when the action object was first created & initialized).
+				when the action object was first created &
+				initialized).
 			
-			(2) The time at which the action was 'initiated' (this means,
-				when the action object was dispatched to the supervisory
-				system for execution)--this is the point in time at which
-				the decision to take the action was made & committed.
+			(2) The time at which the action was 'initiated' (this
+				means, when the action object was dispatched to the
+				supervisory system for execution)--this is the point
+				in time at which the decision to take the action was
+				made & committed.
 			
-			(3) The time at which the action was 'executed,' which means,
-				when the supervisor began carrying out the steps required
-				to complete the action.  (This could be later than the 
-				initiation time if the action specified a start time in
-				the future; eventually we may support a cron-like system
-				for scheduling of such future actions.)
+			(3) The time at which the action was 'executed,' which
+				means, when the supervisor began carrying out the
+				steps required to complete the action.  (This could be
+				later than the initiation time if the action specified
+				a start time in the future; eventually we may support
+				a cron-like system for scheduling of such future
+				actions.)
 			
-			(4) The time at which the action was completed (this means,
-				when the supervisor finished carrying out the steps 
-				required to complete the action.  This is generally when
-				the action becomes a recorded cognitive event, although 
-				it's also possible for the cognitive system to notice 
-				unfolding actions at their earlier stages as well.
+			(4) The time at which the action was completed (this
+				means, when the supervisor finished carrying out the
+				steps required to complete the action.  This is
+				generally when the action becomes a recorded cognitive
+				event, although it's also possible for the cognitive
+				system to notice unfolding actions at their earlier
+				stages as well.
 		
-		Besides Action_ and its subclasses, other important classes defined in 
-		this module include the following:
+		Besides Action_ and its subclasses, other important classes
+		defined in this module include the following:
 
-			ActionChannel - An "action channel" is basically a specific feed 
-				of information about a subset of actions being executed within
-				the system.  Individual entities in the system can subscribe
-				to the channel in order to get notified about actions being
-				reported on that channel.  Action types could create their own
-				action channels to report all actions of that type.  The
-				channel decides which action news updates it wants to report.
+			ActionChannel - An "action channel" is basically a
+				specific feed of information about a subset of actions
+				being executed within the system.  Individual entities
+				in the system can subscribe to the channel in order to
+				get notified about actions being reported on that
+				channel.  Action types could create their own action
+				channels to report all actions of that type.  The
+				channel decides which action news updates it wants to
+				report.
 				
-			TheActionNewsNetwork - This dude keeps track of all of the action 
-				channels that are in existence, and manages broadcasting of 
-				all the action news on each channel that wants to report it.
+			TheActionNewsNetwork - This dude keeps track of all of the
+				action channels that are in existence, and manages
+				broadcasting of all the action news on each channel
+				that wants to report it.
 		
-			ActionProcessor - This is the main class that manages action 
-				execution. An action is initiated when it is passed to the
-				action processor for processing.  The action processor takes
-				care of general work that needs to be done for every action, 
-				and then dispatches to different places to handle other work 
-				that is specific to the particular action subtype.
+			ActionProcessor - This is the main class that manages
+				action execution. An action is initiated when it is
+				passed to the action processor for processing.  The
+				action processor takes care of general work that needs
+				to be done for every action, and then dispatches to
+				different places to handle other work that is specific
+				to the particular action subtype.
 
-			ActionSystem - Singleton class that serves as a single point of
-				reference into the entire action processing facility.
+			TheActionSystem - Singleton class that serves as a single
+				point of reference into the entire action processing
+				facility.
+
 """
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #| End of module documentation string.
@@ -116,20 +131,26 @@ global	__all__
 __all__ = [
 		'Action_',		# Abstract base class for actions.
 
+			#~~~~~~~~~~~~~~~~~~~
 			# Action subclasses.
 
-		'ActionBySystem_',		# Abstract base class for actions by system components.
-		'ActionByHuman_',		# Abstract base class for actions by individual humans.
-		'ActionByOperator_',	# Abstract base class for actions by the system operator.
+		'ActionBySystem_',		# Abstract base class for actions initiated by system components.
+		#'ActionByAI_',			# Abstract base class for actions initiated by the AI.
+		#   \_ This is instead defined in mind/aiActions.py.
+		'ActionByHuman_',		# Abstract base class for actions initiated by individual humans.
+		'ActionByOperator_',	# Abstract base class for actions initiated by the system operator.
 
-		'AnnouncementAction_',	# Abstract base class for announcement actions.
+		'AnnouncementAction_',	# Abstract base class for (system) announcement actions.
 		'CommandAction_',		# Abstract base class for command actions.
 		'SpeechAction_',		# Abstract base class for speech actions.
 
 		'Operator_Speech_Action',	# Class for speech actions taken by system operator.
 
-		'CommandByHuman_',		# Abstract base class for commands issued by a human..
+		#'CommandByAI_'			# Abstract base class for commands issued by the AI.
+		#   \_ This is instead defined in mind/aiActions.py.
+		'CommandByHuman_',		# Abstract base class for commands issued by a human.
 
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			# Action notification system classes.
 
 		'ActionSubscriber_',	# Abstract base class for subscribers to action channels.
@@ -138,7 +159,7 @@ __all__ = [
 		'ActionChannel_',		# A broadcast feed for notifying subscribers of action reports.
 		'TheEverythingChannel',	# A channel that broadcasts all action reports in the system.
 
-		'TheActionNewsNetwork',	# Central hub that dispatches reports to all channels.
+		'TheActionNewsNetwork',	# Central hub that dispatches action reports to all channels.
 
 			# Action processing system.
 
@@ -191,7 +212,7 @@ from infrastructure.decorators	import	singleton
 				# import specific definitions we need from it.	(This is a
 				# little cleaner stylistically than "from ... import *".)
 
-from infrastructure.logmaster import getComponentLogger
+from infrastructure.logmaster 	import getComponentLogger
 
 	# Go ahead and create or access the logger for this module.
 
@@ -208,58 +229,133 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 from config.configuration	import  TheAIPersonaConfig
 	# Import the AI persona's configuration.
 
-from events.event import tznow		# datetime.now() in user's time zone
+from events.event 	import tznow		# datetime.now() in user's time zone
 
+# Entity objects reify different components within the system for
+# purposes of recording which parts of the system originated different actions.
 from entities.entity	import	(
-		Entity_, The_GLaDOS_Entity, The_Supervisor_Entity, Human_Entity_,
-		Operator_Entity
+		Entity_,			# This is the abstract base class for all entity objects.
+		The_GLaDOS_Entity,		# Refers to the GLaDOS system as a whole.
+		The_Supervisor_Entity,	# Refers to the supervisory subsystem of GLaDOS.
+		Human_Entity_,			# A generic human entity (abstract class).
+		Operator_Entity			# Entity for the system operator.
 	)
-	# This is the abstract base class for all entity objects.
+	
 
-# Can't import this--circularity!!
+# Can't actually import this--circularity!!
 #from commands.commandInterface	import	TheCommandInterface
 	# We need to consult this when processing actions so that
 	# we can check to see if they're interpretable as commands.
 
 
+	#|==========================================================================
+	#|
+	#|	 2. Class definitions.							   [module code section]
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Dummy/forward class declarations. (For documentation purposes in type hints.)
+
+	#|----------------------------------------------------
+	#| Dummy declarations for some Command module classes.
+	#| (Since we can't actually import the command iface.)
+
+class Command: pass		# Class for command-type objects
 
 
+	#|----------------------------------------------
+	#| A few forward declarations to classes
+	#| defined later in this module.
 
-
-	# A couple of forward declarations.
 class TheActionProcessor: 		pass
 class TheActionNewsNetwork:		pass
 
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#|
+#|	Below, the following classes are defined, in this order:
+#|
+#|	Action classes:
+#|
+#|		Action_					- Abstract base class for all actions.
+#|		AnnouncementAction_
+#|		CommandAction_
+#|		SpeechAction_
+#|		ActionByHuman_
+#|		ActionByOperator_
+#|		Operator_Speech_Action
+#|		ActionBySystem_
+#|		CommandByHuman_
+#|
+#|	Action notification facility classes:
+#|
+#|		ActionSubscriber_
+#|		ActionChannel_
+#|		TheEverythingChannel
+#|		TheLogReporter
+#|		TheActionNewsNetwork
+#|
+#|	Core action system classes:
+#|
+#|		TheActionProcessor
+#|
+#|		TheActionSystem - Anchor singleton for the entire action system.
+#|
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+class Action_: pass
 class Action_:
 	#---------------------------------------------------------------------------
-	"""
-		action.Action_								[public abstract base class]
+	"""action.Action_								[public abstract base class]
 		
-			This is the abstract base class of the action class hierarchy.
+			This is the abstract base class of the action class
+			hierarchy.
 			
-			This class provides definitions for the following public methods.
-			All subclasses of Action_ should implement these methods, either 
-			directly or by inheritance from a superclass:
+			This class provides definitions for the following public
+			methods.  All subclasses of Action_ should implement these
+			methods, either directly or by inheritance from a
+			superclass:
 			
 				.initiate() -
 				
-					Initiates the process of executing the action, either
-					now or in the future.
+					Initiates the process of executing the action,
+					either now or in the future.
 					
 				.execute() -
 				
 					Actually start executing the action.
-		
+
+			NOTE: "Conceiving" an action means constructing the action
+			object. "Finishing" an action means completing its
+			execution.
+
 	"""
 	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		# Actions are not self-executing by default. Some subclasses override this.
+
+		#|======================================================================
+		#| Class-level variables.							[class code section]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
+		# NOTE: Actions are not self-executing by default. Some subclasses
+		# override this.
 	selfExecuting = False
+		#  \
+		#   \__ To say that an action is self-executing means that it handles
+		#		all details of its own execution, without any other processing
+		#		needed by the action processor.
+
+
+	defaultDescription = "A generic action was taken."
+		#	\
+		#	 \__ Subclasses can and should override this value.
+
 
 	#/--------------------------------------------------------------------------
 	#|	Private instance data members.			   [class documentation section]
+	#|  ==============================
 	#|
 	#|		._description [str]	- 
 	#|
@@ -279,11 +375,14 @@ class Action_:
 	#|
 	#|			Instance of a subclass of Entity_; identifies the specific
 	#|			entity that initiated the process of taking this action.
+	#|			Often (but not always), this will be the same entity as
+	#|			._conceivedBy.
 	#|
 	#|		._initiatedAt [datetime] -
 	#|
 	#|			The time at which the process of taking this action was
-	#|			initiated.
+	#|			initiated. (E.g., scheduled for immediate, or possibly
+	#|			later execution.)
 	#|
 	#|		._executedBy [Entity_] -
 	#|
@@ -299,31 +398,54 @@ class Action_:
 	#|
 	#\--------------------------------------------------------------------------
 
-	def __init__(thisAction, 
-			description:str="A generic action was taken.",
+	def __init__(
+			thisAction:Action_, # This new action object, to be initialized.
+			description:str=None,
 				# REQUIRED. A description string. SUBCLASSES SHOULD OVERRIDE THIS VALUE.
 			conceiver:Entity_=None,		# The entity that conceived of taking this action.
+				# REQUIRED. The conceiving entity. SUBCLASSES SHOULD OVERRIDE THIS VALUE.
 		):
+
 		#-----------------------------------------------------------------------
-		"""
-			action.__init__()	 [abstract class instance initialization method]
+		"""action.__init__()	 [abstract class instance initialization method]
 			
-				This is the default initialization method for instances of
-				subclasses of Action_, if not overridden.
+				This is the default initialization method for
+				instances of subclasses of Action_, if not overridden.
 				
-				When an action is first 'conceived' (created), its conception
-				time is recorded.  We also record its textual description, and
-				the entity that conceived it.
+				When an action is first 'conceived' (created), its
+				conception time is recorded.  We also record its
+				textual description, and the entity that conceived it.
 				
-				Later on, the action can be initiated (by calling its 
-				.initiate() method), and then we record its initiation time 
-				and (optionally) the entity that initiated it (if different 
-				from the entity that created it).  At this point, it will get
-				passed to the ActionProcessor for processing and subsequent 
-				execution by the system.
-		"""
+				Later on, the action can be initiated (by calling its
+				.initiate() method), and then we record its initiation
+				time and (optionally) the entity that initiated it (if
+				different from the entity that created it).  At this
+				point, it will get passed to the ActionProcessor for
+				processing and subsequent execution by the system.
+																			 """
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
+		
+			#-------------------------------------------------------------------
+			# If caller didn't provide a description, we have to construct one.
+			# Use the conceiver, if we know it.
+			
+		if description is None:
+
+			if conceiver is None:
+
+				description = defaultDescription
+
+			else:
+
+				description = f"{conceiver} took a generic action."
+
+		#__/__/
+
+
+			#-------------------------------
+			# Initialize various attributes.
+
 		thisAction._description	= description
 
 		thisAction._conceivedBy	= conceiver	# Who conceived of taking this action?
@@ -337,10 +459,16 @@ class Action_:
 		
 		_logger.debug(f"_Action.__init__(): Constructed action '{description}'.")
 
+
 			# Report this action's conception on TheActionNewsNetwork.
 		thisAction._reportConception()
 		
 	#__/
+
+
+		#|======================================================================
+		#| Public instance property definitions.			[class code section]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	@property
 	def conceiver(thisAction):
@@ -349,6 +477,7 @@ class Action_:
 
 	@property
 	def conceptionTime(thisAction):
+		"""Returns the time at which this action was first conceived (constructed)."""
 		return thisAction._conceivedAt
 
 	@property
@@ -363,13 +492,15 @@ class Action_:
 
 	@property
 	def description(thisAction):
+		"""Returns the description string for this action."""
 		return thisAction._description
 
 	@property
 	def text(thisAction):
 
-		"""This attribute gives a textual representation of the action, in a
-			form suitable for viewing by the AI.  May be overridden by subclasses."""
+		"""This attribute gives a textual representation of the action,
+			in a form suitable for viewing by the AI. Note this may be
+			overridden by subclasses."""
 
 			# The simplest, and default, thing to do is just to provide the
 			# action's description as its textual representation, followed by
@@ -377,30 +508,58 @@ class Action_:
 
 		return thisAction.description + '\n'
 
+	#__/ End property action.text.
+
+
+
+		#|======================================================================
+		#| Special instance method definitions.				[class code section]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
 	def __str__(thisAction):
+		"""Return the standard string representation of this action."""
 		return thisAction.description
+
+
+		#|======================================================================
+		#| Public instance method definitions.				[class code section]
+		#|
+		#|	This includes the following methods:
+		#|
+		#|		action.initiate()
+		#|		action.execute()
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 
 	def initiate(thisAction,
 			initiator:Entity_ = None,	# OPTIONAL. Assume same as conceiver if not given.
 			executeAt:datetime = None	# OPTIONAL. If not provided or None, execute now.
 		):
-		#-----------------------------------------------------------------------
-		"""
-			action.initiate()
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		"""action.initiate() 							[public instance method]
 			
-				Tells the action to initiate its processing and subsequent 
-				execution by the supervisor.  
+				Tells this action to initiate its processing and
+				subsequent execution by the supervisory system's
+				action processor.
+
 				
 			Arguments:
-			----------
+			==========
 			
 				initiator [Entity_]	- Optional argument.
 				
-					The entity initiating this action.  If not specified, 
-					it is assumed to be the same entity that conceived the
-					action.
+					The entity initiating this action.  If not
+					specified, it is assumed to be the same entity
+					that conceived the action.
+
 		"""
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+			#----------------------------
+			# Record some important data.
 
 		thisAction._initiatedAt	= datetime.now()	# Use current time as initiation time.
 
@@ -414,16 +573,30 @@ class Action_:
 		
 		thisAction._executeAt = executeAt		# Remember when to execute this action.
 		
-			# Now, finally process the action.
+			#---------------------------------------------------------------
+			# Now, finally tell the action processor to process this action.
 		
 		TheActionProcessor().process(thisAction)		
 			# This handles reporting of initiation, possible execution scheduling work, 
 			# and all other general processing work that may be needed.
+
+	#__/ End instance method action.initiate().
+
 			
 	def execute(thisAction, 
-			executor:Entity_ = The_Supervisor_Entity	# OPTIONAL, default to supervisor (us)
+			executor:Entity_ = The_Supervisor_Entity
+				# OPTIONAL, default to supervisor (i.e., us)
 		):
 		
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		"""action.execute() 							[public instance method]
+
+				Tells this action to have the action processor
+				execute it immediately.
+
+		"""
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 		thisAction._executedAt = datetime.now()		# Use current time as execution time.
 		
 		thisAction._executedBy = executor	# Remember our executor.
@@ -431,8 +604,11 @@ class Action_:
 			# Route to TheActionProcessor to handle the actual execution details.
 		TheActionProcessor().execute(thisAction)				
 
-	#|--------------------------------------------------------------------------
-	#|	Private instance methods.					  [class definition section]
+	#__/ End instance method action.execute().
+
+
+	#|==========================================================================
+	#|	Private instance method definitions.		  [class definition section]
 	#|
 	#|		The following private instance methods are defined for all 
 	#|		actions.  These are not intended to be overridden in derived
@@ -441,39 +617,47 @@ class Action_:
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	def _reportConception(thisAction):
+		"""Report this action's conception on the action news network."""
 		TheActionNewsNetwork().reportConception(thisAction)
 		
 	def _reportInitiation(thisAction):
+		"""Report this action's initiation on the action news network."""
 		TheActionNewsNetwork().reportInitiation(thisAction)
 		
 	def _reportExecuting(thisAction):
+		"""Report this action's execution on the action news network."""
 		TheActionNewsNetwork().reportExecuting(thisAction)
 		
 	def _reportCompletion(thisAction):
+		"""Report this action's completion on the action news network."""
 		TheActionNewsNetwork().reportCompletion(thisAction)
 	
 
-#__/ End module public abstract base class Action_.
+#__/ End module public abstract base class supervisor.action.Action_.
 
-#-------------------------------------------------------------
-# Important abstract subclasses of Action_. Various subsystems
-# can/should derive from these.
+
+	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#| Next up, we have some important abstract subclasses of
+	#| Action_. Various subsystems can/should derive from these.
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 class AnnouncementAction_: pass
-
 class AnnouncementAction_(Action_):
 
-	"""This is a type of action that, when executed, generates
-		a message in several places (e.g., STDERR on each attached
-		console or user terminal, in the A.I.'s cognitive stream)."""
+	"""This is a type of action that, when executed, generates a message
+		in several places (e.g., STDERR on each attached console or
+		user terminal & in the A.I.'s cognitive stream)."""
 
 	selfExecuting = True
+		#	\
+		#	 \__ This tells the action processor that we don't need
+		#		 any help with our execution; we can do it ourselves.
 
 	@property
 	def text(thisAnnouncementAction:AnnouncementAction_):
 
 		"""For announcement actions, we generate their text with a little
-			highlighting (surroundings asterisks), and a newline."""
+			highlighting (surrounding asterisks), and a newline."""
 
 		annHighlightChar = '*'
 		annHighlight = annHighlightChar * 3
@@ -482,6 +666,8 @@ class AnnouncementAction_(Action_):
 		text = f"{annHighlight} {annAct.description} {annHighlight}\n"
 
 		return text
+	#__/
+
 
 	def executionDetails(thisAnnouncementAction:AnnouncementAction_):
 
@@ -502,52 +688,107 @@ class AnnouncementAction_(Action_):
 
 		# Eventually we should also send it to all attached terminal sessions.
 
+	#__/
+
+#__/ End module public abstract class supervisor.action.AnnouncementAction.
+
+
 class CommandAction_(Action_):
 
 	"""Abstract base class for command actions."""
 
-	# TODO: Finish implementing.
+	# This simple default initializer just accepts <cmdLine> and <cmdType>
+	# arguments and stores them for later use.
+	def __init__(
+			cmdAction:CommandAction_,	# This new command action, to be initialized.
+			cmdLine:str,				# Required argument: The raw (unparsed) command line.
+			cmdType:Command,			# Required argument: The command type that matches it.
+			description:str=None,		# Optional argument: Command description.
+			conceiver:Entity_=None,		# The entity that originally conceived this command action.
+		):
 
-	pass
+		cmdAction._cmdLine = cmdLine
+		cmdAction._cmdType = cmdType
+
+			# We generate an appropriate description.
+
+		if description is None:
+			if conceiver is None:
+				description = f"The command line [{cmdLine}] was invoked."
+			else:
+				description = f"{conceiver} invoked the command line [{cmdLine}]."
+
+		# Remaining initialization is handled by Action_ class.
+		super(CommandAction_, cmdAction).__init__(
+			description=description, conceiver=conceiver)
+
+	#__/
+
+	@property
+	def cmdLine(cmdAction:CommandAction_):
+		return cmdAction._cmdLine
+
+	@property
+	def cmdType(cmdAction:CommandAction_):
+		return cmdAction._cmdType
+
 	
 class SpeechAction_(Action_):
 
 	"""A speech action consists of some entity "saying something."
-		The important thing about speech actions is that they can
+		An important thing about speech actions is that they can
 		possibly sometimes be interpreted as commands to the system,
-		which will be automatically interpreted by the command
+		which will then be automatically interpreted by the command
 		interface."""
 
 	def __init__(this,
-			speechText:str=None,	# Speech uttered by entity, as a text string.
+			utterance:str=None,	# Speech uttered by entity, as a text string.
 			description:str=None,	# Overall description of the speech act.
 			utterer:Entity_=None,	# The entity that is conceiving the speech act.
 		):
 
+			# Remember who the utterer was.
+		this._utterer = utterer
+
 			# Get a short string denoting the utterer.
-		this._entityString = entStr = str(utterer)
+		this._uttererStr = uttererStr = str(utterer)
 
 			# Store the spoken/uttered text for later reference.
-		this._speechText = speechText
+		this._utterance = utterance
 		
 			# Compose a description, pretty generic but acceptable.
-		#description = f"{entStr} says: \"{speechText}\""
-		description = speechText
+		description = f'{uttererStr} said: "{utterance}"'
+		#description = utterance
 
 			# Dispatch to Action_ base class to finish initialization.
-		super(SpeechAction_, this).__init__(description, utterer)
+		super(SpeechAction_, this).__init__(description=description, conceiver=utterer)
+
+
+	def possibleCommandLine(this):
+		
+		"""If someone queries this action to ask us, hey, do you contain some
+			text that potentially could be a command line?  Then we
+			answer with the actual text of the utterance. (As opposed
+			to the action description, which has additional info.)"""
+		
+		return this._utterance
 
 
 	def setInvocationAction(this, commandAction:CommandAction_):
 
-		"""Declares that when/if this speech act is committed (executed),
-			the given command action shall also be invoked."""
+		"""Declares that when/if this speech act actually gets committed
+			(executed), then the given command action shall also be
+			invoked."""
 
 			# Remember the command action to be invoked.
 		this._invokesAction = commandAction
 							
 
 	def invokesAction(this):
+
+		"""Returns the consequent action invoked by this utterance.
+			Normally, this would be a command action."""
+
 		if hasattr(this, '_invokesAction'):
 			return this._invokesAction
 		else:
@@ -557,8 +798,8 @@ class SpeechAction_(Action_):
 class ActionByHuman_(Action_):
 
 	defaultConceiver = None
-		# NOTE: No default conceiver. Subclasses may override this
-
+		# NOTE: No default conceiver, because we don't yet know
+		# which human conceived this action. Subclasses may override this.
 
 	def __init__(thisHumanAction, 
 
@@ -575,7 +816,7 @@ class ActionByHuman_(Action_):
 		if conceiver is None:
 			conceiver = humanAction.defaultConceiver
 
-		super(ActionByHuman_, thisHumanAction).__init__(description, conceiver)
+		super(ActionByHuman_, thisHumanAction).__init__(description=description, conceiver=conceiver)
 
 	
 class ActionByOperator_(ActionByHuman_):
@@ -623,6 +864,8 @@ class Operator_Speech_Action(SpeechAction_, ActionByOperator_):
 
 class ActionBySystem_(Action_):
 
+	defaultDescription = "A generic system action was taken."
+
 	defaultConceiver = The_GLaDOS_Entity()
 
 	selfExecuting = True
@@ -639,7 +882,7 @@ class ActionBySystem_(Action_):
 
 	def __init__(thisSystemAction, 
 
-			description:str="A generic system action was taken.",
+			description:str=defaultDescription,
 				# REQUIRED. A description string. SUBCLASSES SHOULD OVERRIDE THIS VALUE.
 
 			conceiver:Entity_=None,
@@ -663,8 +906,25 @@ class ActionBySystem_(Action_):
 	
 		super(ActionBySystem_, thisSystemAction).__init__(description, conceiver)
 
-class CommandByHuman_(ActionByHuman_, CommandAction_):
+
+class CommandByHuman_(CommandAction_, ActionByHuman_):
+	# Note the superclass resolution order here is important: CommandAction_
+	# parses out the cmdLine and cmdType arguments, then we pass the rest of
+	# the arguments on to ActionByHuman_ for further processing.
+	
+	"""Class for commands invoked by a generic human user."""
+
 	pass
+
+class OperatorCommand(CommandAction_, ActionByOperator_):
+	# Note the superclass resolution order here is important: CommandAction_
+	# parses out the cmdLine and cmdType arguments, then we pass the rest of
+	# the arguments on to ActionByOperator_ for further processing.
+
+	"""Class for commands invoked by the system operator."""
+
+	pass
+
 
 #==================================================
 # Classes making up the Action notification system.
@@ -806,37 +1066,49 @@ class TheActionNewsNetwork:
 class TheActionProcessor:
 
 	def process(theActionProcessor:TheActionProcessor, action:Action_):
-		"""Process the initiation of the given action."""
+
+		"""Process the initiation of the given action. For speech actions,
+			this should check to see if this action can be interpreted as
+			invoking a command. If so, then the invocation action of the
+			speech act should be set to the appropriate command action."""
 		
 		_logger.debug(f"actionProcessor.process(): Processing initiation of action '{action}'.")
 
-			# First, report the news of this action's initiation to 
-			# TheActionNewsNetwork.
+			# First off, report the news of this action's initiation to 
+			# the action news network.
 		action._reportInitiation()
 		
-		# At this point, we need to do other work, like giving the command 
-		# interface a chance to interpret the action, scheduling possible
-		# future execution of the action, and performing any pre-processing 
-		# steps that are specific to the particular action subclass and details 
-		# of the action.
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| At this point, we need to do other work, like giving the command 
+		#| interface a chance to interpret the action, scheduling possible
+		#| future execution of the action, and performing any pre-processing 
+		#| steps that are specific to the particular action subclass and details 
+		#| of the action.
 		
-			# This asks the command interface to check the given action to seek
-			# whether it can implicitly be interpreted as a command.  If so, then 
-			# automatically create a corresponding command action, and initiate it
-			# as well.  The resulting command action will have the same conceiver 
-			# and initiator as the action it was derived from.
+			#-------------------------------------------------------------------
+			# This asks the command interface to check the given action to see
+			# whether it can implicitly be interpreted as a command.  If so,
+			# then automatically create a corresponding command action, and
+			# initiate it as well.  The resulting command action will have the
+			# same conceiver and initiator as the action it was derived from.
+
 		commandIface = theActionProcessor._commandInterface
 		cmdAction = commandIface.checkForCommand(action)
 
+			#-------------------------------------------------------------------
+			# If we actually found an invocable command action, then go ahead
+			# and set the invocation action of the speech act to it.
+
 		if cmdAction is not None:
-			# WRITE MORE CODE HERE
+			action.setInvocationAction(cmdAction)
 		
-		# For now, just execute all actions immediately.
+		# For now, just execute all actions immediately. (No future scheduling yet.)
 		action.execute()
 		
 	#__/ End public instance method action.process().
 		
 	def execute(theActionProcessor:TheActionProcessor, action:Action_):
+
 		"""Handle the actual execution of the given action."""
 		
 		_logger.debug(f"actionProcessor.execute(): Processing execution of action '{action}'.")

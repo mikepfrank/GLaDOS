@@ -154,7 +154,8 @@ class AppLaunchCommand(Command):
 			#|	TAB) characters.  If the argument list is not present, then the 
 			#|	whitespace is not required to be present either.
 		
-		fmtStr = f"^/{appName}(?:\\s+(\\S.*)?)?$"
+		# No longer needed, because this is a standard command, format and its regex is auto-generated.
+		#fmtStr = f"^/{appName}(?:\\s+(\\S.*)?)?$"
 		
 			# We already know what command module we're in...
 		appSysCmdMod = the_appSys_cmdModule()	# Fetch this 'singleton'.
@@ -163,9 +164,9 @@ class AppLaunchCommand(Command):
 		# Now dispatch to default initialization for Command instances.
 		super(AppLaunchCommand, cmd).__init__(
 			name = appName,		# Use the app's name as the command name.
-			cmdFmt = fmtStr,	# This was assembled above.
-			unique = True,		# App-launch commands are intended to be unique.
-			handler = cmd.handler,	# Command handler method (defined below).
+			#cmdFmt = fmtStr,	# This was assembled above.
+			#unique = True,		# App-launch commands are intended to be unique.
+			#handler = cmd.handler,	# Command handler method (defined below).
 			module = appSysCmdMod)	# The app-sys command module singleton.
 			
 
@@ -226,7 +227,8 @@ class	The_AppSys_CmdModule(CommandModule):
 				module._appSys = appSys
 
 			# Default initialization for command modules.
-		super(The_AppSys_CmdModule, module).__init__()		# .__wrapped__ isn't needed because this isn't really a singleton.
+		super(The_AppSys_CmdModule, module).__init__(desc="'command module for application system'")
+		# .__wrapped__ isn't needed because this isn't really a singleton.
 	
 	def populate(thisAppSysCmdMod:The_AppSys_CmdModule):
 	

@@ -56,7 +56,7 @@ class ActionByAI_(Action_):
 			# We ascribe AI actions to the AI's cognitive system unless they're more specifically
 			# attributed to its persona, API, or other aspect of the AI.
 
-		super(ActionByAI_, thisAiAction).__init__(description, conceiver=conceiver)
+		super(ActionByAI_, thisAiAction).__init__(description=description, conceiver=conceiver)
 
 
 class FallAsleepAction: pass
@@ -208,9 +208,11 @@ class AI_Speech_Action(SpeechAction_, ActionByAI_):
 	# ("invoked by") the first action. Use ".interpretedAs" and ".triggeredBy" members
 	# as appropriate.
 
-class CommandByAI_(AI_Speech_Action, CommandAction_):
+class CommandByAI_(CommandAction_, ActionByAI_):
+	# Note the superclass resolution order here is important: CommandAction_
+	# parses out the cmdLine and cmdType arguments, then we pass the rest of
+	# the arguments on to ActionByAI_ for further processing.
 	pass
-	
 
 
 # Consider moving this to the mind package since it depends on configuration

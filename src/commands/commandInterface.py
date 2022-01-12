@@ -398,7 +398,7 @@ class Command:
 				prefix of the command name will also automatically invoke
 				the command. (But this is ignored if standard=False.)
 
-			.format:str	- Regex-format string for parsing this command
+			.cmdFormat:str	- Regex-format string for parsing this command
 				pattern. This may be supplied manually (for custom parsing)
 				or automatically generated.
 				
@@ -411,16 +411,16 @@ class Command:
 				this is False, then the system invokes the highest-priority
 				matching command type that is in a currently-active module.
 				NOTE: Setting this to False can be dangerous!!! Beware.
-				
-			.handler:callable - Command execution handler. This is passed any
-				arguments (regex groups) from the format specifier.
-				
+			
 			.cmdModule:CommandModule - Command module to which this
 				command is associated.
 
 
-		Subclasses may define:
-		======================
+		Subclasses may define the following class-level variables:
+		==========================================================
+
+		  Provideable: (not provided by default)
+		  ------------
 
 			.initName:str - If defined, this is used to initialize .name.
 
@@ -440,11 +440,15 @@ class Command:
 
 			.initUnique:bool - If defined, this is used to initialize .unique.
 
-			.initHandler:callable - If defined, this is used to initialize
-				.handler.
-
 			.initCmdModule:CommandModule - If defined, this is used to
 				initialize .cmdModule.
+
+		  Overrideable:
+		  -------------
+
+			.actionClass:class=CommandAction_ - Subclass of CommandAction_
+				that is suitable for the creation of actions for executing
+				this command.
 
 
 		Instance public methods:
@@ -456,7 +460,22 @@ class Command:
 				If anywhere=True and the command's anywhere attribute is True,
 				then it can match anywhere in the line.
 
+			.handler(groups:list) - This method is called to actually perform
+				the command's functionality in more detail, beyond its basic
+				pattern matching. It will be passed the groups (substrings)
+				parsed out by the command's regex. For standard commands, this
+				just consists of the command name (or prefix) and argument list.
+				The default method should be overridden by subclasses.
+
+			.genCmdAction(text:str) - Generates a command action (instance of
+				CommandAction_ or one of its subclasses) that is appropriate
+				for executing this command based on the given text string.
+
 	"""
+
+		# Default our default action class (a class-level variable).
+	actionClass = CommandAction_	# Generic base class for command actions.
+
 
 	def __init__(
 			newCmd:Command,			# Newly-created command object to be initialized.
@@ -467,7 +486,6 @@ class Command:
 			prefInvoc:bool=None,    # True (default) -> any unique prefix can be used to invoke the command.
 			cmdFmt:str=None,		# Custom format string for parsing this command.
 			unique:bool=None,		# True (default) -> format is supposed to be unique.
-			handler:callable=None,		# Callable to execute the command.
 			module:CommandModule=None	# Command module this command is in.
 		):
 		
@@ -506,10 +524,6 @@ class Command:
 						this command can be easily overridden. Defaults to True. The
 						value provided (if any) is ignored if no format string was
 						supplied.
-					
-					handler:callable - This is a callable object that is called to
-						execute the command. It is passed the groups captured
-						by the format regex.
 					
 					cmdModule:CommandModule - The CommandModule instance that this
 						command is associated with.	This is optional. If not
@@ -563,10 +577,10 @@ class Command:
 			else:
 				unique = True	# Assume command types are unique by default.
 
-		if handler is None:
-
-			if hasattr(cmd,'initHandler'):
-				handler = cmd.initHandler
+		#if handler is None:
+		#
+		#	if hasattr(cmd,'initHandler'):
+		#		handler = cmd.initHandler
 
 		if module is None:
 			if hasattr(cmd,'initModule'):
@@ -585,9 +599,9 @@ class Command:
 		cmd.standard		= standard
 		cmd.caseSensitive 	= caseSens
 		cmd.prefixInvocable = prefInvoc
-		cmd.cmdFmt			= cmdFmt
+		cmd.cmdFormat			= cmdFmt
 		cmd.unique			= unique
-		cmd.handler			= handler
+		#cmd.handler			= handler
 		cmd.cmdModule		= module
 		
 			# If command format was not provided, try to generate it automatically.
@@ -595,7 +609,7 @@ class Command:
 		if cmdFmt is None:
 			if standard is True:
 				cmd._autoInitCmdFormat()	# Call private method defined below.
-				cmdFmt = cmd.cmdFmt
+				cmdFmt = cmd.cmdFormat
 			else:
 				_logger.error("Command initializer: No format provided for nonstandard command!")
 				# Really we should raise an exception here, too.
@@ -603,12 +617,12 @@ class Command:
 			# Go ahead and compile the command format appropriately.
 
 		reFlags = re.IGNORECASE if not caseSens else 0
-		cmd.pattern = re.compile(cmd.cmdFmt, reFlags)
+		cmd.pattern = re.compile(cmd.cmdFormat, reFlags)
 
 			# If a command handler wasn't provided, use a default one.
 
-		if cmd.handler is None:					# We weren't provided with this?
-			cmd.handler = cmd._defaultHandler	# -> Just use the default handler.
+		#if cmd.handler is None:					# We weren't provided with this?
+		#	cmd.handler = cmd._defaultHandler	# -> Just use the default handler.
 			
 			# Automatically add this newly-created command to its command 
 			# module (if known).
@@ -649,7 +663,7 @@ class Command:
 
 		# If a command name isn't even provided, we can't do very much, really.
 		if name is None:
-			cmd.cmdFmt = _GENERIC_STD_CMD_REGEX
+			cmd.cmdFormat = _GENERIC_STD_CMD_REGEX
 			unique = False	# The default regex is most definitely NOT a unique pattern.
 
 			# NOTE: The above can be appropriate if we wish to add an unnamed "generic
@@ -812,10 +826,18 @@ class Command:
 			# still be used as an if condition appropriately.
 
 
-	def _defaultHandler(cmd, groups):
+	def genCmdAction(cmd, cmdLine:str):
+
+		"""Generates a command action object (instance of CommandAction_)
+			that is suitable for passing this command to the action system
+			for execution."""
+		
+
+	def handler(cmd, groups):
 
 		"""This is a default command handler that can be used in cases when
-			no other command handler has been defined."""
+			no other command handler has been defined.  Subclasses should
+			override this method."""
 
 		# A sensible thing to do here would be to report a system error
 		# like 'the <name> command has not yet been implemented.'
@@ -1029,7 +1051,7 @@ class Commands:
 		if name in cmdOD:	# Command is already in this command list!
 			
 			_logger.warn(f"commands.addCommand(): A command named {name} "
-						 	"is already in {cmd._desc}; ignoring.")
+						 	f"is already in {cmds._desc}; ignoring.")
 			return
 
 		cmds._cmdOD[name] = cmd
@@ -1040,14 +1062,14 @@ class Commands:
 
 		for prefix in prefixes:
 
-			prefCmds = cmd._prefCmds
+			prefCmds = cmds._prefCmds
 
 			if prefix in prefCmds:
 				prefCmds[prefix] += [cmd]
 			else:
 				prefCmds[prefix] = [cmd]
 
-			cmd._prefCmds = prefCmds
+			cmds._prefCmds = prefCmds
 
 		#__/ End for prefixes.
 
@@ -1075,7 +1097,7 @@ class Commands:
 
 		if prefix in cmds._prefCmds:
 			return cmds._prefCmds[prefix]
-		else
+		else:
 			return []
 
 #__/ End class Commands.
@@ -1084,9 +1106,11 @@ class Commands:
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class CommandModule:
 
-	def __init__(self):
+	def __init__(self, desc:str="(unnamed command module)"):
 
-		self._commands = Commands()
+		self._desc = desc
+
+		self._commands = Commands(desc=f"command list for module {self._desc}")
 			# This gives this command module an initially-empty command set.
 
 			# Command modules are initially inactive until activated.
@@ -1398,13 +1422,13 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 			# First we look for exact matches; if that doesn't work, we
 			# try prefix matches.
 
-			cmdList = cmdIF.lookupCommands(cmdId, inputLine
+			cmdList = cmdIF.lookupCommands(cmdId, inputLine,
 										   anywhere=False, prefix=False)
 
 			if len(cmdList) >= 1:
 				return cmdList
 
-			cmdList = cmdIF.lookupCommands(cmdId, inputLine
+			cmdList = cmdIF.lookupCommands(cmdId, inputLine,
 										   anywhere=False, prefix=True)
 
 			if len(cmdList) >= 1:
@@ -1429,13 +1453,13 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 			# First we look for exact matches; if that doesn't work, we
 			# try prefix matches.
 
-			cmdList = cmdIF.lookupCommands(cmdId, inputLine
+			cmdList = cmdIF.lookupCommands(cmdId, inputLine,
 										   anywhere=True, prefix=False)
 
 			if len(cmdList) >= 1:
 				return cmdList
 
-			cmdList = cmdIF.lookupCommands(cmdId, inputLine
+			cmdList = cmdIF.lookupCommands(cmdId, inputLine,
 										   anywhere=True, prefix=True)
 
 			if len(cmdList) >= 1:
@@ -1463,25 +1487,115 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 	#__/ End singleton instance method commandInterface.obtainCommandList().
 
 
-	def checkForCommand(self, action:Action_):	# WARNING: Circularity here.
+	def checkForCommand(cmdIF, action:Action_):		# WARNING: Circularity here?
 	
 		"""Examine the provided action to see if we could interpret it 
 			as a command. (Generally this will only be the case for 
 			speech acts.) If this is the case, then construct an 
 			appropriate CommandAction instance for it and return that;
-			otherwise, return None.
-		"""
+			otherwise, return None."""
 
-		# STILL NEED TO IMPLEMENT THIS
+		_logger.debug("cmdIF.checkForCommand(): About to check action "
+					  f"{action} for commands.")
+
+			# Does this type of action contain some piece of text that
+			# could possibly be interpreted as a command line?  If so,
+			# then retrieve it.
+
+		if hasattr(action, 'possibleCommandLine'):
+
+				# Retrieve that text.
+			text = action.possibleCommandLine()
 		
-		pass
+			_logger.debug("cmdIF.checkForCommand(): Retrieved a potential "
+						  f"command line: [{text}].")
+
+				# Alright, now obtain a list of potential matching commands.
+			candidateCommands = cmdIF.obtainCommandList()
+
+			_logger.debug("cmdIF.checkForCommand(): We found the following list"
+						  f" of matching command types: {candidateCommands}.")
+
+				# Our policy is to extract the first command from the list
+				# and utilize it, unless it is marked unique but there are
+				# other command types in the list. In which case, we need
+				# to construct a RequestDisambiguationAction, and return
+				# that instead.
+			
+			nCmdTypes = len(candidateCommands)
+			if nCmdTypes == 0:
+				_logger.debug("cmdIF.checkForCommand(): No matching command types"
+							  " were found. Returning None.")
+				return None
+
+				# Retrieve the first command type.
+			firstCommand = candidateCommands[0]
+
+				# Does this command type expect to be uniquely indicated?
+			expectsUniqueness = firstCommand.unique
+
+				# If so, but there are other commands, then handle this.
+			if expectsUniqueness and nCmdTypes >= 2:
+
+				_logger.warn(f"cmdIF.checkForCommand(): Command {firstCommand}"
+							 " expected to be uniquely selected, but the command line"
+							 f" [{text}] can be interpreted in {nCmdTypes-1} other ways."
+							 " Returning a disambiguation request action.")
+
+					# RequestDisambiguationAction and returns it.
+				return cmdIF.genDisambiguationRequest(text, candidateCommands)
+
+			# If we get here, then it's safe to go ahead and construct
+			# a CommandAction that interprets the given text as per the
+			# selected command type.
+
+				#----------------------------------------------------------------------
+				# Examine the action's conceiver to determine the appropriate conceiver
+				# for the command, and construct an appropriate command action.
+
+			conceiver = action.conceiver	# Who conceived the original action?
+
+				# Was the conceiver the AI, the operator, a generic human, or other?
+				# Use this information to set the command action class appropriately.
+
+			if isinstance(conceiver, AI_Entity_):
+
+				cmdActionClass = CommandByAI_		# Command issued by the AI.
+
+			elif isinstance(conceiver, Operator_Entity):
+
+				cmdActionClass = OperatorCommand	# Command issued by the operator.
+
+			elif isinstance(conceiver, Human_Entity_):
+
+				cmdActionClass = CommandByHuman_	# Command issued by a human user.
+
+			else:	# We don't know any other special entities for command purposes.
+
+				cmdActionClass = CommandAction_		# A generic command action.
+
+				# Now go ahead and construct the command action object.
+
+			cmdAction = cmdActionClass(
+				text, # Pass the given text as the cmdLine argument.
+				cmdType = firstCommand,	# First interpretation is the cmdType.
+				conceiver = conceiver)
+			#	 \
+			#	  \__ Note we DON'T pass a description; we'll let CommandAction_ construct it.
+
+			return cmdAction
+
+		else:
+			_logger.debug("cmdIF.checkForCommand(): Action has no "
+						  "possibleCommandLine() method; returning None.")
+			return None
 
 	
-	def isCommand(self, text:str):
-
-		"""Is the given text invocable as a command?"""
-
-		return False	# Stub. (Not yet implemented.)
+	#def isCommand(self, text:str):
+	#
+	#	"""Is the given text invocable as a command?"""
+	#
+	#	return False	# Stub. (Not yet implemented.)
 
 	
 #__/ End public singleton class commandInterface.TheCommandInterface.
