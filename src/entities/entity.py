@@ -58,7 +58,9 @@
 #		|				|
 #		|				+-> Cognitive_System (singleton)
 #		|
-#		+-> Human_Entity (concrete)
+#		+-> Human_Entity_ (abstract)
+#		|		|
+#		|		+-> Operator_Entity (concrete)
 #		|		|
 #		|		+->	Mike (singleton)
 #		|		|
@@ -162,7 +164,7 @@ class	History_Buffer:		pass	# 	- This AI subsystem is a subsystem of the cogniti
 	# External entities.
 
 class	External_Entity_:		pass
-class	Human_Entity:			pass
+class	Human_Entity_:			pass
 class	Operator_Entity:		pass
 
 #-------------Class definitions.
@@ -621,7 +623,9 @@ class External_Entity_(Entity_):
 # Abstract and concrete classes for human entities.
 
 class Human_Entity_(Entity_):
+
 	"""An entity that is a human, or an aspect of a human."""
+
 	_ENTITY_TYPE_NAME = "human"
 	_ENTITY_AUTHS = {theHumanUserAuthority}
 	
