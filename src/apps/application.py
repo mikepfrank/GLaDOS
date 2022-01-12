@@ -417,6 +417,12 @@ class Application_:
 		self.state = 'running'
 
 
+	def launch(self):	# Generic launch method for apps.
+		
+		self.start()		# First, start up the app, if not already started.
+		self.openWins()		# Next, tell it to open its windows.
+
+
 	def openWins(thisApp):	# Subclasses should override this.
 
 		"""Tells this app to go ahead and automatically open up its window(s)

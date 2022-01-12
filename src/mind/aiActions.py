@@ -245,6 +245,13 @@ class The_AI_Cognosphere_Channel(ActionChannel_):
 		# At first we ignored non-complete actions, but this is commented out.
 		#if status != 'completed': return False
 		
+			# We're skipping reports for command-invocation actions;
+			# they are implicit anyway from the speech action that generated them.
+
+		isCmdAction = isinstance(action, CommandAction_)
+		if isCmdAction:
+			return False
+
 			# Next, see if this is an action by the AI itself.  An easy way
 			# to check this is to see if this action is an ActionByAI_. 
 			# (Instance of this class, or a subclass derived from it.)  A 

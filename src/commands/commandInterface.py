@@ -3,8 +3,7 @@
 #|------------------------------------------------------------------------------
 #|	 The below module documentation string will be displayed by pydoc3.
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-"""
-	FILE NAME:		commands/commandInterface.py	 [Python module source file]
+"""FILE NAME:		commands/commandInterface.py	 [Python module source file]
 
 	MODULE NAME:	commands.commandInterface
 	IN PACKAGE:		commands
@@ -18,64 +17,69 @@
 	MODULE DESCRIPTION:
 	-------------------
 
-		This module initializes the GLaDOS command interface. This is the
-		interface that allows the AI to type commands to the GLaDOS system
-		and have them be executed by the system.
+		This module initializes the GLaDOS command interface. This is
+		the interface that allows the AI to type commands to the
+		GLaDOS system and have them be executed by the system.
 		
-		The command interface is organized into "command modules" associated
-		with specific facilities, processes, or apps within the GLaDOS system.	
-		New command modules can be added dynamically into the interface.  In 
-		the main loop of the system, when the A.I. generates a text event, it 
-		is parsed to see if it matches a command template, and if so, then 
-		control is dispatched to an appropriate command handler.
+		The command interface is organized into "command modules"
+		associated with specific facilities, processes, or apps within
+		the GLaDOS system.  New command modules can be added
+		dynamically into the interface.  In the main loop of the
+		system, when the A.I. generates a text event, it is parsed to
+		see if it matches a command template, and if so, then control
+		is dispatched to an appropriate command handler.
 
-		Individual command modules can also be activated and deactivated.
-		This makes sense to help facilitate command name reuse between
-		different apps.  For example, many different apps may provide a
-		'/Next' command to page forward in their data.  But, we assume
-		that only one app at a time has the command focus.  All apps that
-		want to use commonplace command names (likely to have collisions)
-		should isolate those commands into a "focus commands" module, which
-		is only activated when that app has the command focus.  (Other app
-		commands should only be activated when that app is running, except
-		for the command to invoke an app, which could be provided by the
-		'Apps' app's command module, which may be considered to be always
-		running.)
+		Individual command modules can also be activated and
+		deactivated.  This makes sense to help facilitate command name
+		reuse between different apps.  For example, many different
+		apps may provide a '/Next' command to page forward in their
+		data.  But, we assume that only one app at a time has the
+		command focus.  All apps that want to use commonplace command
+		names (likely to have collisions) should isolate those
+		commands into a "focus commands" module, which is only
+		activated when that app has the command focus.  (Other app
+		commands should only be activated when that app is running,
+		except for the command to invoke an app, which could be
+		provided by the 'Apps' app's command module, which may be
+		considered to be always running.)
 
 		Here are some additional details:
 
-		1. The list of command modules in the system is ordered. The order
-			corresponds to priority, where earlier-occurring modules (unless
-			deactivated) take priority over later-occurring modules.
+		1. The list of command modules in the system is ordered. The
+			order corresponds to priority, where earlier-occurring
+			modules (unless deactivated) take priority over
+			later-occurring modules.
 
-		2. Newly-added modules are added at the end of the list of modules,
-			so are lower-priority than earlier modules. (So, for example,
-			system commands take priority over apps that are loaded later.)
-			Once added, normally the order of modules is not changed.
+		2. Newly-added modules are added at the end of the list of
+			modules, so are lower-priority than earlier modules. (So,
+			for example, system commands take priority over apps that
+			are loaded later.)  Once added, normally the order of
+			modules is not changed.
 
-		3. When a line of input is sent to the command interface, first we
-			try to parse it with the generic default command regex, which
-			attempts to extract a command identifier (alphanumeric + '_').
-			If one is found, we attempt to do command lookup (step 4);
-			otherwise, we go to the generic command-matching procedure
-			(see step 6 below).
+		3. When a line of input is sent to the command interface,
+			first we try to parse it with the generic default command
+			regex, which attempts to extract a command identifier
+			(alphanumeric + '_').  If one is found, we attempt to do
+			command lookup (step 4); otherwise, we go to the generic
+			command-matching procedure (see step 6 below).
 
 		4. During command lookup, first we check to see if the given
-			identifier is an exact match for an existing command name or
-			names.  If so, we generate a list of all commands from all
-			modules having that exact name, and then filter them down to
-			the ones from active modules whose regexes match the input
-			line.  If the first matching command has the unique=True
-			attribute, and there are other matching commands, this tells
-			us that we really should confirm with the user which command
-			was intended.  Otherwise, just execute the command.
+			identifier is an exact match for an existing command name
+			or names.  If so, we generate a list of all commands from
+			all modules having that exact name, and then filter them
+			down to the ones from active modules whose regexes match
+			the input line.  If the first matching command has the
+			unique=True attribute, and there are other matching
+			commands, this tells us that we really should confirm with
+			the user which command was intended.  Otherwise, just
+			execute the command.
 
-		5. If there's no exact match to the provided command identifier,
-			we next generate a list of all command names having the
-			provided identifier as a prefix, and we collect a list of all
-			commands from all active modules having any of those names,
-			sorted in module order, and then do the same filtering process
-			from step 4 for that list.
+		5. If there's no exact match to the provided command
+			identifier, we next generate a list of all command names
+			having the provided identifier as a prefix, and we collect
+			a list of all commands from all active modules having any
+			of those names, sorted in module order, and then do the
+			same filtering process from step 4 for that list.
 
 		6. If and only if no command identifier was found, or neither
 			direct lookup nor prefix lookup found any active/matching
@@ -92,17 +96,15 @@
 
 			* commandInterface.obtainCommandList().
 
-			* 
 
-		NOTE: This module includes support for potentially matching command
-		patterns even if they don't begin at the start of the line. This is
-		only needed because the AI may occasionally make a mistake and write
-		something like "I type '/Help' at the prompt." instead of just writing
-		"/Help". We'd like to be able to detect such cases, and either go
-		ahead and execute the command anyway, or at least, give the AI a
-		helpful hint such as "To execute a command, please type it on a line
-		by itself."
-
+		NOTE: This module includes support for potentially matching
+		command patterns even if they don't begin at the start of the
+		line. This is only needed because the AI may occasionally make
+		a mistake and write something like "I type '/Help' at the
+		prompt." instead of just writing "/Help". We'd like to be able
+		to detect such cases, and either go ahead and execute the
+		command anyway, or at least, give the AI a helpful hint such
+		as "To execute a command, please type it on a line by itself."
 
 """
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -186,13 +188,13 @@ import re	# Standard regular expression facility.
 		#|	1.3. Imports of custom application modules. [module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	# A simple decorator for singleton classes.
-from infrastructure.decorators	import	singleton
-
 			#|==================================================================
 			#|	1.3.1. The following modules, although custom, are generic 
 			#|		utilities, not specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from infrastructure.decorators	import	singleton
+	# A simple decorator for singleton classes.
 
 				#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 				#| 1.3.1.1. The logmaster module defines our logging framework.
@@ -214,7 +216,19 @@ global _component	# Name of our software component, as <sysName>.<pkgName>.
 			#|	1.3.2. These modules are specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from	supervisor.action	import	Action_		# Abstract base class for actions.
+from	entities.entity		import	Entity_, AI_Entity_, Operator_Entity, Human_Entity_
+	# Abstract base class for reified entities.
+
+from	supervisor.action	import	(
+				Action_,			# Abstract base class for general actions.
+				CommandAction_, 	# An action type for command actions.
+					# (so that we can turn commands into actions).
+				OperatorCommand,	# Lets us construct operator command actions.
+				CommandByHuman_		# Lets us contruct actions for commands by human users.
+			)
+
+from	mind.aiActions		import	CommandByAI_
+	# This lets us turn commands issued by the AI into appropriate actions.
 
 
 	#|==========================================================================
@@ -467,9 +481,11 @@ class Command:
 				just consists of the command name (or prefix) and argument list.
 				The default method should be overridden by subclasses.
 
-			.genCmdAction(text:str) - Generates a command action (instance of
-				CommandAction_ or one of its subclasses) that is appropriate
-				for executing this command based on the given text string.
+			.genCmdAction(text:str, by:Entity_) - Generates a command
+				action (instance of CommandAction_ or one of its
+				subclasses) that is appropriate for invocation of this
+				command by the given entity based on the given text
+				string.
 
 	"""
 
@@ -548,6 +564,13 @@ class Command:
 			else:
 				standard = True		# Commands are slash-invocable by default.
 
+		if anywhere is None:
+
+			if hasattr(cmd, 'initAnywhere'):
+				anywhere = cmd.initAnywhere
+			else:
+				anywhere = False	# Commands aren't match-anywhere by default.
+
 		if caseSens is None:
 
 			if hasattr(cmd, 'initCaseSens'):
@@ -587,21 +610,23 @@ class Command:
 				module = cmd.initModule
 
 
-		# Standardize the command name to lowercase, unless it's
-		# supposed to be case-sensitive.
+			# Standardize the command name to lowercase, unless it's
+			# supposed to be case-sensitive.
+
 		if not caseSens:
 			name = downcase(name)
 
 
-		# Store initializer arguments in instance attributes.
+			# Store initializer arguments in instance attributes.
 		
 		cmd.name			= name
 		cmd.standard		= standard
+		cmd.anywhere		= anywhere
 		cmd.caseSensitive 	= caseSens
 		cmd.prefixInvocable = prefInvoc
-		cmd.cmdFormat			= cmdFmt
+		cmd.cmdFormat		= cmdFmt
 		cmd.unique			= unique
-		#cmd.handler			= handler
+		#cmd.handler		= handler
 		cmd.cmdModule		= module
 		
 			# If command format was not provided, try to generate it automatically.
@@ -826,12 +851,62 @@ class Command:
 			# still be used as an if condition appropriately.
 
 
-	def genCmdAction(cmd, cmdLine:str):
+	def genCmdAction(cmd, cmdLine:str, invoker:Entity_):
 
 		"""Generates a command action object (instance of CommandAction_)
 			that is suitable for passing this command to the action system
-			for execution."""
+			for execution, when invoked by the given entity."""
 		
+		# Was the conceiver the AI, the operator, a generic human, or other?
+		# Use this information to set the command action class appropriately.
+
+		if isinstance(invoker, AI_Entity_):
+
+			cmdActionClass = CommandByAI_		# Command issued by the AI.
+
+		elif isinstance(invoker, Operator_Entity):
+
+			cmdActionClass = OperatorCommand	# Command issued by the operator.
+
+		elif isinstance(invoker, Human_Entity_):
+			
+			cmdActionClass = CommandByHuman_	# Command issued by a human user.
+
+		else:	# We don't know any other special entities for command purposes.
+
+			cmdActionClass = CommandAction_		# A generic command action.
+
+			# Now go ahead and construct the command action object.
+
+		cmdAction = cmdActionClass(
+			cmdLine, # Pass the given command line as the cmdLine argument.
+			cmdType = cmd,	# Pass the given command as the cmdType.
+			conceiver = invoker)
+		#	 \
+		#	  \__ Note we DON'T pass a description; we'll let CommandAction_ construct it.
+
+		return cmdAction
+		
+
+	def execute(thisCmd, cmdLine:str):
+		
+		"""Executes the given command type, for the given command line.
+			This requires parsing the command line and then running
+			the command handler."""
+
+		pattern = thisCmd.pattern
+
+			# First try matching at start of line; if that doesn't work,
+			# and the command's anywhere flag is set, search anywhere.
+
+		match = pattern.match(cmdLine)
+		if not match and thisCmd.anywhere:
+			match = pattern.search(cmdLine)
+
+			# Given the match, extract the groups and run the handler.
+		groups = match.groups()
+		thisCmd.handler(groups)
+
 
 	def handler(cmd, groups):
 
@@ -1038,6 +1113,10 @@ class Commands:
 	#__/ End initializer for class Commands.
 
 
+	def __str__(cmds:Commands):
+		return cmds._desc
+
+
 	def addCommand(cmds:Commands, cmd:Command):
 
 		"""Adds the given command to the end of the command list.
@@ -1150,9 +1229,11 @@ class CommandModule:
 		"""
 		return "(menu not implemented)"		# TODO: Implement this eventually.
 	
+	@property
 	def active(self):
 		return self._isActive
 
+	@property
 	def commands(self):
 		return self._commands
 
@@ -1220,6 +1301,8 @@ class CommandModule:
 
 		else:		# Match commands whose exact name is cmdID, only.
 
+			_logger.debug(f"CommandModule.lookupCommands(): About to lookup {cmdID} in {cmds}.")
+
 				# Retrieve the command in this module, if any, with the given name.
 			cmd = cmds.lookupByName(cmdID)
 
@@ -1234,6 +1317,22 @@ class CommandModule:
 
 		return cmdList
 			
+	#__/ End lookupCommands().
+
+	def findNonstdCmds(
+			cmdMod:CommandModule,		# This command module.
+			inputLine:str,				# The input line that it must match against.
+			anywhere:bool = False):		# If True, allow command to start anywhere.
+
+		"""Find nonstandard-format commands in this module matching the given
+			input line."""
+
+		### NOT YET IMPLEMENTED; THIS IS A STUB ###
+
+		return []
+
+	#__/
+
 
 #__/ End public class commandInterface.CommandModule.
 
@@ -1251,6 +1350,10 @@ class CommandModules:
 		
 	def __init__(self):
 		self._commandModuleList = []
+
+	@property
+	def modList(self):
+		return self._commandModuleList
 
 	def addModule(thisCmdMods:CommandModules, module:CommandModule):
 		"""Add the given command module to this list of command modules."""
@@ -1373,7 +1476,7 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 			# matching commands, and then we add their results to
 			# the overall list.
 
-		for cmdModule in cmdIF.commandModules:
+		for cmdModule in cmdIF.commandModules.modList:
 			if cmdModule.active:
 				subList = cmdModule.lookupCommands(cmdID, inputLine,
 												   anywhere, prefix)
@@ -1381,6 +1484,24 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 
 			# Return the accumulated list.
 		return cmdList
+
+
+	def findNonstdCmds(cmdIF, 
+			inputLine:str,				# The input line that it must match against.
+			anywhere:bool = False):		# If True, allow command to start anywhere.
+
+		"""Find nonstandard-format commands in all modules matching the given
+			input line."""
+
+		cmdList = []
+
+		for cmdModule in cmdIF.commandModules.modList:
+			if cmdModule.active:
+				subList = cmdModule.findNonstdCmds(inputLine, anywhere)
+				cmdList += subList
+
+		return cmdList
+
 
 	def obtainCommandList(cmdIF, inputLine:str):
 
@@ -1511,7 +1632,7 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 						  f"command line: [{text}].")
 
 				# Alright, now obtain a list of potential matching commands.
-			candidateCommands = cmdIF.obtainCommandList()
+			candidateCommands = cmdIF.obtainCommandList(text)
 
 			_logger.debug("cmdIF.checkForCommand(): We found the following list"
 						  f" of matching command types: {candidateCommands}.")
@@ -1553,36 +1674,11 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 				# Examine the action's conceiver to determine the appropriate conceiver
 				# for the command, and construct an appropriate command action.
 
-			conceiver = action.conceiver	# Who conceived the original action?
+			cmdInvoker = action.conceiver	# Who conceived the original action?
+				# They're the ones invoking this command.
 
-				# Was the conceiver the AI, the operator, a generic human, or other?
-				# Use this information to set the command action class appropriately.
-
-			if isinstance(conceiver, AI_Entity_):
-
-				cmdActionClass = CommandByAI_		# Command issued by the AI.
-
-			elif isinstance(conceiver, Operator_Entity):
-
-				cmdActionClass = OperatorCommand	# Command issued by the operator.
-
-			elif isinstance(conceiver, Human_Entity_):
-
-				cmdActionClass = CommandByHuman_	# Command issued by a human user.
-
-			else:	# We don't know any other special entities for command purposes.
-
-				cmdActionClass = CommandAction_		# A generic command action.
-
-				# Now go ahead and construct the command action object.
-
-			cmdAction = cmdActionClass(
-				text, # Pass the given text as the cmdLine argument.
-				cmdType = firstCommand,	# First interpretation is the cmdType.
-				conceiver = conceiver)
-			#	 \
-			#	  \__ Note we DON'T pass a description; we'll let CommandAction_ construct it.
-
+			cmdAction = firstCommand.genCmdAction(text, cmdInvoker)
+			
 			return cmdAction
 
 		else:

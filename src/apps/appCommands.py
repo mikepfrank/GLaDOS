@@ -170,17 +170,30 @@ class AppLaunchCommand(Command):
 			module = appSysCmdMod)	# The app-sys command module singleton.
 			
 
-	def handler(thisAppLaunchCmd:AppLaunchCommand, argsGroup:str=None):
+	def handler(thisAppLaunchCmd:AppLaunchCommand, groups:list=None):
 	
 		"""This is the handler method that is called when a generic app-launch
-			command is invoked. The <argsGroup> argument, if present, is a string
-			that contains the portion of the app-launch command line that was 
-			parsed as the "argument list" by the command format regex."""
+			command is invoked. The <groups> argument, if present, is a list
+			of match groups; it should include the command word (or prefix),
+			and the argument list (if any)."""
 			
 		cmd = thisAppLaunchCmd
 		
 		app = cmd._app	# This gets the application that we're supposed to start.
 		
+		if len(groups) >= 1:
+			cmdWord = groups[0]
+		else:
+			cmdWord = None
+
+		if len(groups) >= 2:
+			argList = groups[1]
+		else:
+			argList = None
+
+		_logger.info("Handling app-launch command for app {app} with "
+					 f"cmdWord='{cmdWord}', argList='{argList}'.")
+
 		app.launch()	# Launch the app (if not already launched).
 			# (This automatically also foregrounds the app, whether or
 			# not it was launched.)
