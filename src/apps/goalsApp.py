@@ -71,7 +71,7 @@ class Goal:
 		goal.num = n
 
 	def __str__(goal):
-		return f"{goal.num}.\t{goal.text}"
+		return f"{goal.num}.  {goal.text}"
 		
 
 class GoalList:
@@ -93,11 +93,11 @@ class GoalList:
 
 		goals = goalList._goals
 
-		displayStr = ""
+		displayStr = "\n"
 
 		for goal in goals:
 			
-			displayStr = displayStr + '\t' + str(goal) + '\n\n'
+			displayStr = displayStr + '  ' + str(goal) + '\n\n'
 
 		return displayStr
 

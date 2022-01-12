@@ -150,7 +150,7 @@ from .action import (
 		TheActionNewsNetwork,
 		AnnouncementAction_		# Abstract base class for announcement actions specifically.
 	)
-	
+	# The action system is one of our major subsystems. We need these names from it.
 
 from 	commands.commandInterface	import	TheCommandInterface
 	# This class manages initialization of the command interface.

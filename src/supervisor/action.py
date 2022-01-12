@@ -693,19 +693,23 @@ class AnnouncementAction_(Action_):
 #__/ End module public abstract class supervisor.action.AnnouncementAction.
 
 
+class CommandAction_: pass
 class CommandAction_(Action_):
 
 	"""Abstract base class for command actions."""
 
+	# Definitely want these to be self-executing.
+	selfExecuting = True
+
 	# This simple default initializer just accepts <cmdLine> and <cmdType>
 	# arguments and stores them for later use.
 	def __init__(
-			cmdAction:CommandAction_,	# This new command action, to be initialized.
-			cmdLine:str,				# Required argument: The raw (unparsed) command line.
-			cmdType:Command,			# Required argument: The command type that matches it.
-			description:str=None,		# Optional argument: Command description.
-			conceiver:Entity_=None,		# The entity that originally conceived this command action.
-		):
+				cmdAction:CommandAction_,	# This new command action, to be initialized.
+				cmdLine:str,				# Required argument: The raw (unparsed) command line.
+				cmdType:Command,			# Required argument: The command type that matches it.
+				description:str=None,		# Optional argument: Command description.
+				conceiver:Entity_=None		# The entity that originally conceived this command action.
+			):
 
 		cmdAction._cmdLine = cmdLine
 		cmdAction._cmdType = cmdType
@@ -732,6 +736,18 @@ class CommandAction_(Action_):
 	def cmdType(cmdAction:CommandAction_):
 		return cmdAction._cmdType
 
+	def executionDetails(thisCommandAction:CommandAction_):
+		"""Execute the given command action."""
+
+		cmdAction = thisCommandAction
+		cmdType = cmdAction.cmdType
+		cmdLine = cmdAction.cmdLine
+
+		_logger.debug(f"Executing the '{cmdType}' command with command line [{cmdLine}]...")
+
+		cmdType.execute(cmdLine)	# This does the deed.
+
+#__/ End module public abstract class CommandAction_
 	
 class SpeechAction_(Action_):
 
@@ -762,6 +778,21 @@ class SpeechAction_(Action_):
 
 			# Dispatch to Action_ base class to finish initialization.
 		super(SpeechAction_, this).__init__(description=description, conceiver=utterer)
+
+
+	@property
+	def utterance(thisSpeechAction):
+		return thisSpeechAction._utterance
+
+	# NOTE: It's important for speech actions to override the "text" property,
+	# which is used to generate a textual description of the action that's suitable
+	# for viewing by the AI.  We modify it to just give the utterance itself,
+	# rather than the complete description of the speech action.  This is because
+	# The prompt on the event will already give sufficient context as to the
+	# utterer.  It would confuse the AI to also give it "So-and-so said..."
+	@property
+	def text(thisSpeechAction):
+		return thisSpeechAction.utterance + '\n'
 
 
 	def possibleCommandLine(this):
@@ -1135,7 +1166,7 @@ class TheActionProcessor:
 			# For any speech actions taken, we need to check whether committing
 			# (executing) the speech act automatically invokes another action
 			# (such as a command action).  If so, then execute that action too.
-		elif isinstance(action, SpeechAction_):
+		if isinstance(action, SpeechAction_):
 		
 				# Get the other action invoked by this speech act, if any.
 			invocation = action.invokesAction()
