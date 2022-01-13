@@ -112,7 +112,7 @@ class AppLaunchCommand(Command):
 			To foreground an app typically involves the following steps:
 		
 				(1) If the app is not already located at its preferred 
-					initial placement (e.g., MOVE_TO_BOTTOM), then we put 
+					initial placement (e.g., SLIDE_TO_BOTTOM), then we put 
 					it there.
 					
 				(2) Activating the app's command module, if it was not already
@@ -154,7 +154,7 @@ class AppLaunchCommand(Command):
 			#|	TAB) characters.  If the argument list is not present, then the 
 			#|	whitespace is not required to be present either.
 		
-		# No longer needed, because this is a standard command, format and its regex is auto-generated.
+		# No longer needed, because this is a standard command format, and its regex is auto-generated.
 		#fmtStr = f"^/{appName}(?:\\s+(\\S.*)?)?$"
 		
 			# We already know what command module we're in...
@@ -164,6 +164,7 @@ class AppLaunchCommand(Command):
 		# Now dispatch to default initialization for Command instances.
 		super(AppLaunchCommand, cmd).__init__(
 			name = appName,		# Use the app's name as the command name.
+			takesArgs = False,	# The app-launch command doesn't allow any argument list yet.
 			#cmdFmt = fmtStr,	# This was assembled above.
 			#unique = True,		# App-launch commands are intended to be unique.
 			#handler = cmd.handler,	# Command handler method (defined below).
@@ -186,6 +187,8 @@ class AppLaunchCommand(Command):
 		else:
 			cmdWord = None
 
+			# Currently the app-launch commands don't even allow argument lists,
+			# but this code will be needed in the future if that changes.
 		if len(groups) >= 2:
 			argList = groups[1]
 		else:
