@@ -1312,7 +1312,7 @@ class CommandModule:
 				cmd = cmds.lookupByName(downcase(cmdID))
 			
 				# Now, we need to make sure this command really matches.
-			if cmd.matches(inputLine, anywhere):
+			if cmd is not None and cmd.matches(inputLine, anywhere):
 				cmdList += [cmd]
 
 		return cmdList

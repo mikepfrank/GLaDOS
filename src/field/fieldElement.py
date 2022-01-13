@@ -406,7 +406,7 @@ class TheFieldHeader(FieldElement_):
 	bgChar = "="	# Fill top line with this character.
 	
 		# Need to get this from sys config instead.
-	fieldTitle = "GLaDOS Main Screen / GPT-3 Receptive Field"
+	fieldTitle = "GladOS Main Screen / GPT-3 Receptive Field"
 			# Except, fetch "GPT-3" from the name of the cognitive system's 
 			# associated language model.
 

@@ -334,9 +334,11 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		# their field display.  (Not sure yet which value makes more sense.)
 	_DEFAULT_APP_LOUD_UPDATE = False	# True might also make sense here.
 
-	_DEFAULT_APP_INITIAL_PLACEMENT = Placement.MOVE_TO_BOTTOM
-			# Initially, new application windows will by default open up at
-			# the bottom of the receptive field (but above pinned slots).
+	_DEFAULT_APP_INITIAL_PLACEMENT = Placement.SLIDE_TO_BOTTOM
+			# Initially, new application windows will by default open
+			# up at the bottom of the receptive field (but above
+			# pinned & anchored slots). They will not be anchored,
+			# but will be free to scroll up.
 	
 	
 		#|----------------------------------------------------------------------
