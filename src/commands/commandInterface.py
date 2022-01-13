@@ -441,6 +441,9 @@ class Command:
 			.initStandard:bool - If defined, this is used to initialize
 				.standard.
 
+			.initTakesArgs:bool - If defined, this is used to initialize
+				.takesArgs.
+
 			.initAnywhere:bool - If defined, this is used to initialize
 				.anywhere.
 
@@ -497,6 +500,7 @@ class Command:
 			newCmd:Command,			# Newly-created command object to be initialized.
 			name:str=None,			# Symbolic name of this command pattern.
 			standard:bool=None,		# True (default) -> command may be invoked by '/<name>'.
+			takesArgs:bool=None,	# True (default) -> command may take an optional argument list.
 			anywhere:bool=None,		# True -> command may start anywhere on the input line.
 			caseSens:bool=None,		# True -> command name should be treated as case-sensitive.
 			prefInvoc:bool=None,    # True (default) -> any unique prefix can be used to invoke the command.
@@ -518,6 +522,10 @@ class Command:
 					standard:bool=True - If this is True, then we'll try to
 						automatically match the command if '/<name>' is present
 						in the input line (and also see prefInvoc, below).
+
+					takesArgs:bool=True - If this is true, then the automatically-
+						generated pattern for this command will allow an optional
+						argument list.
 
 					anywhere:bool=False - If this is True, then we can match
 						the command anywhere on the input line (assuming its
@@ -563,6 +571,13 @@ class Command:
 				standard = cmd.initStandard
 			else:
 				standard = True		# Commands are slash-invocable by default.
+
+		if takesArgs is None:
+
+			if hasattr(cmd, 'initTakesArgs'):
+				takesArgs = cmd.initTakesArgs
+			else:
+				takesArgs = True	# Commands allow argument lists by default.
 
 		if anywhere is None:
 
@@ -621,6 +636,7 @@ class Command:
 		
 		cmd.name			= name
 		cmd.standard		= standard
+		cmd.takesArgs		= takesArgs
 		cmd.anywhere		= anywhere
 		cmd.caseSensitive 	= caseSens
 		cmd.prefixInvocable = prefInvoc
@@ -786,7 +802,15 @@ class Command:
 
 		# Note: First char should be alphanumeric or '_'.
 
-		regex = regex + firstChar + optRestRE(restChars) + '(?:\\s+(\\S.*)?)?$'
+		regex = regex + firstChar + optRestRE(restChars)
+			# This matches any nonzero-length prefix of the command name,
+			# up to & including the entire command name.
+		
+		if cmd.takesArgs:
+			regex = regex + '(?:\\s+(\\S.*)?)?'
+			# This matches an optional argument list (after whitespace).
+
+		regex = regex + '$'		# At this point we must be at the end of the string.
 			#|
 			#| Explanation:
 			#|

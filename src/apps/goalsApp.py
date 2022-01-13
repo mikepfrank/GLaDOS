@@ -178,7 +178,7 @@ class The_Goals_App(Application_):
 
 					Deletes goal #<N>.
 
-				/goal insert <N>
+				/goal insert <N> "<desc>"
 
 					Inserts a new goal at position #<N> (displacing others down).
 				
