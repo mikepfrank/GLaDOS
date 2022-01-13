@@ -164,15 +164,15 @@ class The_Goals_App(Application_):
 			its window is open, it enables its commend module, which
 			provides the following commands:
 
-				/goal (add|change|delete|insert|move) <N> [to <M>]
+				/goal (add|change|delete|insert|move) <N> [to <M>] ["<desc>"]
 
-				/goal add
+				/goal add "<desc>"
 
-					Adds a new goal at the end of the list.
+					Adds a new goal at the end of the list with description <desc>.
 
-				/goal change <N>
+				/goal change <N> "<desc>"
 
-					Allows the AI to update the text of goal #<N>.
+					Allows the AI to update the text of goal #<N> to <desc>.
 
 				/goal delete <N>
 
@@ -281,7 +281,8 @@ class The_Goals_App(Application_):
 			#----------------------------------------------
 			# Finally, we have our window display the text.
 
-		win.addText(goalsText)
+		win.addText(goalsText + "To edit, type: '/goal (add|change|delete|insert|move) <N> [to <M>] [\"<desc>\"]'.")
+
 
 		#|==================================================
 		#| Our next major initialization task is to create

@@ -334,6 +334,12 @@ class Application_:
 	#__/ End default subclass instance initializer for abstract base class Application_.
 
 
+	@property
+	def launched(thisApp):
+		"""Boolean property: Has this app been launched?"""
+		return thisApp._launched
+
+
 	def grabFocus(app):
 
 		"""Tells the app to grab the command focus, if it doesn't already have it.
@@ -407,20 +413,32 @@ class Application_:
 			bookkeeping. Subclasses that override this method should
 			do a super() call to this version, so as to extend it."""
 
+			# If this app has already been launched, we don't need to do anything.
+
+		if self.launched:
+			return
+
 		# This just means the app has been started (for the first time).
 		self._launched = True
 
 		# For generic apps, generally speaking, the only thing we need to do
 		# when we first start them up is mark them as being in the running state.
-		# In this state, the app's window might not yet be open.
+		# Note that, in this state, the app's window might not yet be open.
 
 		self.state = 'running'
 
 
 	def launch(self):	# Generic launch method for apps.
 		
+		"""Launch this app, which generally means, to start the app running (if
+		    it's not already running), and open its windows, if they aren't already
+		    open. Windows should also be foregrounded (moved to a prominent location,
+			resized to their default size) and the app should get the command focus."""
+
 		self.start()		# First, start up the app, if not already started.
-		self.openWins()		# Next, tell it to open its windows.
+		self.openWins()		# Next, tell it to open its windows, if not already open.
+
+		# TODO: Foreground the app, give it the command focus.
 
 
 	def openWins(thisApp):	# Subclasses should override this.
@@ -428,6 +446,15 @@ class Application_:
 		"""Tells this app to go ahead and automatically open up its window(s)
 			on the field, or at least, any windows that are currently designated
 			as being eligible to be opened.  Details are app-dependent."""
+
+
+			# If this app already has its windows open, there's nothing to do. Return.
+
+		if thisApp.state is 'open':
+			return
+
+			#-----------------------------------------------------------
+			# If we get here, we need to actually open the app's window.
 
 		win = thisApp.window
 

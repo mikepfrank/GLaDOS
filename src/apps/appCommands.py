@@ -262,5 +262,6 @@ class	The_AppSys_CmdModule(CommandModule):
 			appLaunchCmd = AppLaunchCommand(appName, app)
 			
 				# Add it to this module.
-			module.addCommand(appLaunchCmd)
+			#module.addCommand(appLaunchCmd)
+			# This is now done automatically by the Command constructor.
 	

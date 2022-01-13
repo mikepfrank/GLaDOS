@@ -398,6 +398,7 @@
             auto-start:     true	# Does nothing for us yet; maybe later.
             auto-open:      false	# Don't open Goals Window automatically.
 			auto-focus:		true	# Grab command focus when window opens.
+			#placement:		'pinned-to-top'	
 
 			app-config: {
 
