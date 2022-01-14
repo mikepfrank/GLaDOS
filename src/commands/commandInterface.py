@@ -338,7 +338,7 @@ _genericStdCmdPat = re.compile(_GENERIC_STD_CMD_REGEX, re.VERBOSE)
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 class	Command:				pass	# A single command type.
-class	SubCommand:				pass	# A special case of another command.
+class	Subcommand:				pass	# A special case of another command.
 class	Commands:				pass	# A list of commands.
 class	CommandModule:			pass	# A pluggable command module.
 class	CommandModules:			pass	# A whole list of command modules.
@@ -412,6 +412,10 @@ class Command:
 				prefix of the command name will also automatically invoke
 				the command. (But this is ignored if standard=False.)
 
+			.hasSubcmds:bool=False - If this is True, then this command
+				has subcommands which we'll try to automatically detect
+				and dispatch on.  See also class Subcommand.
+
 			.cmdFormat:str	- Regex-format string for parsing this command
 				pattern. This may be supplied manually (for custom parsing)
 				or automatically generated.
@@ -436,32 +440,30 @@ class Command:
 		  Provideable: (not provided by default)
 		  ------------
 
-			.initName:str - If defined, this is used to initialize .name.
+			.name:str - If defined, this is used to initialize cmd.name.
 
-			.initStandard:bool - If defined, this is used to initialize
-				.standard.
+			.cmdFormat:str - If defined, this is used to initialize cmd.cmdFormat.
 
-			.initTakesArgs:bool - If defined, this is used to initialize
-				.takesArgs.
+			.cmdModule:CommandModule - If defined, this is used to
+				initialize cmd.module.
 
-			.initAnywhere:bool - If defined, this is used to initialize
-				.anywhere.
-
-			.initCaseSens:bool - If defined, this is used to initialize
-				.caseSensitive.
-
-			.initPrefInvoc:bool - If defined, this is used to initialize
-				.prefixInvocable.
-
-			.initFormat:str - If defined, this is used to initialize .format.
-
-			.initUnique:bool - If defined, this is used to initialize .unique.
-
-			.initCmdModule:CommandModule - If defined, this is used to
-				initialize .cmdModule.
 
 		  Overrideable:
 		  -------------
+
+			.standard:bool=True - Default value of cmd.standard.
+
+			.takesArgs:bool=True - Default value of cmd.takesArgs.
+
+			.anywhere:bool=False - Default value of cmd.anywhere.
+
+			.caseSens:bool=False - Default value of cmd.caseSens.
+
+			.prefInvoc:bool=True - Default value of cmd.prefInvoc.
+
+			.hasSubcmds:bool=False - Default value of cmd.hasSubcmds.
+
+			.unique:bool=True - Default value of cmd.unique.
 
 			.actionClass:class=CommandAction_ - Subclass of CommandAction_
 				that is suitable for the creation of actions for executing
@@ -492,21 +494,39 @@ class Command:
 
 	"""
 
-		# Default our default action class (a class-level variable).
+	def __str__(thisCmd):
+		return f"[cmd '{thisCmd.name}' in module '{thisCmd.cmdModule}']"
+
+		# Our default action class (a class-level variable).
 	actionClass = CommandAction_	# Generic base class for command actions.
 
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| The following class-level variables provide default values that
+		#| are used to initialize the corresponding instance variables;
+		#| subclasses may override these. (The idea of this way of overriding
+		#| default initialization parameters is that it's simpler than passing
+		#| overrides up a chain of super().__init__() calls.
+
+	standard	= True		# By default, commands may be invoked by '/<name>'.
+	takesArgs	= True		# By default, commands may take an optional argument list.
+	anywhere	= False		# By default, commands can't start anywhere on the command line (only at the start of the line).
+	caseSens	= False		# By default, command format matching is case-insensitive.
+	prefInvoc	= True		# By default, any unique prefix can be used to invoke a command.
+	hasSubcmds	= False		# By default, commands don't have subcommands.
+	unique		= True		# By default, we expect commands to match uniquely with command lines.
 
 	def __init__(
-			newCmd:Command,			# Newly-created command object to be initialized.
-			name:str=None,			# Symbolic name of this command pattern.
-			standard:bool=None,		# True (default) -> command may be invoked by '/<name>'.
-			takesArgs:bool=None,	# True (default) -> command may take an optional argument list.
-			anywhere:bool=None,		# True -> command may start anywhere on the input line.
-			caseSens:bool=None,		# True -> command name should be treated as case-sensitive.
-			prefInvoc:bool=None,    # True (default) -> any unique prefix can be used to invoke the command.
-			cmdFmt:str=None,		# Custom format string for parsing this command.
-			unique:bool=None,		# True (default) -> format is supposed to be unique.
-			module:CommandModule=None	# Command module this command is in.
+			newCmd:		Command,	# Newly-created command object to be initialized.
+			name:		str  =None,	# Symbolic name of this command pattern.
+			standard:	bool =None,	# True (default) -> command may be invoked by '/<name>'.
+			takesArgs:	bool =None,	# True (default) -> command may take an optional argument list.
+			anywhere:	bool =None,	# True -> command may start anywhere on the input line.
+			caseSens:	bool =None,	# True -> command name should be treated as case-sensitive.
+			prefInvoc:	bool =None, # True (default) -> any unique prefix can be used to invoke the command.
+			hasSubcmds:	bool =None,	# True -> Dispatches to subcommand named in 1st argument.
+			cmdFmt:		str  =None,	# Custom format string for parsing this command.
+			unique:		bool =None,	# True (default) -> format is supposed to be unique.
+			cmdModule:	CommandModule=None	# Command module this command is in.
 		):
 		
 		"""
@@ -521,7 +541,8 @@ class Command:
 					
 					standard:bool=True - If this is True, then we'll try to
 						automatically match the command if '/<name>' is present
-						in the input line (and also see prefInvoc, below).
+						in the input line (and also see the <anywhere> and
+						<prefInvoc> parameters below).
 
 					takesArgs:bool=True - If this is true, then the automatically-
 						generated pattern for this command will allow an optional
@@ -538,6 +559,11 @@ class Command:
 					prefInvoc:bool=True - If this is True, then any unique
 						prefix of the command name can also be used to invoke
 						the command. (But, it's ignored if standard=False.)
+
+					hasSubcmds:bool=False - If this is True, then the first word
+						after the command name will be interpreted as a subcommand
+						identifier that we'll try to dispatch on. (Forces takesArgs
+						to True.)
 
 					cmdFmt:string - A custom 're' style regular expression format
 						string for parsing the command.	If not supplied, a simple
@@ -558,71 +584,79 @@ class Command:
 		
 		cmd = newCmd	# Shorter name for the new command.
 		
-			# Initialize initializer arguments from 'init' instance attributes,
-			# if not provided by caller, but provided by subclass definition.
+			# Initialize initializer arguments from class-level attributes,
+			# if not provided by caller, but provided by class definition.
 		
-		if name is None 		and hasattr(cmd,'initName'):
+		if name is None 		and hasattr(cmd,'name'):
 
-			name = cmd.initName
+			name = cmd.name
+
+		_logger.info(f"Initializing command '{name}'...")
 
 		if standard is None:
 
-			if hasattr(cmd, 'initStandard'):
-				standard = cmd.initStandard
+			if hasattr(cmd, 'standard'):
+				standard = cmd.standard
 			else:
 				standard = True		# Commands are slash-invocable by default.
 
 		if takesArgs is None:
 
-			if hasattr(cmd, 'initTakesArgs'):
-				takesArgs = cmd.initTakesArgs
+			if hasattr(cmd, 'takesArgs'):
+				takesArgs = cmd.takesArgs
 			else:
 				takesArgs = True	# Commands allow argument lists by default.
 
 		if anywhere is None:
 
-			if hasattr(cmd, 'initAnywhere'):
-				anywhere = cmd.initAnywhere
+			if hasattr(cmd, 'anywhere'):
+				anywhere = cmd.anywhere
 			else:
 				anywhere = False	# Commands aren't match-anywhere by default.
 
 		if caseSens is None:
 
-			if hasattr(cmd, 'initCaseSens'):
-				caseSens = cmd.initCaseSens
+			if hasattr(cmd, 'caseSens'):
+				caseSens = cmd.caseSens
 			else:
 				caseSens = False	# Commands are non-case sensitive by default.
 
 		if prefInvoc is None:
 
-			if hasattr(cmd, 'initPrefInvoc'):
-				prefInvoc = cmd.initPrefInvoc
+			if hasattr(cmd, 'prefInvoc'):
+				prefInvoc = cmd.prefInvoc
 			else:
 				prefInvoc = True	# Commands are prefix-invocable by default.
 
 			# NOTE: prefInvoc should be ignored if standard=False.
 
-		if cmdFmt is None 		and hasattr(cmd,'initCmdFmt'):
+		if hasSubcmds is None:
 
-			cmdFmt = cmd.initCmdFmt
+			if hasattr(cmd, 'hasSubcmds'):
+				hasSubcmds = cmd.hasSubcmds
+			else:
+				hasSubcmds = False	# Don't assume command has subcommands.
+
+		# If we have subcommands, force takesArgs to True.
+		if hasSubcmds:
+			takesArgs = True
+
+		if cmdFmt is None 		and hasattr(cmd,'cmdFormat'):
+
+			cmdFmt = cmd.cmdFormat
 
 			# NOTE: A custom format MUST be provided if standard=False!
 
 		if unique is None:
 
-			if hasattr(cmd,'initUnique'):
-				unique = cmd.initUnique
+			if hasattr(cmd,'unique'):
+				unique = cmd.unique
 			else:
 				unique = True	# Assume command types are unique by default.
 
-		#if handler is None:
-		#
-		#	if hasattr(cmd,'initHandler'):
-		#		handler = cmd.initHandler
-
-		if module is None:
-			if hasattr(cmd,'initModule'):
-				module = cmd.initModule
+		if cmdModule is None:
+			if hasattr(cmd,'cmdModule'):
+				cmdModule = cmd.cmdModule
 
 
 			# Standardize the command name to lowercase, unless it's
@@ -640,10 +674,10 @@ class Command:
 		cmd.anywhere		= anywhere
 		cmd.caseSensitive 	= caseSens
 		cmd.prefixInvocable = prefInvoc
+		cmd.hasSubcommands	= hasSubcmds
 		cmd.cmdFormat		= cmdFmt
 		cmd.unique			= unique
-		#cmd.handler		= handler
-		cmd.cmdModule		= module
+		cmd.cmdModule		= cmdModule
 		
 			# If command format was not provided, try to generate it automatically.
 
@@ -652,7 +686,8 @@ class Command:
 				cmd._autoInitCmdFormat()	# Call private method defined below.
 				cmdFmt = cmd.cmdFormat
 			else:
-				_logger.error("Command initializer: No format provided for nonstandard command!")
+				_logger.error("Command initializer: No format provided "
+							  "for nonstandard command!")
 				# Really we should raise an exception here, too.
 		
 			# Go ahead and compile the command format appropriately.
@@ -660,16 +695,16 @@ class Command:
 		reFlags = re.IGNORECASE if not caseSens else 0
 		cmd.pattern = re.compile(cmd.cmdFormat, reFlags)
 
-			# If a command handler wasn't provided, use a default one.
-
-		#if cmd.handler is None:					# We weren't provided with this?
-		#	cmd.handler = cmd._defaultHandler	# -> Just use the default handler.
+			# If this command has subcommands, initialize them.
+		if hasSubcmds and hasattr(cmd,'subcommand_classMap'):
+			for subcmdCls in cmd.subcommand_classMap.values():
+				subcmdCls(cmd)
 			
 			# Automatically add this newly-created command to its command 
 			# module (if known).
 
-		if module is not None:
-			module.addCommand(cmd)
+		if cmdModule is not None:
+			cmdModule.addCommand(cmd)
 			
 	#__/ End initializer for class Command.
 
@@ -806,9 +841,24 @@ class Command:
 			# This matches any nonzero-length prefix of the command name,
 			# up to & including the entire command name.
 		
+		# If the command takes arguments, then optionally match an argument list.
 		if cmd.takesArgs:
-			regex = regex + '(?:\\s+(\\S.*)?)?'
-			# This matches an optional argument list (after whitespace).
+
+			# If the command has subcommands, then the arglist format is
+			# " <subcmd> [<moreArgs>]".
+
+			if cmd.hasSubcmds:
+				regex = regex + r'\s+([A-Za-z_-][\w-]*)'
+					# A few things to note. The subcommand word itself
+					# is *not optional*. (Maybe in the future, we'll
+					# allow it to be optional, but for now it isn't.)
+					# The subcommand word may not start with a digit,
+					# but it may begin with '_' or '-'. We capture the
+					# subcommand word as a group (since we'll need to
+					# use it to look up the subcommand).
+
+			regex = regex + r'(\s+(\S.*)?)?'
+			# This matches an optional argument list (with leading whitespace).
 
 		regex = regex + '$'		# At this point we must be at the end of the string.
 			#|
@@ -918,6 +968,8 @@ class Command:
 			This requires parsing the command line and then running
 			the command handler."""
 
+		_logger.info(f"Executing command {thisCmd} on command line [{cmdLine}]...")
+
 		pattern = thisCmd.pattern
 
 			# First try matching at start of line; if that doesn't work,
@@ -937,6 +989,31 @@ class Command:
 		"""This is a default command handler that can be used in cases when
 			no other command handler has been defined.  Subclasses should
 			override this method."""
+
+		_logger.debug(f"Executing default command handler for command: {cmd} on groups: {groups}")
+
+		if cmd.hasSubcmds and hasattr(cmd, 'subcommand_classMap'):
+
+			subcmdWord = groups[0]		# 1st group = subcommand name.
+			rest = groups[1:]			# Remaining groups after 1st
+			
+			_logger.info(f"Executing subcommand '{subcmdWord}' on groups {rest}...")
+
+			subcmd_classMap = cmd.subcommand_classMap
+
+			if subcmdWord in subcmd_classMap:
+
+				subcmdClass = subcmd_classMap[subcmdWord]
+
+					# Dispatch to the particular subcommand's .parseArgs method
+					# to process the rest of the command line.
+				subcmdClass().parseArgs(rest)
+
+			else:
+				_logger.error(f"Subcommand [{subcmdWord}] is not defined for command: {cmd}.")
+
+		else:
+			_logger.error(f"Command [{cmd}] is not yet implemented.")
 
 		# A sensible thing to do here would be to report a system error
 		# like 'the <name> command has not yet been implemented.'
@@ -1007,7 +1084,50 @@ class Subcommand(Command):
 
 	"""
 
-	pass	# TODO: Finish subcommand implementation!
+	# Subclasses should define these class variables:
+	#
+	#	subcmdName:str		- Symbolic name for subcommand, e.g., 'goals-add'.
+	#	argListRegex:str	- Regex for the subcommand's argument list.
+	#	argListDoc:str		- Doc string for the subcommand's arglist.
+
+	def __init__(newSubcommand:Subcommand,	# Newly-created subcommand object to be initialized.
+				 #name:str=None,				# Symbolic name of this subcommand (e.g., 'goals-add').
+				 #cmdFmt:str=None,			# Custom format string for parsing this subcommand.
+				 parent:Command=None		# The "parent" command that this is a subcommand of.
+			):
+		
+		sc = newSubcommand	# Just a convenient shorter name for this guy.
+
+		sc.parent = parent	# Remember our parent command.
+
+		#subcmdName		= sc.name
+		argListRegex	= sc.argListRegex
+		#argListDoc		= sc.argListDoc
+
+		sc.argListPattern = re.compile(argListRegex, re.IGNORECASE)
+			# For now, we always do case-insensitive parsing.
+
+	def parseArgs(thisSubcommand:Subcommand,  # This subcommand object.
+				  restGroups:list  # Groups after subcommand word.
+			):
+
+		sc = thisSubcommand			# Shorter name for this subcommand.
+
+		argList = restGroups[0]		# There should be only one group: Rest of line.
+
+		match = sc.argListPattern.match(argList)
+
+		if match:	# We got a match; go ahead and dispatch to subcommand.
+			groups = match.groups()
+			sc.handle(groups)
+		else:
+			# The subcommand's regex didn't match the rest of the command line.
+			# A sensible thing to do here would be to report an error message
+			# to the AI containing the argListDoc, to explain the required format.
+
+			# For now, just report the error to the system log.
+			_logger.warn(f"Subcommand {sc.name} arglist [{argList}] didn't "
+						 f"match pattern [{sc.argListDoc}].")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class Commands:
@@ -1137,6 +1257,10 @@ class Commands:
 	#__/ End initializer for class Commands.
 
 
+	def nCmds(cmds:Commands):
+		return len(cmds._cmdOD)
+
+
 	def __str__(cmds:Commands):
 		return cmds._desc
 
@@ -1154,7 +1278,7 @@ class Commands:
 		if name in cmdOD:	# Command is already in this command list!
 			
 			_logger.warn(f"commands.addCommand(): A command named {name} "
-						 	f"is already in {cmds._desc}; ignoring.")
+						 	f"is already in {cmds}; ignoring.")
 			return
 
 		cmds._cmdOD[name] = cmd
@@ -1164,6 +1288,8 @@ class Commands:
 		prefixes = cmd.prefixes()	# Generates all prefixes of command name.
 
 		for prefix in prefixes:
+
+			_logger.debug(f"Installing command {name} under prefix {prefix}...")
 
 			prefCmds = cmds._prefCmds
 
@@ -1189,6 +1315,7 @@ class Commands:
 			None if there is none with that name."""
 
 		if name in cmds._cmdOD:
+			_logger.debug(f"Found command name {name} in command list {cmds}.")
 			return cmds._cmdOD[name]
 		else:
 			return None
@@ -1199,6 +1326,7 @@ class Commands:
 			in the command list having the given prefix."""
 
 		if prefix in cmds._prefCmds:
+			_logger.debug(f"Found command prefix {prefix} in command list {cmds}.")
 			return cmds._prefCmds[prefix]
 		else:
 			return []
@@ -1208,6 +1336,12 @@ class Commands:
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class CommandModule:
+
+	def nCmds(self):
+		return self.commands.nCmds()
+
+	def __str__(self):
+		return self._desc
 
 	def __init__(self, desc:str="(unnamed command module)"):
 
@@ -1302,6 +1436,8 @@ class CommandModule:
 			# Retrieve our own Commands object.
 		cmds = cmdMod.commands
 
+		_logger.debug(f"Note: Command module {cmdMod} contains {cmdMod.nCmds()} commands.")
+
 			# Initialize our result to be an empty command list.
 		cmdList = []
 		
@@ -1309,6 +1445,8 @@ class CommandModule:
 			# this is supposed to be an exact match, or prefix match.
 		if prefix:	# Match commands that have cmdID as a prefix, only.
 			
+			_logger.debug(f"CommandModule.lookupCommands(): About to lookup prefix {cmdID} in {cmds}.")
+
 				# Retrieve all commands in this module having the given prefix.
 			prefCmds = cmds.lookupByPrefix(cmdID)
 		
@@ -1325,7 +1463,7 @@ class CommandModule:
 
 		else:		# Match commands whose exact name is cmdID, only.
 
-			_logger.debug(f"CommandModule.lookupCommands(): About to lookup {cmdID} in {cmds}.")
+			_logger.debug(f"CommandModule.lookupCommands(): About to lookup command {cmdID} in {cmds}.")
 
 				# Retrieve the command in this module, if any, with the given name.
 			cmd = cmds.lookupByName(cmdID)
@@ -1464,6 +1602,8 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 	
 		"""Plugs the given command module into this command interface."""
 		
+		_logger.info(f"Command interface is installing the {cmdModule} command module...")
+
 		self.commandModules.addModule(cmdModule)
 
 
@@ -1501,6 +1641,9 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 			# the overall list.
 
 		for cmdModule in cmdIF.commandModules.modList:
+			
+			_logger.debug(f"Looking for command {cmdID} in module: {cmdModule}.")
+
 			if cmdModule.active:
 				subList = cmdModule.lookupCommands(cmdID, inputLine,
 												   anywhere, prefix)

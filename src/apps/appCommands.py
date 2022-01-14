@@ -166,9 +166,8 @@ class AppLaunchCommand(Command):
 			name = appName,		# Use the app's name as the command name.
 			takesArgs = False,	# The app-launch command doesn't allow any argument list yet.
 			#cmdFmt = fmtStr,	# This was assembled above.
-			#unique = True,		# App-launch commands are intended to be unique.
-			#handler = cmd.handler,	# Command handler method (defined below).
-			module = appSysCmdMod)	# The app-sys command module singleton.
+			#unique = True,		# App-launch commands are intended to be unique. (Now default.)
+			cmdModule = appSysCmdMod)	# The app-sys command module singleton.
 			
 
 	def handler(thisAppLaunchCmd:AppLaunchCommand, groups:list=None):
@@ -182,6 +181,10 @@ class AppLaunchCommand(Command):
 		
 		app = cmd._app	# This gets the application that we're supposed to start.
 		
+		if groups is None:
+			# Really should give some kind of error
+			return
+
 		if len(groups) >= 1:
 			cmdWord = groups[0]
 		else:
