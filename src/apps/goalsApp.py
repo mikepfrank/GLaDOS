@@ -25,7 +25,12 @@ from	infrastructure.decorators	import	singleton, classproperty
 from	config.configuration		import	TheAIPersonaConfig
 		# Singleton that provides the configuration of the current AI persona.
 
-from	commands.commandInterface	import	Command,CommandModule	# We'll subclass these.
+from	commands.commandInterface	import	(
+				Command,
+				Subcommand,
+				CommandModule,
+				TheCommandInterface
+			)
 
 from	helpsys.helpSystem			import	HelpModule	# We'll subclass this.
 
@@ -101,35 +106,198 @@ class GoalList:
 
 		return displayStr
 
+
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class	Goals_Subcommand_: pass
+class	Goals_Subcommand_(Subcommand):
+
+	"""Abstract base class for /Goals subcommand classes."""
+
+	def __init__(newGoalsSubcommand:Goals_Subcommand_,
+			subcmdWord:str):	# A single word naming the subcommand (e.g. 'add').
+
+			# Fetch the arglist regex & docstr from the subclass.
+
+		super().__init__()
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Definitions for specific /Goals subcommands.
+
+numRegex = r"\s+([1-9][0-9]*)"		# Matches a goal number argument " <N>".
+	# Whitespace, then a digit 1-9, then optional additional digits.
+	# Capture the number in a group.
+
+toNumRegex = r"\s+to" + numRegex	# Matches " to <M>".
+	# Whitespace, then "to", then a number.
+
+strRegex = r'\s+"([^"]*)"'	# Matches a string argument ' "<str>"'.
+	# Whitespace, then a double quotation mark, then any number of
+	# characters that are not double quotation marks, then another
+	# double quotation mark. Capture everything inside the quotation
+	# marks as a group.
+
+@singleton
+class	The_GoalsAdd_Subcommand(Goals_Subcommand_):
+
+	name			= 'goals-add'
+
+	argListRegex	= strRegex		# '"<desc>"' argument.
+
+	argListDoc		= ' "<desc>"'	# Documentation of arglist format.
+	
+	def handle(this, groups:list):
+
+		sc = this	# This subcommand.
+
+		desc = groups[0]
+		
+		_logger.info(f"Subcommand {sc.name} got desc=[{desc}].")
+
+
+@singleton
+class	The_GoalsChange_Subcommand(Goals_Subcommand_):
+
+	name			= 'goals-change'
+
+	argListRegex	= numRegex + strRegex		# '<N> "<desc>"' arguments.
+
+	argListDoc		= ' <N> "<desc>"'			# Documentation of that.
+
+	def handle(this, groups:list):
+		
+		goalNum = int(groups[0])
+
+		desc = groups[1]
+
+		_logger.info(f"Subcommand {sc.name} got goalnum={goalNum}, desc=[{desc}].")
+
+
+@singleton
+class	The_GoalsDelete_Subcommand(Goals_Subcommand_):
+
+	name			= 'goals-delete'
+
+	argListRegex	= numRegex					# <N> argument.
+
+	argListDoc		= ' <N>'					# Document that.
+
+	def handle(this, groups:list):
+
+		goalNum = int(groups[0])
+	
+		_logger.info(f"Subcommand {sc.name} got goalnum={goalNum}.")
+
+
+@singleton
+class	The_GoalsInsert_Subcommand(Goals_Subcommand_):
+
+	name			= 'goals-insert'
+
+	argListRegex	= numRegex + strRegex		# '<N> "<desc>"' arguments.
+
+	argListDoc		= ' <N> "<desc>"'			# Documentation of that.
+
+	def handle(this, groups:list):
+		
+		goalNum = int(groups[0])
+
+		desc = groups[1]
+
+		_logger.info(f"Subcommand {sc.name} got goalnum={goalNum}, desc=[{desc}].")
+	
+
+@singleton
+class	The_GoalsMove_Subcommand(Goals_Subcommand_):
+
+	name			= 'goals-move'
+
+	argListRegex	= numRegex + toNumRegex		# '<N> to <M>' arguments.
+
+	argListDoc		= ' <N> to <M>'				# Documentation of that.
+
+	def handle(this, groups:list):
+		
+		fromGoal = int(groups[0])
+
+		toGoal = int(groups[1])
+
+		_logger.info(f"Subcommand {sc.name} got "
+					 f"fromGoal={fromGoal}, toGoal={toGoal}.")
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
 class	The_Goals_Command(Command):
 
-	"""The '/Goals' command launches the Goals app (if not already launched),
-		moves its window to the bottom of the receptive field (if not already
-		there) to call attention to it, and sets the input focus to it."""
+	"""
+		The '/Goals' command just dispatches to any of several subcommands:
 
-	pass	# TO DO: Fill in implementation.
+			/goal add "<desc>"
+			/goal change <N> "<desc>"
+			/goal delete <N>
+			/goal insert <N> "<desc>"
+			/goal move <N> to <M>
 
+		These are defined in their respective subcommand classes.
+
+	"""
+
+	name = 'Goals'	# Case-insensitive though. Prefix-invocable.
+
+		# Override the default value of this class-level variable,
+		# because we do have subcommands.
+	hasSubcmds = True
+
+		# The following class-level constant dict maps the symbolic words
+		# for the /Goals subcommands to their corresponding subcommand objects.
+	subcommand_classMap = {
+			'add':		The_GoalsAdd_Subcommand,
+			'change':	The_GoalsChange_Subcommand,
+			'delete':	The_GoalsDelete_Subcommand,
+			'insert':	The_GoalsInsert_Subcommand,
+			'move':		The_GoalsMove_Subcommand
+#			'add':		The_GoalsAdd_Subcommand.__wrapped__,
+#			'change':	The_GoalsChange_Subcommand.__wrapped__,
+#			'delete':	The_GoalsDelete_Subcommand.__wrapped__,
+#			'insert':	The_GoalsInsert_Subcommand.__wrapped__,
+#			'move':		The_GoalsMove_Subcommand.__wrapped__
+		}
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
 class The_Goals_CmdModule(CommandModule):
 
 	"""This singleton class implements the command module for the
-		Goals app. It provides the '/Goals' command (which launches
-		the app), as well as the '/goal' command which is used 
-		within the app, and its subcommands."""
+		Goals app. It provides the version of the '/Goals' command
+		that takes arguments, which dispatches to the various
+		subcommands that may be used to edit the goal list."""
 
 	def __init__(theNewGoalsCmdModule:The_Goals_CmdModule):
-
+	
 		"""Singleton instance initializer for the The_Goals_CmdModule class.
 			Its job is to construct the command module by adding all of its
 			individual commands and subcommands to it."""
 		
-		pass
+		thisCmdModule = theNewGoalsCmdModule
 
-	pass	# TO DO: Fill in implementation.
+		_logger.info("Initializing the Goals app's command module...")
+
+		super().__init__(desc="Goals app's command module")
+			# Default initialization for command modules.
+
+			# Install this module in the command interface.
+		cmdIF = TheCommandInterface()
+		cmdIF.installModule(thisCmdModule)
+
+	def populate(theGoalsCmdModule:The_Goals_CmdModule):
+
+		_logger.info("Populating the Goals app's command module with commands...")
+
+		goalsCmdMod = theGoalsCmdModule
+
+			# This initializes the Goals command.
+		The_Goals_Command(cmdModule=goalsCmdMod)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
@@ -281,18 +449,26 @@ class The_Goals_App(Application_):
 			#----------------------------------------------
 			# Finally, we have our window display the text.
 
-		win.addText(goalsText + "To edit, type: '/goal (add|change|delete|insert|move) <N> [to <M>] [\"<desc>\"]'.")
+		win.addText(goalsText + "To edit, type: '/goal (add|change|delete|insert|move) [<N> [to <M>]] [\"<desc>\"]'.")
 
 
 		#|==================================================
 		#| Our next major initialization task is to create
 		#| & install our command module & our help module.
 
-			# Create our command module (self-installs).
-		app._cmdModule = The_Goals_CmdModule()
-
 			# Create our help module (self-installs).
 		app._helpModule = The_Goals_HelpModule()
+
+
+	def createCommandModule(theGoalsApp:The_Goals_App):
+		
+		app = theGoalsApp
+
+			# Create our command module (self-installs).
+		app._cmdModule = cmdMod = The_Goals_CmdModule()
+
+		return cmdMod
+
 
 	def parseGoals(theGoalsApp:The_Goals_App, goalsRec:dict):
 

@@ -404,6 +404,11 @@ class Application_:
 	#__/ End createCommandModule().
 
 
+	def activateCommandModule(self):
+		"""Activate this application's primary command module."""
+		self.commandModule.activate()
+
+
 	def start(self):	# Generic start method for apps.
 
 		"""This method is called whenever an application is started,
@@ -438,7 +443,32 @@ class Application_:
 		self.start()		# First, start up the app, if not already started.
 		self.openWins()		# Next, tell it to open its windows, if not already open.
 
+		self.foreground()
+
 		# TODO: Foreground the app, give it the command focus.
+
+	def foreground(thisApp):
+
+		"""
+			To foreground an app typically involves the following steps:
+		
+				(1) If the app is not already located at its preferred 
+					initial placement (e.g., SLIDE_TO_BOTTOM), then we put 
+					it there.
+					
+				(2) Activating the app's command module, if it was not already
+					activated--this means its internal commands become available
+					for invocation through the GLaDOS command interface.
+				
+				(3) Give the app the command focus. This means that generic
+					app commands and window commands will be directed to that
+					specific app (and to its main window). The app that has 
+					the command focus is visually indicated with different 
+					window decorations (e.g., '===' instead of '~~~' for 
+					horizontal borders, command hints in lower border).
+		"""
+
+		thisApp.activateCommandModule()
 
 
 	def openWins(thisApp):	# Subclasses should override this.
