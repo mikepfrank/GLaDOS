@@ -2,7 +2,7 @@
 
 "GLaDOS" is an acronym for the "**General Lifeform's automated Domicile Operating System.**" (At least, until I think of a better meaning for the acronym.)  It is an operating environment for use by text-based AI systems.  The present directory contains the Python source code for the GLaDOS system.
 
-*[n.b.--Please note that there is no particular relation between this facility and the fictional AI named GLaDOS from the Portal video game series.]*
+*[n.b. -- Please note that there is no particular relation between this facility and the fictional AI named GLaDOS from the Portal video game series.]*
 
 
 ## Top-level files
@@ -15,7 +15,8 @@ Here we document the various top-level files that exist immediately under the `s
 	Used primarily by the `infrastructure.logmaster` module, this file contains certain key definitions pertaining to the overall application.  These include the names of the overall system, the current application, and its top-level source file.
 	
 3.	**GLaDOS Server Application Program** ([`glados-server.py`](glados-server.py "glados-server.py file")) -
-	This is the main top-level Python application program implementing the core server process of the GLaDOS system.  **NOTE:** This file is executable, but it should not be executed directly from within this directory, but rather from the parent directory `GLaDOS/`, which contains the `log/` subdirectory, where we will create the system log file.
+	This is the main top-level Python application program implementing the core server process of the GLaDOS system.  
+	**NOTE:** This file is executable, but it should not be executed directly from within this directory, but rather from the parent directory `GLaDOS/`, which contains the `log/` subdirectory, where we will create the system log file.
 
 4.	**Development To-Do List** ([`To-Do.txt`](To-Do.txt "To-Do.txt file")) - 
 	Some notes pertaining to what still needs to be done on the GLaDOS implementation. (Note that this file may often be badly out-of-date.)
