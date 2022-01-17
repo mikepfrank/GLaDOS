@@ -16,6 +16,7 @@ Here we document the various top-level files that exist immediately under the `s
 	
 3.	**GLaDOS Server Application Program** ([`glados-server.py`](glados-server.py "glados-server.py file")) -
 	This is the main top-level Python application program implementing the core server process of the GLaDOS system.  
+	
 	**NOTE:** This file is executable, but it should not be executed directly from within this directory, but rather from the parent directory `GLaDOS/`, which contains the `log/` subdirectory, where we will create the system log file.
 
 4.	**Development To-Do List** ([`To-Do.txt`](To-Do.txt "To-Do.txt file")) - 
