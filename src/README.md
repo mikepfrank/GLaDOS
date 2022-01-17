@@ -59,19 +59,19 @@ This package is, in effect, a higher-level convenience wrapper around the lower-
 This is a collection of modules to facilitate representing and working with so-called "entities."  An *entity*, within GLaDOS, denotes any active agent, being, process or system that is meaningful within the world that GLaDOS operates in.  Examples of things that could be considered as entities within GLaDOS:
 
 1.  A particular language model (*e.g.* the GPT-3 `davinci` model at OpenAI).
-2.  An A.I. being that is being supported within GLaDOS (*e.g.*, Gladys).
+2.  An A.I. being/persona that is being supported within GLaDOS (*e.g.*, Gladys).
 3.  A human being that is interacting with the A.I. (*e.g.*, Michael).
 4.  An overall GLaDOS system instance (*i.e.*, its Python program, running in a Unix process) that is currently executing.
-5.  A particular subsystem of the active GLaDOS instance (*e.g.*, supervisor).
+5.  A particular subsystem of the active GLaDOS instance (*e.g.*, the supervisor system).
 6.  A particular "process" running within GLaDOS (*e.g.*, a comms tool).
 7.  The entire Linux virtual server host that GLaDOS is running on.
 
-The purpose of representing entities like these explicitly as objects within GLaDOS is so that various properties can be attached to them; for example, fine-grained permissions specifying which specific entities are authorized to execute which specific commands.  In addition, entity identifers are attached to all explicit actions and cognitive events that take place within GLaDOS (see the `supervisor.actions` and `events.event` modules).
+The purpose of representing entities like these explicitly as objects within GLaDOS is so that various properties can be attached to them; for example, fine-grained permissions specifying which specific entities are authorized to execute which specific commands.  In addition, entity identifers are attached to all explicit actions and cognitive events that take place within GLaDOS (see the `supervisor.actions` and `events.event` modules), so that it's clear who did what.
 
 
 ### 8. Event representations ([`events/`](events "events/ directory")) 
 
-An "event" in general, in this content, is an object that provides a textual representation of an individual input to, or output from, the AI; that is, an event that is perceptible within the A.I.'s cognitive stream, and which may be archived within its history buffer and/or long-term memory store.  A given event can be represented in different text formats, depending on the present settings, providing different amounts of information to the AI when it is viewing the event.  For example, a specific representation of a given event may or may not show:  The date on which the event was created, the time at which the event was created (with different granularities), and the entity that is the source (author or creator) of the event.  Information sources can include entities such as: (1) the AI itself; (2) an external entity (*e.g.*, a human, or another AI) that the AI is communicating with through a communication process, (3) another kind of process, such as a Unix shell.  The current event representation may be modified by the AI through the Settings interface (see below).
+An "event" in general, in this content, is an object that provides a textual representation of an individual input to, or output from, the AI; that is, an event that is perceptible within the A.I.'s cognitive stream, and which may be archived within its history buffer and/or long-term memory store.  A given event can be represented in different text formats, depending on the present settings, providing different amounts of information to the AI when it is viewing the event.  For example, a specific representation of a given event may or may not show:  The date on which the event was created, the time at which the event was created (with different granularities), and the entity that is the source (author or creator) of the event.  Information sources that can author events include entities such as: (1) the AI itself; (2) an external entity (*e.g.*, a human, or another AI) that the AI is communicating with through a communication process, (3) another kind of process, such as a Unix shell, (4) some automated subsystem of GLaDOS itself.  Future: The current event representation may be modified by the AI through the Settings interface (see below).
 
 
 ### 9. Receptive field facility ([`field/`](field "field/ directory"))
@@ -98,22 +98,20 @@ This package interfaces to OpenAI's core GPT-3 system through its REST API.  The
 
 This package provides a set of modules that provide useful infrastructure for implementing any complex multithreaded system in Python.  In GLaDOS, we use this infrastructure to *e.g.* communicate between the major subsystems of GLaDOS and the various auxilliary threads and "processes" running within GLaDOS, as well as to external applications.  This facility includes: 
 
-1. Convenient decorators such as `@singleton` and `@classproperty`,
-2. advanced logging support (`logmaster` module), 
-3. 'flags' for synchronization, 
-4. 'desques' for inter-thread communication,
-5. 'heart' module for liveness monitoring, 
-6. 'worklist' module for inter-thread handoffs, 
-7. time/date and time zone support modules, 
-8. TCP/IP-based communication support, and
-9. other generally useful utilities and services to be added as needed.
+1. Convenient decorators such as `@singleton` and `@classproperty` (`decorators` module),
+2. Advanced logging support (`logmaster` module), 
+3. Flags for synchronization (`flag` module), 
+4. Double-ended synchronous queues for inter-thread communication (`desque` module),
+5. The 'heart' module for liveness monitoring, 
+6. The 'worklist' module for inter-thread execution handoffs, 
+7. Time/date and time zone support (`time` module), 
+8. TCP/IP-based communication support (`communicator` module), and
+9. Miscellaneous other generally useful utilities and services to be added as needed (see `utils` module).
 
 
 ### 14. Memory system ([`memory/`](memory "memory/ directory"))
 
 **[NOT YET IMPLEMENTED.]** This package implements a searchable long-term memory facility, which is maintained in the filesystem, in a directory hierarchy.  In general, the data in the memory system may be organized as a database of event objects, but flat text files and file hierarchies may also be supported.
-
-Note that there is a plan to have a subconscious, subordinate "sub-mind" running in the background whose job it is to come up with interesting key words and phrases to search for in memory, browse the results from this search, and present them to the main AI's cognitive sphere in a sort of heads-up display, so that the main AI can be aware of relevant context to the present conversation from its archives.
 
 
 ### 15. Core cognitive system ([`mind/`](mind "mind/ directory"))
@@ -133,6 +131,8 @@ The "mind" subsystem of GLaDOS includes a "process" (implemented, for now, just 
 6. Repeat the above procedure indefinitely.  
 
 For more details, see the `README.md` file within the `mind/` subdirectory.
+
+Note that there is also a plan to eventually have a subconscious, subordinate "sub-mind" running in the background whose job it is to come up with interesting key words and phrases to search for in memory, browse the results from this search, and present them to the main AI's cognitive sphere in a sort of heads-up display, so that the main AI can be aware of relevant context to the present conversation from its archives.
 
 
 ### 16. Process system ([`processes/`](processes "processes/ directory"))
