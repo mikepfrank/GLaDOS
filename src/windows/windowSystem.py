@@ -606,6 +606,17 @@ class Window:	# A text window within the GLaDOS window system.
 
 		win.redisplay()
 		
+
+	def resetPlacement(thisWin:Window):
+
+		"""Reset the window's position back to its original placement."""
+
+		win = thisWin
+
+		win._fieldElem.resetPlacement()
+
+		win.redisplay()		# Redisplay the receptive field.
+
 	
 	def addText(self, text:str):
 		"""Add the given text to the window contents (at the end)."""
@@ -810,9 +821,11 @@ class Window:	# A text window within the GLaDOS window system.
 		if win._isOpen:
 			TheReceptiveField().updateView(loudly=loudly)
 		
+
 class Windows:
 	def Windows(self):
 		self._windowList = []
+
 
 class WindowSnapshot:	# A static image of a text window at a given point in time.
 

@@ -6,7 +6,7 @@
 	DESCRIPTION:
 	
 		This is the core module of the "events" package; it provides the
-		definition of a class TextEvent, which keeps track of information 
+		definition of a class TextEvent, which keeps track of informaton 
 		such as the date/time and source of an event consisting of a piece
 		of text.  There are also classes for working with event formats, 
 		which determine how TextEvent objects are translated to actual 
@@ -183,6 +183,8 @@ class TextEvent:
 			# to recognize events of specific sub-types; e.g., see the
 			# noticeEvent() method in TheCognitiveSystem class in the 
 			# mindSystem module in the mind package.
+
+		#_logger.debug("Created text event with author {author} and text: [text].")
 	
 	def updateTime(thisEvent):
 
@@ -191,23 +193,23 @@ class TextEvent:
 		thisEvent.creationTime	= tznow()
 			# The time will be displayed in the user's timezone by default.
 	
-	def display(inst, format:TextEventFormat=None):
+	def display(inst, fmt:TextEventFormat=None):
 	
 		"""Returns a complete string for displaying the event, using
 			the given format, or the event's default format if the
 			format is not specified."""
 	
-		if format is None:
-			format = inst.defaultFormat
+		if fmt is None:
+			fmt = inst.defaultFormat
 	
-		return format.display(inst)
+		return fmt.display(inst)
 
-	def promptLen(thisEvent:TextEvent, format:TextEventFormat=None):
+	def promptLen(thisEvent:TextEvent, fmt:TextEventFormat=None):
 		"""Returns the length of the prompt portion of the event."""
 
 		event = thisEvent
 
-		if format is None:
-			format = event.defaultFormat
+		if fmt is None:
+			fmt = event.defaultFormat
 	
-		return format.promptLen(event)
+		return fmt.promptLen(event)

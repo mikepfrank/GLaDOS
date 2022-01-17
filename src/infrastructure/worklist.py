@@ -398,7 +398,7 @@ class WorkItem:
 	#
 	#---------------------------------------------------------------
 	
-	def __init__(self, callable=None, owner=None, desc=None):
+	def __init__(self, callable=None, owner=None, desc="(unidentified task)"):
 		self.lock = RLock()				# Reentrant lock for thread-safe access to class and instance variables.
 		with self.lock:					# Go ahead and use it, just in case.
 			self.maker = current_thread()
@@ -1407,28 +1407,28 @@ class Worker(ThreadActor):
 					# Return any result to our caller.
 					
 			except (WorkAborted, EarlyCompletion) as e:		 # Early-termination workitem exception?
-				_logger.warn(f"{str(current_thread)}: worker.do1job(): Task ended early: {str(e)}")
+				_logger.warn(f"{str(current_thread)}: worker.do1job(): Task [{task.desc}] ended early: {str(e)}")
 				# Just ignore it. (Don't re-raise.)
 
 			except ExitingByRequest:
-				_logger.debug("%s: Worker.do1job(): Task exited by request..." % current_thread())
+				_logger.debug("%s: Worker.do1job(): Task [{task.desc}] exited by request..." % current_thread())
 				raise
 				# No need to print the full traceback in this case.
 
 			except ExitException as e:
-				_logger.warn("%s: Worker.do1job(): Task exited early due to ExitException [%s]; reraising..."
+				_logger.warn("%s: Worker.do1job(): Task [{task.desc}] exited early due to ExitException [%s]; reraising..."
 							 % (current_thread(), e))
 				raise
 
 			except InfoException as e:
-				_logger.warn(f"{current_thread()}: Worker.do1job(): Task exited by throwing an INFO-level exception. The message was: [{str(e)}].  Ignoring.")
+				_logger.warn(f"{current_thread()}: Worker.do1job(): Task [{task.desc}] exited by throwing an INFO-level exception. The message was: [{str(e)}].  Ignoring.")
 
 			except WarningException:
-				_logger.warn("%s: Worker.do1job(): Task exited by throwing a WARNING-level exception.  Re-raising it in case caller wants to know about it." % current_thread())
+				_logger.warn("%s: Worker.do1job(): Task [{task.desc}] exited by throwing a WARNING-level exception.  Re-raising it in case caller wants to know about it." % current_thread())
 				raise
 
 			except:
-				_logger.exception("%s: Worker.do1job(): Task threw an exception; reraising..." % current_thread())
+				_logger.exception("%s: Worker.do1job(): Task [{task.desc}] threw an exception; reraising..." % current_thread())
 				raise	# Within guibot, I think TkInter just swallows this up silently.
 		
 		finally:

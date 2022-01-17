@@ -192,7 +192,7 @@ from 	config.configuration 	import	TheAIPersonaConfig
 	# This class specifies the configuration of the AI's persona.
 
 from	supervisor.action		import	(
-		Action_, CommandAction_, ActionChannel_, AnnouncementAction_, ActionSubscriber_
+		Action_, CommandAction_, ActionChannel_, AnnouncementAction_, ActionSubscriber_, OutputAction
 	)
 	# Abstract base classes for general actions, command-type actions, and action channels.
 
@@ -1154,24 +1154,28 @@ class TheCognitiveSystem:
 		field = mind._field
 		field.addEvent(textEvent)
 
-		action = textEvent.action
 			# This gets the action that caused this event, if available. (It will
 			# be available if the action just occurred, and if updates about it
 			# were broadcast into our cognitive sphere by the action news network.)
 
-		# If this was an action that we ourselves initiated, then take note of this,
-		# because those actions are not of course surprising to us at all.
+		action = textEvent.action
+
+			# If this was an action that we ourselves initiated, then take note of this,
+			# because those actions are not of course surprising to us at all.
+
 		isSelfAction = (action.initiator == mind.persona.entity)
 
-		# If the action was an announcement, then poke the mind normally to wake it up.
+			# If the action was an announcement, then poke the mind normally to wake it up.
+
 		if isinstance(action, AnnouncementAction_):
 			_logger.debug("[Mind] This is an announcedment; telling cognitive thread to wake up and notice.")
 			mind.poke()
 
-		# Otherwise, unless this was an action that we took ourselves, we give the
-		# mind a "soft poke"; this will get its attention if it's already awake;
-		# but otherwise, it will on keep sleeping/hibernating.
-		elif not isSelfAction:
+			# Otherwise, unless this was an action that we took ourselves, we give the
+			# mind a "soft poke"; this will get its attention if it's already awake;
+			# but otherwise, it will on keep sleeping/hibernating.
+			
+		elif not isSelfAction and not isinstance(action, OutputAction):
 			_logger.debug("[Mind] The actor wasn't ourselves; getting our cognitive thread's attention.")
 			mind.softPoke()
 

@@ -183,7 +183,7 @@ class FieldSlot:
 		base	= field.base
 
 		# Remember the given placement.
-		slot.placement = initPlacement
+		slot.placement = slot.initPlacement = initPlacement
 			# (The setter for the .placement property also automatically
 			# calculates the implied mode and gravity values.)
 		
@@ -241,6 +241,7 @@ class FieldSlot:
 	def base(slot):
 		return slot._base
 
+
 	def replace(thisSlot:FieldSlot, newPlacement:Placement):
 	
 		"""Re-place an already-placed slot with a new placement value."""
@@ -248,12 +249,27 @@ class FieldSlot:
 		# First, if the slot is already placed on the field, then
 		# we need to start by removing it from the field.
 		
+		slot = thisSlot
+
 		if not slot.position is None:
-			thisSlot.remove()	# Remove slot from the field.
+			slot.remove()	# Remove slot from the field.
 
-		thisSlot.placement = newPlacement	# Assign the new placement.
+		slot.placement = newPlacement	# Assign the new placement.
 
-		thisSlot.place()	# Re-place this slot.
+		slot.place()	# Re-place this slot.
+
+
+	def resetPlacement(thisSlot:FieldSlot):
+
+		"""Reset this field slot's placement back to its initial placement.
+			E.g., if its initial placement was SLIDE_TO_BOTTOM, then we slide
+			it back to the bottom of the floating part of the field again."""
+
+		slot = thisSlot
+		initPlacement = slot.initPlacement
+
+		slot.replace(initPlacement)
+
 
 	def place(slot:FieldSlot, 
 				# Where to place the slot on the field?
@@ -367,6 +383,10 @@ class FieldElement_:
 	def name(elem):
 		return elem._name
 
+	def resetPlacement(elem):
+		"""Reset this element's placement back to its initial placement."""
+		elem.slot.resetPlacement()
+
 	def notifyUnplaced(elem):
 		"""Notify this element that its slot is no longer placed on the field."""
 		pass
@@ -406,9 +426,10 @@ class TheFieldHeader(FieldElement_):
 	bgChar = "="	# Fill top line with this character.
 	
 		# Need to get this from sys config instead.
-	fieldTitle = "GladOS Main Screen / GPT-3 Receptive Field"
-			# Except, fetch "GPT-3" from the name of the cognitive system's 
-			# associated language model.
+	fieldTitle = "GLaDOS Main Screen / GPT-3 Receptive Field"
+			# - Except, fetch 'GPT-3' from the name of the cognitive system's 
+			#   associated language model.
+			# - Maybe also have a config variable for 'GLaDOS'.
 
 	fieldTitle = ' ' + fieldTitle + ' '		# Add some padding on both sides.
 	

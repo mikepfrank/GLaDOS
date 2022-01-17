@@ -22,8 +22,18 @@ global _component	# Name of our software component, as <sysName>.<pkgName>.
 from	infrastructure.decorators	import	singleton, classproperty
 		# A simple decorator for singleton classes.
 
+from	entities.entity				import	The_GoalsApp_Entity		# Us!
+
 from	config.configuration		import	TheAIPersonaConfig
 		# Singleton that provides the configuration of the current AI persona.
+
+from	supervisor.action			import	(
+
+				output,		# Used for normal output.
+				info,		# Used for info output.
+				warn		# Output a warning message.
+
+			)
 
 from	commands.commandInterface	import	(
 				Command,
@@ -81,7 +91,15 @@ class Goal:
 
 class GoalList:
 
-	def __init__(goalList, goalRecsList:list):
+	@property
+	def goals(goalList):
+		return goalList._goals
+
+	@property
+	def nGoals(goalList):
+		return len(goalList.goals)
+
+	def __init__(goalList, goalRecsList:list=[]):
 
 		goalList._goals = goals = []
 
@@ -91,12 +109,37 @@ class GoalList:
 
 			goals.append(realGoal)
 
+	def __str__(goalList):
+		return str(goalList.goals)
+
+	def _fixnums(goalList):
+
+		"""This is a kludge to fix up the data structure when
+			things get a little inconsistent."""
+
+		goals = goalList.goals
+
+		nGoals = goalList.nGoals
+
+		for i in range(nGoals):
+
+			goal = goals[i]
+
+			goal.setNum(i+1)
+			
+		Goal._nGoals = nGoals
+
+
 	def display(goalList):
 
 		"""Generates a textual 'display' of this goal list.
 			Default format has a blank line between the goals."""
 
-		goals = goalList._goals
+		goals = goalList.goals
+
+		if len(goals) == 0:
+			displayStr = "\nNo goals have been added yet.\n\n"
+			return displayStr
 
 		displayStr = "\n"
 
@@ -106,8 +149,109 @@ class GoalList:
 
 		return displayStr
 
+	def includes(goalList, goalDesc:str):
+
+		"Returns True if the goal list already includes the given goal exactly."
+
+		goals = goalList.goals
+		for goal in goals:
+			if goal.text == goalDesc:
+				return True
+		return False
+
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	# Commands to edit the goal list.
+
+	def addGoal(goalList:GoalList, newGoalDesc:str):
+
+		if goalList.includes(newGoalDesc):
+
+			warn(The_GoalsApp_Entity(),
+				 f"Can't add the goal \"{newGoalDesc}\", because it is already in your goals list.")
+
+			return
+
+		goals = goalList.goals
+
+		goalRec = {'goal-text': newGoalDesc}
+		newGoal = Goal(goalRec)
+
+		goals.append(newGoal)
+
+		output(The_GoalsApp_Entity(),
+			   f"Added new goal #{newGoal.num}: {newGoalDesc}")
+
+	def changeGoal(goalList:GoalList, goalNum:int, newGoalDesc:str):
+		
+		if goalList.includes(newGoalDesc):
+
+			warn(The_GoalsApp_Entity(),
+				 f"Can't change goal #{goalNum} to \"{newGoalDesc}\" because it is already in your goals list.")
+
+			return
+
+		goals = goalList.goals
+		goal = goals[goalNum - 1]	# Need some error checking here
+
+		goal.text = newGoalDesc
+
+		#goalList._fixnums()		# Temporary hack
+
+		output(The_GoalsApp_Entity(),
+			   f"Changed goal #{goal.num} to \"{newGoalDesc}\".")
 
 
+	def deleteGoal(goalList:GoalList, goalNum:int):
+		
+		goals = goalList.goals
+
+		oldText = goals[goalNum-1].text
+
+		for i in range(goalNum, goalList.nGoals):
+			goals[i-1].text = goals[i].text
+
+		goals = goals[:-1]	# Drops last element.
+
+		Goal._nGoals -= 1
+
+		output(The_GoalsApp_Entity(),
+			   f"Deleted old goal #{goalNum}, which was \"{oldText}\".")
+		
+
+	def insertGoal(goalList:GoalList, goalNum:int, newGoalDesc:str):
+
+		goalList.addGoal(newGoalDesc)
+
+		if goalNum >= goalList.nGoals:	# User wanted it at end.
+			return						# We're done.
+
+		goals = goalList.goals
+
+		# Pull goals forward.
+		i = goalList.nGoals - 1
+		while(1):
+			goals[i].text = goals[i-1].text
+			i -= 1
+			if i < goalNum:
+				goals[i].text = newGoalDesc		# Plop new guy down here.
+				break
+
+		output(The_GoalsApp_Entity(),
+			   f"Inserted new goal at position #{goalNum}: {newGoalDesc}")
+
+
+	def moveGoal(goalList:GoalList, fromGoal:int, toGoal:int):
+
+		movingGoalText = goalList.goals[fromGoal-1].text
+
+		info(The_GoalsApp_Entity(),
+			"Moving goal by first deleting, then inserting...")
+
+		goalList.deleteGoal(fromGoal)
+		goalList.insertGoal(toGoal, movingGoalText)
+
+		output(The_GoalsApp_Entity(),
+			   f"Moved goal \"{movingGoalText}\" from #{fromGoal} to #{toGoal}.")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class	Goals_Subcommand_: pass
@@ -116,11 +260,15 @@ class	Goals_Subcommand_(Subcommand):
 	"""Abstract base class for /Goals subcommand classes."""
 
 	def __init__(newGoalsSubcommand:Goals_Subcommand_,
-			subcmdWord:str):	# A single word naming the subcommand (e.g. 'add').
+				 subcmdWord:str,		# A single word naming the subcommand (e.g. 'add').
+				 parent:Command=None):	
+
+		#sc = newGoalsSubcommand
+		#sc.word = subcmdWord
 
 			# Fetch the arglist regex & docstr from the subclass.
 
-		super().__init__()
+		super().__init__(subcmdWord=subcmdWord, parent=parent)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Definitions for specific /Goals subcommands.
@@ -143,6 +291,8 @@ class	The_GoalsAdd_Subcommand(Goals_Subcommand_):
 
 	name			= 'goals-add'
 
+	#word			= 'add'
+
 	argListRegex	= strRegex		# '"<desc>"' argument.
 
 	argListDoc		= ' "<desc>"'	# Documentation of arglist format.
@@ -155,39 +305,54 @@ class	The_GoalsAdd_Subcommand(Goals_Subcommand_):
 		
 		_logger.info(f"Subcommand {sc.name} got desc=[{desc}].")
 
+		The_Goals_App().addGoal(desc)
+
 
 @singleton
 class	The_GoalsChange_Subcommand(Goals_Subcommand_):
 
 	name			= 'goals-change'
 
-	argListRegex	= numRegex + strRegex		# '<N> "<desc>"' arguments.
+	#word			= 'change'
 
-	argListDoc		= ' <N> "<desc>"'			# Documentation of that.
+	argListRegex	= numRegex + r"(?:\s+to)?" + strRegex		# '<N> [to] "<desc>"' arguments.
+
+	argListDoc		= ' <goalNum> [to] "<desc>"'			# Documentation of that.
 
 	def handle(this, groups:list):
 		
+		sc = this	# This subcommand.
+
 		goalNum = int(groups[0])
 
 		desc = groups[1]
 
 		_logger.info(f"Subcommand {sc.name} got goalnum={goalNum}, desc=[{desc}].")
 
+		The_Goals_App().changeGoal(goalNum, desc)
+		
 
 @singleton
 class	The_GoalsDelete_Subcommand(Goals_Subcommand_):
 
 	name			= 'goals-delete'
 
+	#word			= 'delete'
+
 	argListRegex	= numRegex					# <N> argument.
 
-	argListDoc		= ' <N>'					# Document that.
+	argListDoc		= ' <goalNum>'					# Document that.
 
 	def handle(this, groups:list):
+
+		sc = this	# This subcommand.
 
 		goalNum = int(groups[0])
 	
 		_logger.info(f"Subcommand {sc.name} got goalnum={goalNum}.")
+
+		The_Goals_App().deleteGoal(goalNum)
+		
 
 
 @singleton
@@ -195,36 +360,50 @@ class	The_GoalsInsert_Subcommand(Goals_Subcommand_):
 
 	name			= 'goals-insert'
 
+	#word			= 'insert'
+
 	argListRegex	= numRegex + strRegex		# '<N> "<desc>"' arguments.
 
-	argListDoc		= ' <N> "<desc>"'			# Documentation of that.
+	argListDoc		= ' <goalNum> "<desc>"'			# Documentation of that.
 
 	def handle(this, groups:list):
 		
+		sc = this	# This subcommand.
+
 		goalNum = int(groups[0])
 
 		desc = groups[1]
 
 		_logger.info(f"Subcommand {sc.name} got goalnum={goalNum}, desc=[{desc}].")
 	
+		The_Goals_App().insertGoal(goalNum, desc)
+		
+
 
 @singleton
 class	The_GoalsMove_Subcommand(Goals_Subcommand_):
 
 	name			= 'goals-move'
 
+	#word			= 'move'
+
 	argListRegex	= numRegex + toNumRegex		# '<N> to <M>' arguments.
 
-	argListDoc		= ' <N> to <M>'				# Documentation of that.
+	argListDoc		= ' <fromNum> to <toNum>'				# Documentation of that.
 
 	def handle(this, groups:list):
 		
+		sc = this	# This subcommand.
+
 		fromGoal = int(groups[0])
 
 		toGoal = int(groups[1])
 
 		_logger.info(f"Subcommand {sc.name} got "
 					 f"fromGoal={fromGoal}, toGoal={toGoal}.")
+
+		The_Goals_App().moveGoal(fromGoal, toGoal)
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
@@ -338,7 +517,7 @@ class The_Goals_App(Application_):
 
 					Adds a new goal at the end of the list with description <desc>.
 
-				/goal change <N> "<desc>"
+				/goal change <N> [to] "<desc>"
 
 					Allows the AI to update the text of goal #<N> to <desc>.
 
@@ -358,6 +537,10 @@ class The_Goals_App(Application_):
 			The 'Goals' app can be used by the A.I. to modify its list
 			of high-level goals.
 	"""
+
+	#usageHint = "To edit, type: '/goal (add|change|delete|insert|move) [<N> [to <M>]] [\"<desc>\"]'."
+	#usageHint = "USAGE: /goal (add|change|delete|insert|move) <arguments>"
+	usageHint = "USAGE: '/goal (add|change|delete|insert|move) [<N> [to <M>]] [\"<desc>\"]'."
 
 	def appSpecificInit(theGoalsApp:The_Goals_App, appConf:dict):
 
@@ -449,8 +632,7 @@ class The_Goals_App(Application_):
 			#----------------------------------------------
 			# Finally, we have our window display the text.
 
-		win.addText(goalsText + "To edit, type: '/goal (add|change|delete|insert|move) [<N> [to <M>]] [\"<desc>\"]'.")
-
+		win.addText(goalsText + app.usageHint)
 
 		#|==================================================
 		#| Our next major initialization task is to create
@@ -458,6 +640,27 @@ class The_Goals_App(Application_):
 
 			# Create our help module (self-installs).
 		app._helpModule = The_Goals_HelpModule()
+
+
+	@property
+	def goalList(app):
+		return app._goalList
+
+
+	def updateWindow(theGoalsApp:The_Goals_App):
+
+		app = theGoalsApp
+
+		goalList = app.goalList
+
+		goalsText = goalList.display()
+		win = app.window
+
+		win.clearText()		# Clear old window text (but postpone update).
+
+		win.addText(goalsText + app.usageHint)
+
+		win.redisplay(loudly=False)
 
 
 	def createCommandModule(theGoalsApp:The_Goals_App):
@@ -481,3 +684,55 @@ class The_Goals_App(Application_):
 		return goalList
 
 	
+	#|======================================================================
+	#| Below here are the actual subcommands supported by the Goals app.
+	#| Or rather, their internal implementations.
+
+	def addGoal(theGoalsApp:The_Goals_App, newGoalDesc:str):
+
+		app = theGoalsApp
+		goalList = app.goalList
+
+		goalList.addGoal(newGoalDesc)
+
+		app.updateWindow()
+
+
+	def changeGoal(theGoalsApp:The_Goals_App, goalNum:int, newGoalDesc:str):
+
+		app = theGoalsApp
+		goalList = app.goalList
+
+		goalList.changeGoal(goalNum, newGoalDesc)
+
+		app.updateWindow()
+
+
+	def deleteGoal(theGoalsApp:The_Goals_App, goalNum:int):
+
+		app = theGoalsApp
+		goalList = app.goalList
+
+		goalList.deleteGoal(goalNum)
+
+		app.updateWindow()
+
+
+	def insertGoal(theGoalsApp:The_Goals_App, goalNum:int, newGoalDesc:str):
+
+		app = theGoalsApp
+		goalList = app.goalList
+
+		goalList.insertGoal(goalNum, newGoalDesc)
+
+		app.updateWindow()
+
+
+	def moveGoal(theGoalsApp:The_Goals_App, fromGoal:int, toGoal:int):
+
+		app = theGoalsApp
+		goalList = app.goalList
+
+		goalList.moveGoal(fromGoal, toGoal)
+
+		app.updateWindow()

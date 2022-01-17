@@ -405,8 +405,11 @@ class Application_:
 
 
 	def activateCommandModule(self):
-		"""Activate this application's primary command module."""
-		self.commandModule.activate()
+		"""Activate this application's primary command module, if any."""
+
+		if self.commandModule is not None:
+		
+			self.commandModule.activate()
 
 
 	def start(self):	# Generic start method for apps.
@@ -468,7 +471,12 @@ class Application_:
 					horizontal borders, command hints in lower border).
 		"""
 
-		thisApp.activateCommandModule()
+		app = thisApp
+
+		app.window.resetPlacement()
+			# Reset the app's window location back to its initial placement.
+
+		app.activateCommandModule()
 
 
 	def openWins(thisApp):	# Subclasses should override this.
