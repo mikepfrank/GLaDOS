@@ -18,9 +18,6 @@ Here we document the various top-level files that exist immediately under the `s
 4.	**Development To-Do List** ([`To-Do.txt`](To-Do.txt "To-Do.txt file")) - 
 	Some notes pertaining to what still needs to be done on the GLaDOS implementation. (Note that this file may often be badly out-of-date.)
 	
-5.  **Test Scripts** (`glados-test.py`, `glados-test2.py`, `display-test.py`) - 
-	These are various throwaway test scripts used during development which will eventually be cleaned up and/or removed.
-
 
 ## Package subdirectories
 
@@ -34,7 +31,7 @@ This package gathers together modules implementing various application programs/
 
 ### 2. Authorization system ([`auth/`](auth "auth/ directory"))
 
-**[INCOMPLETE]** This package implements a fine-grained permissions system which is used for gating user access to apps, commands, and settings within GLaDOS, so that, for example, there are certain user commands that can only be invoked by the AI (and not by human users), certain system settings that can only be modified by the AI (*e.g.*, its field display preferences), some things that only the system operator is allowed to do (*e.g.*, shut down the whole system for maintenance), and so forth.
+**[INCOMPLETE]** This package will implement a fine-grained permissions system which is used for gating user access to apps, commands, and settings within GLaDOS, so that, for example, there are certain user commands that can only be invoked by the AI (and not by human users), certain system settings that can only be modified by the AI (*e.g.*, its field display preferences), some things that only the system operator is allowed to do (*e.g.*, shut down the whole system for maintenance), and so forth.
 
 
 ### 3. Command interface ([`commands/`](commands "commands/ directory"))
@@ -49,25 +46,25 @@ The configuration package is used to track various configuration parameters of t
 
 ### 5. System console ([`console/`](console "console/ directory"))
 
-This is in essence a client "application" (for the human user, not the AI) which utilizes the 'display' package (below) to take over the text terminal screen (using curses) to display a multi-paneled system console, with panels to show the system log, an area for user input, a console panel showing system output and error text streams, and the contents of the AI's receptive field.
+This is in essence a client "application" (for use by the human system operator, not the AI) which utilizes the `display` package (below) to take over the text terminal screen (using curses) to display a multi-paneled system console, with panels to show the system log, an area for user input, a console panel showing system output and error text streams, and the contents of the AI's receptive field.
 
 
 ### 6. Display management facility ([`display/`](display "display/ directory"))
 
-This package is in effect a higher-level convenience wrapper around the lower-level curses library.  It provides support for multithreading, and rendering of control/meta characters using special rendering styles.
+This package is, in effect, a higher-level convenience wrapper around the lower-level curses library.  It provides support for multithreading, and rendering of control/meta characters using special rendering styles.
 
 
 ### 7. Entity system ([`entities/`](entities "entities/ directory"))
 
 This is a collection of modules to facilitate representing and working with so-called "entities."  An *entity*, within GLaDOS, denotes any active agent, being, process or system that is meaningful within the world that GLaDOS operates in.  Examples of things that could be considered as entities within GLaDOS:
 
-	1.  A particular language model (*e.g.* the GPT-3 `davinci` model at OpenAI).
-	2.  An A.I. being that is being supported within GLaDOS (*e.g.*, Gladys).
-	3.  A human being that is interacting with the A.I. (*e.g.*, Michael).
-	4.  An overall GLaDOS system instance (*i.e.*, its Python program, running in a Unix process) that is currently executing.
-	5.  A particular subsystem of the active GLaDOS instance (*e.g.*, supervisor).
-	6.  A particular "process" running within GLaDOS (*e.g.*, a comms tool).
-	7.  The entire Linux virtual server host that GLaDOS is running on.
+1.  A particular language model (*e.g.* the GPT-3 `davinci` model at OpenAI).
+2.  An A.I. being that is being supported within GLaDOS (*e.g.*, Gladys).
+3.  A human being that is interacting with the A.I. (*e.g.*, Michael).
+4.  An overall GLaDOS system instance (*i.e.*, its Python program, running in a Unix process) that is currently executing.
+5.  A particular subsystem of the active GLaDOS instance (*e.g.*, supervisor).
+6.  A particular "process" running within GLaDOS (*e.g.*, a comms tool).
+7.  The entire Linux virtual server host that GLaDOS is running on.
 
 The purpose of representing entities like these explicitly as objects within GLaDOS is so that various properties can be attached to them; for example, fine-grained permissions specifying which specific entities are authorized to execute which specific commands.  In addition, entity identifers are attached to all explicit actions and cognitive events that take place within GLaDOS (see the `supervisor.actions` and `events.event` modules).
 
@@ -101,15 +98,15 @@ This package interfaces to OpenAI's core GPT-3 system through its REST API.  The
 
 This package provides a set of modules that provide useful infrastructure for implementing any complex multithreaded system in Python.  In GLaDOS, we use this infrastructure to *e.g.* communicate between the major subsystems of GLaDOS and the various auxilliary threads and "processes" running within GLaDOS, as well as to external applications.  This facility includes: 
 
-	1. Convenient decorators such as `@singleton` and `@classproperty`,
-	2. advanced logging support (`logmaster` module), 
-	3. 'flags' for synchronization, 
-	4. 'desques' for inter-thread communication,
-	5. 'heart' module for liveness monitoring, 
-	6. 'worklist' module for inter-thread handoffs, 
-	7. time/date and time zone support modules, 
-	8. TCP/IP-based communication support, and
-	9. other generally useful utilities and services to be added as needed.
+1. Convenient decorators such as `@singleton` and `@classproperty`,
+2. advanced logging support (`logmaster` module), 
+3. 'flags' for synchronization, 
+4. 'desques' for inter-thread communication,
+5. 'heart' module for liveness monitoring, 
+6. 'worklist' module for inter-thread handoffs, 
+7. time/date and time zone support modules, 
+8. TCP/IP-based communication support, and
+9. other generally useful utilities and services to be added as needed.
 
 
 ### 14. Memory system ([`memory/`](memory "memory/ directory"))
@@ -123,17 +120,17 @@ Note that there is a plan to have a subconscious, subordinate "sub-mind" running
 
 The "mind" subsystem of GLaDOS includes a "process" (implemented, for now, just as a thread within the main process) that runs the main loop of the AI's cognitive process.  The essence of this main loop is simply to do the following: 
 
-	1. Present the text-synthesis AI with its current receptive field, which usually ends with a prompt telling it something like "You may now type a command, or a paragraph of text."
+1. Present the text-synthesis AI with its current receptive field, which usually ends with a prompt telling it something like "You may now type a command, or a paragraph of text."
 	
-	2. Retrieve the completion generated by the AI.
+2. Retrieve the completion generated by the AI.
 	
-	3. If the completion is a command, then interpret and execute it; otherwise, just add the text to the history buffer and to the receptive field. 
+3. If the completion is a command, then interpret and execute it; otherwise, just add the text to the history buffer and to the receptive field. 
 	
-	4. Set an alarm to automatically wake the mind up again after the current autoskip interval has passed.
+4. Set an alarm to automatically wake the mind up again after the current autoskip interval has passed.
 	
-	5. Go to sleep until the alarm goes off or an input message is received from an external user on the system.
+5. Go to sleep until the alarm goes off or an input message is received from an external user on the system.
 	
-	6. Repeat the above procedure indefinitely.  
+6. Repeat the above procedure indefinitely.  
 
 For more details, see the `README.md` file within the `mind/` subdirectory.
 
@@ -152,10 +149,10 @@ For more details, see the `README.md` file within the `mind/` subdirectory.
 
 The Supervisor system is the main top-level subsystem of GLaDOS as a whole.  It creates and manages the other principal subsystems, including: 
 
-	1. The command interface (`commands/`), 
-	2. (Future) The process system (`processes`), 
-	3. The mind system (`mind/`) of the AI, 
-	4. The window system (`windows`).
+1. The command interface (`commands/`), 
+2. (Future) The process system (`processes`), 
+3. The mind system (`mind/`) of the AI, 
+4. The window system (`windows`).
 
 Eventually, the architecture of GLaDOS may change to where individual AI minds may run within their own separate Python program instances (*i.e.*, in separate UNIX processes) and communicate with the Supervisor process via inter-process communication, but this separation has not yet been implemented.
 
