@@ -207,6 +207,8 @@ class FieldPanel(Panel):
 			# and the whole item didn't get added.  Instead, we just added
 			# some piece of it.
 			
+			_logger.debug(f"fieldPanel.addItem(): Caught a render-excursion exception while adding item [{item}].")
+
 			pos = excursion._pos	# The position in the item where we went out.
 			
 			# Remember that we only had room for part of the item, up until
@@ -279,7 +281,18 @@ class FieldPanel(Panel):
 				style = PROMPT
 
 			# Actually render the item to the display.
-			display.renderText(item, win=win, defStyle = style)
+			try:
+				display.renderText(item, win=win, defStyle = style)
+
+			except RenderExcursion as excursion:
+
+					# NOTE: If we get here, then this item didn't actually fully render.
+				
+				msg = str(excursion)
+				_logger.debug("fieldPanel.drawContent(): Caught a render-excursion exception "
+							  f"while drawing item [{item}]. Message was: [{msg}].")
+
+				break	# Might as well give up here.
 
 			# Now call the original method in Panel, which does some 
 			# general bookkeeping work needed for all panels.		

@@ -143,6 +143,9 @@ __all__ = [
 		'AnnouncementAction_',	# Abstract base class for (system) announcement actions.
 		'CommandAction_',		# Abstract base class for command actions.
 		'SpeechAction_',		# Abstract base class for speech actions.
+	
+		'OutputAction',		# Abstract base class for output messages from the system.
+		'ErrorAction',			# Abstract base class for error-reporting actions.
 
 		'Operator_Speech_Action',	# Class for speech actions taken by system operator.
 
@@ -191,7 +194,7 @@ from	collections.abc		import	Iterable
 
 	# We use datetime objects to keep a record of times associated with an action.
 from 	datetime			import	datetime
-from 	sys					import	stderr	# Used for displaying announcements.
+from 	sys					import	stdout, stderr	# Used for displaying output/announcements.
 from 	os					import	path	# For manipulating filesystem paths.
 
 
@@ -640,6 +643,141 @@ class Action_:
 	#| Next up, we have some important abstract subclasses of
 	#| Action_. Various subsystems can/should derive from these.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+class OutputAction: pass
+class OutputAction(Action_):
+
+	"""An output action represents the result of a command or app
+		or process generating output on the GLaDOS console. Note
+		this is different from an announcement, which also has
+		special highlighting and filtering characteristics."""
+
+	selfExecuting = True
+
+	def __init__(
+			thisOutputAction:OutputAction,
+			outputText:str=None,
+			description:str=None,
+			conceiver:Entity_=None):
+
+		action = thisOutputAction
+
+		action._outputText = outputText
+
+		if description is None:
+			description = f"Produce output: [{outputText}]."
+
+		super().__init__(description=description, conceiver=conceiver)
+			
+			# Output actions are self-initiating upon conception.
+		action.initiate()
+
+
+	@property
+	def text(thisOutputAction:OutputAction):
+
+		"""For an output action, the text that ends up appearing will
+			just be the output text."""
+
+		action = thisOutputAction
+
+		return action._outputText + '\n'	# To visually separate lines.
+	
+	def executionDetails(thisOutputAction:OutputAction):
+		action = thisOutputAction
+		print(action.text, file=stdout)
+			# This will actually go to the virterm and thence to the console panel.
+
+def output(who:Entity_, text:str):
+
+	OutputAction(
+			outputText = text,
+			conceiver = who
+		)
+
+LEVEL_DEBUG 	= 0
+LEVEL_INFO  	= 1
+LEVEL_WARNING  	= 2
+LEVEL_ERROR 	= 3
+LEVEL_CRITICAL	= 4
+LEVEL_FATAL		= 5
+
+_level_names = {
+		LEVEL_DEBUG:	'DEBUG',
+		LEVEL_INFO:		'INFO',
+		LEVEL_WARNING:	'WARNING',
+		LEVEL_ERROR:	'ERROR',
+		LEVEL_CRITICAL:	'CRITICAL ERROR',
+		LEVEL_FATAL:	'FATAL ERROR'
+	}
+
+class ErrorAction: pass
+class ErrorAction(OutputAction):
+
+	def __init__(
+			thisErrorAction:ErrorAction,
+			level:int=LEVEL_ERROR,
+			msgText:str=None,
+			conceiver:Entity_=None):
+
+		action = thisErrorAction
+
+		action._level = level
+		action._levelName = levelName = _level_names[level]
+
+		action._msgText = msgText
+
+		text = f"{levelName}: {msgText}"
+
+		super().__init__(text, conceiver=conceiver)
+
+	def executionDetails(thisErrorAction:ErrorAction):
+		action = thisErrorAction
+		print(action.text, file=stderr)
+			# This will actually go to the virterm and thence to the console panel.
+		
+		# Also log it to the overarching logging system.
+
+		level = action._level
+
+		if level == LEVEL_DEBUG:
+			_logger.debug(action._msgText)
+
+		elif level == LEVEL_INFO:
+			_logger.info(action._msgText)
+
+		elif level == LEVEL_WARNING:
+			_logger.warn(action._msgText)
+
+		elif level == LEVEL_ERROR:
+			_logger.error(action._msgText)
+
+		elif level == LEVEL_CRITICAL:
+			_logger.critical(action._msgText)
+
+		elif level == LEVEL_FATAL:
+			_logger.fatal(action._msgText)
+
+
+def info(who:Entity_, msg:str):
+
+	ErrorAction(
+		level = LEVEL_INFO,
+		msgText = msg,
+		conceiver = who
+	)
+
+def warn(who:Entity_, msg:str):
+
+	ErrorAction(
+		level = LEVEL_WARNING,
+		msgText = msg,
+		conceiver = who
+	)
+
+def error(who:Entity_, msg:str):
+	ErrorAction(msgText = msg, conceiver = who)
+
 
 class AnnouncementAction_: pass
 class AnnouncementAction_(Action_):

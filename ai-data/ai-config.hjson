@@ -138,7 +138,7 @@
 				effectively indicates the degree of randomness of the
 				model's response. */
 
-		temperature:			0.5		# Is this too random?
+		temperature:			0.6		# Is this too random?
 
 
 			/* The 'top-p' parameter is a number from 0 to 1 that causes

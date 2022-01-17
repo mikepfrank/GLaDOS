@@ -371,14 +371,15 @@ class _TheBaseFieldData:
 			
 		base.move(slot, gravity, soft=True)
 	
+
 	def place(base:_TheBaseFieldData, slot:FieldSlot):
+	
+		"""This tells the base to please insert the given slot into
+			its slot list, using the specified placement designation."""
 	
 		where	= slot.placement
 		mode	= slot.mode
 		gravity = slot.gravity
-	
-		"""This tells the base to please insert the given slot into
-			its slot list, using the specified placement designation."""
 	
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| 'Pin' or 'move' requests are "hard moves." That is, they are strong
@@ -411,6 +412,17 @@ class _TheBaseFieldData:
 	#__/ End instance method theBaseFieldData.place().
 	
 	
+	def replace(base:_TheBaseFieldData, slot:FieldSlot, where:Placement):
+
+		"""Re-place the given slot on the field at the given placement."""
+
+			# Update the slot's placement attribute to the selected value.
+		slot.placement = where
+
+			# This method takes care of the rest of the work.
+		base.place(slot)
+
+
 	def addElement(base:_TheBaseFieldData, 
 					element:FieldElement_,
 					location:Placement):

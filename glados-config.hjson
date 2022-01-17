@@ -439,7 +439,7 @@
 
                         At the prompt, you may enter a command line starting with '/', or type a free-form paragraph of text to add to your cognitive history.  Available command words include:
 
-                            /Help /Goals /Settings /Memory /ToDo
+                            /Goals /Settings /Memory /ToDo /Help
                             /Diary /Browse /Comms /Writing /Unix
 
                         Note: Command words are not case-sensitive, and you may abbreviate them using any unique prefix.  For detailed help on any command, type "/Help <command>".

@@ -216,11 +216,19 @@ global _component	# Name of our software component, as <sysName>.<pkgName>.
 			#|	1.3.2. These modules are specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from	entities.entity		import	Entity_, AI_Entity_, Operator_Entity, Human_Entity_
-	# Abstract base class for reified entities.
+from	entities.entity		import	(
+				Entity_,				# Abstract base class for reified entities.
+				AI_Entity_,
+				Operator_Entity,
+				Human_Entity_,
+				The_CommandInterface_Entity
+			)
+	
 
 from	supervisor.action	import	(
 				Action_,			# Abstract base class for general actions.
+				warn,				# Generates a warning message.
+				error,				# Generates an error message. 
 				CommandAction_, 	# An action type for command actions.
 					# (so that we can turn commands into actions).
 				OperatorCommand,	# Lets us construct operator command actions.
@@ -697,8 +705,8 @@ class Command:
 
 			# If this command has subcommands, initialize them.
 		if hasSubcmds and hasattr(cmd,'subcommand_classMap'):
-			for subcmdCls in cmd.subcommand_classMap.values():
-				subcmdCls(cmd)
+			for subcmdWord,subcmdCls in cmd.subcommand_classMap.items():
+				subcmdCls(subcmdWord, cmd)
 			
 			# Automatically add this newly-created command to its command 
 			# module (if known).
@@ -1013,7 +1021,7 @@ class Command:
 				_logger.error(f"Subcommand [{subcmdWord}] is not defined for command: {cmd}.")
 
 		else:
-			_logger.error(f"Command [{cmd}] is not yet implemented.")
+			_logger.error(f"Command [{cmd.name}] is not yet implemented.")
 
 		# A sensible thing to do here would be to report a system error
 		# like 'the <name> command has not yet been implemented.'
@@ -1086,17 +1094,20 @@ class Subcommand(Command):
 
 	# Subclasses should define these class variables:
 	#
-	#	subcmdName:str		- Symbolic name for subcommand, e.g., 'goals-add'.
+	#	name:str			- Symbolic name for subcommand, e.g., 'goals-add'.
 	#	argListRegex:str	- Regex for the subcommand's argument list.
 	#	argListDoc:str		- Doc string for the subcommand's arglist.
 
 	def __init__(newSubcommand:Subcommand,	# Newly-created subcommand object to be initialized.
-				 #name:str=None,				# Symbolic name of this subcommand (e.g., 'goals-add').
+				 subcmdWord:str,			# The command word selecting this subcommand (e.g., 'add').
+				 #name:str=None,			# Symbolic name of this subcommand (e.g., 'goals-add').
 				 #cmdFmt:str=None,			# Custom format string for parsing this subcommand.
 				 parent:Command=None		# The "parent" command that this is a subcommand of.
 			):
 		
 		sc = newSubcommand	# Just a convenient shorter name for this guy.
+
+		sc.word = subcmdWord
 
 		sc.parent = parent	# Remember our parent command.
 
@@ -1115,6 +1126,15 @@ class Subcommand(Command):
 
 		argList = restGroups[0]		# There should be only one group: Rest of line.
 
+		_logger.info(f"About to parse {sc.name} arguments from argList [{argList}]...")
+
+		if argList is None:
+			error(The_CommandInterface_Entity(),
+				  f"The '/{sc.parent.name} {sc.word}' subcommand needs an argument list.")
+			_logger.error(f"Subcommand {sc.name} wasn't given an argument list!")
+			# Really need to report the error within GladOS also.
+			return
+
 		match = sc.argListPattern.match(argList)
 
 		if match:	# We got a match; go ahead and dispatch to subcommand.
@@ -1125,9 +1145,12 @@ class Subcommand(Command):
 			# A sensible thing to do here would be to report an error message
 			# to the AI containing the argListDoc, to explain the required format.
 
-			# For now, just report the error to the system log.
-			_logger.warn(f"Subcommand {sc.name} arglist [{argList}] didn't "
-						 f"match pattern [{sc.argListDoc}].")
+			error(The_CommandInterface_Entity(),
+				  f"The required command format is: /{sc.parent.name} {sc.word} {sc.argListDoc[1:]}")
+
+			# For now, also report the error to the system log.
+			_logger.error(f"Subcommand {sc.name} arglist [{argList}] didn't "
+						  f"match pattern [{sc.argListDoc}].")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class Commands:

@@ -31,6 +31,10 @@ global _component	# Name of our software component, as <sysName>.<pkgName>.
 #from infrastructure.decorators	import	singleton
 		# A simple decorator for singleton classes.
 
+from	entities.entity		import The_AppSystem_Entity		# Reps us.
+
+from	supervisor.action	import output	# For output to the GLaDOS screen.
+
 from	commands.commandInterface	import	(
 
 		Command,		# We subclass this.
@@ -203,6 +207,9 @@ class AppLaunchCommand(Command):
 		app.launch()	# Launch the app (if not already launched).
 			# (This automatically also foregrounds the app, whether or
 			# not it was launched.)
+
+		output(The_AppSystem_Entity(),
+			   f"Launched/refreshed the {app.name} app.")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

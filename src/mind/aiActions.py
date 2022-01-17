@@ -26,7 +26,8 @@ from	config.configuration		import	TheAIPersonaConfig
 
 from	supervisor.action			import	(
 		Action_, SpeechAction_, CommandAction_, ActionChannel_,
-		ActionBySystem_, AnnouncementAction_, ActionByHuman_
+		ActionBySystem_, AnnouncementAction_, ActionByHuman_,
+		OutputAction
 	)
 
 # Forwards
@@ -271,16 +272,21 @@ class The_AI_Cognosphere_Channel(ActionChannel_):
 
 			return True
 		
-		# Human actions include those taken by the Operator on
-		# the system console, and a human logged in through a
-		# local or remote terminal.  Report those to the AI.
+			# Human actions include those taken by the Operator on
+			# the system console, and a human logged in through a
+			# local or remote terminal.  Report those to the AI.
 
 		isHumanAction = isinstance(action, ActionByHuman_)
 		if isHumanAction:	return True
 
-		# Next, check to see if this is a system-initiated action.
-		# Anything else, we don't report yet.  But system actions
-		# will be reported as long as they're over threshold.
+			# Report all "output" actions; that includes normal output
+			# messages and error messages from commands, apps, etc.
+		isOutputAction = isinstance(action, OutputAction)
+		if isOutputAction:	return True
+
+			# Next, check to see if this is a system-initiated action.
+			# Anything else, we don't report yet.  But system actions
+			# will be reported as long as they're over threshold.
 			
 		isSystemAction = isinstance(action, ActionBySystem_)
 		if not isSystemAction:	return False

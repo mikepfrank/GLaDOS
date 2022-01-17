@@ -3,7 +3,8 @@
 #|------------------------------------------------------------------------------
 #|	 The below module documentation string will be displayed by pydoc3.
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-"""	FILE NAME:		display/display.py				 [Python module source file]
+"""
+	FILE NAME:		display/display.py				 [Python module source file]
 	
 	MODULE NAME:	display.display
 	IN PACKAGE:		display
@@ -1841,11 +1842,11 @@ class TheDisplay:
 			
 				#|----------------------------------------------------
 				#| Next, if we are already at the right margin, then,
-				#| before rendering the character, add a grayed-out '\'
-				#| character to call attention to the line-wrapping.
-				#| Exception: If the character is already a line break
-				#| character (CR or LF), then it will take care of 
-				#| wrapping itself.
+				#| before rendering the character, add a grayed-out
+				#| '\' character to call attention to the
+				#| line-wrapping.  Exception: If the character is
+				#| already a line break character (CR or LF), then it
+				#| will take care of wrapping itself.
 			
 			if ch != CR and ch != LF:
 			
@@ -1854,22 +1855,24 @@ class TheDisplay:
 				
 					# Are we already at the right margin?
 				if cx >= width - 2:
+					#			/
 					# Note: width-1 is the actual rightmost column.
-					# but, we want to avoid displaying there anyway
-					# to avoid triggering a curses exception on the
-					# last line of the window.  So instead, we see 
-					# if we are already at width-2.  This results in
-					# an effective 1-character pad on the right side.
+					# but, we want to avoid displaying there anyway to
+					# avoid triggering a curses exception on the last
+					# line of the window.  So instead, we see if we
+					# are already at width-2.  This results in an
+					# effective 1-character pad on the right side.
 				
 					attr = style_to_attr(WHITESP)
 
 					#|==================================================
 					#|		 DO LINE-WRAP, WITH ERROR HANDLING
 					#|--------------------------------------------------
-					#| NOTE: A log of this exception-handling code ends
-					#| up getting repeated in a lot of different places
-					#| in this method, so we should probably thing about
-					#| whether we should try to abstract it out somehow.
+					#| NOTE: A log of this exception-handling code
+					#| ends up getting repeated in a lot of different
+					#| places in this method, so we should probably
+					#| think about whether we should try to abstract
+					#| it out somehow.
 					#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 					try:
@@ -1878,7 +1881,7 @@ class TheDisplay:
 							# Note this is actually a single blackslash character.
 						
 						win.addstr('\n' + hangPad)
-							# And this actually goes to the next line.
+							# And this actually moves our cursor to the next line.
 
 					except curses.error as e:
 

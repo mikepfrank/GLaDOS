@@ -376,6 +376,7 @@ class The_Supervisor_Entity(Subsystem_Entity):
 class The_CommandInterface_Entity(Subsystem_Entity):
 	_isAbstract = False
 	_ENTITY_NAME = "Command Interface"
+	_ENTITY_ID = "CmdIface"
 	partOf = The_GLaDOS_Entity()
 	
 @singleton
@@ -426,6 +427,26 @@ class The_AppSystem_Entity(Subsystem_Entity):
 #__/ End singleton subsystem entity class.
 
 
+class Application_Entity_(Subsystem_Entity):
+
+	"""Abstract class for application entities."""
+
+	_isAbstract		= True
+
+@singleton
+class The_GoalsApp_Entity(Application_Entity_):
+
+	"""Entity singleton representing the Goals app."""
+
+	_isAbstract		= False
+
+	_ENTITY_NAME	= "Goals App"
+	_ENTITY_ID		= "GoalsApp"
+
+	partOf			= The_GLaDOS_Entity()	# Each application is a subsystem of GLaDOS.
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class AI_Entity_(Entity_):
 
 	"""An entity that is an AI or an aspect of an AI."""
