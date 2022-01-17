@@ -1,6 +1,8 @@
 # GLaDOS source code (`GLaDOS/src/`)
 
-"GLaDOS" is an acronym for the "**General Lifeform's automated Domicile Operating System.**" (At least, until I think of a better meaning for the acronym.)  It is an operating environment for use by text-based AI systems.  The present directory contains the Python source code for the GLaDOS system.  *[n.b.--Please note that there is no particular relation between this facility and the fictional AI named GLaDOS from the Portal video game series.]*
+"GLaDOS" is an acronym for the "**General Lifeform's automated Domicile Operating System.**" (At least, until I think of a better meaning for the acronym.)  It is an operating environment for use by text-based AI systems.  The present directory contains the Python source code for the GLaDOS system.
+
+*[n.b.--Please note that there is no particular relation between this facility and the fictional AI named GLaDOS from the Portal video game series.]*
 
 
 ## Top-level files
@@ -142,7 +144,7 @@ Note that there is also a plan to eventually have a subconscious, subordinate "s
 
 ### 17. Settings management system ([`settings/`](settings "settings/ directory"))
 
-**[INCOMPLETE.]** The purpose of this package is to support a 'Settings' app, which allows the AI itself to browse and manipulate various adjustable preferences/settings of all of the various systems and subsystems of GLaDOS.  The settings should eventually be divided into core settings of the central server, vs. user-specific preferences (which are potentially different for each active AI persona, and each human user).  The `users` package (see below) will help support these preferences.
+**[INCOMPLETE.]** The purpose of this package is to support a 'Settings' app, which allows the AI itself to browse and manipulate various adjustable preferences/settings of all of the various systems and subsystems of GLaDOS.  The settings should eventually be divided into core settings of the central server, vs. user-specific preferences (which are potentially different for each active AI persona, and each human user).  (The `users` package (see below) will help to support these user-specific preferences.)
 
 
 ### 18. Supervisor system ([`supervisor/`](supervisor "supervisor/ directory"))
@@ -156,7 +158,7 @@ The Supervisor system is the main top-level subsystem of GLaDOS as a whole.  It 
 
 Eventually, the architecture of GLaDOS may change to where individual AI minds may run within their own separate Python program instances (*i.e.*, in separate UNIX processes) and communicate with the Supervisor process via inter-process communication, but this separation has not yet been implemented.
 
-In addition to creating/managing various system components, another important service provided by the Supervisor system is the Action facility (`supervisor.actions` module), which is essentially a communications hub that allows various components / subsystems of GLaDOS to perform "actions" that may substantively impact other parts of the system; the Action facility includes a notification system, which allows components to subscribe to receive notifications ("action reports") about the status of actions taken by other components.
+In addition to creating/managing various system components, another important service provided by the Supervisor system is the Action facility (`supervisor.action` module), which is essentially a communications hub that allows various components / subsystems of GLaDOS to perform "actions" that may substantively impact other parts of the system; the Action facility includes a notification system, which allows components to subscribe to receive notifications ("action reports") about the status of actions taken by other components.
 
 
 ### 19. Terminal system ([`terminal/`](terminal "terminal/ directory"))
