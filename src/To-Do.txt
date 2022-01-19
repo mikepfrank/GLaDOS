@@ -353,7 +353,9 @@ Things to do on GLaDOS coding:
 			they should auto-minimize themselves to save space.
 		[ ] Implement minimize/restore window commands.
 			[ ] Implement command focus/window highlighting.
-			
+	
+	[ ] Handle system shutdown more gracefully: Save settings, optionally save history, etc.
+	
 	[ ] Implement thing to render non-printable ASCII characters in human-readable views.
 			(Use curses.ascii module? Or just colored curses characters?)
 			
