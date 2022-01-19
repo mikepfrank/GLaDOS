@@ -4,14 +4,17 @@
 #|   The below module documentation string will be displayed by pydoc3.
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 """
-    FILE NAME:      appdefs.py                   [Python module source code]
+    FILE NAME:      appdefs.py                     [Python module source code]
+
+    SYSTEM NAME:    GLaDOS (Generic Lifeform and Domicile Operating System)
+    APP NAME:       GLaDOS.server (GLaDOS server application)
+    SW COMPONENT:   GLaDOS.logging (GLaDOS logging framework)
+
+	LAYER/LEVEL:	0 (bottom; no imports of custom modules)
 
     MODULE NAME:    appdefs
     FULL PATH:      $GIT_ROOT/GLaDOS/src/appdefs.py
     MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
-    SYSTEM NAME:    GLaDOS (Generic Lifeform and Domicile Operating System)
-    APP NAME:       GLaDOS.server (GLaDOS server application)
-    SW COMPONENT:   GLaDOS.logging
 
 
     MODULE DESCRIPTION:

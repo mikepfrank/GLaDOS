@@ -102,6 +102,8 @@ logFilename = path.join('log', 'GLaDOS.server.log')
 
 import curses	# We use curses.error from here.
 
+#----------------------------------------------------------------------
+
 from display.colors		import (
 
 		HEADER,				# Render style we use for the log panel header area.
