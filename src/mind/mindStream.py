@@ -52,7 +52,8 @@ from infrastructure.decorators import singleton
 from entities.entity import System_Entity_
 
 from events.event import (
-		SecondEventFormat,
+		BriefEventFormat,
+		#SecondEventFormat,
 		#DateEventFormat,
 		TextEvent
 	)
@@ -68,7 +69,8 @@ class TheCognitiveStream:
 		stream.  It is organized as an (ideally time-ordered) sequence
 		of events."""
 
-	defaultEventFormat = SecondEventFormat
+	#defaultEventFormat = SecondEventFormat		# Gladys finds this distracting.
+	defaultEventFormat = BriefEventFormat
 		# Default format for new events.
 
 	def __init__(newCogStream:TheCognitiveStream, cogSys:TheCognitiveSystem):

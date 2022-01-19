@@ -73,6 +73,8 @@ _sw_component = sysName + '.' + _component
 import curses
 from curses import error, newwin
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 from .colors import (
 		BORDER,				# Render style for panel borders.
 		style_to_attr,		# Needed to use render styles.
@@ -83,6 +85,8 @@ from .keys import KeyEvent
 from .client import (
 		DisplayClient,		# We extend this to form panelclient.
 	)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 class PanelPlacement(Enum):
 
