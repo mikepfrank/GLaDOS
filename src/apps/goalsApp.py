@@ -203,14 +203,21 @@ class GoalList:
 
 	def deleteGoal(goalList:GoalList, goalNum:int):
 		
+		_logger.debug(f"goalList.deleteGoal(): Deleting goal #{goalNum}...")
+
 		goals = goalList.goals
+
+		_logger.debug(f"goalList.deleteGoal(): There are {goalList.nGoals} before delete.")
 
 		oldText = goals[goalNum-1].text
 
 		for i in range(goalNum, goalList.nGoals):
 			goals[i-1].text = goals[i].text
 
-		goals = goals[:-1]	# Drops last element.
+		goals = goals[:-1]			# Drops last element.
+		goalList._goals = goals		# Need a cleaner way to do this.
+
+		_logger.debug(f"goalList.deleteGoal(): There are {goalList.nGoals} after delete.")
 
 		Goal._nGoals -= 1
 
@@ -219,6 +226,13 @@ class GoalList:
 		
 
 	def insertGoal(goalList:GoalList, goalNum:int, newGoalDesc:str):
+
+		if goalList.includes(newGoalDesc):
+
+			warn(The_GoalsApp_Entity(),
+				 f"Can't insert the goal \"{newGoalDesc}\", because it is already in your goals list.")
+
+			return
 
 		goalList.addGoal(newGoalDesc)
 

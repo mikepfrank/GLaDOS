@@ -1,4 +1,26 @@
-# authority.py
+#|==============================================================================
+#|                      TOP OF FILE:    authority.py
+#|------------------------------------------------------------------------------
+#|   The below module documentation string will be displayed by pydoc3.
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+"""
+	FILE NAME:		auth/authority.py			   [Python module source code]
+
+    SYSTEM NAME:    GLaDOS (Generic Lifeform and Domicile Operating System)
+    APP NAME:       GLaDOS.server (GLaDOS server application)
+	SW COMPONENT:	GLaDOS.auth (GLaDOS authorization system)
+
+	LAYER/LEVEL:	1 (doesn't import anything above layer 0)
+
+	MODULE NAME:	auth.authority
+	IN PACKAGE:		auth
+	FULL PATH:		$GIT_ROOT/GLaDOS/src/auth/authority.py
+
+"""
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#| End of module documentation string.
+#|------------------------------------------------------------------------------
+
 
 # Authority classes. Part of the authorization system for managing permissions.
 
@@ -60,6 +82,8 @@
 
 from 	enum						import	Enum	# Support for enumerated types.
 from	collections.abc				import	Iterable
+
+#----------------------------------------------------------------------
 from	infrastructure.decorators	import	singleton
 #from	entities.entity				import	Entity_
 from	.capability					import	Capability

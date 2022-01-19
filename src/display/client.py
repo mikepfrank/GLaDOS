@@ -63,9 +63,6 @@ from curses import *
 	# At some point we should change this to an explicit list of the
 	# curses names that we actually use.
 
-from .display import TheDisplay		# Singleton class for curses display interface.
-
-
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	2.2.  Custom imports.						[module code subsection]
 		#|
@@ -86,6 +83,10 @@ _logger = getComponentLogger(_component)  # Create the component logger.
 global _sw_component
 _sw_component = sysName + '.' + _component
 
+
+#-------------------------------------------------------------------------------
+
+from .display import TheDisplay		# Singleton class for curses display interface.
 
 from .keys import KeyEvent
 

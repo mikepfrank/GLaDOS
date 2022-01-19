@@ -174,6 +174,8 @@ from 	mind.mindSystem				import	TheCognitiveSystem
 	# passed to the Supervisor, which then tells the application system
 	# to please place all of its open windows on the field.
 
+#===============================================================================
+
 # We don't actually need these class definitions because we only use
 # them for type hints.
 
