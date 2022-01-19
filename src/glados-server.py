@@ -77,6 +77,8 @@
 				* terminal - For interacting with non-console users.
 				
 				* text - Low-level text buffer facility.
+
+				* users - Support for AI and human users.
 				
 				* tokenizer - Local implementation of GPT tokenizer.
 				

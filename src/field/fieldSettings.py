@@ -48,6 +48,8 @@
 from	typing						import	ClassVar
 	# We use this for argument type hints in class methods.
 
+#----------------------------------------------------------------------
+
 from	infrastructure.decorators	import	singleton
 
 from	settings.settings		import	Setting, SettingsModule
