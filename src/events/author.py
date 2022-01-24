@@ -1,7 +1,39 @@
-#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#|  FILE NAME:      events/author.py              		[Python 3 module file]
+#|==============================================================================
+#|						TOP OF FILE:   	events/author.py
+#|------------------------------------------------------------------------------
+#|
+#|	FILE NAME:      events/author.py               [Python 3 module source code]
+#|	================================
+#|
+#|		FULL PATH:      $GIT_ROOT/GLaDOS/src/appdefs.py
+#|		MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
+#|
+#|	FILE DESCRIPTION:
+#|	=================
+#|
+#|		This file defines the 'author' module within the 'events' package.
+#|		(See the module docstring below for more details.)
+#|
+#|------------------------------------------------------------------------------
+#|   The below module documentation string will be displayed by pydoc3.
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 """
-	MODULE NAME:	events.author
+	MODULE NAME:	events.author							   [Python 3 module]
+	=============================
+
+		IN PACKAGE:		events - Cognitive event records.
+
+		SYSTEM NAME:    GLaDOS (Generic Lifeform and Domicile Operating System)
+		APP NAME:       GLaDOS.server (GLaDOS server application)
+		SW COMPONENT:   GLaDOS.logging (GLaDOS logging framework)
+
+		CODE LAYER:		0 (bottommost layer; no imports of custom modules)
+	
+	
+    MODULE DESCRIPTION:
+    -------------------
+
+
 	
 	DESCRIPTION:
 	
