@@ -633,11 +633,19 @@ class WindowElement(FieldElement_):
 
 		wElem = thisWinElem			# Shorter name for this field element.
 		win = wElem.win				# Get the actual window this element is holding.
-		imageObj = win.image		# This is a WindowImage object with a raw image data structure.
 
-		viewTxt = imageObj.view() + '\n'
-			# This asks that object for its content as a single string.
-			# We append a newline to it to add a blank line after the window.
+			# NOTE: A new feature in the below is that the underlying
+			# image.view() method now tabifies the view; this is done
+			# in hopes of reducing its length in tokens.
+
+		viewTxt = win.view() + '\n'
+			# This asks the window to give us a view of its present
+			# image as a text string.  We append a newline to it to
+			# add a blank line after the window.
+		
+		# The following code is no longer needed since there's now a win.view() method.
+		#imageObj = win.image		# This is a WindowImage object with a raw image data structure.
+		#viewTxt = imageObj.view() + '\n'
 
 		return viewTxt	# Returns the view text as the image string for this field element.
 
