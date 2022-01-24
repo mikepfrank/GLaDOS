@@ -220,6 +220,7 @@ class FieldPanel(Panel):
 
 class ConsoleClient: pass
 
+# Should this be declared as a @singleton class?
 class ConsoleClient(PanelClient):
 
 	"""The console display client controls the display 

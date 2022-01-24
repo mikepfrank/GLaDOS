@@ -2,19 +2,32 @@
 #|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #|						TOP OF FILE:	glados-server.py
 #|------------------------------------------------------------------------------
+#|
+#|	FILE NAME:		glados-server.py			   [Python 3 application script]
+#|
+#|	FULL PATH:		$GIT_ROOT/GLaDOS/src/glados-server.py
+#|	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
+#|
+#|	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
+#|	APP NAME:		GLaDOS.server (GLaDOS server application)
+#|
+#|	CODE LAYER:		Layer #13 (the only module that imports supervisor).
+#|
+#|	IMPORTS THESE MODULES:
+#|	======================
+#|		Layer #12:	supervisor.supervisor
+#|		Layer #8:	console.console
+#|		Layer #3:	config.configuration
+#|		Layer #2:	settings.settings, helpSys.helpSystem
+#|		Layer #1:	infrastructure.logmaster
+#|		Layer #0:	appdefs
+#|
+#|------------------------------------------------------------------------------
 #|	 The below module documentation string will be displayed by pydoc3.
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 """
-	FILE NAME:		glados-server.py			   [Python 3 application script]
-
-	FULL PATH:		$GIT_ROOT/GLaDOS/src/glados-server.py
-	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
-	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
-	APP NAME:		GLaDOS.server (GLaDOS server application)
-
-
 		FILE DESCRIPTION:
-		-----------------
+		=================
 
 			This script constitutes the main server process executable for the
 			GLaDOS system.	Within the OS process running this script, threads 
@@ -87,10 +100,10 @@
 """
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #| End of module documentation string.
-#|------------------------------------------------------------------------------
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-	#|--------------------------------------------------------------------------
+	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#|
 	#|	0. Preliminaries								   [module code section]
 	#|	================
@@ -237,9 +250,9 @@ if __name__ == "__main__":
 	if RAW_DEBUG:
 		print("__main__: Importing custom application modules...", file=stderr)
 
-			#|----------------------------------------------------------------
-			#|	The following modules, although custom, are generic utilities,
-			#|	not specific to the present application.
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#|	1.2.1. The following modules, although custom, are generic 
+			#|		utilities, not really specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 				#-------------------------------------------------------------
@@ -247,7 +260,10 @@ if __name__ == "__main__":
 				# import specific definitions we need from it.	(This is a
 				# little cleaner stylistically than "from ... import *".)
 
-from infrastructure.logmaster import (
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#| LAYER 1:
+
+from infrastructure.logmaster import (	# (From code layer #1.)
 		sysName,			# Name of this system, 'GLaDOS'.
 		appLogger,			# Top-level logger for the application.
 		configLogMaster,	# Function to configure logmaster module.
@@ -261,26 +277,36 @@ from infrastructure.logmaster import (
 		initLogMaster,		# Function to initialize the logmaster facility.
 	)
 
-# Reinitialize logmaster using virterm
-#initLogMaster(out = _virTerm.out, err = _virTerm.err)
 
-
-			#|----------------------------------------------------------------
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#|	The following modules are specific to the present application.
+			#|	Here we order them by code layer, lowest-layer modules first.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#| LAYER 0:	Modules that don't import any other custom modules.
 
 from 	appdefs						import	systemName, appName
 	# Name of the present application.	Used for configuring logmaster.
 
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#| LAYER 2: Modules that don't import any modules from above Layer 1.
+
 from	settings.settings			import	TheSettingsFacility
 	# This facility is for keeping track of all of the available settings.
+
+from	helpsys.helpSystem			import	TheHelpSystem
+	# This singleton class anchors the interactive help system.
+
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#| LAYER 2: Modules that don't import any modules from above Layer 3.
 
 from 	config.configuration		import	TheConfiguration
 	# This singleton class will manage loading of the GLaDOS system 
 	# configuration from config files on system startup.
 
-from	helpsys.helpSystem			import	TheHelpSystem
-	# This singleton class anchors the interactive help system.
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#| LAYER 8: Modules that don't import any modules from above Layer 7.
 
 from	console.console				import	ConsoleClient
 	# The "console client" starts up and manages the main GLaDOS system
@@ -290,6 +316,9 @@ from	console.console				import	ConsoleClient
 	# GLaDOS are associated with displays on the receptive field, which
 	# can be seen by the AI and also by human system operators, additional 
 	# system debugging information not visible to the AI may appear here.
+
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#| LAYER 13: Modules that don't import any modules from above Layer 12.
 
 from 	supervisor.supervisor		import	TheSupervisor
 	# This singleton class will manage startup of the Supervisor 
