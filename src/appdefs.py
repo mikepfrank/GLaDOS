@@ -1,43 +1,57 @@
 #|==============================================================================
 #|                      TOP OF FILE:    appdefs.py
 #|------------------------------------------------------------------------------
+#|
+#|	FILE NAME:      appdefs.py                     [Python 3 module source code]
+#|	==========================
+#|
+#|		FULL PATH:      $GIT_ROOT/GLaDOS/src/appdefs.py
+#|		MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
+#|
+#|	FILE DESCRIPTION:
+#|	=================
+#|
+#|		This file defines the appdefs module.  See the module docstring
+#|		below for more details.
+#|
+#|------------------------------------------------------------------------------
 #|   The below module documentation string will be displayed by pydoc3.
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 """
-    FILE NAME:      appdefs.py                     [Python module source code]
+	MODULE NAME:	appdefs									   [Python 3 module]
+	=======================
+	
+		IN PACKAGE:		(top level)
 
-    SYSTEM NAME:    GLaDOS (Generic Lifeform and Domicile Operating System)
-    APP NAME:       GLaDOS.server (GLaDOS server application)
-    SW COMPONENT:   GLaDOS.logging (GLaDOS logging framework)
+		SYSTEM NAME:    GLaDOS (Generic Lifeform and Domicile Operating System)
+		APP NAME:       GLaDOS.server (GLaDOS server application)
+		SW COMPONENT:   GLaDOS.logging (GLaDOS logging framework)
 
-	LAYER/LEVEL:	0 (bottom; no imports of custom modules)
-
-    MODULE NAME:    appdefs
-    FULL PATH:      $GIT_ROOT/GLaDOS/src/appdefs.py
-    MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
-
-
+		CODE LAYER:		0 (bottommost layer; no imports of custom modules)
+	
+	
     MODULE DESCRIPTION:
     -------------------
 
-          Application-specific definitions.
+        This module gives Application-specific definitions for use 
+		within the logging system.
 
-          This file defines some parameters specific to the present
-          application.  It may be utilized from within general-
-          purpose modules to customize those modules for this
-          particular application.
+        This file defines some parameters specific to the present
+        application.  It may be utilized from within general-purpose 
+		modules to customize those modules for this particular 
+		application.
 
-          At present, we are only using this to define <systemName>
-          and <appName> parameters, which are used to compose names
-          of system-specific and application-specific loggers. Also,
-          <topFile> is utilized in logger output.
+        At present, we are only using this to define <systemName> and 
+		<appName> parameters, which are used to compose names of system-
+		specific and application-specific loggers.  Also, <topFile> is 
+		utilized in logger output.
 
-          E.g., the logger for a module or component that is specific
-          to the system (but not to the particular application program)
-          would be called "<systemName>.<othername>", whereas the logger
-          for a module specific to the present application would be
-          called "<appName>.<othername>".  Further, <appName> itself
-          should begin with "<systemName>."
+        E.g., the logger for a module or component that is specific
+        to the system (but not to the particular application program)
+        would be called "<systemName>.<othername>", whereas the logger
+        for a module specific to the present application would be
+        called "<appName>.<othername>".  Further, <appName> itself
+        should begin with "<systemName>."
 
 
     MODULE PUBLIC GLOBALS:
@@ -50,8 +64,8 @@
                 system that the present application is a
                 part of.  Lexically it should be a standard
                 identifier (alphanumeric string).
-
-                
+			
+			
         appdefs.appName:str                     [global constant string]
 
                 This string gives the name of the present
@@ -60,24 +74,25 @@
                 followed by a "." and an identifier
                 specifying this application (as distinct
                 from other components of the system).
-
-
+			
+			
         appdefs.topFile:str                     [global constant string]
         
                 This string gives the name of the top-level
                 file of the present application, sans the .py
                 extension.
-    
-                                                                            """
+				
+"""
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #| End of module documentation string.
 #|------------------------------------------------------------------------------
 
+
     #|==========================================================================
     #|
-    #|   Globals					    [code section]
+    #|	1.	Globals					    				   [module code section]
     #|
-    #|      Declare and/or define various global variables and
+    #|  	Declare and/or define various global variables and
     #|      constants.  Top-level global declarations are not
     #|      strictly required, but they serve to verify that
     #|      these names were not previously used, and also
@@ -97,9 +112,9 @@
 
 global  __all__         # List of public symbols exported by this module.
 __all__ = [
-    'systemName',    # Name of the system this application is part of.
-    'appName',       # Name of the current application program.
-    'topFile'        # The filename of the top-level file of this app.
+		'systemName',    # Name of the system this application is part of.
+		'appName',       # Name of the current application program.
+		'topFile'        # The filename of the top-level file of this app.
     ]
 
 

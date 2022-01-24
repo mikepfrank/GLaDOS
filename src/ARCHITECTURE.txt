@@ -276,7 +276,6 @@ Lower-level modules *may* do "import <module>" on higher-level modules, *if* we 
 
 			mind.mindSystem
 			apps.appCommands
-			processes.processSystem
 			windows.windowSystem
 			
 
@@ -360,11 +359,59 @@ Lower-level modules *may* do "import <module>" on higher-level modules, *if* we 
 		-----------------------------------------------
 		
 			appdefs
-			events.author
 			auth.capability
+			console.virterm
+			display.drawing
+			events.author
 			infrastructure.decorators
 			infrastructure.desque
 			infrastructure.flag
-			console.virterm
-			display.drawing
+			text.tabify
 			tokenizer.encoder	[from OpenAI]
+
+
+3. Layer span structure of GLaDOS packages.
+-------------------------------------------
+
+The following diagram illustrates what levels of the GLaDOS layer-cake diagram are spanned by each of its packages.
+
+				[ #00 ]	[ #01 ]	[ #02 ]	[ #03 ]	[ #04 ]	[ #05 ]	[ #06 ]	[ #07 ]	[ #08 ]	[ #09 ]	[ #10 ]	[ #11 ]	[ #12 ]	[ #13 ]	[ #14 ]
+				=======	=======	=======	=======	=======	=======	=======	=======	=======	=======	=======	=======	=======	=======	=======	
+
+appdefs:		####### 
+
+auth:			####### ####### 			
+
+tokenizer:		####### #######
+
+infrastructure:	####### ####### ####### 		####### 
+
+events:			####### 								####### 
+
+display:		####### #######	#######	#######	#######	#######	#######	
+
+console:		#######													#######	#######	
+
+text:							####### 
+
+settings:						####### 
+
+helpsys:						####### 
+
+processes:						####### 
+
+field:							####### 		####### ####### 				####### 
+
+mind:									####### 				####### ####### 		####### 
+
+gpt3:											####### 
+
+supervisor:														####### 												####### 
+
+commands:																		####### 
+
+windows:																				####### 
+
+apps:																					####### ####### ####### ####### 
+
+glados-server:																													####### 
