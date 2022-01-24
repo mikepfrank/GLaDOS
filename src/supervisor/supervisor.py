@@ -1,20 +1,35 @@
 #|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #|					 TOP OF FILE:	 supervisor/supervisor.py
 #|------------------------------------------------------------------------------
+#|
+#|	FILE NAME:		supervisor/supervisor.py		 [Python module source file]
+#|	
+#|	MODULE NAME:	supervisor.supervisor
+#|	IN PACKAGE:		supervisor
+#|
+#|	FULL PATH:		$GIT_ROOT/GLaDOS/src/supervisor/supervisor.py
+#|	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
+#|
+#|	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
+#|	APP NAME:		GLaDOS.server (Main GLaDOS server application)
+#|	SW COMPONENT:	GLaDOS.supervisor (Principal supervisory subsystem)
+#|
+#|	CODE LAYER:		Layer #13 (the only module that imports appSystem).
+#|
+#|	IMPORTS THESE MODULES:
+#|	======================
+#|		Layer #12:	apps.appSystem
+#|		Layer #9:	windows.windowSystem, mind.mindSystem
+#|		Layer #8:	commands.commandInterface
+#|		Layer #6:	supervisor.action
+#|		Layer #2:	entities.entity, settings.settings
+#|		Layer #1:	infrastructure.logmaster, process.processSystem
+#|		Layer #0:	infrastructure.{decorators,flag}
+#|
+#|------------------------------------------------------------------------------
 #|	 The below module documentation string will be displayed by pydoc3.
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 """
-	FILE NAME:		supervisor/supervisor.py		 [Python module source file]
-		
-	MODULE NAME:	supervisor.supervisor
-	IN PACKAGE:		supervisor
-	FULL PATH:		$GIT_ROOT/GLaDOS/src/supervisor/supervisor.py
-	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
-	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
-	APP NAME:		GLaDOS.server (Main GLaDOS server application)
-	SW COMPONENT:	GLaDOS.supervisor (Principal supervisory subsystem)
-
-
 	MODULE DESCRIPTION:
 	===================
 	
@@ -58,7 +73,7 @@
 					   
 		
 		USAGE:
-		------
+		~~~~~~
 		
 			from supervisor.starter import TheSupervisor
 			...
@@ -69,12 +84,12 @@
 		
 		
 		MODULE PUBLIC CLASSES:
-		----------------------
+		~~~~~~~~~~~~~~~~~~~~~~
 				
-			TheSupervisor												 [class]
+			TheSupervisor						 [module public singleton class]
 						
 				Singleton class, whose sole instance is the single
-				object which is the system supervisor.
+				object which is the system supervisor subsystem.
 """
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #| End of module documentation string.
@@ -103,10 +118,13 @@ from os			import	path	# Manipulate filesystem path strings.
 		#|	1.2. Imports of custom application modules. [module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-			#|----------------------------------------------------------------
-			#|	The following modules, although custom, are generic utilities,
-			#|	not specific to the present application.
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#|	1.2.1. The following modules, although custom, are generic
+			#|		utilities, not specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#| LAYER 0:	Modules that don't import any other custom modules.
 
 	# A simple decorator for singleton classes.
 from infrastructure.decorators	import	singleton
@@ -117,6 +135,9 @@ from infrastructure.flag 		import	Flag	# Waitable flags.
 				# The logmaster module defines our logging framework; we
 				# import specific definitions we need from it.	(This is a
 				# little cleaner stylistically than "from ... import *".)
+
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#| LAYER 1: Modules that only import modules from layer #0.
 
 from infrastructure.logmaster import getComponentLogger, ThreadActor, sysName
 
@@ -131,9 +152,20 @@ global _sw_component	# Full name of this software component.
 _sw_component = sysName + '.' + _component
 
 
-			#|----------------------------------------------------------------
-			#|	The following modules are specific to the present application.
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#|	1.2.2. The following modules are specific to the present
+			#|		application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#| LAYER 1: Modules that only import modules from layer #0.
+
+from 	processes.processSystem		import	TheProcessSystem
+	# This class manages launching of all essential 'background' 
+	# GLaDOS processes.
+
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#| LAYER 2: Modules that don't import any modules from above Layer 1.
 
 from	entities.entity				import	System_Entity_, The_Supervisor_Entity
 	# This is a singleton entity denoting the supervisor subsystem itself.
@@ -141,8 +173,8 @@ from	entities.entity				import	System_Entity_, The_Supervisor_Entity
 from	settings.settings			import	TheSettingsFacility
 	# This facility is for keeping track of all the available settings.
 
-#from 	config.configuration		import	TheConfiguration
-	# The singleton class that gives the system configuration.
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#| LAYER 6: Modules that don't import any modules from above Layer 5.
 
 from .action import (
 		TheActionSystem,
@@ -152,20 +184,18 @@ from .action import (
 	)
 	# The action system is one of our major subsystems. We need these names from it.
 
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#| LAYER 8: Modules that don't import any modules from above Layer 7.
+
 from 	commands.commandInterface	import	TheCommandInterface
 	# This class manages initialization of the command interface.
 	# (That is, the command interface used by the AI to control GLaDOS.)
 
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#| LAYER 9: Modules that don't import any modules from above Layer 8.
+
 from 	windows.windowSystem		import	TheWindowSystem
 	# This class manages initialization of the text window system.
-
-from 	processes.processSystem		import	TheProcessSystem
-	# This class manages launching of all essential 'background' 
-	# GLaDOS processes.
-
-from 	apps.appSystem				import	TheAppSystem
-	# This class manages startup of the applications system, including
-	# all applications that need to begin running at system startup.
 
 from 	mind.mindSystem				import	TheCognitiveSystem
 	# This class manages starting up the A.I.'s mind on server startup.
@@ -174,35 +204,69 @@ from 	mind.mindSystem				import	TheCognitiveSystem
 	# passed to the Supervisor, which then tells the application system
 	# to please place all of its open windows on the field.
 
-#===============================================================================
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#| LAYER 12: Modules that don't import any modules from above Layer 11.
 
-# We don't actually need these class definitions because we only use
-# them for type hints.
+from 	apps.appSystem				import	TheAppSystem
+	# This class manages startup of the applications system, including
+	# all applications that need to begin running at system startup.
 
-class ConsoleClient: pass
 
 	#|==========================================================================
 	#|
-	#|	 2. Globals												  [code section]
+	#|	2.	Dummy/forward class declarations.			   [module code section]
 	#|
-	#|		Declare and/or define various global variables and
-	#|		constants.	Top-level global declarations are not
-	#|		strictly required, but they serve to verify that
-	#|		these names were not previously used, and also
-	#|		serve as documentation.
+	#|			Declare dummy/empty class definitions for classes that
+	#|			are either defined in another module that we don't
+	#|			import, or that are defined later in the current module.
+	#|			This is only needed for type hints; it's documentation.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	2.1.  Dummy declarations for classes defined in other modules.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+class	ConsoleClient				:	pass		
+	# Note that we don't need to import the actual class definition, because 
+	# the console instance gets created before the supervisor in the main
+	# program, and is passed into the initializer for TheSupervisor as an 
+	# argument.
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	2.2.  Forward declarations for classes defined later in this module.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+class	_ActionBySupervisor_		:	pass
+class	_SuperAnnouncementAction	:	pass
+class	_AnnounceStartupAction		:	pass
+class	SupervisorThread			:	pass
+class	TheSupervisor				:	pass
+
+
+	#|==========================================================================
+	#|
+	#|	3.  Globals.									   [module code section]
+	#|
+	#|			Declare and/or define various global variables and
+	#|			constants.  Top-level global declarations are not 
+	#|			strictly required, but they serve to verify that 
+	#|			these names were not previously used, and also 
+	#|			serve as documentation.
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		#|======================================================================
 		#|
-		#|	Special globals.								   [code subsection]
+		#|	3.1.  Special globals.						[module code subsection]
 		#|
-		#|		These globals have special meanings defined by the
-		#|		Python language.
+		#|			These globals have special meanings defined by the
+		#|			Python language.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 global __all__		# List of public symbols exported by this module.
+
 __all__ = [
 		'TheSupervisor',	# Singleton class for the supervisor object.
 	]
@@ -210,13 +274,18 @@ __all__ = [
 
 	#|==========================================================================
 	#|
-	#|	3. Classes.												  [code section]
+	#|	4.	Classes.									   [module code section]
 	#|
-	#|		Classes defined by this module.
+	#|			Classes defined by this module.
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-class _ActionBySupervisor_: pass
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	4.1.	Private classes.					[module code subsection]
+		#|
+		#|		These classes are only used internally to this module.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 class _ActionBySupervisor_(ActionBySystem_):
 
 	"""Abstract base class for any and all actions generated by the
@@ -233,7 +302,7 @@ class _ActionBySupervisor_(ActionBySystem_):
 		super(_ActionBySupervisor_, thisSupervisorAction).__init__(
 			description, actor, importance)
 
-class _SuperAnnouncementAction: pass
+
 class _SuperAnnouncementAction(_ActionBySupervisor_, AnnouncementAction_):
 
 	"""Class for system announcements generated by Supervisor."""
@@ -255,7 +324,6 @@ class _SuperAnnouncementAction(_ActionBySupervisor_, AnnouncementAction_):
 			description, importance=importance, **kwargs)
 			
 
-class _AnnounceStartupAction: pass
 class _AnnounceStartupAction(_SuperAnnouncementAction):
 
 	"""Class for supervisor annoucing it's starting the system."""
@@ -272,10 +340,17 @@ class _AnnounceStartupAction(_SuperAnnouncementAction):
 			announcementText, importance)
 				 
 
-class SupervisorThread: pass
-class TheSupervisor: pass
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	4.2.	Public classes.						[module code subsection]
+		#|
+		#|		These classes may be referenced by other modules.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-class SupervisorThread(ThreadActor):
+class SupervisorThread(ThreadActor):	# Does this even need to be public tho?
+
+	"""A thread to run the supervisory subsystem.  Eventually, this should
+		probably become a GLaDOS 'process', once we have support for those."""
+
 	defaultRole = 'Supervise'
 	defaultComponent = _sw_component
 	
@@ -303,7 +378,7 @@ class SupervisorThread(ThreadActor):
 			# Inform other threads that this thread is now running.
 		superthread.running.rise()	# Raise our "running" flag.
 		
-		# We have nothing yet to do except wait for an exit to be requested.
+			# We have nothing yet to do except wait for an exit to be requested.
 		superthread.exitRequested.wait()
 		
 			# Inform other threads that this thread is no longer running.
@@ -311,12 +386,12 @@ class SupervisorThread(ThreadActor):
 		
 		_logger.info("  [Supervisor/Thread] Supervisor thread is exiting.")
 		
-		
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
 class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
-	#---------------------------------------------------------------------------
+
 	"""
-	TheSupervisor														 [class]
+	TheSupervisor										   [module public class]
 	=============
 	
 		A singleton class whose sole instance implements the supervisor 
@@ -329,7 +404,6 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 		and shuts them down if/when needed (generally only when the AI
 		requests it).					
 	"""
-	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		#/----------------------------------------------------------------------
 		#|	Private singleton instance data members		   [class documentation]
@@ -348,7 +422,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 		#|
 		#\----------------------------------------------------------------------
 
-	def __init__(theSupervisor:TheSupervisor, console):
+	def __init__(theSupervisor:TheSupervisor, console:ConsoleClient):
 		
 		"""
 			supervisor.__init__()					   [special instance method]
@@ -356,7 +430,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 				This is the singleton instance initializer for the 
 				TheSupervisor class.  Because this is a singleton class,
 				this method will only get called once, to initialize
-				the first and only instance of TheSupervisor.
+				the first and only new instance of TheSupervisor.
 				
 				This method is responsible for creating and initializing 
 				all of the other major subsystems of GLaDOS, including:

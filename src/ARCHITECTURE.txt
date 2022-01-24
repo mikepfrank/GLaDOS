@@ -236,22 +236,28 @@ The following table will expand out to include every module within GLaDOS, organ
 
 Lower-level modules *may* do "import <module>" on higher-level modules, *if* we keep in mind that names from the higher-level module aren't necessarily available yet, and can't be referenced in type hints or top-level function/method calls.
 
-
+																IMPORTS MODULES:
+																==============================================
 		Layer 14 (main program):
 		------------------------
 		
-			glados-server.py
+			glados-server.py									0:appdefs; 1:logmaster; 2:settings,helpSystem;
+																	3:configuration; 8:console; 13:supervisor.
 
 
 		Layer 13 (doesn't import anything above layer 12):
 		(imported/constructed only by main)
 		-------------------------------------------------
-			supervisor.supervisor
+		
+			supervisor.supervisor								0:decorators,flag; 1:logmaster,processSystem;
+																	2:entity,settings; 6:action; 8:commandInterface;
+																	9:windowSystem,mindSystem
 		
 
 		Layer 12 (doesn't import anything above layer 11):
 		 (imported/constructed only by supervisor)
 		-------------------------------------------------
+		
 			apps.appSystem
 
 
