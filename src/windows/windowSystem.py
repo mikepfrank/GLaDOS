@@ -8,9 +8,17 @@
 
 	IN PACKAGE:		windows
 	MODULE NAME:	windows.windowSystem
+	CODE LAYER:		Layer #9 (doesn't import anything above layer #8,
+						imported/constructed only by supervisor).
+
+	IMPORTS FROM MODULES:
+		Layer #3:	config.configuration
+		Layer #0:	infrastructure.{decorators,logmaster,utils}
+
 	FULL PATH:		$GIT_ROOT/GLaDOS/src/windows/windowSystem.py
 	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
 	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
+
 	APP NAME:		GLaDOS.server (GLaDOS server application)
 	SW COMPONENT:	GLaDOS.commands (command interface component)
 
@@ -32,7 +40,7 @@
 """
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #| End of module documentation string.
-#|------------------------------------------------------------------------------
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 	#|==========================================================================
@@ -49,43 +57,79 @@
 		#|	1.1. Imports of standard python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from collections.abc 	import Iterable
-from os 				import path
+from	collections.abc 	import Iterable
+from	os 					import path
 
 		#|======================================================================
 		#|	1.2. Imports of custom application modules. [module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-			#|----------------------------------------------------------------
-			#|	The following modules, although custom, are generic utilities,
-			#|	not specific to the present application.
-			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+			#|==================================================================
+			#|	1.2.1. Imports of custom			 [module code subsubsection]
+			#|		application modules from
+			#|		code layer #0 (lowest layer).
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		# A simple decorator for singleton classes.
-from infrastructure.decorators	import	singleton
+				#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+				#|	The following modules, although custom, are generic utili-
+				#|  ties, not specific to the present application.
+				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-				#-------------------------------------------------------------
-				# The logmaster module defines our logging framework; we
-				# import specific definitions we need from it.	(This is a
-				# little cleaner stylistically than "from ... import *".)
+from	infrastructure.decorators	import	singleton
+			# A simple decorator for singleton classes.
 
-from infrastructure.logmaster	import getComponentLogger
+from	infrastructure.utils		import overwrite
+			# overwrite() is a function to overwrite part of a string;
+			#	we use it when drawing title bars.
 
-	# Go ahead and create or access the logger for this module.
+from	text.tabify					import	tabify
+	# tabify() converts spaces to tabs; we use this in window views.
+
+					#-----------------------------------------------------------
+					# Logmaster setup.								[code idiom]
+					#
+					#	This code block (at minimum) should be included in the
+					#	layer #0 imports of any module that uses the logging
+					#	system.
+					#
+					#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+					
+	# The logmaster module defines our logging framework; we import
+	# specific definitions we need from it. (This is a little cleaner
+	# stylistically than "from ... import *".)
+
+from	infrastructure.logmaster	import getComponentLogger
+			# This function generates/retrieves a SW component's logger.
+
+	# This is the only "main body" type code that we put in the imports section.
+	# It goes ahead and creates/retrieves the logger for this module.
 
 global _component, _logger	# Software component name, logger for component.
 
 _component = path.basename(path.dirname(__file__))		# Our package name.
 _logger = getComponentLogger(_component)				# Create the component logger.
 
-from infrastructure.utils import overwrite
+					#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+					# End logmaster setup code idiom.
+					#-----------------------------------------------------------
 
 			#|----------------------------------------------------------------
 			#|	The following modules are specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from	config.configuration		import	TheConfiguration
-	# We need this to get configuration parameters for the window system.
+			#|==================================================================
+			#|	1.2.2. Imports of custom			 [module code subsubsection]
+			#|		application modules from
+			#|		code layer #1 (no imports from above layer #0):
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from 	processes.processSystem		import	SubProcess
+
+			#|==================================================================
+			#|	1.2.3. Imports of custom			 [module code subsubsection]
+			#|		application modules from
+			#|		code layer #2 (no imports from above layer #1):
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 from 	text.buffer					import	TextBuffer
 	# We use text buffers for both window contents and window images.
@@ -93,27 +137,58 @@ from 	text.buffer					import	TextBuffer
 from	field.placement				import	Placement
 	# This is an enum type that we use for specifying window placement.
 
+			#|==================================================================
+			#|	1.2.4. Imports of custom			 [module code subsubsection]
+			#|		application modules from
+			#|		code layer #3 (no imports from above layer #2):
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from	config.configuration		import	TheConfiguration
+	# We need this to get configuration parameters for the window system.
+
+			#|==================================================================
+			#|	1.2.5. Imports of custom			 [module code subsubsection]
+			#|		application modules from
+			#|		code layer #5 (no imports from above layer #4):
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 from	field.fieldElement			import	WindowElement
 	# This is a field element that lets us put windows onto the field.
 
-from	field.receptiveField		import	TheReceptiveField
-	# We access this singleton from window.openWin() so that we can
-	# actually place newly-opening windows onto the receptive field.
+			#|==================================================================
+			#|	1.2.6. Imports of custom			 [module code subsubsection]
+			#|		application modules from
+			#|		code layer #8 (no imports from above layer #7):
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 from 	commands.commandInterface	import	CommandModule
 	# We're going to extend CommandModule with various subclasses 
 	# specific to the windowing system.
 
-from 	processes.processSystem		import	SubProcess
+from	field.receptiveField		import	TheReceptiveField
+	# We access this singleton from window.openWin() so that we can
+	# actually place newly-opening windows onto the receptive field.
+
+
+	#|==========================================================================
+	#|
+	#|	 2. Dummy class declarations.					   [module code section]
+	#|
+	#|			Create "dummy" (empty) definitions for some class names
+	#|			so that we can use them in type hints without importing
+	#|			the modules where their real definitions reside.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# We don't need to create applications from this module, so no need
 	# to actually import the real Application_ class.
 #from apps.appSystem				import	Application_
 class Application_: pass	# Do this instead to avoid circular imports.
 
+
 	#|==========================================================================
 	#|
-	#|	 2. Globals												  [code section]
+	#|	 3. Globals												  [code section]
 	#|
 	#|		Declare and/or define various global variables and
 	#|		constants.	Note that top-level 'global' statements are
@@ -188,10 +263,21 @@ class WindowImage:
 		
 		"""Returns a 'view' of this window image, which simply means,
 			a single text string that renders the entire visual
-			appearance of the window image."""
+			appearance of the window image.  Here we also convert
+			spaces to tabs as appropriate."""
 
 		winView = self._textBuffer.view()
-		return winView + '\n'
+
+			#------------------------
+			# Convert spaces to tabs.
+
+		tab_width = TheWindowSystem().tabWidth
+			# Get the present tab-width configuration of the window system.
+
+		tabbedWinView = tabify(winView, tab_width)
+			# Note this assumes the view will be displayed starting at column 0.
+		
+		return tabbedWinView + '\n'
 			# Add final newline because textbuffer doesn't by default.
 
 	def repaint(self):
@@ -570,12 +656,20 @@ class Window:	# A text window within the GLaDOS window system.
 
 	@property
 	def image(thisWin):
+		"""Retrieves this window's current image object (see class WindowImage)."""
 		return thisWin._image
 
 	def view(thisWin):
-		"""Gets a 'view' of this window as a single text string."""
+
+		"""Gets a 'view' of this window as a single text string. Note that in
+			the image.view() method, we automatically also tabify the text in
+			hopes of reducing the size in tokens of the window's rendering on the
+			AI's receptive field.  (Fingers crossed that the AI isn't too confused
+			by the tabs.)"""
+
 		image = thisWin.image	# Get this window's image structure.
 		viewTxt = image.view()	# Convert it to a single text string.
+
 		return viewTxt			# And return that.
 
 	def openWin(thisWin):
@@ -861,7 +955,13 @@ class TheWindowSystem:
 		self._windows = Windows()
 			# This creates the window set (initially empty).
 
+		self._tabwidth = sysConf.tabWidth
+			# Tab width for rendering window images.
+
 	@property
 	def useSideDecorators(winSys):
 		return winSys._useSideDecorators
-	
+
+	@property
+	def tabWidth(winSys):
+		return winSys._tabwidth

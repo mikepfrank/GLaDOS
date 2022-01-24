@@ -141,7 +141,7 @@ from	entities.entity				import	System_Entity_, The_Supervisor_Entity
 from	settings.settings			import	TheSettingsFacility
 	# This facility is for keeping track of all the available settings.
 
-from 	config.configuration		import	TheConfiguration
+#from 	config.configuration		import	TheConfiguration
 	# The singleton class that gives the system configuration.
 
 from .action import (
