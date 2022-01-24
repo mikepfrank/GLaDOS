@@ -202,6 +202,15 @@ from .threads import (
 
 	)
 
+			#|==================================================================
+			#|	1.2.4. Imports of custom			 [module code subsubsection]
+			#|		application modules from
+			#|		code layer #3 (no imports from above layer #2):
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from	config.configuration		import	TheConfiguration
+	# We need this to get the tab-width parameter, for initializing curses.
+
 
 	#|==========================================================================
 	#|	3.	Type definitions.							   [module code section]
@@ -544,6 +553,13 @@ class TheDisplay:
 		
 		display = theDisplay	# Get a shorter name for the display.
 
+			#|------------------------------------------------------------------
+			#| Set the tab width appropriate based on the system configuration,
+			#| so that we can use it to render field-window images appropriately.
+
+		display._sysConf = sysConf = TheConfiguration()
+		display._tabwidth = sysConf.tabWidth
+
 			#---------------------------------------------------------------
 			# "curWin" means the window that the text input cursor is
 			# currently supposed to be displayed in.  It is None initially
@@ -612,6 +628,11 @@ class TheDisplay:
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	@property
+	def tabwidth(theDisplay:TheDisplay):
+		"""What's the display's tab width setting?"""
+		return theDisplay._tabwidth
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	@property
 	def curWin(theDisplay:TheDisplay):
@@ -1367,6 +1388,9 @@ class TheDisplay:
 		# Sets the "background character" of the screen
 		#screen.bkgd('x')	# Just to aid debugging
 
+		# NOTE: We need Python 3.9 or later to be able to use this.
+		#set_tabsize(display.tabwidth)
+
 			#|------------------------------------------------------------------
 			#| This effectively first measures the size of the display, & then 
 			#| automatically paints its entire contents, for the first time.
@@ -1979,9 +2003,15 @@ class TheDisplay:
 			
 			if ch == TAB:	# Move forward to next tab stop, if needed.
 			
-				tabsize = 8
+				#tabsize = 8
 					# Really this should come from the system config.
-				#tabsize = get_tabsize()		# Get current tab size.
+				
+				tabsize = display.tabwidth
+					# Note this should have been set up properly at display initialization.
+
+				# The below requires Python 3.9 or later.
+				#tabsize = get_tabsize()		# Get current tab size from curses.
+					# Note this should have been set up correctly during display initialization.
 				
 					# Get current cursor position within window.
 				(cy, cx) = win.getyx()
