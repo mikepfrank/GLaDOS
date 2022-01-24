@@ -959,7 +959,8 @@ class MindThread(ThreadActor):
 		while True:
 
 			try:
-				response = gpt3.genResponse(text)
+				response = gpt3.genResponse(text).lstrip().rstrip()
+					# Added the lstrip()/rstrip() because extra spaces mess up command parsing.
 
 			except PromptTooLargeException as e:
 					# Tell the receptive field it's too large and needs to shrink itself.

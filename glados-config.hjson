@@ -96,7 +96,9 @@
                 For this reason, the use of tab characters should probably be
             avoided, for the most part, in most AI-viewable text. */
 
-    tab-width:      4       # Typical modern value. (Would 8 be better?)
+    tab-width:      8
+		# Trying 8 now to reduce the number of tokens in whitespace.
+		# Though 4 is a more typical modern value.
 
         /* This Boolean states whether the user terminal's script is
             capable of displaying Unicode box-drawing specials (code
