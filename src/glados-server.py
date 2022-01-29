@@ -114,7 +114,10 @@
 	#|
 	#|		These flags are defined at the very top of the module so that we
 	#|		can find and modify them quickly and easily during development.
-	#|		All other globals are defined later, in section 2.
+	#|		(All other globals are defined later, in section 2.)
+	#|
+	#|		These are passed to the configLogMaster() function by the 
+	#|		_initLogging() function defined in section 3.
 	#|
 	#|
 	#|		RAW_DEBUG:bool							   [module global parameter]
@@ -176,9 +179,10 @@ RAW_DEBUG = False	# Change this to True as needed during initial development.
 
 global CONS_DEBUG, LOG_DEBUG	# These control debug-level output to console & log file.
 CONS_DEBUG = False	# Tell logmaster: Don't diplay debug-level output on console.
-LOG_DEBUG = True	# Tell logmaster: Do save debug-level output to log file.
+#LOG_DEBUG = True	# Tell logmaster: Do save debug-level output to log file.
+LOG_DEBUG = False	# Tell logmaster: Don't save debug-level output to log file.
 
-global CONS_INFO	# These control info-level output to console.
+global CONS_INFO	# This controls info-level output to console.
 CONS_INFO = False	# Tell logmaster: Don't diplay info-level output on console.
 
 	#----------------------------------------------------------------------
