@@ -198,7 +198,8 @@ __all__ = [
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 global	DEF_ENGINE			# Default GPT-3 engine name.
-DEF_ENGINE	= 'davinci'		# I believe this is the biggest one.
+#DEF_ENGINE	= 'davinci'		# I believe this is the biggest one.
+DEF_ENGINE	= 'text-davinci-001'		# New Instruct series model.
 
 	#	NOTE: Current Model Pricing Per 1 million tokens (as of 12/24/'20):
 	#	-------------------------------------------------------------------
@@ -218,7 +219,7 @@ global	DEF_STOP		# Default stop string (or list of up to 4).
 DEF_STOP	= "\n\n\n"	# Use 3 newlines (two blank lines) as stop.
 
 global	_ENGINES
-_ENGINES = ['ada', 'babbage', 'curie', 'davinci']
+_ENGINES = ['ada', 'babbage', 'curie', 'davinci', 'text-davinci-001']
 
 global	_PRICE_MAP
 _PRICE_MAP = {	# US$ per 1,000 tokens
@@ -226,6 +227,7 @@ _PRICE_MAP = {	# US$ per 1,000 tokens
 		'babbage':	0.0012,		# = $1.20 / 1M tokens
 		'curie':	0.006,		# = $6.00 / 1M tokens
 		'davinci':	0.06,		# = $60.00 / 1M tokens
+		'text-davinci-001':	0.06,
 	}
 
 global _STATS_FILENAME	# Name of file for saving/loading API usage statistics.
@@ -247,6 +249,7 @@ inputToks = {
 		'babbage':	0,
 		'curie':	0,
 		'davinci':	0,
+		'text-davinci-001':	0,
 	}
 
 outputToks = {
@@ -254,6 +257,7 @@ outputToks = {
 		'babbage':	0,
 		'curie':	0,
 		'davinci':	0,
+		'text-davinci-001':	0,
 	}
 
 global expenditures
@@ -262,6 +266,7 @@ expenditures = {
 		'babbage':	0,
 		'curie':	0,
 		'davinci':	0,
+		'text-davinci-001':	0,
 	}
 
 global totalCost
