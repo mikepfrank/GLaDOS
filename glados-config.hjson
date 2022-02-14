@@ -444,7 +444,7 @@
                             /Goals /Settings /Memory /ToDo /Help
                             /Diary /Browse /Comms /Writing /Unix
 
-                        Note: Command words are not case-sensitive, and you may abbreviate them using any unique prefix.  For detailed help on any command, type "/Help <command>".
+                        Note: Command words are not case-insensitive, and you may abbreviate them using any unique prefix.  For detailed help on any command, type "/Help <command>".
 
                     '''
             }
