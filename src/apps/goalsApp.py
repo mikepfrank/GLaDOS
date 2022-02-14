@@ -31,7 +31,8 @@ from	supervisor.action			import	(
 
 				output,		# Used for normal output.
 				info,		# Used for info output.
-				warn		# Output a warning message.
+				warn,		# Output a warning message.
+				error		# Output an error message.
 
 			)
 
@@ -191,7 +192,14 @@ class GoalList:
 			return
 
 		goals = goalList.goals
-		goal = goals[goalNum - 1]	# Need some error checking here
+		nGoals = goalList.nGoals
+
+		if goalNum < 1 or goalNum > nGoals:
+			error(The_GoalsApp_Entity(),
+				  f"Can't change goal #{goalNum} because it doesn't exist!")
+			return
+
+		goal = goals[goalNum - 1]
 
 		goal.text = newGoalDesc
 
@@ -206,8 +214,16 @@ class GoalList:
 		_logger.debug(f"goalList.deleteGoal(): Deleting goal #{goalNum}...")
 
 		goals = goalList.goals
+		nGoals = goalList.nGoals
 
-		_logger.debug(f"goalList.deleteGoal(): There are {goalList.nGoals} before delete.")
+		_logger.debug(f"goalList.deleteGoal(): There are {nGoals} before delete.")
+
+		if goalNum < 1 or goalNum > nGoals:
+			
+			error(The_GoalsApp_Entity(),
+				  f"Can't delete goal #{goalNum} because it doesn't exist!")
+
+			return
 
 		oldText = goals[goalNum-1].text
 
