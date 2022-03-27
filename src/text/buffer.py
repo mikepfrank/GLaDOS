@@ -435,6 +435,11 @@ class TextBuffer:		# A text buffer.
 				long is that string if we don't include the final newline
 				(if any) in the count?
 		"""
+
+		# NOTE: We need to modify this code to handle embedded tabs; also,
+		# we need the textBuffer to know what column it's starting at and
+		# what the tab-width is in order to even interpret tabs correctly!
+
 		if text is None or text == '':
 			return 0 
 		
