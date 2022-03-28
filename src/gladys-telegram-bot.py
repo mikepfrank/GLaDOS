@@ -22,6 +22,15 @@ import telegram
 # We'll use this wrapper module to get the response from GPT-3:
 from gpt3.api import *      # A simple wrapper for the openai module, written by MPF.
 
+from infrastructure import logmaster	# Our custom logging facility.
+
+# This configures the logmaster module.
+logmaster.configLogMaster(consdebug=False, consinfo=True, logdebug=True,
+						  role='bot', component="TelegramBot")
+
+# Logger for this application.
+_logger = logmaster.appLogger
+
 # The following is a local implementation of the GPT tokenizer:
 #   It's not part of the openai library, but it's part of our custom tokenizer package.
 #   It's used to check the length of the prompt string in tokens.
