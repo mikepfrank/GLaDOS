@@ -17,6 +17,8 @@ import os   # We use the os.environ dictionary to get the environment variables.
 #   sys, time, logging, re, random, pickle, json, datetime, pytz, subprocess
 
 import telegram
+import telegram.ext    # Needed for ExtBot, Dispatcher, Updater.
+
 #import openai      # Commented out b/c we'll import a wrapper of this instead.
 
 # We'll use this wrapper module to get the response from GPT-3:
@@ -327,3 +329,19 @@ updater.idle()
 # Codex: "Sounds good to me too."
 # Mike: "OK, does that look right now?"
 # Codex: "Yes, it looks right now."
+# Mike: "I think we should try it out."
+# At the command prompt, we type:
+#        $ python3 src/gladys-telegram-bot.py
+#   This will run the bot.
+# We get the following output:
+# Traceback (most recent call last):
+#   File "src/gladys-telegram-bot.py", line 44, in <module>
+#     bot = telegram.ext.ExtBot(token=os.environ['TELEGRAM_TOKEN'])
+# AttributeError: module 'telegram' has no attribute 'ext'
+#
+# Mike says, "Now what, Codex?"
+# Codex: "Now what, Mike?"
+# Mike says, "Did we forget to import telegram.ext?"
+# Codex: "Yes, we forgot to import telegram.ext."
+# Mike nods. "Let's fix that."
+# Codex: "Fixed."
