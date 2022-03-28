@@ -186,6 +186,8 @@ __all__ = [
 	'GPT3APIConfig',	# Class: A collection of API parameter settings.
 	'Completion',		# Class: An object for a result returned by the API.
 	'GPT3Core',			# Class: Instance of the API that remembers its config.
+		# Exception classes.
+	'PromptTooLargeException',	# Exception: Prompt is too long to fit in GPT-3's receptive field.
 	
 		# Module public functions.
 	'countTokens'		# Function to count tokens in a string. (Costs!)
