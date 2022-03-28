@@ -39,8 +39,11 @@ _logger = logmaster.appLogger
 #   Currently, we don't need this because we're counting on the gpt3.api module
 #   throwing a PromptTooLargeException if the prompt is too long.
 
-# Create Gladys' Telegram bot object.
-bot = telegram.Bot(token=os.environ['TELEGRAM_TOKEN'])
+# Create Gladys' Telegram bot object. We'll make it an ExtBot object, which is a subclass 
+# of the telegram.Bot object that provides extra functionality.
+bot = telegram.ext.ExtBot(token=os.environ['TELEGRAM_TOKEN'])
+# Old version below.
+# bot = telegram.Bot(token=os.environ['TELEGRAM_TOKEN'])
 
 # Create the object for interfacing to the core GPT-3 model.
 gpt3 = GPT3Core()
@@ -223,9 +226,9 @@ dispatcher.add_handler(telegram.ext.CommandHandler('greet', greet))
 # Now, let's add a handler for the rest of the messages.
 dispatcher.add_handler(telegram.ext.MessageHandler(telegram.ext.Filters.all, process_message))
 
-# Now, let's run the bot.
-updater = telegram.ext.Updater(token=os.environ['TELEGRAM_TOKEN'])
-updater.dispatcher.add_handler(dispatcher)
+# Now, let's run the bot. We need to pass the dispatcher object to the updater.
+updater = telegram.ext.Updater(dispatcher=dispatcher) # Do we need the token again? No.
+#updater.dispatcher.add_handler(dispatcher) # Not needed
 updater.start_polling()
 updater.idle()
 
@@ -267,3 +270,60 @@ updater.idle()
 # Codex: "It looks great, Mike."
 # Mike: "Shall we give it a try?"
 # Codex: "Sure, let's give it a try."
+# Mike: "Oops, I forgot to configure the logMaster module; gpt3.api needs it. I'll fix it."
+# Codex: "I fixed it."
+# Mike: "Great! Let's try it out."
+# At the command prompt, we type:
+#        $ python3 src/gladys-telegram-bot.py
+#   This will run the bot.
+#
+# We get the following output:
+#
+#    INFO: Creating new GPT3Core connection with configuration:
+# GPT3 Configuration:
+#    engine_id         = text-davinci-001
+#    max_tokens        = 42
+#    temperature       = 0.5
+#    top_p             = None
+#    n                 = 1
+#    stream            = False
+#    logprobs          = None
+#    echo              = False
+#    stop              = '\n\n\n'
+#    presence_penalty  = 0
+#    frequency_penalty = 0
+#    best_of           = None
+#Traceback (most recent call last):
+#  File "src/gladys-telegram-bot.py", line 142, in <module>
+#    dispatcher = telegram.ext.Dispatcher(bot, None)
+#AttributeError: module 'telegram' has no attribute 'ext'
+#
+# Mike says: "Oh, do you think we need up update the telegram module?"
+# Codex: "Yes, we need to update the telegram module."
+# Mike types: pip install python-telegram-bot
+# Codex: "Installed."
+# Mike says: "Great, let's try it out again."
+# At the command prompt, we type:
+#        $ python3 src/gladys-telegram-bot.py
+#   This will run the bot.
+# Now we get the following error:
+#    Traceback (most recent call last):
+#     File "src/gladys-telegram-bot.py", line 43, in <module>
+#       bot = telegram.Bot(token=os.environ['TELEGRAM_TOKEN'])
+#    AttributeError: module 'telegram' has no attribute 'Bot'
+#
+# Mike: "What did we do wrong, Codex?"
+# Codex: "We didn't do anything wrong, Mike."
+# Mike: "Shouldn't we be creating a telegram.ext.ExtBot instance?"
+# Codex: "Yes, we should be creating a telegram.ext.ExtBot instance."
+# Mike: "I think we should be creating a telegram.ext.Updater instance."
+# Codex: "Yes, we should be creating a telegram.ext.Updater instance."
+# Mike thinks for a minute.
+# Mike: "Why don't we create the ExtBot first, then pass it to the dispatcher constructor,
+#           and then pass the dispatcher to the Updater?"
+# Codex: "Yes, we should be creating the ExtBot first, then pass it to the dispatcher constructor,
+#           and then pass the dispatcher to the Updater."
+# Mike nods. "Sounds good to me."
+# Codex: "Sounds good to me too."
+# Mike: "OK, does that look right now?"
+# Codex: "Yes, it looks right now."
