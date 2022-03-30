@@ -200,8 +200,8 @@ __all__ = [
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 global	DEF_ENGINE			# Default GPT-3 engine name.
-#DEF_ENGINE	= 'davinci'		# I believe this is the biggest one.
-DEF_ENGINE	= 'text-davinci-001'		# New Instruct series model.
+DEF_ENGINE	= 'davinci'		# I believe this is the biggest one.
+#DEF_ENGINE	= 'text-davinci-001'		# New Instruct series model.
 
 	#	NOTE: Current Model Pricing Per 1 million tokens (as of 12/24/'20):
 	#	-------------------------------------------------------------------
