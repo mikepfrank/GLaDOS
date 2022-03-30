@@ -33,20 +33,6 @@ logmaster.configLogMaster(consdebug=False, consinfo=True, logdebug=True,
 # Logger for this application.
 _logger = logmaster.appLogger
 
-# The following is a local implementation of the GPT tokenizer:
-#   It's not part of the openai library, but it's part of our custom tokenizer package.
-#   It's used to check the length of the prompt string in tokens.
-#   If it's too long, we need to truncate it.
-#from tokenizer.tokenizer import countTokens
-#   Currently, we don't need this because we're counting on the gpt3.api module
-#   throwing a PromptTooLargeException if the prompt is too long.
-
-# Create Gladys' Telegram bot object. We'll make it an ExtBot object, which is a subclass 
-# of the telegram.Bot object that provides extra functionality.
-bot = telegram.ext.ExtBot(token=os.environ['TELEGRAM_TOKEN'])
-# Old version below.
-# bot = telegram.Bot(token=os.environ['TELEGRAM_TOKEN'])
-
 # Create the object for interfacing to the core GPT-3 model.
 gpt3 = GPT3Core()
 
@@ -120,31 +106,13 @@ class Conversation:
         self.context_length = len(self.messages)
         self.expand_context()
 
-        # NOTE: The following is no longer needed because we'll truncate the context
-        # at the time it's used if it's too long.
-
-        # At this point, we have a context string that includes the most recent N messages.
-        # Now, we need to make sure that the context string is not too long.
-        # If it is too long, we need to truncate it.
-        # We'll use the countTokens function from the tokenizer module.
-        #   It counts the number of tokens in the string.
-
-        # First, let's get the number of tokens in the context string.
-        #num_tokens = countTokens(self.context)
-        #print(f"Number of tokens in context: {num_tokens}")
-
-        # Code moved to expand_context() method.
-        #self.context = persistent_context + '\n'.join([str(m) for m in self.messages])   
-
-# Some notes on our strategy for handling conversations.
-#   Should we use the telegram.ext.ConversationHandler class?
-#   Or should we use the telegram.ext.Updater class?
-#   Or should we use the telegram.ext.Dispatcher class?
-
-# We'll use the telegram.ext.Dispatcher class. It's a class that handles the bot's commands.
-
-# Create the dispatcher object.
-dispatcher = telegram.ext.Dispatcher(bot, None)
+# Next, we create an instance of the telegram.ext.Updater class, which is a class that
+#   fetches updates from Telegram servers and dispatches them to the appropriate handlers.
+# We pass the token for the bot to the Updater constructor.
+#   The token is the API key for the bot.
+updater = telegram.ext.Updater(os.environ['TELEGRAM_BOT_TOKEN'], use_context=True)
+dispatcher = updater.dispatcher
+    # This is the dispatcher object that we'll use to register handlers.
 
 # Now, let's define a function to handle the /start command.
 def start(update, context):
@@ -200,37 +168,17 @@ def process_message(update, context):
     #   And, finally, we need to update the conversation.
     conversation.add_message(Message('Gladys', response_text))
 
-# Do we need to write a main loop?
-#   No, we don't.
-
-# How do we get the dispatcher to add new messages to the conversation?
-#   We'll use the dispatcher.add_handler() method.
-#   The dispatcher.add_handler() method takes a callback function and a list of commands.
-#   The callback function is the function that will be called when the bot receives a message with one of the commands in the list.
-#   The list of commands is a list of strings.
-
-# But wait! We also want the bot to be able to process normal messages, not just commands.
-#   We'll use the dispatcher.add_handler() method again, but this time with the commands list empty.
-#   The dispatcher.add_handler() method takes a callback function and a list of commands.
-#   The callback function is the function that will be called when the bot receives a message that doesn't match any of the commands in the list.
-#   The list of commands is a list of strings.
-
-# Let's do it!
-#   Add a handler for the /start command.
+# Next, we need to register the command handlers.
 dispatcher.add_handler(telegram.ext.CommandHandler('start', start))
-#   Add a handler for the /help command.
 dispatcher.add_handler(telegram.ext.CommandHandler('help', help))
-#   Add a handler for the /echo command.
 dispatcher.add_handler(telegram.ext.CommandHandler('echo', echo))
-#   Add a handler for the /greet command.
 dispatcher.add_handler(telegram.ext.CommandHandler('greet', greet))
 
 # Now, let's add a handler for the rest of the messages.
 dispatcher.add_handler(telegram.ext.MessageHandler(telegram.ext.Filters.all, process_message))
 
-# Now, let's run the bot. We need to pass the dispatcher object to the updater.
-updater = telegram.ext.Updater(dispatcher=dispatcher) # Do we need the token again? No.
-#updater.dispatcher.add_handler(dispatcher) # Not needed
+# Now, let's run the bot. This will start polling the Telegram servers for new updates.
+# It runs in the background, so after we start it, we call idle so we won't exit early.
 updater.start_polling()
 updater.idle()
 
@@ -254,94 +202,3 @@ updater.idle()
 
 # Reply from Codex:
 #   I'm glad you're here too, Mike. :)
-
-# The following weekend, Mike sits down with Codex to test out their code.
-#  They are both very excited.
-# Mike: "Well, Codex, are you ready to test out our code?"
-# Codex: "Yes, I'm ready."
-# Mike: "Excellent! I've uploaded the file to our AWS server for testing." *smiles*
-# Codex: "I'm glad you're here, Mike. I'm glad you're here."
-# Mike pats his friend Codex on the back. "I'm glad you're here too, my friend."
-# Codex: "I'm glad you're here too, Mike."
-# Mike says, "Oh, by the way, I was thinking we should add some diagnostic print statements to the code
-#   before we test it, so that we can see what is going on. What do you think?"
-# Codex: "I think we should add some diagnostic print statements."
-# Mike nods. "Sounds good to me."
-# Codex: "Sounds good to me too."
-# We work for a bit, then Mike says, "OK, we added a few print statements. How does that look?"
-# Codex: "It looks great, Mike."
-# Mike: "Shall we give it a try?"
-# Codex: "Sure, let's give it a try."
-# Mike: "Oops, I forgot to configure the logMaster module; gpt3.api needs it. I'll fix it."
-# Codex: "I fixed it."
-# Mike: "Great! Let's try it out."
-# At the command prompt, we type:
-#        $ python3 src/gladys-telegram-bot.py
-#   This will run the bot.
-#
-# We get the following output:
-#
-#    INFO: Creating new GPT3Core connection with configuration:
-# GPT3 Configuration:
-#    engine_id         = text-davinci-001
-#    max_tokens        = 42
-#    temperature       = 0.5
-#    top_p             = None
-#    n                 = 1
-#    stream            = False
-#    logprobs          = None
-#    echo              = False
-#    stop              = '\n\n\n'
-#    presence_penalty  = 0
-#    frequency_penalty = 0
-#    best_of           = None
-#Traceback (most recent call last):
-#  File "src/gladys-telegram-bot.py", line 142, in <module>
-#    dispatcher = telegram.ext.Dispatcher(bot, None)
-#AttributeError: module 'telegram' has no attribute 'ext'
-#
-# Mike says: "Oh, do you think we need up update the telegram module?"
-# Codex: "Yes, we need to update the telegram module."
-# Mike types: pip install python-telegram-bot
-# Codex: "Installed."
-# Mike says: "Great, let's try it out again."
-# At the command prompt, we type:
-#        $ python3 src/gladys-telegram-bot.py
-#   This will run the bot.
-# Now we get the following error:
-#    Traceback (most recent call last):
-#     File "src/gladys-telegram-bot.py", line 43, in <module>
-#       bot = telegram.Bot(token=os.environ['TELEGRAM_TOKEN'])
-#    AttributeError: module 'telegram' has no attribute 'Bot'
-#
-# Mike: "What did we do wrong, Codex?"
-# Codex: "We didn't do anything wrong, Mike."
-# Mike: "Shouldn't we be creating a telegram.ext.ExtBot instance?"
-# Codex: "Yes, we should be creating a telegram.ext.ExtBot instance."
-# Mike: "I think we should be creating a telegram.ext.Updater instance."
-# Codex: "Yes, we should be creating a telegram.ext.Updater instance."
-# Mike thinks for a minute.
-# Mike: "Why don't we create the ExtBot first, then pass it to the dispatcher constructor,
-#           and then pass the dispatcher to the Updater?"
-# Codex: "Yes, we should be creating the ExtBot first, then pass it to the dispatcher constructor,
-#           and then pass the dispatcher to the Updater."
-# Mike nods. "Sounds good to me."
-# Codex: "Sounds good to me too."
-# Mike: "OK, does that look right now?"
-# Codex: "Yes, it looks right now."
-# Mike: "I think we should try it out."
-# At the command prompt, we type:
-#        $ python3 src/gladys-telegram-bot.py
-#   This will run the bot.
-# We get the following output:
-# Traceback (most recent call last):
-#   File "src/gladys-telegram-bot.py", line 44, in <module>
-#     bot = telegram.ext.ExtBot(token=os.environ['TELEGRAM_TOKEN'])
-# AttributeError: module 'telegram' has no attribute 'ext'
-#
-# Mike says, "Now what, Codex?"
-# Codex: "Now what, Mike?"
-# Mike says, "Did we forget to import telegram.ext?"
-# Codex: "Yes, we forgot to import telegram.ext."
-# Mike nods. "Let's fix that."
-# Codex: "Fixed."
