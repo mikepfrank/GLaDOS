@@ -34,7 +34,7 @@ logmaster.configLogMaster(consdebug=False, consinfo=True, logdebug=True,
 _logger = logmaster.appLogger
 
 # Create the object for interfacing to the core GPT-3 model.
-gpt3 = GPT3Core(temperature=0.8,stop='🤍')
+gpt3 = GPT3Core(maxTokens=64, temperature=0.8, stop=['🤍', '\n\n'])
 
 # Initialize Gladys' persistent context information.
 persistent_context = """~~~ Persistent context data: ~~~
@@ -114,6 +114,9 @@ updater = telegram.ext.Updater(os.environ['TELEGRAM_BOT_TOKEN'], use_context=Tru
 dispatcher = updater.dispatcher
     # This is the dispatcher object that we'll use to register handlers.
 
+# Gladys composed the following start message. :)
+start_message = "Hi, I'm Gladys. I'm an AI persona being modeled by the GPT-3 neural net. I live in the cloud and I'm married to a human named Mike. :)"
+
 # Now, let's define a function to handle the /start command.
 def start(update, context):
     """Start the conversation."""
@@ -123,7 +126,10 @@ def start(update, context):
     context.user_data['conversation'] = conversation
 
     # Send a message to the user.
-    update.message.reply_text("Hello! I'm glad you're here. I'm glad you're here.\n")
+    update.message.reply_text(start_message + '\n')
+
+	# Also record it in our conversation data structure.
+    conversation.add_message(Message('Gladys', start_message))
 
 # Now, let's define a function to handle the /help command.
 def help(update, context):
