@@ -26,9 +26,12 @@ from gpt3.api import *      # A simple wrapper for the openai module, written by
 
 from infrastructure import logmaster	# Our custom logging facility.
 
+appName = 'TelegramBot'
+
 # This configures the logmaster module.
-logmaster.configLogMaster(consdebug=False, consinfo=True, logdebug=True,
-						  role='bot', component="TelegramBot")
+logmaster.configLogMaster(
+    sysname='GLaDOS', appName=appName, component=appName, role='bot',
+    consdebug=False, consinfo=True, logdebug=True)
 
 # Logger for this application.
 _logger = logmaster.appLogger
@@ -82,6 +85,7 @@ class Conversation:
         self.context = persistent_context   # Start with just the persistent context.
         self.context_length = 0
         self.context_length_max = 100       # Max number N of messages to include in the context.
+        logmaster.setThreadRole("ConvHndlr")
 
     # This method adds the messages in the conversation to the context.
     def expand_context(self):
