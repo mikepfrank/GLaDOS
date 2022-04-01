@@ -475,18 +475,18 @@ class GPT3APIConfig:
 
 		"""Modify one or more parameter values in the configuration."""
 		
-		if engId		!= None:	inst.engineId			= engId
-		if maxTokens	!= None:	inst.maxTokens			= maxTokens
-		if temperature	!= None:	inst.temperature		= temperature
-		if topP			!= None:	inst.topP				= topP
-		if nCompletions != None:	inst.nCompletions		= nCompletions
-		if stream		!= None:	inst.stream				= stream
-		if logProbs		!= None:	inst.logProbs			= logProbs
-		if echo			!= None:	inst.echo				= echo
-		if stop			!= None:	inst.stop				= stop
-		if presPen		!= None:	inst.presencePenalty	= presPen
-		if freqPen		!= None:	inst.frequencyPenalty	= freqPen
-		if bestOf		!= None:	inst.bestOf				= bestOf
+		if engineId		!= None:	self.engineId			= engineId
+		if maxTokens	!= None:	self.maxTokens			= maxTokens
+		if temperature	!= None:	self.temperature		= temperature
+		if topP			!= None:	self.topP				= topP
+		if nCompletions != None:	self.nCompletions		= nCompletions
+		if stream		!= None:	self.stream				= stream
+		if logProbs		!= None:	self.logProbs			= logProbs
+		if echo			!= None:	self.echo				= echo
+		if stop			!= None:	self.stop				= stop
+		if presPen		!= None:	self.presencePenalty	= presPen
+		if freqPen		!= None:	self.frequencyPenalty	= freqPen
+		if bestOf		!= None:	self.bestOf				= bestOf
 
 	#__/ End instance method GPT3APIConfig.modify().
 

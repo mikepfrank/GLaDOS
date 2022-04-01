@@ -475,13 +475,17 @@ import	traceback	 # Used for printing stack traces.
 		#|	1.2. Imports of custom application modules. [module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global	systemName, appName
+global	systemName, sysName, appName, topFile
 	# - The initial values of these that are defined later in this file are
 	#	placeholders that should never be used.
 	
 import	appdefs					# Import definitions for the current application.
 from	appdefs		import *	# Use systemName, appName, topFile for this application.
 
+if _RAW_DEBUG:
+	# Print the values of systemName, appName, and topFile that we imported
+	# from appdefs.
+	print(f"logmaster diagnostics:\n\tsystemName: {systemName}\n\tappName: {appName}\n\ttopFile: {topFile}")
 
 	#|==========================================================================
 	#|	2.	Global constants, variables, and objects.	   [module code section]
@@ -624,8 +628,8 @@ NORMAL		  =	 NORMAL_LEVEL	# A more concise synonym.
 				#|
 				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global	systemName,sysName
-global	appName
+#global	systemName,sysName
+#global	appName
 global	LOG_FILENAME
 
 	# Ensure that systemName, appName, sysName and LOG_FILENAME are initialized.
