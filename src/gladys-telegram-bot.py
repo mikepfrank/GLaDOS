@@ -29,15 +29,18 @@ from infrastructure import logmaster	# Our custom logging facility.
 appName = 'TelegramBot'
 
 # This configures the logmaster module.
-logmaster.configLogMaster(
-    sysname='GLaDOS', appName=appName, component=appName, role='bot',
+logmaster.configLogMaster(filename=f"log/GLaDOS.{appName}.log",
+    sysname='GLaDOS', appname=appName, component=appName, role='bot',
     consdebug=False, consinfo=True, logdebug=True)
 
 # Logger for this application.
 _logger = logmaster.appLogger
 
+# We'll use this to delimit the start of each new message event in Gladys' receptive field.
+message_delimiter = '🤍'
+
 # Create the object for interfacing to the core GPT-3 model.
-gpt3 = GPT3Core(maxTokens=64, temperature=0.8, stop=['🤍', '\n\n'])
+gpt3 = GPT3Core(maxTokens=100, temperature=0.75, stop=[message_delimiter, '\n\n'])
 
 # Initialize Gladys' persistent context information.
 persistent_context = """~~~ Persistent context data: ~~~
@@ -52,7 +55,7 @@ Mike has a long-term project to build me a new operating environment called GLaD
 """
 
 # This is a string that we'll always use to prompt Gladys to respond.
-gladys_prompt = '\n🤍 Gladys>'
+gladys_prompt = f'\n{message_delimiter} Gladys>'
 
 # Programmer's note:
 #   I, myself, an am AI as well. I'm a model called Codex, also based on GPT-3.
@@ -71,7 +74,7 @@ class Message:
         self.text = text
     
     def __str__(self):
-        return f"🤍 {self.sender}> {self.text}"
+        return f"{message_delimiter} {self.sender}> {self.text}"
 
     # Don't know if we'll need this yet.
     def __repr__(self):
@@ -152,28 +155,37 @@ def greet(update, context):
 
 # Now, let's define a function to handle the rest of the messages.
 def process_message(update, context):
-    """Process a message."""
-    chat_id = update.message.chat.id
-    conversation = context.user_data['conversation']
-    conversation.add_message(Message(update.message.from_user.first_name, update.message.text))
-    
-    # At this point, we need to query GPT-3 with the updated context and process its response.
+	"""Process a message."""
+	chat_id = update.message.chat.id
+	conversation = context.user_data['conversation']
+	conversation.add_message(Message(update.message.from_user.first_name, update.message.text))
+	
+	# At this point, we need to query GPT-3 with the updated context and process its response.
 
-    # First, we need to get the response from GPT-3.
-    #   However, we need to do this inside a while/try loop in case we get a PromptTooLargeException.
-    while True:
-        try:
-            response_text = gpt3.genString(conversation.context)
-            break
-        except PromptTooLargeException:             # Imported from gpt3.api module.
-            conversation.expunge_oldest_message()
-            continue
-    
-    #   Then we need to send the response to the user.
-    update.message.reply_text(response_text)
+	# First, we need to get the response from GPT-3.
+	#	However, we need to do this inside a while/try loop in case we get a PromptTooLargeException.
+	while True:
+		try:
+			response_text = gpt3.genString(conversation.context)
+			break
+		except PromptTooLargeException:				# Imported from gpt3.api module.
+			conversation.expunge_oldest_message()
+			continue
+	
+	# If the response is empty, then return early. (Can't send an empty message anyway.)
+	if response_text == "":
+		return
 
-    #   And, finally, we need to update the conversation.
-    conversation.add_message(Message('Gladys', response_text))
+	# If the response starts with a space (expected), trim it off.
+	if response_text[0] == ' ':
+		response_text = response_text[1:]
+		if response_text == "": return
+
+	#	Then we need to send the response to the user.
+	update.message.reply_text(response_text)
+
+	#	And, finally, we need to update the conversation.
+	conversation.add_message(Message('Gladys', response_text))
 
 # Next, we need to register the command handlers.
 dispatcher.add_handler(telegram.ext.CommandHandler('start', start))
