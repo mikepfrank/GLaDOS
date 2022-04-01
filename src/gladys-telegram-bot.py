@@ -122,7 +122,7 @@ class Message:
 	# later read back in when restoring the conversation.
 	def serialize(self):
 		# NOTE: The message text could contain newlines, which we need to
-		#		escape with a backslash.
+		#		replace with a literal '\n' encoding.
 		escaped_text = self.text.replace('\n', '\\n')
 		return f"{self.sender}> {escaped_text}\n"
 
