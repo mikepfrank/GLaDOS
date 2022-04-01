@@ -2999,7 +2999,7 @@ def lvlname_to_loglevel(lvlname):
 	if lvlname in logging._levelNames.keys():	
 		return logging._levelNames[lvlname]
 	else:
-		if doError:
+		if doErr:
 			localLogger.error("There is no logging level named '%s'." % lvlname)
 		return NOTSET
 
@@ -3393,7 +3393,7 @@ def configLogMaster(sysname:str = None, appname:str = None,
 			#-Warning: Other modules that have already imported
 			# names from appdefs will still have the old value of
 			# appName in their module's copy of this global.
-		LOG_FILENAME = appName + ".log"
+		LOG_FILENAME = 'log/' + appName + ".log"
 		
 	if filename:			LOG_FILENAME					= filename
 	if formatstr:			LOG_FORMATSTR					= formatstr
