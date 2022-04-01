@@ -103,44 +103,45 @@ gladys_prompt = f'\n{message_delimiter} Gladys>'
 
 # First, let's define a class for messages that remembers the message sender and the message text.
 class Message:
-    """Instances of this class store the message sender and the message text
-        for an incoming or outgoing message."""
+	"""Instances of this class store the message sender and the message text
+		for an incoming or outgoing message."""
 
-    def __init__(self, sender, text):
-        # Print diagnostic information.
-        print(f"Creating message object for: {sender}> {text}")
-        self.sender = sender
-        self.text = text
-    
-    def __str__(self):
-        """A string representation of the message object.
-            It is properly delimited for reading by the GPT-3 model."""
-        return f"{message_delimiter} {self.sender}> {self.text}"
-    
-    # The following method serializes the message object to a string
-    # which can be appended to the conversation archive file, and
-    # later read back in when restoring the conversation.
-    def serialize(self):
-        # NOTE: The message text could contain newlines, which we need to
-        #       escape with a backslash.
-        return f"{self.sender}> {self.text.replace('\n', '\\n')}\n"
+	def __init__(self, sender, text):
+		# Print diagnostic information.
+		print(f"Creating message object for: {sender}> {text}")
+		self.sender = sender
+		self.text = text
+	
+	def __str__(self):
+		"""A string representation of the message object.
+			It is properly delimited for reading by the GPT-3 model."""
+		return f"{message_delimiter} {self.sender}> {self.text}"
+	
+	# The following method serializes the message object to a string
+	# which can be appended to the conversation archive file, and
+	# later read back in when restoring the conversation.
+	def serialize(self):
+		# NOTE: The message text could contain newlines, which we need to
+		#		escape with a backslash.
+		escaped_text = self.text.replace('\n', '\\n')
+		return f"{self.sender}> {escaped_text}\n"
 
-    # Given a line of text from the conversation archive file, this method
-    # deserializes the message object from the line.
-    @staticmethod
-    def deserialize(line):
-        # Split the line into the sender and the text.
-        sender, text = line.split('> ')
-        # Remove the trailing newline.
-        text = text.rstrip('\n')
-        # Decode any '\n' escape sequences.
-        text = text.replace('\\n', '\n')
-        # Return the message object.
-        return Message(sender, text)    # Q: Is the class name in scope here? A: Yes.
+	# Given a line of text from the conversation archive file, this method
+	# deserializes the message object from the line.
+	@staticmethod
+	def deserialize(line):
+		# Split the line into the sender and the text.
+		sender, text = line.split('> ')
+		# Remove the trailing newline.
+		text = text.rstrip('\n')
+		# Decode any '\n' escape sequences.
+		text = text.replace('\\n', '\n')
+		# Return the message object.
+		return Message(sender, text)	# Q: Is the class name in scope here? A: Yes.
 
-    # Don't know if we'll need this yet.
-    def __repr__(self):
-        return f"{self.sender}> {self.text}"
+	# Don't know if we'll need this yet.
+	def __repr__(self):
+		return f"{self.sender}> {self.text}"
     
 # Next, let's define a class for conversations that remembers the messages in the conversation.
 #  We'll use a list of Message objects to store the messages.
