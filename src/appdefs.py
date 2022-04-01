@@ -168,7 +168,7 @@ systemName  =   "GLaDOS"       # This code is part of the "Dynamic" system.
 
 appName     =   systemName + ".server"
     #-This application program is the (main, central) component
-    # of the system.
+    # of the system. NOTE: This should be overridden by other apps.
 
         #|----------------------------------------------------------------------
         #|
@@ -181,7 +181,7 @@ appName     =   systemName + ".server"
         #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 topFile 	= 	'glados-server'    # Note that the .py is implicit here.
-
+    # Note that this should be overridden by other apps.
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #|                      END OF FILE:   appdefs.py
