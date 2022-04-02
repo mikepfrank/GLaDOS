@@ -176,106 +176,192 @@ from config.configuration import TheAIPersonaConfig
 global __all__
 __all__ = [
 
-		# Module public global constants.
-	'DEF_ENGINE',		# Default GPT-3 engine name ('davinci').
-	'DEF_TOKENS',		# Default number of tokens to return (42).
-	'DEF_TEMP',			# Default temperature value (normally 0.5).
-	'DEF_STOP',			# Default stop string or list of strings.
-	
-		# Module public classes.
-	'GPT3APIConfig',	# Class: A collection of API parameter settings.
-	'Completion',		# Class: An object for a result returned by the API.
-	'GPT3Core',			# Class: Instance of the API that remembers its config.
-		# Exception classes.
-	'PromptTooLargeException',	# Exception: Prompt is too long to fit in GPT-3's receptive field.
-	
-		# Module public functions.
-	'countTokens'		# Function to count tokens in a string. (Costs!)
+			# Module public global constants.
+		'DEF_ENGINE',		# Default GPT-3 engine name ('davinci').
+		'DEF_TOKENS',		# Default number of tokens to return (42).
+		'DEF_TEMP',			# Default temperature value (normally 0.5).
+		'DEF_STOP',			# Default stop string or list of strings.
+		
+			# Module public classes.
+		'GPT3APIConfig',	# Class: A collection of API parameter settings.
+		'Completion',		# Class: An object for a result returned by the API.
+		'GPT3Core',			# Class: Instance of the API that remembers its config.
+			# Exception classes.
+		'PromptTooLargeException',	# Exception: Prompt is too long to fit in GPT-3's receptive field.
+		
+			# Module public functions.
+		'countTokens'		# Function to count tokens in a string. (Costs!)
 	
 	]
+
+
+	#|--------------------------------------------------------------------------
+	#|  _ENGINE_ATTRIBS				[module global private constant structure]
+	#|
+	#|	    This is a dictionary mapping GPT-3 engine names to their 
+	#|		associated attributes.  So far, we only care about the
+	#|		'field-size' attribute, which is the number of tokens in
+	#|		the GPT-3 receptive field, and the 'price' attribute,
+	#|		which is the cost (per 1,000 tokens) to use the engine.
+	#|
+	#|		Later on, we may add more attributes to this structure,
+	#|		and use the individual sub-dictionaries to represent the
+	#|		engine we are currently working with.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	#	NOTE: Current Model Pricing Per 1 million tokens (as of 12/24/'20):
+	#	-------------------------------------------------------------------
+	#		Ada:		$ 0.80	(1.3B params?)					$0.61/Bparam/Mtoken
+	#		Babbage:	$ 1.20	(2.7B params? - or maybe 6.7B)	$0.44/Bparam/Mtoken
+	#		Curie:		$ 6.00	(13B params?)					$0.46/Bparam/Mtoken
+	#		DaVinci:	$60.00	(175B params?)					$0.34/Bparam/Mtoken
+
+# Initialize a dictionary of dictionaries called '_ENGINE_ATTRIBS', keyed by the engine
+# name, whose entries are dictionaries of attribute-value pairs, which respectively
+# contain the data from corresponding rows of this table:
+#
+#    engine-name        field-size    price	(per 1,000 tokens)
+#    ----               ----------    -----
+#    ada                2048          0.0008	# = $0.80 / 1M tokens
+#    babbage            2048          0.0012	# = $1.20 / 1M tokens
+#    curie              2048          0.006		# = $6.00 / 1M tokens
+#    davinci            2048          0.06		# = $60.00 / 1M tokens
+#    text-ada-001       2048          0.0008
+#    text-babbage-001   2048          0.0012
+#    text-curie-001     2048          0.006
+#    text-davinci-001   2048          0.06
+#    text-davinci-002   4000          0.06
+
+# The below statement was written by Codex, with format adjustments by MPF.
+_ENGINE_ATTRIBS = {
+    'ada':				{'engine-name': 'ada', 		    	'field-size': 2048, 'price': 0.0008},
+    'babbage':			{'engine-name': 'babbage',	    	'field-size': 2048, 'price': 0.0012},
+    'curie':			{'engine-name': 'curie',	    	'field-size': 2048, 'price': 0.006},
+    'davinci':			{'engine-name': 'davinci',	    	'field-size': 2048, 'price': 0.06},
+    'text-ada-001':		{'engine-name': 'text-ada-001',	    'field-size': 2048, 'price': 0.0008},
+    'text-babbage-001': {'engine-name': 'text-babbage-001', 'field-size': 2048, 'price': 0.0012},
+    'text-curie-001':	{'engine-name': 'text-curie-001',   'field-size': 2048, 'price': 0.006},
+    'text-davinci-001': {'engine-name': 'text-davinci-001', 'field-size': 2048, 'price': 0.06},
+    'text-davinci-002': {'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06}
+}
+
+# Given an engine name and an attribute name, return the attribute value.
+def _get_engine_attr(engine_name, attr_name):
+	return _ENGINE_ATTRIBS[engine_name][attr_name]
+
+# Given an engine name, return the field-size attribute value.
+def _get_field_size(engine_name):
+    """Given an engine name string, return the corresponding field-size 
+		attribute value."""
+	return _get_engine_attr(engine_name, 'field-size')
+
+# Given an engine name, return the price attribute value.
+def _get_price(engine_name):
+	"""Given an engine name string, return the corresponding price 
+		attribute value."""
+	return _get_engine_attr(engine_name, 'price')
 
 
 	#|------------------------------------------------------------------
 	#|	These constants provide default values for GPT-3's parameters.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global	DEF_ENGINE			# Default GPT-3 engine name.
-DEF_ENGINE	= 'davinci'		# I believe this is the biggest one.
-#DEF_ENGINE	= 'text-davinci-001'		# New Instruct series model.
+global		DEF_ENGINE				# Default GPT-3 engine name.
+DEF_ENGINE	= 'davinci'				# This is the original largest (175B-parameter) model. Origin of Gladys.
+#DEF_ENGINE	= 'text-davinci-002'	# New "best" (4000-token field) model.
 
-	#	NOTE: Current Model Pricing Per 1 million tokens (as of 12/24/'20):
-	#	-------------------------------------------------------------------
-	#		DaVinci:	$60.00	(175B params?)					$0.34/Bparam/Mtoken
-	#		Curie:		$ 6.00	(13B params?)					$0.46/Bparam/Mtoken
-	#		Babbage:	$ 1.20	(2.7B params? - or maybe 6.7B)	$0.44/Bparam/Mtoken
-	#		Ada:		# 0.80	(1.3B params?)					$0.61/Bparam/Mtoken
-
-
-global	DEF_TOKENS		# Default number of tokens to return.
+global		DEF_TOKENS	# Default number of tokens to return.
 DEF_TOKENS	= 42		# Of course.
 
-global	DEF_TEMP		# Default temperature value.
-DEF_TEMP	= 0.5		# Is this reasonable?
+global		DEF_TEMP	# Default temperature value.
+#DEF_TEMP	= 0.5		# Is this reasonable?
+DEF_TEMP	= 0.75		# I think this makes repeats less likely.
 
-global	DEF_STOP		# Default stop string (or list of up to 4).
+global		DEF_STOP	# Default stop string (or list of up to 4).
 DEF_STOP	= "\n\n\n"	# Use 3 newlines (two blank lines) as stop.
 
-global	_ENGINES
-_ENGINES = ['ada', 'babbage', 'curie', 'davinci', 'text-davinci-001']
+global		_ENGINE_NAMES		# List of engine names.
+# Retrieve this from the keys of the '_ENGINE_ATTRIBS' dictionary.
+_ENGINE_NAMES = list(_ENGINE_ATTRIBS.keys())
 
-global	_PRICE_MAP
-_PRICE_MAP = {	# US$ per 1,000 tokens
-		'ada':		0.0008,		# = $0.80 / 1M tokens
-		'babbage':	0.0012,		# = $1.20 / 1M tokens
-		'curie':	0.006,		# = $6.00 / 1M tokens
-		'davinci':	0.06,		# = $60.00 / 1M tokens
-		'text-davinci-001':	0.06,
-	}
-
-global _STATS_FILENAME	# Name of file for saving/loading API usage statistics.
+global 		_STATS_FILENAME		# Name of file for saving/loading API usage statistics.
 _STATS_FILENAME = 'api-stats.json'
 
-global _aiPath
-_aiPath = None
+global 		_aiPath		# Path to the AI's data directory.
+_aiPath 	= None		# Not yet initialized.
+
 
 #|==============================================================================
 #|	Global variables.											  [code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global inputToks, outputToks	# Cumulative tokens used since last reset.
+	#--------------------------------------------------------------
+	# The following globals are used for tracking usage statistics.
 
-# Initialize two separate dicts to hold input & output token counts.
+global 		_statFile	# File object for saving/loading API usage statistics.
+_statFile 	= None		# Not yet initialized.
+
+global 			_statsLoaded	# Have we attempted to load stats from the file?
+_statsLoaded 	= False			# We haven't tried to load stats from the file yet.
+
+global 			_inputLength	# Length of the input string.
+_inputLength 	= 0				# Will be modified when processing a query.
+
+global inputToks, outputToks	# These are dictionaries of token counts.
+	# (Cumulative tokens used for each engine since last reset.)
+
+# Initialize two separate dicts to hold cumulative input & output token counts.
 
 inputToks = {
-		'ada':		0,
-		'babbage':	0,
-		'curie':	0,
-		'davinci':	0,
-		'text-davinci-001':	0,
+		'ada':					0,
+		'babbage':				0,
+		'curie':				0,
+		'davinci':				0,
+		'text-ada-001':			0,
+		'text-babbage-001':		0,
+		'text-curie-001':		0,
+		'text-davinci-001':		0,
+		'text-davinci-002':		0,
 	}
 
 outputToks = {
-		'ada':		0,
-		'babbage':	0,
-		'curie':	0,
-		'davinci':	0,
-		'text-davinci-001':	0,
+		'ada':					0,
+		'babbage':				0,
+		'curie':				0,
+		'davinci':				0,
+		'text-ada-001':			0,
+		'text-babbage-001':		0,
+		'text-curie-001':		0,
+		'text-davinci-001':		0,
+		'text-davinci-002':		0,
 	}
+
+# Meanwhile, this dict will keep track of the cumulative expenditures
+# in dollars for each engine.
 
 global expenditures
 expenditures = {
-		'ada':		0,
-		'babbage':	0,
-		'curie':	0,
-		'davinci':	0,
-		'text-davinci-001':	0,
+		'ada':					0,
+		'babbage':				0,
+		'curie':				0,
+		'davinci':				0,
+		'text-ada-001':			0,
+		'text-babbage-001':		0,
+		'text-curie-001':		0,
+		'text-davinci-001':		0,
+		'text-davinci-002':		0,
 	}
 
-global totalCost
-totalCost = 0			# Initialize at load/save time.
+# This global variable tracks the total cost in dollars across all engines.
 
-global _statsLoaded		# Have we attempted to load stats from the file?
-_statsLoaded = False	# We haven't tried to load stats from the file yet.
+global 			totalCost
+totalCost 		= 0				# Initialize at stats load/save time.
+
+# String containing a formatted multi-line table showing the current statistics.
+global 			_statStr		
+_statStr 		= ""		# Will be modified after processing a query.
+
 
 #|==============================================================================
 #|	Global objects.												  [code section]
@@ -283,6 +369,23 @@ _statsLoaded = False	# We haven't tried to load stats from the file yet.
 
 global	_theTokenCounterCore	# A core connection for counting tokens.
 _theTokenCounterCore = None		# Initially not yet created.
+
+# IMPLEMENTATION NOTE: Since this API wrapper module may be used by multiple
+# threads, we need to protect the global variables & objects above with a mutex.
+# We can do this easily by using the 'threading' module's 'Lock' class.
+# The 'Lock' class is a mutex that can be acquired and released.
+
+import threading
+global _lock
+_lock = threading.Lock()
+
+# NOTE: Any manipulation of the global variables above (in a way that needs 
+# to be effectively atomic) must be protected with the '_lock' mutex. This 
+# can be done via the 'with' statement:
+#
+#		with _lock:
+#			...
+
 
 #|==============================================================================
 #|	Module public classes.										[code section]
@@ -307,7 +410,7 @@ _theTokenCounterCore = None		# Initially not yet created.
 	#|
 	#|			Modify the specified parameters of the configuration.
 	#|
-	#|		str(inst)									[special instance method]
+	#|		str(inst)								   [special instance method]
 	#|
 	#|			Converts the configuration to a human-readable string
 	#|			representation.
@@ -388,6 +491,8 @@ class GPT3APIConfig:
 		#|			If true, then the result will be streamed back incre-
 		#|			mentally as a sequence of server-sent events.
 		#|			Default: False.
+		#|			[NOTE: This parameter is yet supported by this module.
+		#|			 Anyway, it is only useful for very large responses.]
 		#|
 		#|		logProbs											[integer]
 		#|
@@ -497,6 +602,7 @@ class GPT3APIConfig:
 		#|		Generates a human-readable string representation of this
 		#|		API configuration.	This shows all the parameter values.
 		#|		
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	def __str__(self):
 	
@@ -520,27 +626,38 @@ GPT3 Configuration{namestr}:
 	stop			  = {repr(self.stop)}
 	presence_penalty  = {self.presencePenalty}
 	frequency_penalty = {self.frequencyPenalty}
-	best_of			  = {self.bestOf}"""[1:]
+	best_of			  = {self.bestOf}"""[1:]	# [1:] removes the leading newline.
+		# Note: .stop is printed using repr() in order to show the 
+		# escape codes for any special characters.
 
 #__/ End class GPT3APIConfig.
 
 
 class PromptTooLargeException(Exception):
 
+	"""An exception raised when a prompt is too large to be processed."""
+
 	def __init__(e, promptToks:int, maxToks:int):
 
-		byHowMuch = promptToks - maxToks
+		"""Initialize the exception with the number of tokens in the
+			prompt and the maximum number of tokens allowed."""
 
-		e.promptToks = promptToks
-		e.maxToks = maxToks
-		e.byHowMuch = byHowMuch
+		byHowMuch = promptToks - maxToks	# The prompt is too large by this many tokens.
 
-		msg = f"GPT-3 API prompt string is {promptToks} tokens, max is {promptToks}, too large by {byHowMuch}."
+		# Store the above values in the exception object for later reference.
+		e.promptToks 	= promptToks
+		e.maxToks 		= maxToks
+		e.byHowMuch 	= byHowMuch
+
+		# Generate a human-readable error message.
+		msg = (f"GPT-3 API prompt string is {promptToks} tokens," +
+			   f" max is {promptToks}, too large by {byHowMuch}."
 
 		super(PromptTooLargeException, e).__init__(msg)
+			# Call the base class constructor with the generated message.
 
-	# Forward declaration of GPT3Core so we can reference it 
-	# from within the Completion class definition.
+	# Forward declaration of GPT3Core so we can reference its name 
+	# in type hints from within the Completion class definition.
 class GPT3Core:
 	pass
 	
@@ -561,7 +678,7 @@ class GPT3Core:
 #|
 #|		compl = Completion(complStruct)
 #|
-#|			Creates a completion object wrapping the given 
+#|			Creates a Completion object wrapping the given 
 #|			completion structure, previously generated.
 #|
 #|		text = compl.text
@@ -571,9 +688,9 @@ class GPT3Core:
 #|		nTok = compl.nTokens
 #|
 #|			Returns the total number of tokens in the completion.
-#|			Note that this property only works if the core had
+#|			(Note that this property only works if the core had
 #|			'logprobs=0' at the time that the completion was 
-#|			generated.
+#|			generated.)
 #|
 #|		promptLen = compl.promptLen
 #|
@@ -646,9 +763,9 @@ class Completion:
 			# These are things we are going to try to find in our arguments,
 			# or generate ourselves.
 		
-		prompt		= None
-		core		= None
-		complStruct = None
+		prompt			= None		# The prompt string to pass to the API.
+		core			= None		# The core engine connection that should be used to generate this completion.
+		complStruct 	= None		# A raw completion data structure returned by the core API.
 		
 			# Scan our positional arguments looking for strings, core objects,
 			# or pre-existing compleition structures.
@@ -707,21 +824,21 @@ class Completion:
 		
 		#__/ End if we will generate the completion structure.
 		
-		inst.complStruct = complStruct		# Remember the compleition structure.
+		inst.complStruct = complStruct		# Remember the completion structure.
 	
 	#__/ End of class gpt3.api.Completion's instance initializer.
 	
+
 		#|---------------------------------------------------------------
 		#| String converter: Just return the value of our .text property.
 	
 	def __str__(self):
-	
 		"""Converts a Completion instance to a human-readable string."""
-		
 		return self.text
 	
+
 		#|----------------------------------------------------------------------
-		#| .text									  [public instance property]
+		#| .text									[public instance property]
 		#|
 		#|		Returns the text of this completion, as a single string.
 		#|
@@ -733,13 +850,12 @@ class Completion:
 	
 	@property
 	def text(self):
-	
 		"""Returns the text of this completion, as a single string."""
-		
 		return ''.join(self.complStruct['choices'][0]['text'])
 	
+
 		#|----------------------------------------------------------------------
-		#| .nTokens									  [public instance property]
+		#| .nTokens									[public instance property]
 		#|
 		#|		Returns the total number of tokens making up this 
 		#|		completion.	 For this information to be available, 
@@ -761,6 +877,16 @@ class Completion:
 				_logger.warn("WARNING: .nTokens only works when logprobs=0!")
 				
 		return len(self.complStruct['choices'][0]['logprobs']['tokens'])
+
+	#__/ End of class gpt3.api.Completion's .nTokens property.
+
+
+		#|----------------------------------------------------------------------
+		#| .promptLen								[public instance property]
+		#|
+		#|		Returns the length of the prompt string, in tokens.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	@property
 	def promptLen(self):
@@ -785,13 +911,17 @@ class Completion:
 		resultPos = len(self.prompt)
 		resultTokIndex = self.textPosToTokIndex(resultPos)
 		return resultTokIndex
-		
+	
+	#__/ End of class gpt3.api.Completion's .promptLen property.
+
+
 	@property
 	def resultLen(self):
-	
 		"""Returns the length of the result in tokens."""
-		
 		return self.nTokens - self.promptLen
+			# Length of result is the total number of tokens in the response
+			# (assuming echo was set) minus the length of the prompt.
+
 
 	def textPosToTokIndex(self, pos:int):
 	
@@ -808,6 +938,11 @@ class Completion:
 				return tok_index-1
 				
 		return len(text_offsets)-1
+			# If we get here, we're at the end of the text.
+			# Return the last token index.
+	
+	#__/ End of class gpt3.api.Completion's .textPosToTokIndex method.
+
 
 		#|----------------------------------------------------------------------
 		#| ._createComplStruct(apiArgs)				   [private instance method]
@@ -828,82 +963,156 @@ class Completion:
 						  (openai.error.APIError))
 						  
 	def _createComplStruct(self, apiArgs, minQueryToks:int=42):
+			# By default, don't accept shortening the space for the response to less than 42 tokens.
 	
 		"""Private instance method to retrieve a completion from the
 			core API, with automatic exponential backoff and retry."""
 			
-		if minQueryToks is None:
-			minQueryToks = 42
+		if minQueryToks is None:	# Just in case caller explicitly sets this to None,
+			minQueryToks = 42		# revert back to the default of 42 tokens.
 
-		# If the usage statistics file hasn't been loaded already, do it now.
-		if not _statsLoaded:
-			loadStats()
+		# If the core is not set, we can't do anything.
+		if self.core == None:
+			_logger.error("ERROR: completion._createComplStruct(): Core not available.")
+			return None
+			
+		# The below code needs to be wrapped in the module's mutex lock, because
+		# it manipulates the global record of API usage statistics, and this is
+		# not thread-safe unless we make it atomic by grabbing the lock.
 
-		self._accountForInput(apiArgs)
+		with _lock:
 
-		REAL_MAX = 2049		# Not 2048; not sure why.
+			# If the usage statistics file hasn't been loaded already, do it now.
+			if not _statsLoaded:
+				loadStats()
 
-		# Check to make sure that input+result length is not >2049; if so then
-		# we need to request a smaller result.
-		if _inputLength + apiArgs['max_tokens'] > REAL_MAX:
+			# This measures the length of the prompt in tokens, and updates
+			# the global record of API usage statistics accordingly.
+			self._accountForInput(apiArgs)
+				# Note: The global variable _inputLength is updated by this method.
 
-				# See how much space there is right now for our query result.
-			querySpace = REAL_MAX - _inputLength
+			# Retrieve the engine's receptive field size; this is the maximum number
+			# of tokens that can be accommodated in the query + response together.
+			fieldSize = _get_field_size(self.core.conf.engine)
 
-				# If there isn't enough space even for our minimum query,
-				# then we need to raise an exception, because whoever prepared
-				# our prompt made it too large.
-			if querySpace < minQueryToks:
+			# For some reason, the engines that supposedly can only handle
+			# 2,048 tokens in their query + response together actually are
+			# able to handle 2,049 tokens. So, we'll adjust the value of
+			# fieldSize in that case.
+			if fieldSize == 2048:
+				fieldSize = 2049
 
-				effMax = REAL_MAX - minQueryToks
+			# NOTE: Still need to research whether the engines that supposedly
+			# can only handle 4,000 tokens can similarly handle 4,001 tokens.
 
-				_logger.warn(f"[GPT-3 API] Prompt length of {_inputLength} exceeds "
-							 f"our effective maximum of {effMax}. Requesting field shrink.")
+			# Check to make sure that input+result length is not greater than
+			# the size of the receptive field; if so, then we need to request 
+			# a smaller result (but not too small).
 
-				e = PromptTooLargeException(_inputLength, effMax)
-				raise e		# Complain to our caller hierarchy.
+			if _inputLength + apiArgs['max_tokens'] > fieldSize:
 
-			apiArgs['max_tokens'] = maxTok = REAL_MAX - _inputLength
+					# See how much space there is right now for our query result.
+				querySpace = fieldSize - _inputLength
 
-			_logger.warn(f"[GPT3 API] Trimmed max_tokens to {maxTok}.")
+					# If there isn't enough space left even for our minimum result,
+					# then we need to raise an exception, because whoever prepared
+					# our prompt made it too large for this engine.
 
-		complStruct = openai.Completion.create(**apiArgs)
-		
-		self._accountForOutput(apiArgs['engine'], complStruct)
+				if querySpace < minQueryToks:
 
-		saveStats()
+						# Calculate the effective maximum prompt length, in tokens.
+					effMax = fieldSize - minQueryToks
 
-		return complStruct
+					_logger.warn(f"[GPT-3 API] Prompt length of {_inputLength} exceeds"
+								 f" our effective maximum of {effMax}. Requesting field shrink.")
+
+					e = PromptTooLargeException(_inputLength, effMax)
+					raise e		# Complain to our caller hierarchy.
+
+					# If we get here, we have enough space for our minimum result length,
+					# so we can shrink the maximum result length accordingly.
+				origMax = apiArgs['max_tokens']	# Save the original value.
+				apiArgs['max_tokens'] = maxTok = fieldSize - _inputLength
+
+				_logger.warn(f"[GPT3 API] Trimmed max_tokens from {origMax} to {maxTok}.")
+
+			# If we get here, we know we have enough space for our query + result,
+			# so we can proceed with the request to the actual underlying API.
+			complStruct = openai.Completion.create(**apiArgs)
+
+			# This measures the length of the response in tokens, and updates
+			# the global record of API usage statistics accordingly.			
+			self._accountForOutput(apiArgs['engine'], complStruct)
+
+			# This updates the cost data and the human-readable table of API
+			# usage statistics, and saves the updated data to the _statsFile.
+			saveStats()
+
+		return complStruct		# Return the low-level completion data structure.
+			# Note, this is the actual data structure that the completion object 
+			# uses to populate itself.
+		 	
+	#__/ End of class gpt3.api.Completion's ._createComplStruct method.
 
 
 	# Make these regular functions?
 	
 	def _accountForInput(self, apiArgs):
+
+		"""This method measures the number of tokens in the prompt, and
+			updates the global record of input tokens processed by the API."""
 		
+			# NOTE: It's dangerous to make _inputLength a global variable,
+			# because it's possible that multiple threads will interleave
+			# their processing of different queries. To be safe, DO NOT 
+			# CALL THIS METHOD unless you have the module's mutex _lock 
+			# acquired.
+
 		global _inputLength
 
 		engine = apiArgs['engine']
 		prompt = apiArgs['prompt']
 
+			# This function counts the number of tokens in the prompt
+			# without having to do an API call (since calls cost $$).
 		nToks = local_countTokens(prompt)
 
 		_inputLength = nToks
 
 		_logger.debug(f"Counted {nToks} tokens in input text [{prompt}]")
 
+			# Update the global record of API usage statistics.
 		inputToks[engine] = inputToks[engine] + nToks
-		
+	
+	#__/ End of class gpt3.api.Completion's ._accountForInput method.
+
+
 	def _accountForOutput(self, engine, complStruct):
 
-		text = ''.join(complStruct['choices'][0]['text'])
+		"""This method measures the number of tokens in the response, and
+			updates the global record of output tokens processed by the API."""
 
+		# NOTE: We can't just use the .text property of the completion
+		# object, because we call this method from the initializer,
+		# before the completion object has been fully initialized.
+
+		text = ''.join(complStruct['choices'][0]['text'])
+			# This syntax concatenates the list of strings returned by
+			# the underlying API together into a single string.
+
+			# This function counts the number of tokens in the response
+			# without having to do an API call (since calls cost $$).
 		nToks = local_countTokens(text)
 
 		_logger.debug(f"Counted {nToks} tokens in output text [{text}].")
 
+			# Update the global record of API usage statistics.
 		outputToks[engine] = outputToks[engine] + nToks
 
+	#__/ End of class gpt3.api.Completion's ._accountForOutput method.
+
 #__/ End class Completion.
+
 
 	#|--------------------------------------------------------------------------
 	#|	
@@ -933,7 +1142,7 @@ class Completion:
 	#|		
 	#|	Special methods:
 	#|
-	#|		__init__	- Instance initializer.
+	#|		.__init__(*args, **kwargs)	- Instance initializer.
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -945,7 +1154,7 @@ class GPT3Core:
 	#|--------------------------------------------------------------------------
 	#|	Instance private data members for class GPT3Core.
 	#|
-	#|		_configuration	[GPT3APIConfig]		- Current API configuration.
+	#|		._configuration	[GPT3APIConfig]		- Current API configuration.
 	#|
 	#|--------------------------------------------------------------------------
 
@@ -962,7 +1171,7 @@ class GPT3Core:
 
 	def __init__(inst, *args, **kwargs):
 
-			# If keyword args 'config=' is present, use that as the config.
+			# If keyword arg 'config=' is present, use that as the config.
 		
 		if 'config' in kwargs:
 			config = kwargs['config']
@@ -987,6 +1196,7 @@ class GPT3Core:
 		inst._configuration = config		# Remember our configuration.
 	
 	#__/ End GPT3Core instance initializer.
+
 
 		#|----------------------------------------------------------------------
 		#|	.conf									[instance public property]
@@ -1019,7 +1229,7 @@ class GPT3Core:
 		# Generate the argument list for calling the core API.
 	def genArgs(self, prompt=None):
    
-		kwargs = dict() # Empty dict for building up argument list.
+		kwargs = dict() 	# Initially empty dict for building up argument list.
 		
 		conf = self.conf	# Get our current configuration.
 
@@ -1046,6 +1256,9 @@ class GPT3Core:
 
 		return kwargs
 
+	#__/ End GPT3Core.genArgs() instance method.
+
+
 		#|----------------------------------------------------------------------
 		#|	.genCompletion(prompt:string)			[instance public method]
 		#|
@@ -1061,14 +1274,15 @@ class GPT3Core:
 	def genCompletion(self, prompt=None):
 	
 		"""With automatic exponential backoff, query the server
-				for a completion object for the given prompt using the
-				connection's current API configuration."""
+			for a completion object for the given prompt using the
+			connection's current API configuration."""
 		
 		return Completion(self, prompt)
 			# Calls the Completion constructor with the supplied prompt. This
 			# constructor does all the real work of calling the API.
 		
-	#__/ End method GPT3Core.genCompletion().
+	#__/ End instance method GPT3Core.genCompletion().
+
 
 		#|----------------------------------------------------------------------
 		#|	.genString(prompt:string)				[instance public method]
@@ -1082,16 +1296,12 @@ class GPT3Core:
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
 	def genString(self, prompt):
-	
 		"""Generate a single completion string for the given prompt."""
-			
 		resultCompletion = self.genCompletion(prompt)
-
 		text = resultCompletion.text
-
 		_logger.debug("[GPT-3/API] Server returned result string: [" + text + ']')
-
 		return text
+	#__/ End instance method GPT3Core.genString().
 
 #__/ End class GPT3Core.
 
@@ -1100,10 +1310,15 @@ class GPT3Core:
 #| Module object initialization.								[code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+	# This object represents an API connection to the GPT-3 core
+	# system that is used for counting tokens.  It is not created
+	# unless/until the GPT3Core.countTokens() method is called.
+
 _theTokenCounterCore = None		# Don't create this until needed.
 #_theTokenCounterCore = GPT3Core(engineId='ada', echo=True, maxTokens=0, logProbs=0)
 	# This connection provides functionality needed to count tokens.
 	# Note we use the 'ada' engine because it is cheapest ($0.80/1M tokens).
+
 
 #|==============================================================================
 #| Module function definitions.									[code section]
@@ -1152,8 +1367,17 @@ def statsPathname():
 
 	return statsPathname
 
+#__/ End module function statsPathname().
+
+
 def textPath():
+	"""Constructs and returns the pathname to the text file to store the API stats table."""
 	return path.join(_aiPath, 'api-stats.txt')
+
+
+# NOTE: This function is not currently used. It is here for future reference.
+# We current prefer to use the local_countTokens() function, which is imported
+# from the tokenizer/tokenizer.py module.
 
 def countTokens(text:str=None):
 
@@ -1174,6 +1398,9 @@ def countTokens(text:str=None):
 		inputComplObj = _theTokenCounterCore.genCompletion(text)
 		return inputComplObj.nTokens
 
+#__/ End module function countTokens().
+
+
 def loadStatsIfNeeded():
 
 	"""If the stats file hasn't been loaded from the filesystem yet,
@@ -1181,6 +1408,9 @@ def loadStatsIfNeeded():
 
 	if not _statsLoaded:
 		loadStats()
+
+#__/ End module function loadStatsIfNeeded().
+
 
 def loadStats():
 
@@ -1193,11 +1423,13 @@ def loadStats():
 
 	try:
 		with open(statsPath) as inFile:
-			stats = json.load(inFile)
-			inputToks = stats['input-tokens']
-			outputToks = stats['output-tokens']
-			expenditures = stats['expenditures']
-			totalCost = stats['total-cost']
+
+			stats 			= json.load(inFile)
+
+			inputToks 		= stats['input-tokens']
+			outputToks 		= stats['output-tokens']
+			expenditures 	= stats['expenditures']
+			totalCost 		= stats['total-cost']
 		
 		#_logger.normal(f"Loaded API usage stats from {statsPath}: \n{pformat(stats, width=25)}")
 
@@ -1211,17 +1443,12 @@ def loadStats():
 
 	displayStats()
 
-	return
+#__/ End module function loadStats().
 
-global _statFile
-_statFile = None
-
-global _statStr
-_statStr = ""
 
 def statLine(line):
 
-	"""This quick-and-dirty utility method saves a lines of
+	"""This quick-and-dirty utility method saves a line of
 		the API statistics table to several places."""
 
 	global _statStr
@@ -1235,9 +1462,13 @@ def statLine(line):
 		# Also accumulate it in this global string.
 	_statStr = _statStr + line + '\n'
 
+#__/ End module function statLine().
+
+
 def stats():
 	"""After using the API this returns a human-readable table of usage statistics."""
 	return _statStr
+
 
 def displayStats():
 
@@ -1250,43 +1481,56 @@ def displayStats():
 
 	with open(textPath(), 'w') as _statFile:
 
+		# NOTE: We may need to widen some of the columns in this table
+		#  if the contents start to overflow.
+
 		statLine("")
-		statLine("             Token Counts")
-		statLine("        -----------------------       USD")
-		statLine(" Engine   Input  Output   Total      Cost")
-		statLine("======= ======= ======= ======= =========")
+		statLine("                      Token Counts")
+		statLine("                 ~~~~~~~~~~~~~~~~~~~~~~~          ")
+		statLine("Engine Name      Input   Output  Total    USD Cost")
+		statLine("================ ======= ======= ======= =========")
 		
+		# Cumulative input, output, and total token counts.
 		cumIn = cumOut = cumTot = 0
 		
-	
-		for engine in _ENGINES:
+		# Generate a table row for each engine.
+		for engine in _ENGINE_NAMES:
 			
-			engStr = "%7s" % engine
-			inToks = inputToks[engine]
+			engStr 	= "%16s" % engine
+
+			inToks 	= inputToks[engine]
 			outToks = outputToks[engine]
-			total = inToks + outToks
+			total 	= inToks + outToks
 	
-			inTokStr = "%7d" % inToks
+			inTokStr  = "%7d" % inToks
 			outTokStr = "%7d" % outToks
-			totStr = "%7d" % total
+			totStr 	  = "%7d" % total
 	
 			cost = "$%8.4f" % expenditures[engine]
 	
 			statLine(f"{engStr} {inTokStr} {outTokStr} {totStr} {cost}")
 	
-			cumIn = cumIn + inToks
+			cumIn  = cumIn  + inToks
 			cumOut = cumOut + outToks
 			cumTot = cumTot + total
+		
+		#__/ End loop over engine names.
 	
-		cumInStr = "%7d" % cumIn
+		# Generate a table row for the accumulated totals.
+		cumInStr  = "%7d" % cumIn
 		cumOutStr = "%7d" % cumOut
 		cumTotStr = "%7d" % cumTot
 	
 		totStr = "$%8.4f" % totalCost
 	
-		statLine("------- ------- ------- ------- ---------")
-		statLine(f"TOTALS: {cumInStr} {cumOutStr} {cumTotStr} {totStr}")
+		statLine("~~~~~~~~~~~~~~~~ ~~~~~~~ ~~~~~~~ ~~~~~~~ ~~~~~~~~~")
+		statLine(f"TOTALS:         {cumInStr} {cumOutStr} {cumTotStr} {totStr}")
 		statLine("")
+	
+	#__/ End with statement.
+
+#__/ End module function displayStats().
+
 
 def saveStats():
 
@@ -1317,28 +1561,42 @@ def saveStats():
 
 		json.dump(stats, outFile)
 
-	displayStats()
 			# Pretty-print it to the file.
 		#pprint(stats, width=25, stream=outFile)
+	
+	#__/ End with statement.
+
+	displayStats()
+
+#__/ End module function saveStats().
 
 
 def recalcDollars():
 
-	costs = dict()
-	dollars = 0
-	for engine in _PRICE_MAP.keys():
-		nToks = inputToks[engine] + outputToks[engine]
-		engCost = (nToks/1000) * _PRICE_MAP[engine]
+	"""This recalculates per-engine and total dollar costs
+		from the per-engine token counts."""
+
+	costs = dict()	# This is a dictionary mapping engine names to cumulative costs (in dollars).
+	dollars = 0		# Total cost of all API calls, in dollars.
+	for engine in _ENGINE_NAMES:
+		nToks = inputToks[engine] + outputToks[engine]	# Total number of tokens used.
+		engCost = (nToks/1000) * _get_price(engine)		# Price is per 1000 tokens.
 		costs[engine] = engCost
 		dollars = dollars + engCost
+	#__/ End loop over engine names.
 		
 	return (costs, dollars)
+
+#__/ End module function recalcDollars().
+
 
 #|==============================================================================
 #| Module main load-time execution.								  [code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+# We now postpone loading the API usage stats till they are first needed.
 #loadStats()
+
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #|	END FILE:	gpt3/api.py
