@@ -123,8 +123,13 @@ class Message:
 	# later read back in when restoring the conversation.
 	def serialize(self):
 		# NOTE: The message text could contain newlines, which we need to
-		#		replace with a literal '\n' encoding.
-		escaped_text = self.text.replace('\n', '\\n')
+		#		replace with a literal '\n' encoding. But, in case the 
+        #       message text contains a literal '\' followed by an 'n', we
+        #       need to escape the '\' with another '\'.
+        # First, we'll replace all backslashes with '\\'.
+        # Then, we'll replace all newlines with '\n'.
+        text = self.text.replace('\\', '\\\\').replace('\n', '\\n')
+        # Now, we'll return the escaped string.
 		return f"{self.sender}> {escaped_text}\n"
 
 	# Given a line of text from the conversation archive file, this method
@@ -137,6 +142,8 @@ class Message:
 		text = text.rstrip('\n')
 		# Decode any '\n' escape sequences.
 		text = text.replace('\\n', '\n')
+        # Decode any '\\' escape sequences.
+        text = text.replace('\\\\', '\\')
 		# Return the message object.
 		return Message(sender, text)	# Q: Is the class name in scope here? A: Yes.
 
