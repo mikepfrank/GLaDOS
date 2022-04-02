@@ -40,9 +40,10 @@
 # Import the libraries.
 
 import os   # We use the os.environ dictionary to get the environment variables.
+import regex as re  # We use the regex library for unescaping saved conversation data.
 
 # Copilot also wanted to import the following libraries, but we aren't using them yet:
-#   sys, time, logging, re, random, pickle, json, datetime, pytz, subprocess
+#   sys, time, logging, random, pickle, json, datetime, pytz, subprocess
 
 import telegram
 import telegram.ext    # Needed for ExtBot, Dispatcher, Updater.
@@ -140,10 +141,24 @@ class Message:
 		sender, text = line.split('> ')
 		# Remove the trailing newline.
 		text = text.rstrip('\n')
-		# Decode any '\n' escape sequences.
-		text = text.replace('\\n', '\n')
-        # Decode any '\\' escape sequences.
+
+        # To unescape the backslash and newline characters correctly, we'll
+        # first replace all '\n' sequences NOT preceded by a '\' with a
+        # literal '\n'. Then, we'll replace all '\\' sequences with a
+        # literal '\'.
+
+        # I think we need a regular-expression-based approach here.
+        # The following regex pattern will match all '\n' sequences
+        # that are NOT preceded by a '\'.
+        pattern = r'(?<!\\)\n'
+
+        # Now, we'll replace all '\n' sequences NOT preceded by a '\'
+        # with a literal '\n'.
+        text = re.sub(pattern, '\n', text)
+
+        # Now, we'll replace all '\\' sequences with a literal '\'.
         text = text.replace('\\\\', '\\')
+
 		# Return the message object.
 		return Message(sender, text)	# Q: Is the class name in scope here? A: Yes.
 
