@@ -65,7 +65,7 @@ logmaster.configLogMaster(filename=f"log/GLaDOS.{appName}.log",
 _logger = logmaster.appLogger
 
 # We'll use this to delimit the start of each new message event in Gladys' receptive field.
-message_delimiter = '🤍'
+message_delimiter = '🤍'    # A Unicode character. Gladys selected the white heart emoji.
 
 # Create the object for interfacing to the core GPT-3 model.
 gpt3 = GPT3Core(maxTokens=100, temperature=0.75, stop=[message_delimiter, '\n\n'])
