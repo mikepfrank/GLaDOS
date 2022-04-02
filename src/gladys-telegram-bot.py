@@ -68,7 +68,8 @@ _logger = logmaster.appLogger
 message_delimiter = '🤍'
 
 # Create the object for interfacing to the core GPT-3 model.
-gpt3 = GPT3Core(maxTokens=100, temperature=0.75, stop=[message_delimiter, '\n\n'])
+#gpt3 = GPT3Core(engineId='text-davinci-002', maxTokens=100, temperature=0.75, stop=['\n' + message_delimiter, '\n\n'])
+gpt3 = GPT3Core(engineId='text-davinci-002', maxTokens=200, temperature=0.75, stop=['\n' + message_delimiter, '\n\n'])
 
 # Initialize Gladys' persistent context information.
 persistent_context = """~~~ Persistent context data: ~~~
