@@ -153,7 +153,7 @@ class Message:
         pattern = r'(?<!\\)\\n'
 
         # Now, we'll replace all '\n' sequences NOT preceded by a '\'
-        # with a literal '\n'.
+        # with a literal newline character.
         text = re.sub(pattern, '\n', text)
 
         # Now, we'll replace all '\\' sequences with a literal '\'.
