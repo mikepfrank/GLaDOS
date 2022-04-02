@@ -45,7 +45,7 @@
 		its .conf property.
 
 			DEF_ENGINE	- GPT-3 engine name (default 'davinci').
-			DEF_TOKENS	- Number of tokens to output (def. 42).
+			DEF_TOKENS	- Max. number of tokens to output (def. 42).
 			DEF_TEMP	- Default temperature (default is 0.5).
 			DEF_STOP	- Stop string or strings (3 newlines).
 
@@ -111,7 +111,7 @@
 
 from	os			import	path	# Manipulate filesystem path strings.
 from	pprint		import	pprint, pformat		# Pretty-print complex objects.
-import	json
+import	json	# We use this to save/restore the API usage statistics.
 
 		#|======================================================================
 		#|	1.2. Imports of modules to support GPT-3.	[module code subsection]
@@ -158,6 +158,7 @@ from tokenizer.tokenizer import countTokens as local_countTokens
 	# Method to count tokens without an API call.
 
 from config.configuration import TheAIPersonaConfig
+
 
 #|==============================================================================
 #|	Global constants.											[code section]
@@ -234,6 +235,7 @@ __all__ = [
 #    text-davinci-002   4000          0.06
 
 # The below statement was written by Codex, with format adjustments by MPF.
+
 _ENGINE_ATTRIBS = {
     'ada':				{'engine-name': 'ada', 		    	'field-size': 2048, 'price': 0.0008},
     'babbage':			{'engine-name': 'babbage',	    	'field-size': 2048, 'price': 0.0012},
@@ -252,7 +254,7 @@ def _get_engine_attr(engine_name, attr_name):
 
 # Given an engine name, return the field-size attribute value.
 def _get_field_size(engine_name):
-    """Given an engine name string, return the corresponding field-size 
+	"""Given an engine name string, return the corresponding field-size 
 		attribute value."""
 	return _get_engine_attr(engine_name, 'field-size')
 
@@ -272,7 +274,8 @@ DEF_ENGINE	= 'davinci'				# This is the original largest (175B-parameter) model.
 #DEF_ENGINE	= 'text-davinci-002'	# New "best" (4000-token field) model.
 
 global		DEF_TOKENS	# Default number of tokens to return.
-DEF_TOKENS	= 42		# Of course.
+#DEF_TOKENS	= 42		# Of course.
+DEF_TOKENS  = 100
 
 global		DEF_TEMP	# Default temperature value.
 #DEF_TEMP	= 0.5		# Is this reasonable?
@@ -651,7 +654,7 @@ class PromptTooLargeException(Exception):
 
 		# Generate a human-readable error message.
 		msg = (f"GPT-3 API prompt string is {promptToks} tokens," +
-			   f" max is {promptToks}, too large by {byHowMuch}."
+			   f" max is {promptToks}, too large by {byHowMuch}.")
 
 		super(PromptTooLargeException, e).__init__(msg)
 			# Call the base class constructor with the generated message.
@@ -765,7 +768,7 @@ class Completion:
 		
 		prompt			= None		# The prompt string to pass to the API.
 		core			= None		# The core engine connection that should be used to generate this completion.
-		complStruct 	= None		# A raw completion data structure returned by the core API.
+		complStruct		= None		# A raw completion data structure returned by the core API.
 		
 			# Scan our positional arguments looking for strings, core objects,
 			# or pre-existing compleition structures.
@@ -962,14 +965,14 @@ class Completion:
 	@backoff.on_exception(backoff.expo,
 						  (openai.error.APIError))
 						  
-	def _createComplStruct(self, apiArgs, minQueryToks:int=42):
+	def _createComplStruct(self, apiArgs, minQueryToks:int=DEF_TOKENS):
 			# By default, don't accept shortening the space for the response to less than 42 tokens.
 	
 		"""Private instance method to retrieve a completion from the
 			core API, with automatic exponential backoff and retry."""
 			
-		if minQueryToks is None:	# Just in case caller explicitly sets this to None,
-			minQueryToks = 42		# revert back to the default of 42 tokens.
+		if minQueryToks is None:		# Just in case caller explicitly sets this to None,
+			minQueryToks = DEF_TOKENS	# revert back to the default of 42 tokens.
 
 		# If the core is not set, we can't do anything.
 		if self.core == None:
@@ -993,7 +996,7 @@ class Completion:
 
 			# Retrieve the engine's receptive field size; this is the maximum number
 			# of tokens that can be accommodated in the query + response together.
-			fieldSize = _get_field_size(self.core.conf.engine)
+			fieldSize = _get_field_size(self.core.conf.engineId)
 
 			# For some reason, the engines that supposedly can only handle
 			# 2,048 tokens in their query + response together actually are
@@ -1051,7 +1054,7 @@ class Completion:
 		return complStruct		# Return the low-level completion data structure.
 			# Note, this is the actual data structure that the completion object 
 			# uses to populate itself.
-		 	
+			
 	#__/ End of class gpt3.api.Completion's ._createComplStruct method.
 
 
@@ -1523,8 +1526,8 @@ def displayStats():
 	
 		totStr = "$%8.4f" % totalCost
 	
-		statLine("~~~~~~~~~~~~~~~~ ~~~~~~~ ~~~~~~~ ~~~~~~~ ~~~~~~~~~")
-		statLine(f"TOTALS:         {cumInStr} {cumOutStr} {cumTotStr} {totStr}")
+		statLine( "~~~~~~~~~~~~~~~~ ~~~~~~~ ~~~~~~~ ~~~~~~~ ~~~~~~~~~")
+		statLine(f"TOTALS:          {cumInStr} {cumOutStr} {cumTotStr} {totStr}")
 		statLine("")
 	
 	#__/ End with statement.
