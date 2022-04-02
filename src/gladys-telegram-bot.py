@@ -123,14 +123,17 @@ class Message:
     # which can be appended to the conversation archive file, and
     # later read back in when restoring the conversation.
     def serialize(self):
+
         # NOTE: The message text could contain newlines, which we need to
         #       replace with a literal '\n' encoding. But, in case the 
         #       message text contains a literal '\' followed by an 'n', we
         #       need to escape the '\' with another '\'.
         # First, we'll replace all backslashes with '\\'.
         # Then, we'll replace all newlines with '\n'.
-        text = self.text.replace('\\', '\\\\').replace('\n', '\\n')
-        # Now, we'll return the escaped string.
+
+        escaped_text = self.text.replace('\\', '\\\\').replace('\n', '\\n')
+
+        # Now, we'll return the serialized representation of the message.
         return f"{self.sender}> {escaped_text}\n"
 
     # Given a line of text from the conversation archive file, this method
@@ -171,79 +174,79 @@ class Message:
 # TO DO: Add support for archiving/restoring conversation data.
 
 class Conversation:
-    """Instances of this class store the messages in a conversation."""
+	"""Instances of this class store the messages in a conversation."""
 
-    def __init__(self, chat_id):
+	def __init__(self, chat_id):
 
-        # Print diagnostic information.
-        print(f"Creating conversation object for chat_id: {chat_id}")
+		# Print diagnostic information.
+		print(f"Creating conversation object for chat_id: {chat_id}")
 
-        self.chat_id = chat_id
-        self.messages = []
-        self.context = persistent_context   # Start with just the persistent context data.
-        self.context_length = 0             # Initially there are no Telegram messages in the context.
-        self.context_length_max = 100       # Max number N of messages to include in the context.
+		self.chat_id = chat_id
+		self.messages = []
+		self.context = persistent_context	# Start with just the persistent context data.
+		self.context_length = 0				# Initially there are no Telegram messages in the context.
+		self.context_length_max = 100		# Max number N of messages to include in the context.
 
-        # Determine the filename we'll use to archive/restore the conversation.
-        self.filename = f"log/GLaDOS.{appName}.{chat_id}.txt"
+		# Determine the filename we'll use to archive/restore the conversation.
+		self.filename = f"log/GLaDOS.{appName}.{chat_id}.txt"
 
-        # Read the conversation archive file, if it exists.
-        self.read_archive()   # Note this will retrieve at most the last self.context_length_max messages.
+		# Read the conversation archive file, if it exists.
+		self.read_archive()	  # Note this will retrieve at most the last self.context_length_max messages.
 
-        # Go ahead and open the archive file for appending.
-        self.archive_file = open(self.filename, 'a')
+		# Go ahead and open the archive file for appending.
+		self.archive_file = open(self.filename, 'a')
 
-        # Not currently used.
-        # logmaster.setThreadRole("ConvHndlr")
+		# Not currently used.
+		# logmaster.setThreadRole("ConvHndlr")
 
-    # This method adds the messages in the conversation to the context string.
-    def expand_context(self):
-        self.context = persistent_context + '\n'.join([str(m) for m in self.messages]) + gladys_prompt  
-            # Join the messages into a single string, with a newline between each.
-            # Add the persistent context to the beginning of the string.
-            # Add the prompt to the end of the string.
+	# This method adds the messages in the conversation to the context string.
+	def expand_context(self):
+		self.context = persistent_context + '\n'.join([str(m) for m in self.messages]) + gladys_prompt	
+			# Join the messages into a single string, with a newline between each.
+			# Add the persistent context to the beginning of the string.
+			# Add the prompt to the end of the string.
 
-    # This method reads recent messages from the conversation archive file, if it exists.
-    def read_archive(self):
-        # If the conversation archive file exists, read it.
-        if os.path.exists(self.filename):
-            # Open the conversation archive file.
-            with open(self.filename, 'r') as f:
-                # Read the file line by line.
-                for line in f:
+	# This method reads recent messages from the conversation archive file, if it exists.
+	def read_archive(self):
+		# If the conversation archive file exists, read it.
+		if os.path.exists(self.filename):
+			# Open the conversation archive file.
+			with open(self.filename, 'r') as f:
+				# Read the file line by line.
+				for line in f:
 
-                    # Deserialize the message object from the line.
-                    message = Message.deserialize(line)
+					# Deserialize the message object from the line.
+					message = Message.deserialize(line)
 
 					# If we're already at the maximum context length, pop the oldest message
-                    if self.context_length >= self.context_length_max:
+					if self.context_length >= self.context_length_max:
 						self.messages.pop(0)
 						self.context_length -= 1
 
-                    # Append the message to the conversation.
-                    self.messages.append(message)
-                    self.context_length += 1
+					# Append the message to the conversation.
+					self.messages.append(message)
+					self.context_length += 1
 
-            # Update the conversation's context string.
-            self.expand_context()
+			# Update the conversation's context string.
+			self.expand_context()
 
-    # This method is called to expunge the oldest message from the conversation
-    # when the context string gets too long to fit in GPT-3's receptive field.
-    def expunge_oldest_message(self):
-        print("Expunging oldest message from conversation:", self.chat_id)
-        print("Oldest message was:", self.messages[0])
-        self.messages.pop(0)
-        self.expand_context()   # Update the context string.
+	# This method is called to expunge the oldest message from the conversation
+	# when the context string gets too long to fit in GPT-3's receptive field.
+	def expunge_oldest_message(self):
+		print("Expunging oldest message from conversation:", self.chat_id)
+		print("Oldest message was:", self.messages[0])
+		self.messages.pop(0)
+		self.expand_context()	# Update the context string.
 
-    def add_message(self, message):
-        """Add a message to the conversation."""
-        self.messages.append(message)
-        if len(self.messages) > self.context_length_max:
-            self.messages = self.messages[-self.context_length_max:]    # Keep the last N messages
-        self.context_length = len(self.messages)
-        self.expand_context()   # Update the context string.
-        # We also need to append the message to the conversation archive file.
-        self.archive_file.write(message.serialize())
+	def add_message(self, message):
+		"""Add a message to the conversation."""
+		self.messages.append(message)
+		if len(self.messages) > self.context_length_max:
+			self.messages = self.messages[-self.context_length_max:]	# Keep the last N messages
+		self.context_length = len(self.messages)
+		self.expand_context()	# Update the context string.
+		# We also need to append the message to the conversation archive file.
+		self.archive_file.write(message.serialize())
 
 # Next, we create an instance of the telegram.ext.Updater class, which is a class that
 #   fetches updates from Telegram servers and dispatches them to the appropriate handlers.
