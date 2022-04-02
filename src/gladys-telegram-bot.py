@@ -150,7 +150,7 @@ class Message:
         # I think we need a regular-expression-based approach here.
         # The following regex pattern will match all '\n' sequences
         # that are NOT preceded by a '\'.
-        pattern = r'(?<!\\)\n'
+        pattern = r'(?<!\\)\\n'
 
         # Now, we'll replace all '\n' sequences NOT preceded by a '\'
         # with a literal '\n'.
@@ -188,7 +188,7 @@ class Conversation:
         self.filename = f"log/GLaDOS.{appName}.{chat_id}.txt"
 
         # Read the conversation archive file, if it exists.
-        self.read_archive()   # Note this will retrieve at most self.context_length_max messages.
+        self.read_archive()   # Note this will retrieve at most the last self.context_length_max messages.
 
         # Go ahead and open the archive file for appending.
         self.archive_file = open(self.filename, 'a')
@@ -211,14 +211,19 @@ class Conversation:
             with open(self.filename, 'r') as f:
                 # Read the file line by line.
                 for line in f:
+
                     # Deserialize the message object from the line.
                     message = Message.deserialize(line)
+
+					# If we're already at the maximum context length, pop the oldest message
+                    if self.context_length >= self.context_length_max:
+						self.messages.pop(0)
+						self.context_length -= 1
+
                     # Append the message to the conversation.
                     self.messages.append(message)
                     self.context_length += 1
-                    # If we've reached the maximum context length, stop.
-                    if self.context_length >= self.context_length_max:
-                        break
+
             # Update the conversation's context string.
             self.expand_context()
 
