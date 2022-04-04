@@ -254,15 +254,25 @@ if __name__ == "__main__":
 	if RAW_DEBUG:
 		print("__main__: Importing custom application modules...", file=stderr)
 
-			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#|	1.2.1. The following modules, although custom, are generic 
 			#|		utilities, not really specific to the present application.
-			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-				#-------------------------------------------------------------
-				# The logmaster module defines our logging framework; we
-				# import specific definitions we need from it.	(This is a
-				# little cleaner stylistically than "from ... import *".)
+				#---------------------------------------------------------------
+				#  The appdefs module contains application-wide definitions.
+				#  These are used, in particular, by the logmaster module.
+				#  This module is imported here, so that we can configure it
+				#  appropriately for the present application before logmaster
+				#  is imported (since logmaster imports definitions from it).
+
+import appdefs
+appdefs.selectApp("glados-server")		# Tell appdefs module which application we are in.
+
+				#---------------------------------------------------------------
+				#  The logmaster module defines our logging framework; we
+				#  import specific definitions we need from it.	(This is a
+				#  little cleaner stylistically than "from ... import *".)
 
 #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #| LAYER 1:
