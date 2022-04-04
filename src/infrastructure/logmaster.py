@@ -597,7 +597,7 @@ __all__ = [
 				#|
 				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global NORMAL_LEVEL, NORMAL
+global	NORMAL_LEVEL, NORMAL, NOTSET
 
 
 NORMAL_LEVEL  =	 int((logging.INFO + logging.WARN)/2)
@@ -606,6 +606,8 @@ NORMAL_LEVEL  =	 int((logging.INFO + logging.WARN)/2)
 NORMAL		  =	 NORMAL_LEVEL	# A more concise synonym.
 	# \_ initLogMaster() adds this new level to our logging facility.
 
+NOTSET		  =	 logging.NOTSET	# The default value for log_level
+	# \_ Used in lvlname_to_loglevel() function.
 
 				#|--------------------------------------------------------------
 				#|
@@ -2450,7 +2452,7 @@ class ThreadActor(threading.Thread):
 		if doDebug:
 			_moduleLogger.debug("ThreadActor.set_component(): Setting "
 								"component to [%s] for this thread & its "
-								"logging context." % component)
+								"logging context." % comp)
 		
 		self.component				= comp	# Provides for easy access.
 		theLoggingContext.component = comp	# Also store it in the thread-local global LoggingContext.
@@ -3000,8 +3002,9 @@ def lvlname_to_loglevel(lvlname):
 		return logging._levelNames[lvlname]
 	else:
 		if doErr:
-			localLogger.error("There is no logging level named '%s'." % lvlname)
-		return NOTSET
+			_moduleLogger.error("There is no logging level named '%s'." % lvlname)
+		return NOTSET	# This is the default value, if not otherwise set.
+			#    \__ This is assigned to logging.NOTSET earlier in the file.
 
 
 			#|------------------------------------------------------------------
@@ -3423,9 +3426,9 @@ def configLogMaster(sysname:str = None, appname:str = None,
 		# Figure out the file and console log levels based on user
 		# selections.  (Verbose in this call is turned on for now,
 		# to confirm the final post-config level settings to stderr.)
-		
+
 	setLogLevels(verbose=_RAW_DEBUG)
-	
+
 		# Update the root log file name, logging level, and format.
 		# NOTE: So far this only changes the logging level.	 More
 		# research into guts of logging module needed to figure out
