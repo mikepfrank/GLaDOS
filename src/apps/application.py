@@ -488,7 +488,7 @@ class Application_:
 
 			# If this app already has its windows open, there's nothing to do. Return.
 
-		if thisApp.state is 'open':
+		if thisApp.state == 'open':
 			return
 
 			#-----------------------------------------------------------
