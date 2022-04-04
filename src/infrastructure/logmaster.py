@@ -478,7 +478,21 @@ import	traceback	 # Used for printing stack traces.
 global	systemName, sysName, appName, topFile
 	# - The initial values of these that are defined later in this file are
 	#	placeholders that should never be used.
-	
+
+	# NOTE: There's a big problem with the below import of the appdefs module,
+	# which is that it implies you can't have more than one application in
+	# a single source tree.  This is a problem because we're using the
+	# logmaster module from multiple applications, and we don't want to
+	# replicate the entire source tree for each application.  So, we're
+	# going to have to do something about this eventually.
+
+	# UPDATE: This has now been fixed -- to get this to work correctly,
+	# the top-level program for the application must import the appdefs
+	# module, and then call selectApp() to set the values of the global
+	# variables appName, systemName, and sysName.  This must be done before
+	# the logmaster module is imported.  That way, when we import the
+	# globals from appdefs into this module, we'll get the correct values.
+
 import	appdefs					# Import definitions for the current application.
 from	appdefs		import *	# Use systemName, appName, topFile for this application.
 
