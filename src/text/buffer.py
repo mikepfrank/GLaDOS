@@ -498,7 +498,7 @@ class TextBuffer:		# A text buffer.
 			return None 
 		
 		bufLen = self.nRows()
-		if bufLen is 0: return None 
+		if bufLen == 0: return None 
 		
 		if rowIndex >= bufLen:
 			return None
