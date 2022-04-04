@@ -40,11 +40,11 @@
 	#|------------------------------------------------------------------------------
 	#| Imports.
 
-# Standard Python library imports.
+	# Standard Python library imports.
 
 import os               # We use the os.environ dictionary to get the environment variables.
 
-# Contributed libraries (use pip install <library> to install).
+	# Contributed libraries (use pip install <library> to install).
 
 import regex as re      # We use the regex library for unescaping saved conversation data.
 
@@ -120,8 +120,11 @@ Mike has a long-term project to build me a new operating environment called GLaD
 ~~~ Recent Telegram messages: ~~~
 """
 
+# Define the bot's name (used in a couple of places below).
+bot_name = 'Gladys'
+
 # This is a string that we'll always use to prompt Gladys to respond.
-gladys_prompt = f'\n{message_delimiter} Gladys>'
+gladys_prompt = f'\n{message_delimiter} {bot_name}>'
 
 #|=============================================================================|
 #|                                                                             |
@@ -222,9 +225,11 @@ class Conversation:
 		self.context = persistent_context	# Start with just the persistent context data.
 		self.context_length = 0				# Initially there are no Telegram messages in the context.
 		self.context_length_max = 100		# Max number N of messages to include in the context.
+		self.bot_name = bot_name			# The name of the bot. ('Gladys' in this case.)
 
 		# Determine the filename we'll use to archive/restore the conversation.
 		self.filename = f"log/GLaDOS.{appName}.{chat_id}.txt"
+			# Need to change this to take out the initial 'GLaDOS.'.
 
 		# Read the conversation archive file, if it exists.
 		self.read_archive()	  # Note this will retrieve at most the last self.context_length_max messages.
@@ -283,6 +288,18 @@ class Conversation:
 		self.expand_context()	# Update the context string.
 		# We also need to append the message to the conversation archive file.
 		self.archive_file.write(message.serialize())
+		self.archive_file.flush()
+
+	# This method checks whether a given message is already in the conversation.
+	# This is used to help prevent the bot from getting into a loop where it sends
+	# the same message over and over.
+	def message_exists(self, message):
+		"""Check whether a message (with the same sender and text) is already 
+			in the conversation."""
+		for m in self.messages:
+			if m.sender == message.sender and m.text == message.text:
+				return True
+		return False
 
 # Next, we create an instance of the telegram.ext.Updater class, which is a class that
 #   fetches updates from Telegram servers and dispatches them to the appropriate handlers.
@@ -316,7 +333,7 @@ def start(update, context):         # Context, in this context, is the Telegram 
     if len(conversation.messages) == 0:
         update.message.reply_text(start_message + '\n')
 	    # Also record the initial message in our conversation data structure.
-        conversation.add_message(Message('Gladys', start_message))
+        conversation.add_message(Message(conversation.bot_name, start_message))
 
 # Now, let's define a function to handle the /help command.
 def help(update, context):
@@ -341,43 +358,70 @@ def process_message(update, context):
 	conversation.add_message(Message(update.message.from_user.first_name, update.message.text))
 	
 	# At this point, we need to query GPT-3 with the updated context and process its response.
+	# We do this inside a while loop, because we may need to repeat the query if the response
+	# is a repeat of a message that the bot already sent earlier.
 
-	# First, we need to get the response from GPT-3.
-	#	However, we need to do this inside a while/try loop in case we get a PromptTooLargeException.
-	while True:
-		try:
-			response_text = gpt3.genString(conversation.context)
-			break
-		except PromptTooLargeException:				# Imported from gpt3.api module.
-			conversation.expunge_oldest_message()
+	while True:		# We'll break out of the loop when we get a response that isn't a repeat.
+
+		# First, we need to get the response from GPT-3.
+		#	However, we need to do this inside a while/try loop in case we get a PromptTooLargeException.
+		while True:
+			try:
+				response_text = gpt3.genString(conversation.context)
+				break
+			except PromptTooLargeException:				# Imported from gpt3.api module.
+				conversation.expunge_oldest_message()
+				continue
+		
+		# Strip off any trailing whitespace from the response; Telegram will ignore it anyway.
+		response_text = response_text.rstrip()
+
+		# If the response is empty, then return early. (Can't send an empty message anyway.)
+		if response_text == "":
+			return		# This means the bot is simply not responding to this particular message.
+
+		# If the response starts with a space (expected after the '>'), trim it off.
+		if response_text[0] == ' ':
+			response_text = response_text[1:]
+			if response_text == "": return	# If the response is now empty, return.
+
+		# Construct a Message object to send to the user.
+		message = Message(conversation.bot_name, response_text)
+
+		# If this message is already in the conversation, then we need to retry the query,
+		# in hopes of stochastically getting a different response. Note it's important for
+		# this to work efficiently that the temperature is not too small. (E.g., 0.1 is 
+		# likely to lead to a lot of retries. The default temperature currently is 0.75.)
+		if conversation.message_exists(message):
 			continue
-	
-	# If the response is empty, then return early. (Can't send an empty message anyway.)
-	if response_text == "":
-		return
 
-	# If the response starts with a space (expected), trim it off.
-	if response_text[0] == ' ':
-		response_text = response_text[1:]
-		if response_text == "": return
+		# Otherwise, we can break out of the loop to send the message.
+		break
+	#__/ End of while loop that continues until we get a response that isn't a repeat.
 
-	#	Then we need to send the response to the user.
+	# If we get here, we have obtained a non-empty, non-repeat message that we can send.
+
+	# First, send the response to the user.
 	update.message.reply_text(response_text)
 
-	#	And, finally, we need to update the conversation.
-	conversation.add_message(Message('Gladys', response_text))
+	# Then, update the conversation data structure.
+	conversation.add_message(message)
+
+	return	
+#__/ End of process_message() function definition.
+
 
 # Next, we need to register the command handlers.
-dispatcher.add_handler(telegram.ext.CommandHandler('start', start))
-dispatcher.add_handler(telegram.ext.CommandHandler('help', help))
-dispatcher.add_handler(telegram.ext.CommandHandler('echo', echo))
+dispatcher.add_handler(telegram.ext.CommandHandler('start',	start))
+dispatcher.add_handler(telegram.ext.CommandHandler('help',	help))
+dispatcher.add_handler(telegram.ext.CommandHandler('echo',	echo))
 dispatcher.add_handler(telegram.ext.CommandHandler('greet', greet))
 
 # Now, let's add a handler for the rest of the messages.
 dispatcher.add_handler(telegram.ext.MessageHandler(telegram.ext.Filters.all, process_message))
 
 # Now, let's run the bot. This will start polling the Telegram servers for new updates.
-# It runs in the background, so after we start it, we call idle so we won't exit early.
+# It runs in the background, so after we start it, we call idle() so we won't exit early.
 updater.start_polling()
 updater.idle()
 
