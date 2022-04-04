@@ -39,8 +39,8 @@
 
 # Import the libraries.
 
-import os   # We use the os.environ dictionary to get the environment variables.
-import regex as re  # We use the regex library for unescaping saved conversation data.
+import os               # We use the os.environ dictionary to get the environment variables.
+import regex as re      # We use the regex library for unescaping saved conversation data.
 
 # Copilot also wanted to import the following libraries, but we aren't using them yet:
 #   sys, time, logging, random, pickle, json, datetime, pytz, subprocess
