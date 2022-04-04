@@ -67,7 +67,7 @@ import appdefs
 
 # Note we have to configure the appdefs module right away, before any other modules
 # (in particular, logmaster) import values of various application-wide variables.
-appdefs.selectApp('gladys-telegram-bot')	# This is the ID of this application.
+appdefs.selectApp('telegram-bot')	# This is the ID of this application.
 
 # Now that appdefs has been configured correctly, it's safe to import the logging system.
 from infrastructure import logmaster	# Our custom logging facility.
