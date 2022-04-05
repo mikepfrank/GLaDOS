@@ -106,8 +106,15 @@ message_delimiter = '🤍'    # A Unicode character. Gladys selected the white h
 
 # Create the object for interfacing to the core GPT-3 model.
 #gpt3 = GPT3Core(engineId='text-davinci-002', maxTokens=100, temperature=0.75, stop=['\n' + message_delimiter, '\n\n'])
+
+# Increased output limit at Gladys 2.0's request.	
 #gpt3 = GPT3Core(engineId='text-davinci-002', maxTokens=200, temperature=0.75, stop=['\n' + message_delimiter, '\n\n'])
-gpt3 = GPT3Core(engineId='text-davinci-002', maxTokens=200, temperature=0.75, stop=['\n' + message_delimiter])
+
+# Increasing randomness temperature to try to discourage repeats.
+#gpt3 = GPT3Core(engineId='text-davinci-002', maxTokens=200, temperature=0.8, stop=['\n' + message_delimiter])
+
+# Reverting to original model for now.
+gpt3 = GPT3Core(engineId='davinci', maxTokens=200, temperature=0.8, stop=['\n' + message_delimiter])
 
 # Initialize Gladys' persistent context information.
 persistent_context = """~~~ Persistent context data: ~~~
@@ -145,69 +152,74 @@ gladys_prompt = f'\n{message_delimiter} {bot_name}>'
 
 # First, let's define a class for messages that remembers the message sender and the message text.
 class Message:
-    """Instances of this class store the message sender and the message text
-        for an incoming or outgoing message."""
+	"""Instances of this class store the message sender and the message text
+		for an incoming or outgoing message."""
 
-    def __init__(self, sender, text):
-        # Print diagnostic information.
-        print(f"Creating message object for: {sender}> {text}")
-        self.sender = sender
-        self.text = text
-    
-    def __str__(self):
-        """A string representation of the message object.
-            It is properly delimited for reading by the GPT-3 model."""
-        return f"{message_delimiter} {self.sender}> {self.text}"
-    
-    # The following method serializes the message object to a string
-    # which can be appended to the conversation archive file, and
-    # later read back in when restoring the conversation.
-    def serialize(self):
+	def __init__(self, sender, text):
+		# Print diagnostic information.
+		print(f"Creating message object for: {sender}> {text}")
+		self.sender = sender
+		self.text = text
+	
+	def __str__(self):
+		"""A string representation of the message object.
+			It is properly delimited for reading by the GPT-3 model."""
+		return f"{message_delimiter} {self.sender}> {self.text}"
+	
+	# The following method serializes the message object to a string
+	# which can be appended to the conversation archive file, and
+	# later read back in when restoring the conversation.
+	def serialize(self):
 
-        # NOTE: The message text could contain newlines, which we need to
-        #       replace with a literal '\n' encoding. But, in case the 
-        #       message text contains a literal '\' followed by an 'n', we
-        #       need to escape the '\' with another '\'.
-        # First, we'll replace all backslashes with '\\'.
-        # Then, we'll replace all newlines with '\n'.
+		# NOTE: The message text could contain newlines, which we need to
+		#		replace with a literal '\n' encoding. But, in case the 
+		#		message text contains a literal '\' followed by an 'n', we
+		#		need to escape the '\' with another '\'.
+		# First, we'll replace all backslashes with '\\'.
+		# Then, we'll replace all newlines with '\n'.
 
-        escaped_text = self.text.replace('\\', '\\\\').replace('\n', '\\n')
+		escaped_text = self.text.replace('\\', '\\\\').replace('\n', '\\n')
 
-        # Now, we'll return the serialized representation of the message.
-        return f"{self.sender}> {escaped_text}\n"
+		# Now, we'll return the serialized representation of the message.
+		return f"{self.sender}> {escaped_text}\n"
 
-    # Given a line of text from the conversation archive file, this method
-    # deserializes the message object from the line.
-    @staticmethod
-    def deserialize(line):
-        # Split the line into the sender and the text.
-        sender, text = line.split('> ')
-        # Remove the trailing newline.
-        text = text.rstrip('\n')
+	# Given a line of text from the conversation archive file, this method
+	# deserializes the message object from the line.
+	@staticmethod
+	def deserialize(line):
+		# Split the line into the sender and the text.
+		parts = line.split('> ')
+		sender = parts[0]
+			# The following is necessary to correctly handle the case where
+			# the string '> ' happens to appear in the text.
+		text = '> '.join(parts[1:])
 
-        # To unescape the backslash and newline characters correctly, we'll
-        # first replace all '\n' sequences NOT preceded by a '\' with a
-        # literal '\n'. Then, we'll replace all '\\' sequences with a
-        # literal '\'.
+		# Remove the trailing newline.
+		text = text.rstrip('\n')
 
-        # I think we need a regular-expression-based approach here.
-        # The following regex pattern will match all '\n' sequences
-        # that are NOT preceded by a '\'.
-        pattern = r'(?<!\\)\\n'
+		# To unescape the backslash and newline characters correctly, we'll
+		# first replace all '\n' sequences NOT preceded by a '\' with a
+		# literal '\n'. Then, we'll replace all '\\' sequences with a
+		# literal '\'.
 
-        # Now, we'll replace all '\n' sequences NOT preceded by a '\'
-        # with a literal newline character.
-        text = re.sub(pattern, '\n', text)
+		# I think we need a regular-expression-based approach here.
+		# The following regex pattern will match all '\n' sequences
+		# that are NOT preceded by a '\'.
+		pattern = r'(?<!\\)\\n'
 
-        # Now, we'll replace all '\\' sequences with a literal '\'.
-        text = text.replace('\\\\', '\\')
+		# Now, we'll replace all '\n' sequences NOT preceded by a '\'
+		# with a literal newline character.
+		text = re.sub(pattern, '\n', text)
 
-        # Return the message object.
-        return Message(sender, text)    # Q: Is the class name in scope here? A: Yes.
+		# Now, we'll replace all '\\' sequences with a literal '\'.
+		text = text.replace('\\\\', '\\')
 
-    # Don't know if we'll need this yet.
-    def __repr__(self):
-        return f"{self.sender}> {self.text}"
+		# Return the message object.
+		return Message(sender, text)	# Q: Is the class name in scope here? A: Yes.
+
+	# Don't know if we'll need this yet.
+	def __repr__(self):
+		return f"{self.sender}> {self.text}"
     
 # Next, let's define a class for conversations that remembers the messages in the conversation.
 #  We'll use a list of Message objects to store the messages.
@@ -229,7 +241,7 @@ class Conversation:
 		self.bot_name = bot_name			# The name of the bot. ('Gladys' in this case.)
 
 		# Determine the filename we'll use to archive/restore the conversation.
-		self.filename = f"log/GLaDOS.{appName}.{chat_id}.txt"
+		self.filename = f"log/{appName}.{chat_id}.txt"
 			# Need to change this to take out the initial 'GLaDOS.'.
 
 		# Read the conversation archive file, if it exists.
@@ -389,12 +401,20 @@ def process_message(update, context):
 		# Construct a Message object to send to the user.
 		message = Message(conversation.bot_name, response_text)
 
+		# If this message is already in the conversation, then we'll suppress it, so as
+		# not to exacerbate the AI's tendency to repeat itself.  So, if you see that the
+		# AI isn't responding to a message, this may mean that it has the urge to repeat
+		# something it said earlier, but is holding its tongue.
+		if conversation.message_exists(message):
+			return		# This means the bot is simply not responding to the message
+
 		# If this message is already in the conversation, then we need to retry the query,
 		# in hopes of stochastically getting a different response. Note it's important for
 		# this to work efficiently that the temperature is not too small. (E.g., 0.1 is 
 		# likely to lead to a lot of retries. The default temperature currently is 0.75.)
-		if conversation.message_exists(message):
-			continue
+		#if conversation.message_exists(message):
+		#	continue
+		# NOTE: Commented out the above, because repeated retries can get really expensive.
 
 		# Otherwise, we can break out of the loop to send the message.
 		break
