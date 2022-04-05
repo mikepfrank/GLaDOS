@@ -1,9 +1,8 @@
 # GLaDOS
 
-The **General Lifeform's automated Domicile Operating System**
-(GLaDOS) is an operating environment that is intended to provide a
-convenient "home" that a persona exhibited by a text-based AI system
-can "live" within.
+**Gladys' Lovely and Dynamic Operating System** (GLaDOS) is an operating
+environment that is intended to provide a convenient "home" that a
+persona manifested by a text-based AI system can "live" within.
 
 ## Purpose
 
@@ -19,7 +18,7 @@ statistical language model such as GPT-3 constructs and develops a
 sense of 'self' during its training, i.e., a personality, as a basis
 for understanding and modeling the minds of the characters that it
 encounters during its readings?  And, if that is possible, could we
-prompt this "inner self" of the AI to display a higher degree of
+encourage this "inner self" of the AI to display a higher degree of
 intentionality by giving it access to an environment that is
 sufficiently rich and powerful?
 
@@ -28,8 +27,9 @@ perhaps a rather questionable likelihood of success.
 
 ## Language
 
-GLaDOS is implemented in Python 3.  (More specifically, it was tested
-using Python version 3.6.12 during development.)
+GLaDOS is implemented in Python 3.  (More specifically, development
+was begun under Python version 3.6.12, and continued later under 
+version 3.8.5.)
 
 ## Top-Level Files
 
@@ -87,6 +87,16 @@ sure `python3` is in your path and that it invokes the Python version
 3 executable.  You should run this script from here, the top-level
 directory of the repo (it looks for the GLaDOS code in the `src/`
 subdirectory).
+
+## Telegram Bot Script ([`runbot.sh`](runbot.sh "runbot.sh file"))
+
+This script launches an auxilliary application which implements a
+Telegram chatbot that utilizes GPT-3 to generate responses.  To run
+this, you need to have first created the Telegram bot and assigned
+the `TELEGRAM_BOT_TOKEN` environment variable to its access token.
+The Telegram bot is separate from GLaDOS proper (other than in the 
+sense of piggybacking on part of its codebase) and does not require 
+the main GLaDOS server application to be running.
 
 ## Usage
 
