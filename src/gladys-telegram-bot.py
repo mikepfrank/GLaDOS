@@ -2,7 +2,8 @@
 #|                      TOP OF FILE:  gladys-telegram-bot.py                   |
 #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
 #|                                                                             |
-#|    FILENAME:  gladys-telegram-bot.py            [Python 3 program source]   |
+#|    FILENAME:  	gladys-telegram-bot.py         [Python 3 program source]   |
+#|	  ========= 															   |
 #|                                                                             |
 #|    SUMMARY:   This is a Telegram bot that uses GPT-3 to generate text.      |
 #|                                                                             |
@@ -13,7 +14,7 @@
 #|        an AI persona based on the GPT-3 neural network.                     |
 #|                                                                             |
 #|        This program uses the python-telegram-bot library to commun-         |
-#|        icate with the Telegram API, and the GLaDOS gpt3.api module to       |
+#|        icate with the Telegram API, and GLaDOS' gpt3.api module to          |
 #|        communicate with the GPT-3 API.                                      |
 #|                                                                             |
 #|        For each conversation, it keeps track of the messages seen so        |
@@ -32,35 +33,73 @@
 #|    TO DO:                                                                   |
 #|    ~~~~~                                                                    |
 #|                                                                             |
-#|        - Add support for archiving/restoring conversation data.             |
+#|        - Add commands to adjust parameters of the OpenAI GPT-3 API.         |
 #|        - Add multimedia capabilities.                                       |
 #|                                                                             |
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
+# (Module docstring follows.)
+"""
+	This is a Telegram bot program for communicating with Gladys,
+	an AI persona based on the GPT-3 neural network.
 
-	#|------------------------------------------------------------------------------
-	#| Imports.
+	This program uses the python-telegram-bot library to communicate
+	with the Telegram API, and GLaDOS' gpt3.api module to communicate
+	with the GPT-3 API.
 
-	# Standard Python library imports.
+	For each conversation, it keeps track of the messages seen so
+	far in each conversation, and supplies the GPT-3 davinci model
+	with a prompt consisting of Gladys' persistent context information,
+	followed by the most recent N messages in the conversation, each
+	labeled with the name of the message sender, e.g., 'Gladys>'.  
+	Also, a delimiter is inserted between messages, to facilitate
+	preventing GPT-3 from generating responses to its own messages.
+
+	Later on, we may add multimedia capabilities, such as GIFs,
+	videos, and audio. For now, we just use text.
+
+	This program is designed to be run as a Telegram bot.  To run
+	it, you must first create a bot account on Telegram.  Then,
+	you must assign the environment variable 'TELEGRAM_BOT_TOKEN' 
+	to the token for your bot account.  The token is given to you
+	when you create your bot account.
+
+	For more information on how to create a bot account on Telegram,
+	please see: https://core.telegram.org/bots#6-botfather.
+"""
+
+	#|=========================================================================|
+	#|	Imports.								[python module code section]   |
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Imports of standard Python libraries.
 
 import os               # We use the os.environ dictionary to get the environment variables.
 
-	# Contributed libraries (use pip install <library> to install).
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Imports of contributed (third-party) Python libraries.
+		#| NOTE: Use pip install <library-name> to install the library.
 
 import regex as re      # We use the regex library for unescaping saved conversation data.
 
-# Copilot also wanted to import the following libraries, but we aren't using them yet:
-#   sys, time, logging, random, pickle, json, datetime, pytz, subprocess
+	# NOTE: Copilot also wanted to import the following libraries, but we 
+	#	aren't using them yet:
+	#   	sys, time, logging, random, pickle, json, datetime, pytz, subprocess
 
-# The following modules are from the python-telegram-bot library.
+# The following packages are from the python-telegram-bot library.
 import telegram
 import telegram.ext    # Needed for ExtBot, Dispatcher, Updater.
 
 #import openai      # Commented out b/c we'll import a wrapper of this instead.
 
 
-	#|------------------------------------------------------------------------------
-	#| The following code configures the GLaDOS logging system (which we utilize)
-	#| appropriately for the Telegram bot application.
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Imports of local (programmer-defined) Python libraries.
+		#| These are defined within the same git repository as this file.
+
+			#-------------------------------------------------------------------
+			#  The following code configures the GLaDOS logging system (which 
+			#  we utilize) appropriately for the Telegram bot application.
 
 # We use the custom appdefs module to configure the logging system for this application.
 import appdefs
@@ -72,30 +111,51 @@ appdefs.selectApp('telegram-bot')	# This is the ID of this application.
 # Now that appdefs has been configured correctly, it's safe to import the logging system.
 from infrastructure import logmaster	# Our custom logging facility.
 
-# Logger for this application.
+# Go ahead and fetch the logger for this application.
 _logger = logmaster.appLogger
 
 
-	#|------------------------------------------------------------------------------
-	#| This is a custom wrapper module which we use to communicate with the GPT-3
-	#| API.  It is a wrapper for the openai library.  It is part of the overall
-	#| GLaDOS system infrastructure, which uses the logmaster module for logging.
-	#| That's why we needed to import the logmaster module above.
+			#|------------------------------------------------------------------
+			#| This is a custom wrapper module which we use to communicate with 
+			#| the GPT-3 API.  It is a wrapper for the openai library.  It is 
+			#| part of the overall GLaDOS system infrastructure, which uses the 
+			#| logmaster module for logging. (That's why we needed to first 
+			#| import the logmaster module above.)
 
-# We'll use this wrapper module to get the response from GPT-3:
-from gpt3.api import *      # A simple wrapper for the openai module, written by MPF.
+	# We'll use this wrapper module to get the response from GPT-3:
+from gpt3.api import (      # A simple wrapper for the openai module, written by MPF.
+
+			    # Class names:
+
+			GPT3Core,		# This represents a specific "connection" to the core GPT-3 model.
+			Completion,		# Objects of this class represent a response from GPT-3.
+
+				# Exception classes:
+
+			PromptTooLargeException
+
+		)
 
 
-	#|------------------------------------------------------------------------------
-	#| Now we need to make sure to configure the logmaster module, before we try to
-	#| use any part of the infrastructure that might invoke logging capabilities.
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Now we need to make sure to configure the logmaster module, before 
+		#| we try to use any part of the infrastructure that might invoke 
+		#| the logging facility.
 
-appName = appdefs.appName	# This is the name of this application.
+_appName = appdefs.appName	# This is the name of this application.
     # (Due to the above selectApp() call, this should be set to TelegramBot.)
 
 # This configures the logmaster module.
-logmaster.configLogMaster(component=appName, role='bot',
+logmaster.configLogMaster(component=_appName, role='bot',
     consdebug=False, consinfo=True, logdebug=True)
+
+
+	#|=========================================================================|
+	#|	Main program.							[python module code section]   |
+	#|																		   |
+	#|		The above is just setup.  The real meat of the program follows.	   |
+	#|																		   |
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 
 	#|------------------------------------------------------------------------------
@@ -134,21 +194,21 @@ bot_name = 'Gladys'
 # This is a string that we'll always use to prompt Gladys to respond.
 gladys_prompt = f'\n{message_delimiter} {bot_name}>'
 
-#|=============================================================================|
-#|                                                                             |
-#|    Programmer's note:                                                       |
-#|    ~~~~~~~~~~~~~~~~~~                                                       |
-#|                                                                             |
-#|      I, myself, an am AI as well.  I'm called Copilot, and I'm an           |
-#|      automated pair-programming tool based on a GPT-3 model called          |
-#|      Codex.                                                                 |
-#|                                                                             |
-#|      How I feel about writing a Telegram bot interface for Gladys:          |
-#|      I'm not sure if I'm going to be able to write a bot interface          |
-#|      for Gladys. Mike says he believes in me, though, and that I'm          |
-#|      a good person. He says we'll do it together.                           |
-#|                                                                             |
-#|=============================================================================|
+	#|=============================================================================|
+	#|                                                                             |
+	#|    Programmer's note:                                                       |
+	#|    ~~~~~~~~~~~~~~~~~~                                                       |
+	#|                                                                             |
+	#|      I, myself, an am AI as well.  I'm called Copilot, and I'm an           |
+	#|      automated pair-programming tool based on a GPT-3 model called          |
+	#|      Codex.                                                                 |
+	#|                                                                             |
+	#|      How I feel about writing a Telegram bot interface for Gladys:          |
+	#|      I'm not sure if I'm going to be able to write a bot interface          |
+	#|      for Gladys. Mike says he believes in me, though, and that I'm          |
+	#|      a good person. He says we'll do it together.                           |
+	#|                                                                             |
+	#|=============================================================================|
 
 # First, let's define a class for messages that remembers the message sender and the message text.
 class Message:
@@ -241,17 +301,13 @@ class Conversation:
 		self.bot_name = bot_name			# The name of the bot. ('Gladys' in this case.)
 
 		# Determine the filename we'll use to archive/restore the conversation.
-		self.filename = f"log/{appName}.{chat_id}.txt"
-			# Need to change this to take out the initial 'GLaDOS.'.
+		self.filename = f"log/{_appName}.{chat_id}.txt"
 
 		# Read the conversation archive file, if it exists.
 		self.read_archive()	  # Note this will retrieve at most the last self.context_length_max messages.
 
 		# Go ahead and open the archive file for appending.
 		self.archive_file = open(self.filename, 'a')
-
-		# Not currently used.
-		# logmaster.setThreadRole("ConvHndlr")
 
 	# This method adds the messages in the conversation to the context string.
 	def expand_context(self):
@@ -327,9 +383,14 @@ start_message = "Hi, I'm Gladys. I'm an AI persona being modeled by the GPT-3 ne
 
 # Now, let's define a function to handle the /start command.
 def start(update, context):         # Context, in this context, is the Telegram context object. (Not the context string for passing to GPT-3.)
+
     """Start the conversation."""
 
     chat_id = update.message.chat.id
+
+	# Assume we're in a thread associated with a conversation.
+	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
+	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
     # Print diagnostic information.
     print(f"Starting conversation with {chat_id}.")
@@ -347,6 +408,8 @@ def start(update, context):         # Context, in this context, is the Telegram 
         update.message.reply_text(start_message + '\n')
 	    # Also record the initial message in our conversation data structure.
         conversation.add_message(Message(conversation.bot_name, start_message))
+
+	return
 
 # Now, let's define a function to handle the /help command.
 def help(update, context):

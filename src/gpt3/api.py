@@ -180,7 +180,7 @@ __all__ = [
 			# Module public global constants.
 		'DEF_ENGINE',		# Default GPT-3 engine name ('davinci').
 		'DEF_TOKENS',		# Default number of tokens to return (42).
-		'DEF_TEMP',			# Default temperature value (normally 0.5).
+		'DEF_TEMP',			# Default temperature value (normally 0.75).
 		'DEF_STOP',			# Default stop string or list of strings.
 		
 			# Module public classes.
