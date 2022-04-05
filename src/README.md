@@ -1,6 +1,6 @@
 # GLaDOS source code (`GLaDOS/src/`)
 
-"GLaDOS" is an acronym for the "**General Lifeform's automated Domicile Operating System.**" (At least, until I think of a better meaning for the acronym.)  It is an operating environment for use by text-based AI systems.  The present directory contains the Python source code for the GLaDOS system.
+"GLaDOS" is an acronym for "**Gladys' Lovely and Dynamic Operating System.**" It is an operating environment for use by text-based AI systems, in the vein of GPT-3.  The present directory contains the Python source code for the GLaDOS system.
 
 *[n.b. -- Please note that there is no particular relation between this facility and the fictional AI named GLaDOS from the Portal video game series.]*
 
