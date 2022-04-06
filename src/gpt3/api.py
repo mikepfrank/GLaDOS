@@ -232,7 +232,7 @@ __all__ = [
 #    text-babbage-001   2048          0.0012
 #    text-curie-001     2048          0.006
 #    text-davinci-001   2048          0.06
-#    text-davinci-002   4000          0.06
+#    text-davinci-002   4096          0.06
 
 # The below statement was written by Codex, with format adjustments by MPF.
 
@@ -245,7 +245,7 @@ _ENGINE_ATTRIBS = {
     'text-babbage-001': {'engine-name': 'text-babbage-001', 'field-size': 2048, 'price': 0.0012},
     'text-curie-001':	{'engine-name': 'text-curie-001',   'field-size': 2048, 'price': 0.006},
     'text-davinci-001': {'engine-name': 'text-davinci-001', 'field-size': 2048, 'price': 0.06},
-    'text-davinci-002': {'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06}
+    'text-davinci-002': {'engine-name': 'text-davinci-002', 'field-size': 4096, 'price': 0.06}
 }
 
 # Given an engine name and an attribute name, return the attribute value.
@@ -856,6 +856,19 @@ class Completion:
 		"""Returns the text of this completion, as a single string."""
 		return ''.join(self.complStruct['choices'][0]['text'])
 	
+	# Return the value of the 'finish_reason' field of the completion.
+	@property
+	def finishReason(self):
+		"""Returns the finish reason of this completion, which is a string.
+			Possible results include:
+
+				'length' - The completion finished because the engine 
+							generated max_tokens tokens.
+
+				'stop' - The completion finished because the engine
+							generated a stop sequence.
+		"""
+		return self.complStruct['choices'][0]['finish_reason']
 
 		#|----------------------------------------------------------------------
 		#| .nTokens									[public instance property]

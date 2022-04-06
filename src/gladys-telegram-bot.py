@@ -175,7 +175,7 @@ message_delimiter = '🤍'	   # A Unicode character. Gladys selected the white h
 #gpt3 = GPT3Core(engineId='text-davinci-002', maxTokens=200, temperature=0.8, stop=['\n' + message_delimiter])
 
 # Reverting to original model for now.
-gpt3 = GPT3Core(engineId='davinci', maxTokens=200, temperature=0.8, stop=['\n' + message_delimiter])
+gpt3core = GPT3Core(engineId='davinci', maxTokens=200, temperature=0.8, stop=['\n' + message_delimiter])
 
 # Initialize Gladys' persistent context information.
 persistent_context = """~~~ Persistent context data: ~~~
@@ -296,6 +296,7 @@ class Conversation:
 
 		self.chat_id = chat_id
 		self.messages = []
+		# The following is a string which we'll use to accumulate the conversation text.
 		self.context = persistent_context	# Start with just the persistent context data.
 		self.context_length = 0				# Initially there are no Telegram messages in the context.
 		self.context_length_max = 100		# Max number N of messages to include in the context.
@@ -315,7 +316,7 @@ class Conversation:
 		self.context = persistent_context + '\n'.join([str(m) for m in self.messages]) + gladys_prompt	
 			# Join the messages into a single string, with a newline between each.
 			# Add the persistent context to the beginning of the string.
-			# Add the prompt to the end of the string.
+			# Add the 'Gladys>' prompt to the end of the string.
 
 	# This method reads recent messages from the conversation archive file, if it exists.
 	def read_archive(self):
@@ -435,21 +436,46 @@ def process_message(update, context):
 	conversation.add_message(Message(update.message.from_user.first_name, update.message.text))
 	
 	# At this point, we need to query GPT-3 with the updated context and process its response.
-	# We do this inside a while loop, because we may need to repeat the query if the response
-	# is a repeat of a message that the bot already sent earlier.
+	# We do this inside a while loop, because we may need to retry the query if the response
+	# is a repeat of a message that the bot already sent earlier. Also, we use the outer loop
+	# to allow the AI to generate longer outputs by accumulating results from multiple queries.
+
+	# We'll use this variable to accumulate the full response from GPT-3, which can be an
+	# accumulation of several responses if the stop sequence is not encountered.
+	full_response = ""
 
 	while True:		# We'll break out of the loop when we get a response that isn't a repeat.
 
 		# First, we need to get the response from GPT-3.
 		#	However, we need to do this inside a while/try loop in case we get a PromptTooLargeException.
+		#	This happens when the context string is too long for the GPT-3 (as configured) to handle.
+		#	In this case, we need to expunge the oldest message from the conversation and try again.
 		while True:
 			try:
-				response_text = gpt3.genString(conversation.context)
+				# Get the response from GPT-3, as a Completion object.
+				completion = gpt3core.genCompletion(conversation.context)
+				response_text = completion.text
 				break
 			except PromptTooLargeException:				# Imported from gpt3.api module.
 				conversation.expunge_oldest_message()
 				continue
 		
+		# Add the response text to the full response.
+		full_response += response_text
+
+		# The first thing we do is to check whether the completion ended with a stop sequence,
+		# which means the AI has finished generating a response. Alternatively, if the com-
+		# pletion ended because it hit the length limit, then we need to loop back and get
+		# another response so that the total length of the AI's response isn't arbitrarily
+		# limited by the length limit.
+		if completion.finishReason == 'length':		# The stop sequence was not reached.
+			# Append the response to the context string.
+			conversation.context += response_text
+			continue	# Loop back and get another response extending the existing one.
+
+		# Now, we consider the response text to be the full response that we just accumulated.
+		response_text = full_response
+
 		# Strip off any trailing whitespace from the response; Telegram will ignore it anyway.
 		response_text = response_text.rstrip()
 
@@ -457,7 +483,7 @@ def process_message(update, context):
 		if response_text == "":
 			return		# This means the bot is simply not responding to this particular message.
 
-		# If the response starts with a space (expected after the '>'), trim it off.
+		# If the response starts with a space (which is expected, after the '>'), trim it off.
 		if response_text[0] == ' ':
 			response_text = response_text[1:]
 			if response_text == "": return	# If the response is now empty, return.
@@ -477,12 +503,13 @@ def process_message(update, context):
 		# this to work efficiently that the temperature is not too small. (E.g., 0.1 is 
 		# likely to lead to a lot of retries. The default temperature currently is 0.75.)
 		#if conversation.message_exists(message):
+		#	full_response = ""	# Reset the full response.
 		#	continue
 		# NOTE: Commented out the above, because repeated retries can get really expensive.
 
 		# Otherwise, we can break out of the loop to send the message.
 		break
-	#__/ End of while loop that continues until we get a response that isn't a repeat.
+	#__/ End of while loop that continues until we finish accumulating response text.
 
 	# If we get here, we have obtained a non-empty, non-repeat message that we can send.
 
