@@ -631,7 +631,7 @@ def process_message(update, context):
 
 				# Send the user a diagnostic message indicating that we're extending the response.
 				# (Doing this temporarily during development.)
-				update.message.reply_text("[DIAGNOSTIC] Length limit reached; extending response.")
+				update.message.reply_text("[DIAGNOSTIC: Length limit reached; extending response.]")
 					# Note that this message doesn't get added to the conversation, so it won't be
 					# visible to the AI, only to the user.
 
@@ -664,7 +664,7 @@ def process_message(update, context):
 			conversation.delete_last_message()
 			# Send the user a diagnostic message indicating that the response was empty.
 			# (Doing this temporarily during development.)
-			update.message.reply_text("[DIAGNOSTIC] Response was empty.")
+			update.message.reply_text("[DIAGNOSTIC: Response was empty.]")
 				# Note that this message doesn't get added to the conversation, so it won't be
 				# visible to the AI, only to the user.
 			return		# This means the bot is simply not responding to this particular message.
@@ -694,7 +694,7 @@ def process_message(update, context):
 			# Delete the last message from the conversation.
 			conversation.delete_last_message()
 			# Send the user a diagnostic message (doing this temporarily during development).
-			update.message.reply_text(f"[DIAGNOSTIC] Suppressing response [{response_text}]; it's a repeat.")
+			update.message.reply_text(f"[DIAGNOSTIC: Suppressing response [{response_text}]; it's a repeat.]")
 				# Note that this message doesn't get added to the conversation, so it won't be
 				# visible to the AI, only to the user.
 			
