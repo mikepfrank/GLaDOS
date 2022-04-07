@@ -364,7 +364,7 @@ class Conversation:
 		# the very message that the AI is in the middle of constructing.
 		# So, we can't do anything here except throw an exception.
 		if len(self.messages) <= 1:
-			raise ConversationError("Can't expunge oldest message from conversation with only one message.)
+			raise ConversationError("Can't expunge oldest message from conversation with only one message.")
 
 		# If we get here, we can safely pop the oldest message.
 
@@ -637,19 +637,20 @@ def process_message(update, context):
 		# Strip off any trailing whitespace from the response, since Telegram will ignore it anyway.
 		response_text = response_text.rstrip()
 
+		# If the response starts with a space (which is expected, after the '>'), trim it off.
+		response_text = response_text.lstrip(' ')
+		#if response_text[0] == ' ':
+		#  response_text = response_text[1:]
+
 		# If the response is empty, then return early. (Can't even send an empty message anyway.)
 		if response_text == "":
 			# Delete the last message from the conversation.
 			conversation.delete_last_message()
 			return		# This means the bot is simply not responding to this particular message.
 
-		# If the response starts with a space (which is expected, after the '>'), trim it off.
-		if response_text[0] == ' ':
-			response_text = response_text[1:]
-			if response_text == "": 	# If the response is now empty, return.
-				# Delete the last message from the conversation.
-				conversation.delete_last_message()
-				return	
+		# Update the message object, and the context.
+		response_message.text = response_text
+		conversation.expand_context()
 
 		# If this message is already in the conversation, then we need to retry the query,
 		# in hopes of stochastically getting a different response. Note it's important for
