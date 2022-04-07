@@ -219,9 +219,9 @@ class Message:
 	def __init__(self, sender, text):
 		# Print diagnostic information.
 		print(f"Creating message object for: {sender}> {text}")
-		self.sender  = sender
-		self.text 	 = text
-		self.archive = False	# Has this message been written to the archive file yet?
+		self.sender   = sender
+		self.text 	  = text
+		self.archived = False	# Has this message been written to the archive file yet?
 	
 	def __str__(self):
 		"""A string representation of the message object.
@@ -383,8 +383,8 @@ class Conversation:
 	def extend_message(self, message, extra_text):
 
 		# First, make sure the message has not already been finalized.
-		if message.finalized:
-			print("ERROR: Tried to extend a finalized message.")
+		if message.archived:
+			print("ERROR: Tried to extend an already-archived message.")
 			return
 
 		# Add the extra text onto the end of the message.
@@ -398,8 +398,8 @@ class Conversation:
 	# will not send an empty message anyway.)
 	def delete_last_message(self):
 		# First, make sure the message has not already been finalized.
-		if self.messages[-1].finalized:
-			print("ERROR: Tried to delete a finalized message.")
+		if self.messages[-1].archived:
+			print("ERROR: Tried to delete an already-archived message.")
 			return
 
 		# Delete the last message.
@@ -426,7 +426,9 @@ class Conversation:
 	def message_exists(self, message):
 		"""Check whether a message (with the same sender and text) is already 
 			in the conversation."""
-		for m in self.messages:
+		# NOTE: In below, don't check against the last message in the conversation,
+		# because it's the very (candidate) message that we're checking!!
+		for m in self.messages[:-1]:
 			if m.sender == message.sender and m.text == message.text:
 				return True
 		return False
@@ -469,6 +471,8 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 		update.message.reply_text(start_message + '\n')
 		# Also record the initial message in our conversation data structure.
 		conversation.add_message(Message(conversation.bot_name, start_message))
+	else:
+		update.message.reply_text(f"[DIAGNOSTIC: Restarted bot with last {len(conversation.messages)} messages from archive.]")
 
 	return
 
@@ -583,7 +587,7 @@ def process_message(update, context):
 				response_message.text += response_text
 
 				# Add the response to the existing Message object.
-				conversation.messages[-1].extend_message(response_text)
+				conversation.extend_message(response_message, response_text)
 
 			# Add the response text to the full response.
 			full_response += response_text
@@ -655,7 +659,7 @@ def process_message(update, context):
 		# urge to repeat something it said earlier, but is holding its tongue.)
 		if conversation.message_exists(response_message):
 			# Generate an info-level log message to indicate that we're suppressing the response.
-			_logger.info("Suppressing response [{response_text}]; it's a repeat.")
+			_logger.info(f"Suppressing response [{response_text}]; it's a repeat.")
 			# Delete the last message from the conversation.
 			conversation.delete_last_message()
 			return		# This means the bot is simply not responding to the message
@@ -663,8 +667,8 @@ def process_message(update, context):
 		# If we get here, then we have a non-empty message that's also not a repeat.
 		# It's finally OK at this point to archive the message and send it to the user.
 
-		# Make sure the response message has been finalized (this archives it).
-		response_message.finalize()
+		# Make sure the response message has been finalized (this also archives it).
+		conversation.finalize_message(response_message)
 
 		# At this point, we can break out of the loop and actually send the message.
 		break
