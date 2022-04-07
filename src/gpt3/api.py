@@ -515,13 +515,13 @@ class GPT3APIConfig:
 		#|			output will terminate the response just before it.
 		#|			Default value: Three newlines (two blank lines).
 		#|
-		#|		presencePenalty										[number]
+		#|		presPen												[number]
 		#|
 		#|			Number between 0 and 1 that penalizes new tokens
 		#|			based on whether they appear in the text so far.
 		#|			Default value: 0 (no penalty).
 		#|
-		#|		frequencyPenalty									[number]
+		#|		freqPen												[number]
 		#|
 		#|			Number between 0 and 1 that penalizes new tokens
 		#|			based on how often they appear in the text so far.
