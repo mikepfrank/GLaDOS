@@ -282,7 +282,15 @@ class Message:
 	# Don't know if we'll need this yet.
 	def __repr__(self):
 		return f"{self.sender}> {self.text}"
-	
+
+# Exception class to represent an error in the conversation.
+class ConversationError(Exception):
+	"""Exception class to represent an error in the conversation."""
+	def __init__(self, message):
+		self.message = message
+	def __str__(self):
+		return self.message
+
 # Next, let's define a class for conversations that remembers the messages in the conversation.
 #  We'll use a list of Message objects to store the messages.
 # TO DO: Add support for archiving/restoring conversation data.
@@ -356,7 +364,7 @@ class Conversation:
 		# the very message that the AI is in the middle of constructing.
 		# So, we can't do anything here except throw an exception.
 		if len(self.messages) <= 1:
-			raise Exception("Can't expunge oldest message from conversation with only one message.")
+			raise ConversationError("Can't expunge oldest message from conversation with only one message.)
 
 		# If we get here, we can safely pop the oldest message.
 
@@ -550,13 +558,14 @@ def process_message(update, context):
 				try:
 					conversation.expunge_oldest_message()
 						# NOTE: If it succeeds, this modifies conversation.context_string.
-				except:
+				except ConversationError:
 					# We can't expunge the oldest message.  We'll just treat the full response as the final response.
 					# Also make a note that the size of the response has been maxed out.
 					response_text = full_response
 					response_maxed_out = True
 					break
-
+				
+				# We've successfully expunged the oldest message.  We need to try again.
 				continue
 		
 		# Unless the total response length has just maxed out the available space,
