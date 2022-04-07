@@ -219,8 +219,9 @@ class Message:
 	def __init__(self, sender, text):
 		# Print diagnostic information.
 		print(f"Creating message object for: {sender}> {text}")
-		self.sender = sender
-		self.text = text
+		self.sender  = sender
+		self.text 	 = text
+		self.archive = False	# Has this message been written to the archive file yet?
 	
 	def __str__(self):
 		"""A string representation of the message object.
@@ -297,7 +298,7 @@ class Conversation:
 		self.chat_id = chat_id
 		self.messages = []
 		# The following is a string which we'll use to accumulate the conversation text.
-		self.context = persistent_context	# Start with just the persistent context data.
+		self.context_string = persistent_context	# Start with just the persistent context data.
 		self.context_length = 0				# Initially there are no Telegram messages in the context.
 		self.context_length_max = 100		# Max number N of messages to include in the context.
 		self.bot_name = bot_name			# The name of the bot. ('Gladys' in this case.)
@@ -313,7 +314,7 @@ class Conversation:
 
 	# This method adds the messages in the conversation to the context string.
 	def expand_context(self):
-		self.context = persistent_context + '\n'.join([str(m) for m in self.messages]) + gladys_prompt	
+		self.context_string = persistent_context + '\n'.join([str(m) for m in self.messages]) #+ gladys_prompt	-- Add this later.
 			# Join the messages into a single string, with a newline between each.
 			# Add the persistent context to the beginning of the string.
 			# Add the 'Gladys>' prompt to the end of the string.
@@ -345,21 +346,79 @@ class Conversation:
 	# This method is called to expunge the oldest message from the conversation
 	# when the context string gets too long to fit in GPT-3's receptive field.
 	def expunge_oldest_message(self):
+		"""This method is called to expunge the oldest message from the conversation."""
+
+		# There's an important error case that we need to consider:
+		# If the conversation only contains one message, this means that the
+		# AI has extended that message to be so large that it fills the
+		# entire available space in the GPT-3 receptive field.  If we
+		# attempt to expunge the oldest message, we'll end up deleting
+		# the very message that the AI is in the middle of constructing.
+		# So, we can't do anything here except throw an exception.
+		if len(self.messages) <= 1:
+			raise Exception("Can't expunge oldest message from conversation with only one message.")
+
+		# If we get here, we can safely pop the oldest message.
+
 		print("Expunging oldest message from conversation:", self.chat_id)
 		print("Oldest message was:", self.messages[0])
 		self.messages.pop(0)
 		self.expand_context()	# Update the context string.
 
-	def add_message(self, message):
+	def add_message(self, message, finalize=True):
 		"""Add a message to the conversation."""
 		self.messages.append(message)
 		if len(self.messages) > self.context_length_max:
 			self.messages = self.messages[-self.context_length_max:]	# Keep the last N messages
 		self.context_length = len(self.messages)
 		self.expand_context()	# Update the context string.
-		# We also need to append the message to the conversation archive file.
+
+		# Unless this message isn't to be finalized yet, we'll also need to
+		# append the message to the conversation archive file.
+		if finalize:
+			self.finalize_message(message)
+
+	# Extend a (non-finalized) message by appending some extra text onto the end of it.
+	# NOTE: This should only be called on the last message in the conversation.
+	def extend_message(self, message, extra_text):
+
+		# First, make sure the message has not already been finalized.
+		if message.finalized:
+			print("ERROR: Tried to extend a finalized message.")
+			return
+
+		# Add the extra text onto the end of the message.
+		message.text += extra_text
+
+		# We also need to update the context string.
+		self.context_string += extra_text
+
+	# This method deletes the last message the end of the conversation.
+	# (This is normally only done if the message is empty, since Telegram
+	# will not send an empty message anyway.)
+	def delete_last_message(self):
+		# First, make sure the message has not already been finalized.
+		if self.messages[-1].finalized:
+			print("ERROR: Tried to delete a finalized message.")
+			return
+
+		# Delete the last message.
+		self.messages.pop()
+		self.context_length -= 1
+
+		# We also need to update the context string.
+		self.expand_context()	# Update the context string.
+
+	def finalize_message(self, message):
+		"""Finalize a message in the conversation (should be the last message)."""
+		if not message.archived:
+			self.archive_message(message)
+
+	def archive_message(self, message):
+		"""Add a message to the conversation, and archive it."""
 		self.archive_file.write(message.serialize())
 		self.archive_file.flush()
+		message.archived = True
 
 	# This method checks whether a given message is already in the conversation.
 	# This is used to help prevent the bot from getting into a loop where it sends
@@ -430,94 +489,192 @@ def greet(update, context):
 
 # Now, let's define a function to handle the rest of the messages.
 def process_message(update, context):
+		# Note that <context>, in this context, denotes the Telegram context object.
 	"""Process a message."""
 	chat_id = update.message.chat.id
 	conversation = context.user_data['conversation']
+
+	# Add the message just received to the conversation.
 	conversation.add_message(Message(update.message.from_user.first_name, update.message.text))
 	
 	# At this point, we need to query GPT-3 with the updated context and process its response.
 	# We do this inside a while loop, because we may need to retry the query if the response
 	# is a repeat of a message that the bot already sent earlier. Also, we use the outer loop
 	# to allow the AI to generate longer outputs by accumulating results from multiple queries.
+	# (However, we need to be careful in this process not to exceed the available space in the
+	# AI's receptive field.)
+
+	# We'll need to keep track of whether we're extending an existing response or starting a new one.
+	extending_response = False
+
+	# This Boolean will become True if the response grows so large that we can't extend it further.
+	response_maxed_out = False
 
 	# We'll use this variable to accumulate the full response from GPT-3, which can be an
 	# accumulation of several responses if the stop sequence is not encountered.
 	full_response = ""
 
-	while True:		# We'll break out of the loop when we get a response that isn't a repeat.
+	while True:		# We'll break out of the loop when we get a complete response that isn't a repeat.
 
 		# First, we need to get the response from GPT-3.
 		#	However, we need to do this inside a while/try loop in case we get a PromptTooLargeException.
 		#	This happens when the context string is too long for the GPT-3 (as configured) to handle.
 		#	In this case, we need to expunge the oldest message from the conversation and try again.
 		while True:
+
+			# If we're not extending an existing response, we need to start a new one.  To do this,
+			# we add Gladys' prompt to the conversation's context string to generate the full GPT-3
+			# context string.  Otherwise, we just use the existing context string.
+			if not extending_response:
+				context_string = conversation.context_string + gladys_prompt
+			else:
+				context_string = conversation.context_string
+
 			try:
 				# Get the response from GPT-3, as a Completion object.
-				completion = gpt3core.genCompletion(conversation.context)
+				completion = gpt3core.genCompletion(context_string)
 				response_text = completion.text
 				break
 			except PromptTooLargeException:				# Imported from gpt3.api module.
-				conversation.expunge_oldest_message()
+
+				# The prompt is too long.  We need to expunge the oldest message from the conversation.
+				# However, we need to do this within a try/except clause in case the only message left
+				# in the conversation is the one that we're currently constructing.  In that case, all
+				# we can do is treat however much of the full response that we've received so far as
+				# the final response.
+
+				try:
+					conversation.expunge_oldest_message()
+						# NOTE: If it succeeds, this modifies conversation.context_string.
+				except:
+					# We can't expunge the oldest message.  We'll just treat the full response as the final response.
+					# Also make a note that the size of the response has been maxed out.
+					response_text = full_response
+					response_maxed_out = True
+					break
+
 				continue
 		
-		# Add the response text to the full response.
-		full_response += response_text
+		# Unless the total response length has just maxed out the available space,
+		# if we get here, then we have a new chunk of response from GPT-3 that we
+		# need to process.
+		if not response_maxed_out:
 
-		# The first thing we do is to check whether the completion ended with a stop sequence,
-		# which means the AI has finished generating a response. Alternatively, if the com-
-		# pletion ended because it hit the length limit, then we need to loop back and get
-		# another response so that the total length of the AI's response isn't arbitrarily
-		# limited by the length limit.
-		if completion.finishReason == 'length':		# The stop sequence was not reached.
-			# Append the response to the context string.
-			conversation.context += response_text
-			continue	# Loop back and get another response extending the existing one.
+			# When we get here, we have successfully obtained a response from GPT-3.
+			# At this point, we need to either construct a new Message object to
+			# hold the response, or extend the existing one.
+			if not extending_response:
+				# We're starting a new response.
+
+				# Generate a debug-level log message to indicate that we're starting a new response.
+				_logger.debug(f"Starting new response from {conversation.bot_name} with text: [{response_text}].")
+
+				# Create a new Message object and add it to the conversation, but, don't finalize it yet.
+				response_message = Message(conversation.bot_name, response_text)
+				conversation.add_message(response_message, finalize=False)
+
+			else:
+				# We're extending an existing response.
+
+				# Generate a debug-level log message to indicate that we're extending an existing response.
+				_logger.debug(f"Extending response from {conversation.bot_name} with additional text: [{response_text}].")
+
+				# Extend the existing response.
+				response_message.text += response_text
+
+				# Add the response to the existing Message object.
+				conversation.messages[-1].extend_message(response_text)
+
+			# Add the response text to the full response.
+			full_response += response_text
+
+			# The next thing we do is to check whether the completion ended with a stop sequence,
+			# which means the AI has finished generating a response. Alternatively, if the com-
+			# pletion ended because it hit the length limit, then we need to loop back and get
+			# another response so that the total length of the AI's response isn't arbitrarily
+			# limited by the length limit.
+			if completion.finishReason == 'length':		# The stop sequence was not reached.
+
+				# Append the response to the context string.
+				#conversation.context_string += response_text
+				#	NOTE: Commented out because it's already been done by either 
+				#   		the .add_message() or the .extend_message() call above.
+
+				# Generate an info-level log message to indicate that we're extending the response.
+				_logger.info("Length limit reached; extending response.")
+
+				# Remember that we're extending the response.
+				extending_response = True
+
+				continue	# Loop back and get another response extending the existing one.
+
+			#__/ End of if completion.finishReason == 'length':
+
+		#__/ End of if not response_maxed_out:
+
+		# If we get here, then the final completion ended with a stop sequence, or the total length 
+		# of a multi-part response got maxed out.
+
+		# Generate an info-level log message to indicate that we're done extending the response.
+		_logger.info("Stop sequence reached or response size maxed out; done extending response.")
 
 		# Now, we consider the response text to be the full response that we just accumulated.
 		response_text = full_response
 
-		# Strip off any trailing whitespace from the response; Telegram will ignore it anyway.
+		# Strip off any trailing whitespace from the response, since Telegram will ignore it anyway.
 		response_text = response_text.rstrip()
 
-		# If the response is empty, then return early. (Can't send an empty message anyway.)
+		# If the response is empty, then return early. (Can't even send an empty message anyway.)
 		if response_text == "":
+			# Delete the last message from the conversation.
+			conversation.delete_last_message()
 			return		# This means the bot is simply not responding to this particular message.
 
 		# If the response starts with a space (which is expected, after the '>'), trim it off.
 		if response_text[0] == ' ':
 			response_text = response_text[1:]
-			if response_text == "": return	# If the response is now empty, return.
-
-		# Construct a Message object to send to the user.
-		message = Message(conversation.bot_name, response_text)
-
-		# If this message is already in the conversation, then we'll suppress it, so as
-		# not to exacerbate the AI's tendency to repeat itself.	 So, if you see that the
-		# AI isn't responding to a message, this may mean that it has the urge to repeat
-		# something it said earlier, but is holding its tongue.
-		if conversation.message_exists(message):
-			return		# This means the bot is simply not responding to the message
+			if response_text == "": 	# If the response is now empty, return.
+				# Delete the last message from the conversation.
+				conversation.delete_last_message()
+				return	
 
 		# If this message is already in the conversation, then we need to retry the query,
 		# in hopes of stochastically getting a different response. Note it's important for
 		# this to work efficiently that the temperature is not too small. (E.g., 0.1 is 
 		# likely to lead to a lot of retries. The default temperature currently is 0.75.)
-		#if conversation.message_exists(message):
+		#if conversation.message_exists(response_message):
 		#	full_response = ""	# Reset the full response.
 		#	continue
 		# NOTE: Commented out the above, because repeated retries can get really expensive.
+		# 	Also, retries tend to just yield minor variations in the response, which will
+		#   then further exacerbate the AI's tendency to continue repeating the pattern.
 
-		# Otherwise, we can break out of the loop to send the message.
+		# If this message is already in the conversation, then we'll suppress it, so as
+		# not to exacerbate the AI's tendency to repeat itself.	 (So, as a user, if you 
+		# see that the AI isn't responding to a message, this may mean that it has the 
+		# urge to repeat something it said earlier, but is holding its tongue.)
+		if conversation.message_exists(response_message):
+			# Generate an info-level log message to indicate that we're suppressing the response.
+			_logger.info("Suppressing response [{response_text}]; it's a repeat.")
+			# Delete the last message from the conversation.
+			conversation.delete_last_message()
+			return		# This means the bot is simply not responding to the message
+
+		# If we get here, then we have a non-empty message that's also not a repeat.
+		# It's finally OK at this point to archive the message and send it to the user.
+
+		# Make sure the response message has been finalized (this archives it).
+		response_message.finalize()
+
+		# At this point, we can break out of the loop and actually send the message.
 		break
 	#__/ End of while loop that continues until we finish accumulating response text.
 
-	# If we get here, we have obtained a non-empty, non-repeat message that we can send.
+	# If we get here, we have finally obtained a non-empty, non-repeat,
+	# already-archived message that we can go ahead and send to the user.
 
-	# First, send the response to the user.
+	# Send the response to the user.
 	update.message.reply_text(response_text)
-
-	# Then, update the conversation data structure.
-	conversation.add_message(message)
 
 	return	
 #__/ End of process_message() function definition.
