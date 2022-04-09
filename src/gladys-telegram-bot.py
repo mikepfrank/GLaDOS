@@ -477,8 +477,11 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 	print(f"Starting conversation with {chat_id}.")
 
 	# Create a new conversation object and link it from the Telegram context object.
+	# NOTE: It needs to go in the context.chat_data dictionary, because that way it
+	# will be specific to this chat_id. The will also allow updates from different
+	# users in the same chat to all appear in the same conversation.
 	conversation = Conversation(chat_id)
-	context.user_data['conversation'] = conversation
+	context.chat_data['conversation'] = conversation
 
 	# Send an initial message to the user.
 	# NOTE: If messages were read from the conversation archive file,
@@ -514,7 +517,7 @@ def process_message(update, context):
 		# Note that <context>, in this context, denotes the Telegram context object.
 	"""Process a message."""
 	chat_id = update.message.chat.id
-	conversation = context.user_data['conversation']
+	conversation = context.chat_data['conversation']
 
 	# Add the message just received to the conversation.
 	conversation.add_message(Message(update.message.from_user.first_name, update.message.text))
