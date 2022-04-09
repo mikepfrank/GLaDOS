@@ -516,7 +516,7 @@ def greet(update, context):
 def process_message(update, context):
 		# Note that <context>, in this context, denotes the Telegram context object.
 	"""Process a message."""
-	chat_id = update.message.chat.id
+	#chat_id = update.message.chat.id
 	conversation = context.chat_data['conversation']
 
 	# Add the message just received to the conversation.
