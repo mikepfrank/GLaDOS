@@ -216,7 +216,7 @@ NOREPEAT_WINDOW_SIZE = 10
 
 # Reverting to original model for now.
 gpt3core = GPT3Core(engineId='davinci', maxTokens=200, temperature=0.8,
-				freqPen = 0.5, stop=['\n' + MESSAGE_DELIMITER])
+				freqPen = 0.75, stop=['\n' + MESSAGE_DELIMITER])
 	# NOTE: The frequency penalty parameter is to prevent long outputs from becoming repetitive.
 
 # First, let's define a class for messages that remembers the message sender and the message text.
@@ -727,6 +727,8 @@ def process_message(update, context):
 	while len(response_text) > MAX_MESSAGE_LENGTH:
 		update.message.reply_text(response_text[:MAX_MESSAGE_LENGTH])
 		response_text = response_text[MAX_MESSAGE_LENGTH:]
+
+	update.message.reply_text(response_text)
 
 	return	
 #__/ End of process_message() function definition.
