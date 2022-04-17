@@ -716,8 +716,17 @@ def process_message(update, context):
 	# If we get here, we have finally obtained a non-empty, non-repeat,
 	# already-archived message that we can go ahead and send to the user.
 
-	# Send the response to the user.
-	update.message.reply_text(response_text)
+	# Now, we need to send the response to the user. However, if the response is
+	# longer than the maximum allowed length, then we need to send it in chunks.
+	# (This is because Telegram's API limits the length of messages to 4096 characters.)
+
+	MAX_MESSAGE_LENGTH = 4096	# Maximum length of a message. (Telegram's API limit.)
+		# NOTE: Somwhere I saw that 9500 was the maximum length of a message, but I don't know
+		#   which is the correct maximum.
+
+	while len(response_text) > MAX_MESSAGE_LENGTH:
+		update.message.reply_text(response_text[:MAX_MESSAGE_LENGTH])
+		response_text = response_text[MAX_MESSAGE_LENGTH:]
 
 	return	
 #__/ End of process_message() function definition.
