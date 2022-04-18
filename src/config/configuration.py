@@ -825,7 +825,6 @@ class	TheAIPersonaConfig:
 		Public instance attributes:
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
 			The following are basic config parameters needed for
 			finding other data, and are customized using environment
 			variables.
@@ -839,23 +838,118 @@ class	TheAIPersonaConfig:
 				.aiConfigPathname [str]	- The full pathname of the AI-specific
 											config file.
 
+			The following are AI-specific config substructures that are
+			read in from the config file and used to initialize the
+			AI-specific configuration object.
 
-			The following are detailed configuration parameters 
+				.fieldConf [dict]		- The configuration data for the
+											AI's receptive field.
+
+				.mindConf [dict]		- The configuration data for the
+											AI persona's "mind."
+
+				.apiConf [dict]			- The configuration data for the
+											API to the underlying AI.
+
+				.telegramConf [dict]	- The configuration data for the
+											AI persona's Telegram bot.
+
+			The following are the detailed configuration parameters 
 			that are specified in the config file itself.
+
+
+			Receptive field configuration parameters (under 'field-conf'):
+			--------------------------------------------------------------
+
+				.maxVisibleTokens [int] - Assumed size of the AI's receptive
+											field in tokens.
 
 
 			Mind configuration parameters (under 'mind-conf'):
 			--------------------------------------------------
-				
-				.modelFamily [string] - AI model type (e.g., 'gpt-2' or 
+
+				.personaName [str]		- The name of the AI persona
+											(E.g., "Gladys Eden").
+
+				.personaID [str]		- A short identifier for the AI 
+											persona. (E.g., "Gladys").
+
+				.personaUsername [str]	- The username of the Unix account
+											belonging to the AI persona.
+											(E.g., "gladys").
+
+				.modelFamily [string] 	- AI model type (e.g., 'gpt-2' or 
 											'gpt-3').
 				
-				.modelVersion [string] - AI model version (e.g., 'davinci').
+				.modelVersion [string]	- AI model version (e.g., 'davinci').
 				
-				.maxVisibleTokens [int] - Assumed size of the AI's receptive
-											field in tokens.
-											
-				.sysNotifyThresh [int] - Threshold for system notifications.
+				.minQueryTokens [int]	- Minimum number of tokens worth of
+											space to reserve for the AI's 
+											response to a single query.
+											(Default value is 42.)
+
+				.sysNotifyThresh [int]	- Threshold for system notifications
+											that will be noticed by the AI.
+											(Default is 0.)
+
+				.exampleResponse [str]	- A sample response that will be
+											shown to the AI persona when the
+											system is first started up.
+
+
+			GPT-3 API configuration parameters (under 'api-conf'):
+			------------------------------------------------------
+
+				.maxReturnedTokens [int] - Maximum number of tokens to return
+											in one completion from the GPT-3 API.
+				
+				.temperature [float]	- Randomness temperature parameter for the 
+											GPT-3 API. (Recommended value: 0.75.)
+				
+				.topP [float]			- Top-p parameter for the GPT-3 API.
+											(Note: Not compatible with temperature.)
+				
+				.nCompletions [int]		- Number of completions to return from the
+											GPT-3 API. (Default value is 1.)
+				
+				.doStream [bool]		- Whether or not to stream the GPT-3 API
+											responses. (Default value is False.)
+				
+				.logProbs [int]			- If non-null, the GPT-3 API will return
+											the log-probabilities of the top this
+											many returned completions. (Default 
+											value is null.)
+				
+				.doEcho [bool]			- If True, the GPT-3 API will echo back
+											the prompt in the response. (Default
+											value is False.)
+
+				.stopSequences [list]	- A list of substrings that will be taken
+											to indicate the end of GPT-3's response.
+			
+				.presencePenalty [float] - A penalty to apply to the log-probability
+											of tokens previously occurring in the
+											response. (Default value is 0.0.)
+				
+				.frequencyPenalty [float] - A penalty to apply to the log-probability
+											of tokens based on their frequency of
+											occurrence in the response. (Default
+											value is 0.0.)
+
+				.bestOf [int]			- The number of top-scoring completions to
+											sample, server-side. (Default value is 1.)
+
+
+			Telegram interface configuration parameters (under 'telegram-conf'):
+			--------------------------------------------------------------------
+
+				.botName [str]			- The name of the Telegram bot.
+											(E.g., Gladys.)
+				
+				.context [str]			- The persistent context data that the
+											persona will see at the start of
+											each conversation.
+
 	"""
 		
 		#|======================================================================
@@ -1143,10 +1237,46 @@ class	TheAIPersonaConfig:
 		else:
 			theAIConfig.bestOf = None	# No default value provided in config file.
 
-		# NOTE: It would be nice to do some additional error-checking 
-		# here, such as warning the user if there are other parameters 
-		# in the provided config file that we don't understand.
+
+				#|======================================
+				#| Parse the telegram-conf substructure.
+				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+			#------------------------------------
+			# Extract the telegram-conf record.
 		
+		if 'telegram-conf' in conf:
+			theAIConfig.telegramConf = telegramConf = conf['telegram-conf']
+			_logger.debug(f"    [Config/AI]     AI config: The AI's Telegram configuration is {telegramConf}.")
+		else:
+			_logger.warn("parseConf(): The required telegram-conf parameter "
+							"was not provided.")
+			theAIConfig.telegramConf = telegramConf = dict()	# Empty dict by default.
+
+		# Go ahead and pull out the parameter values from the API conf record.
+
+		if 'bot-name' in telegramConf:
+			theAIConfig.botName = botName = telegramConf['bot-name']
+			_logger.normal(f"    [Config/AI]     AI config: The AI persona's Telegram bot name is {botName}.")
+
+		else:
+			theAIConfig.botName = None	# No default value provided in config file.
+		
+		if 'context' in telegramConf:
+			theAIConfig.context = context = telegramConf['context']
+			_logger.normal(f"    [Config/AI]     AI config: The AI persona's Telegram context data is [{context}].")
+		else:
+			theAIConfig.context = None	# No default value provided in config file.
+
+
+		#|**********************************************************************
+		#| NOTE: It would be nice to do some additional error-checking 
+		#| here, such as warning the user if there are other parameters 
+		#| in the provided config file that we don't understand.
+		#|**********************************************************************
+		
+		_logger.normal("    [Config/AI]     AI config: The AI configuration has been parsed.")
+		return
 	#__/ End private singleton instance method theAIConfig._parseConf().
 
 
