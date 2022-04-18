@@ -43,7 +43,7 @@
 
 
 	USAGE:
-	------
+	======
 		
 		from config.configuration import TheConfiguration
 		...
@@ -52,11 +52,13 @@
 		
 
 	ENVIRONMENT VARIABLES:
-	----------------------
+	======================
 	
-		The following environment variable are for main system configuration.
+
+		The following environment variables are for main system configuration.
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	
+
 		GLADOS_CONFIG_FILENAME
 				
 			If the environment variable GLADOS_CONFIG_FILENAME is set, then 
@@ -78,9 +80,10 @@
 			any of the above.  
 				
 				
-		The following environment variable are for configuring the AI persona.
+		The following environment variables are for configuring the AI persona.
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		
+
 		AI_DATADIR
 				
 			The environment variable AI_DATADIR should be set to point to the
@@ -124,7 +127,7 @@
 """
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #| End of module documentation string.
-#|------------------------------------------------------------------------------
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	#|==========================================================================
 	#|
@@ -216,27 +219,27 @@ __all__ = [
 	#|---------------------------------------------------------------------
 	#| These are constants providing default values for module parameters.
 
-global	_DEFAULT_CONFIG_FILENAME, _DEFAULT_BASEDIR
-global	_DEFAULT_AI_DATADIR, _DEFAULT_AI_CONFIG_FILENAME
+global	_DEFAULT_CONFIG_FILENAME,	_DEFAULT_BASEDIR
+global	_DEFAULT_AI_DATADIR,		_DEFAULT_AI_CONFIG_FILENAME
 	
 	# Default name of config file.
-_DEFAULT_CONFIG_FILENAME = 'glados-config.hjson'
+_DEFAULT_CONFIG_FILENAME		= 'glados-config.hjson'
 
 	# What is the config filename relative to?
-_DEFAULT_BASEDIR = '.'		# Look in current directory by default.
+_DEFAULT_BASEDIR 				= '.'		# Look in current directory by default.
 
 	# Default working directory for AI-specific state data.
-_DEFAULT_AI_DATADIR = "ai-data"	   # Just use this if nothing else is provided.
+_DEFAULT_AI_DATADIR 			= "ai-data"	   # Just use this if nothing else is provided.
 
 	# Default filename for AI-specific configuration data.
-_DEFAULT_AI_CONFIG_FILENAME = 'ai-config.hjson'		# Generally use this filename.
+_DEFAULT_AI_CONFIG_FILENAME 	= 'ai-config.hjson'		# Generally use this filename.
 
 	#|---------------------------------------------------------------------
 	#| These are variables providing current values for module parameters.
 	#| NOTE: We really could/should make these into class variables instead.
 
-global	_CONFIG_FILENAME, _BASEDIR, _CONFIG_FILENAME
-global	_AI_DATADIR, _AI_CONFIG_FILENAME
+global	_CONFIG_FILENAME,	_BASEDIR,		_CONFIG_FILENAME
+global						_AI_DATADIR,	_AI_CONFIG_FILENAME
 
 	# Filename of the config file.
 _CONFIG_FILENAME = _DEFAULT_CONFIG_FILENAME 
@@ -273,9 +276,9 @@ _AI_CONFIG_PATHNAME = path.join(_AI_DATADIR, _AI_CONFIG_FILENAME)
 class TheConfiguration:		pass	# Forward declaration to ourself.
 class TheAIPersonaConfig:	pass	# Forward declaration.
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
 class TheConfiguration:	# The GLaDOS server configuration.
-	#---------------------------------------------------------------------------
 	"""
 		TheConfiguration								[public singleton class]
 		================
@@ -316,7 +319,6 @@ class TheConfiguration:	# The GLaDOS server configuration.
 				.appList [list] - List of more detailed configuration data
 									for specific GLaDOS applications.
 	"""
-	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
 		#|======================================================================
 		#| Private class constant data members. 				 [class section]
@@ -334,6 +336,7 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		# their field display.  (Not sure yet which value makes more sense.)
 	_DEFAULT_APP_LOUD_UPDATE = False	# True might also make sense here.
 
+		# What is the default initial placement for app windows?
 	_DEFAULT_APP_INITIAL_PLACEMENT = Placement.SLIDE_TO_BOTTOM
 			# Initially, new application windows will by default open
 			# up at the bottom of the receptive field (but above
@@ -341,7 +344,7 @@ class TheConfiguration:	# The GLaDOS server configuration.
 			# but will be free to scroll up.
 	
 	
-		#|----------------------------------------------------------------------
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	TheConfiguration._lastLoadedConf	     [private class data member]
 		#|
 		#|		This class-level attribute references the most recent 
@@ -357,7 +360,6 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	def __init__(theConfig:TheConfiguration, *args, **kwargs):
-		#-----------------------------------------------------------------------	
 		"""
 			TheConfiguration.__init__()			[singleton instance initializer]
 			
@@ -366,10 +368,10 @@ class TheConfiguration:	# The GLaDOS server configuration.
 				method, which can also be called again manually by the 
 				using module if it wishes to reinitialize the configuration.
 		"""
-		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		_logger.normal("    [Config] Loading system configuration...")
 
+			# This does the real work of initializing the configuration.
 		theConfig.reinit(*args, **kwargs)
 
 			# Also invoke the initializer for TheAIPersonaConfig.
@@ -386,14 +388,11 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	def _checkEnvironment(theConfig:TheConfiguration):
-
 		"""
-			--------------------------------------------------------------------
 			theConfig._checkEnvironment()	 [private singleton instance method]
 			
 				Checks environment variables to determine location of
 				GLaDOS's system config file.
-			--------------------------------------------------------------------	
 		"""
 			
 			# Declare these names as globals that we'll reinitialize here.
@@ -433,17 +432,15 @@ class TheConfiguration:	# The GLaDOS server configuration.
 	#__/ End private singleton instance method theConfiguration._checkEnvironment().
 
 
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	def _loadConfig(theConfig:TheConfiguration):
-
 		"""
-			--------------------------------------------------------------------
 			theConfig._loadConfig()			 [private singleton instance method]
 			
 				Loads the configuration file and returns it as a raw, 
 				unprocessed data structure (made of dicts & arrays, 
 				similar to what we'd get from json.load).  Also stashes 
 				it in the private theConfig._lastLoadedConf attribute.
-			--------------------------------------------------------------------
 		"""
 	
 		_logger.normal("")
@@ -461,14 +458,13 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		_logger.debug(f"        Loaded the following raw configuration structure:\n{pconf}")
 
 		theConfig._lastLoadedConf = conf
-
 		return conf
 
 	#__/ End private singleton instance method theConfiguration._loadConfig().
 
 
-	def _parseConf(theConfig:TheConfiguration, conf:dict = None):
-	   
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	def _parseConf(theConfig:TheConfiguration, conf:dict = None):	   
 		""" theConfig._parseConf()			 [private singleton instance method]
 			
 				Reads the given raw configuration data structure into 
@@ -477,7 +473,8 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		# Don't even try to read a mind config from the sys config file currently.
 		theConfig.mindConf = None
 	 
-		    #|----------------------------------------------------------------
+
+		    #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#| Extract the 'timezone' parameter, which specifies the offset 
 			#| from UTC preferred by the operator for display of time values.
 			#| If this is not provided, UTC (+0) will be assumed by default.
@@ -490,11 +487,11 @@ class TheConfiguration:	# The GLaDOS server configuration.
 							"was not supplied. Defaulting to +0 (UTC).")
 			theConfig.timezone = 0
 
-			#|-----------------------------------------------------------------
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#| Extract the 'tab-width' parameter, which expresses the default
 			#| number of characters that tab stops are located at a multiple of.
-			#| If this is not provided, we default to 4.
-			
+			#| If this is not provided, we default to 4.			
 
 		if 'tab-width' in conf:
 			theConfig.tabWidth = tabWidth = conf['tab-width']	# Expect an integer.
@@ -503,6 +500,13 @@ class TheConfiguration:	# The GLaDOS server configuration.
 			_logger.warn("configuration._parseConf(): The 'tab-width' parameter "
 							"was not provided. Defaulting to 4.")
 			theConfig.tabWidth = 4
+
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| The has-box-chars config parameter is supposed to indicate whether
+			#| the font selected on the text terminal has box-drawing characters.
+			#| If it is not provided, we default to False. However, this parameter
+			#| is not currently used in GLaDOS.
 
 		if 'has-box-chars' in conf:
 			theConfig.hasBoxChars = hasBoxChars = conf['has-box-chars']
@@ -513,9 +517,10 @@ class TheConfiguration:	# The GLaDOS server configuration.
 							"was not provided. Defaulting to False.")
 			theConfig.hasBoxChars = False
 
-			#-----------------------------------------------------------------
-			# Extract the 'window-conf' parameter, which contains configuration
-			# parameters for the AI's text-based windowing system.
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Extract the 'window-conf' parameter, which contains configuration
+			#| parameters for the AI's text-based windowing system.
 
 		if 'window-conf' in conf:
 			theConfig.winConf = winConf = conf['window-conf']
@@ -524,15 +529,22 @@ class TheConfiguration:	# The GLaDOS server configuration.
 							"not provided. Using hard-coded defaults.")
 			winConf = dict()	# Empty dict by default.
 	 
+	 			#|--------------------------------------------------------------
+				#| The 'side-decorators' sub-parameter is a boolean indicating
+				#| whether the windowing system should display side-decorators
+				#| (e.g. the '|' characters) along the left & right edges of
+				#| the window. If it is not provided, we default to True.
+
 		if 'side-decorators' in winConf:
 			theConfig.sideDecorators = sideDec = winConf['side-decorators']
 			_logger.normal(f"    [Config]      Window config: Use side decorators? = {sideDec}.")
 		else:
 			theConfig.sideDecorators = True
 
-			#-----------------------------------------------------------------
-			# Extract the 'field-conf' parameter, which contains configuration
-			# parameters for the receptive field facility.
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Extract the 'field-conf' parameter, which contains configuration
+			#| parameters for the receptive field facility.
 	 
 		if 'field-conf' in conf:
 			theConfig.fieldConf = conf['field-conf']
@@ -540,10 +552,12 @@ class TheConfiguration:	# The GLaDOS server configuration.
 			_logger.warn("_parseConf(): The required 'field-conf' parameter was "
 							"not provided.")
 	
-		# NOTE: We should parse its parameters.
+			# NOTE: We should parse its parameters here.
 
-			#------------------------------------
-			# Extract the 'app-list' parameter.
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Extract the 'app-list' parameter, which contains a list of
+			#| supported applications and their configuration parameters.
 				
 		if 'app-list' in conf:
 			theConfig.appList = conf['app-list']
@@ -553,17 +567,16 @@ class TheConfiguration:	# The GLaDOS server configuration.
 			theConfig.appList = None
 
 		
-		# NOTE: It would be nice to do some additional error-checking 
+		# NOTE: It would be good to do some additional error-checking 
 		# here, such as warning the user if there are other parameters 
 		# included in the provided config file that we don't understand.
 		
 	#__/ End private singleton instance method theConfiguration._parseConf().
 
 
-	def _process(theConfig:TheConfiguration):
-	
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	def _process(theConfig:TheConfiguration):	
 		""" 
-			--------------------------------------------------------------------
 			theConfig._process()			 [private singleton instance method]
 			
 				Given that the configuration has just been reinitialized
@@ -573,7 +586,6 @@ class TheConfiguration:	# The GLaDOS server configuration.
 				
 				In particular, we infer detailed application configuration
 				information from the still-raw appList data structure.
-			--------------------------------------------------------------------
 		"""
 	
 			#|---------------------------------------------------------
@@ -704,7 +716,7 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		#| Public instance methods.								 [class section]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-			#|------------------------------------------------------------------
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#|	TheConfiguration().reinit()	  [public singleton instance method]
 			#|
 			#|		This public method gets automatically called once,	
@@ -720,9 +732,8 @@ class TheConfiguration:	# The GLaDOS server configuration.
 			#|		if it hasn't been loaded yet, or if reloadConf==True.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
-	def reinit(theConfig:TheConfiguration, confStruct=None, recheckEnv:bool=False, 
-				reloadConf:bool=False):
-		#-----------------------------------------------------------------------
+	def reinit(theConfig:TheConfiguration, confStruct=None, 
+				recheckEnv:bool=False, reloadConf:bool=False):
 		"""
 		(Re)initialization method for configurations.
 		
@@ -737,7 +748,6 @@ class TheConfiguration:	# The GLaDOS server configuration.
 			the configuration is (re-)loaded from the current configuration 
 			file.  Otherwise, the last loaded configuration is just reused.
 		"""
-		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 				
 			#-------------------------------------------------------
 			# First, if checkEnv is true, then we check the environment
@@ -795,9 +805,9 @@ class TheConfiguration:	# The GLaDOS server configuration.
 #__/ End class TheConfiguration.
 
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
 class	TheAIPersonaConfig:
-	#---------------------------------------------------------------------------
 	"""
 		TheAIPersonaConfig								[public singleton class]
 		=================
@@ -808,13 +818,14 @@ class	TheAIPersonaConfig:
 			hosted within the GLaDOS system.
 			
 			NOTE: These two classes are so similar that it might make 
-			sense to abstract their commonalities out into a common 
+			sense to abstract out their commonalities into a common 
 			abstract superclass, but we have not done this yet.
 			
 		
 		Public instance attributes:
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		
+
+
 			The following are basic config parameters needed for
 			finding other data, and are customized using environment
 			variables.
@@ -827,10 +838,12 @@ class	TheAIPersonaConfig:
 											
 				.aiConfigPathname [str]	- The full pathname of the AI-specific
 											config file.
-				
+
+
 			The following are detailed configuration parameters 
 			that are specified in the config file itself.
-			
+
+
 			Mind configuration parameters (under 'mind-conf'):
 			--------------------------------------------------
 				
@@ -844,7 +857,6 @@ class	TheAIPersonaConfig:
 											
 				.sysNotifyThresh [int] - Threshold for system notifications.
 	"""
-	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
 		#|======================================================================
 		#| Special instance methods.							 [class section]
