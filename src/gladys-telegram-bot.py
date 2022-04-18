@@ -107,10 +107,10 @@ import appdefs
 
 # Note we have to configure the appdefs module right away, before any other modules
 # (in particular, logmaster) import values of various application-wide variables.
-appdefs.selectApp('telegram-bot')	# This is the ID of this application.
+appdefs.selectApp('telegram-bot')	# This is the appdefs ID of this application.
 
 # Now that appdefs has been configured correctly, it's safe to import the logging system.
-from infrastructure import logmaster	# Our custom logging facility.
+from infrastructure		import logmaster	# Our custom logging facility.
 
 # Go ahead and fetch the logger for this application.
 _logger = logmaster.appLogger
@@ -124,7 +124,8 @@ _logger = logmaster.appLogger
 			#| import the logmaster module above.)
 
 	# We'll use this wrapper module to get the response from GPT-3:
-from gpt3.api import (		# A simple wrapper for the openai module, written by MPF.
+
+from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF.
 
 				# Class names:
 
@@ -140,15 +141,20 @@ from gpt3.api import (		# A simple wrapper for the openai module, written by MPF
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| Now we need to make sure to configure the logmaster module, before 
-		#| we try to use any part of the infrastructure that might invoke 
+		#| we try to use any part of the GLaDOS system that might invoke 
 		#| the logging facility.
 
-_appName = appdefs.appName	# This is the name of this application.
+_appName = appdefs.appName		# This is the name of this application.
 	# (Due to the above selectApp() call, this should be set to TelegramBot.)
 
-# This configures the logmaster module.
-logmaster.configLogMaster(component=_appName, role='bot',
-	consdebug=False, consinfo=True, logdebug=True)
+# This configures the logmaster module as we wish.
+logmaster.configLogMaster(
+		component	= _appName, 	# Name of the system component being logged.
+		role		= 'bot',		# Sets the main thread's role string to 'bot'.
+		consdebug	= False,		# Turn off full debug logging on the console.
+		consinfo	= True, 		# Turn on info-level logging on the console.
+		logdebug	= True			# Turn on full debug logging in the log file.
+	)
 
 
 	#|=========================================================================|
