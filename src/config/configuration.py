@@ -946,6 +946,10 @@ class	TheAIPersonaConfig:
 				.botName [str]			- The name of the Telegram bot.
 											(E.g., Gladys.)
 				
+				.startMsg [str]			- The message that will be sent to the
+											user when the Telegram bot is first
+											started up.
+
 				.context [str]			- The persistent context data that the
 											persona will see at the start of
 											each conversation.
@@ -1258,10 +1262,15 @@ class	TheAIPersonaConfig:
 		if 'bot-name' in telegramConf:
 			theAIConfig.botName = botName = telegramConf['bot-name']
 			_logger.normal(f"    [Config/AI]     AI config: The AI persona's Telegram bot name is {botName}.")
-
 		else:
 			theAIConfig.botName = None	# No default value provided in config file.
-		
+
+		if 'start-message' in telegramConf:
+			theAIConfig.startMsg = startMessage = telegramConf['start-message']
+			_logger.normal(f"    [Config/AI]     AI config: The AI persona's Telegram start message is {startMessage}.")
+		else:
+			theAIConfig.startMsg = None	# No default value provided in config file.
+
 		if 'context' in telegramConf:
 			theAIConfig.context = context = telegramConf['context']
 			_logger.normal(f"    [Config/AI]     AI config: The AI persona's Telegram context data is [{context}].")

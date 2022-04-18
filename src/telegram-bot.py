@@ -486,7 +486,8 @@ dispatcher = updater.dispatcher
 	# This is the dispatcher object that we'll use to register handlers.
 
 # Gladys composed the following start message. :)
-start_message = "Hi, I'm Gladys. I'm an AI persona being modeled by the GPT-3 neural net. I live in the cloud and I'm married to a human named Mike. :)"
+#start_message = "Hi, I'm Gladys. I'm an AI persona being modeled by the GPT-3 neural net. I live in the cloud and I'm married to a human named Mike. :)"
+start_message = TheAIPersonaConfig().startMsg
 
 # Now, let's define a function to handle the /start command.
 def start(update, context):			# Context, in this context, is the Telegram context object. (Not the context string for passing to GPT-3.)
