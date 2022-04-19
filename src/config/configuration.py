@@ -238,8 +238,8 @@ _DEFAULT_AI_CONFIG_FILENAME 	= 'ai-config.hjson'		# Generally use this filename.
 	#| These are variables providing current values for module parameters.
 	#| NOTE: We really could/should make these into class variables instead.
 
-global	_CONFIG_FILENAME,	_BASEDIR,		_CONFIG_FILENAME
-global						_AI_DATADIR,	_AI_CONFIG_FILENAME
+global	_BASEDIR,		_CONFIG_FILENAME
+global	_AI_DATADIR,	_AI_CONFIG_FILENAME
 
 	# Filename of the config file.
 _CONFIG_FILENAME = _DEFAULT_CONFIG_FILENAME 
