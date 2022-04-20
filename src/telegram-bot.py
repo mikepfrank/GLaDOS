@@ -669,7 +669,7 @@ def remember(update, context):
     _logger.info(f"{update.message.from_user.first_name} added memory: [{update.message.text.strip()}]")
 
     # Send a reply to the user.
-    update.message.reply_text("[DIAGNOSTIC: Added [{update.message.text}] to persistent memory.]\n")
+    update.message.reply_text(f"[DIAGNOSTIC: Added [{update.message.text}] to persistent memory.]\n")
 
 #__/ End definition of /remember command handler.
 
