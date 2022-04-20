@@ -660,16 +660,19 @@ def remember(update, context):
     # Retrieve the Conversation object from the Telegram context.
     conversation = context.chat_data['conversation']
 
+    # Get the command's argument, which is the text to remember.
+    text = ' '.join(update.message.text.split(' ')[1:])
+
     # Tell the conversation object to add the given message to the AI's persistent memory.
-    conversation.add_memory(update.message.text)
+    conversation.add_memory(text)
 
     # We'll also add the whole command line to the conversation, so that the AI can see it.
-    conversation.add_message(Message(update.message.from_user.first_name, '/remember' + update.message.text))
+    conversation.add_message(Message(update.message.from_user.first_name, update.message.text))
 
-    _logger.info(f"{update.message.from_user.first_name} added memory: [{update.message.text.strip()}]")
+    _logger.info(f"{update.message.from_user.first_name} added memory: [{text.strip()}]")
 
     # Send a reply to the user.
-    update.message.reply_text(f"[DIAGNOSTIC: Added [{update.message.text}] to persistent memory.]\n")
+    update.message.reply_text(f"[DIAGNOSTIC: Added [{text.strip()}] to persistent memory.]\n")
 
 #__/ End definition of /remember command handler.
 
