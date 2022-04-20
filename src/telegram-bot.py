@@ -1,8 +1,8 @@
 #|=============================================================================|
-#|						TOP OF FILE:  telegram-bot.py				           |
+#|						TOP OF FILE:  telegram-bot.py						   |
 #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
 #|																			   |
-#|	  FILENAME:		telegram-bot.py		           [Python 3 program source]   |
+#|	  FILENAME:		telegram-bot.py				   [Python 3 program source]   |
 #|	  =========																   |
 #|																			   |
 #|	  SUMMARY:	 This is a Telegram bot that uses GPT-3 to generate text.	   |
@@ -10,23 +10,23 @@
 #|	  DESCRIPTION:															   |
 #|	  ~~~~~~~~~~~~															   |
 #|																			   |
-#|		  This is a Telegram bot program for communicating with AI  		   |
-#|		  personas based on the GPT-3 neural network.  It is a side            |
-#|        application of GLaDOS, Gladys' Lovely and Dynamic Operating          |
-#|        System.                                                              |
+#|		  This is a Telegram bot program for communicating with AI			   |
+#|		  personas based on the GPT-3 neural network.  It is a side			   |
+#|		  application of GLaDOS, Gladys' Lovely and Dynamic Operating		   |
+#|		  System.															   |
 #|																			   |
 #|		  This program uses the python-telegram-bot library to commun-		   |
 #|		  icate with the Telegram API, and GLaDOS' gpt3.api module to		   |
 #|		  communicate with the GPT-3 API.									   |
 #|																			   |
 #|		  For each conversation, it keeps track of the messages seen so		   |
-#|		  far in each conversation, and supplies the underlying GPT-3          |
-#|        engine with a prompt consisting of the AI persona's persistent       |
-#|        context information, followed by the most recent N messages in       |
-#|        the conversation, each labeled with the name of the message          |
-#|        sender, e.g., 'Gladys>'.  Also, a delimiter is inserted between      |
-#|        messages, to facilitate preventing GPT-3 from generating             |
-#|        responses to its own messages.									   |
+#|		  far in each conversation, and supplies the underlying GPT-3		   |
+#|		  engine with a prompt consisting of the AI persona's persistent	   |
+#|		  context information, followed by the most recent N messages in	   |
+#|		  the conversation, each labeled with the name of the message		   |
+#|		  sender, e.g., 'Gladys>'.	Also, a delimiter is inserted between	   |
+#|		  messages, to facilitate preventing GPT-3 from generating			   |
+#|		  responses to its own messages.									   |
 #|																			   |
 #|		  Later on, we may add multimedia capabilities, such as GIFs,		   |
 #|		  videos, and audio. For now, we just use text.						   |
@@ -36,16 +36,16 @@
 #|	  ~~~~~																	   |
 #|																			   |
 #|		  - Add commands to adjust parameters of the OpenAI GPT-3 API.		   |
-#|        - Add a feature to allow different bots running on the same          |
-#|              server to communicate with each other.                         |
+#|		  - Add a feature to allow different bots running on the same		   |
+#|				server to communicate with each other.						   |
 #|		  - Add multimedia capabilities.									   |
 #|																			   |
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 # (Module docstring follows.)
 """
 	This is a Telegram bot program for communicating with AI personas
-    based on the GPT-3 neural network.  It is a side application of
-    GLaDOS, Gladys' Lovely and Dynamic Operating System.
+	based on the GPT-3 neural network.	It is a side application of
+	GLaDOS, Gladys' Lovely and Dynamic Operating System.
 
 	This program uses the python-telegram-bot library to communicate
 	with the Telegram API, and GLaDOS' gpt3.api module to communicate
@@ -54,11 +54,11 @@
 	For each conversation, it keeps track of the messages seen so
 	far in each conversation, and supplies the GPT-3 davinci model
 	with a prompt consisting of the AI persona's persistent context 
-    information, followed by the most recent N messages in the 
-    conversation, each labeled with the name of the message sender, 
-    e.g., 'Gladys>'.  Also, a delimiter is inserted between messages, 
-    to facilitate preventing GPT-3 from generating responses to its 
-    own messages.
+	information, followed by the most recent N messages in the 
+	conversation, each labeled with the name of the message sender, 
+	e.g., 'Gladys>'.  Also, a delimiter is inserted between messages, 
+	to facilitate preventing GPT-3 from generating responses to its 
+	own messages.
 
 	Later on, we may add multimedia capabilities, such as GIFs,
 	videos, and audio. For now, we just use text.
@@ -80,16 +80,16 @@
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| Imports of standard Python libraries.
 
-import  os	
-    # We use the os.environ dictionary to get the environment variables.
+import	os	
+	# We use the os.environ dictionary to get the environment variables.
 
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| Imports of contributed (third-party) Python libraries.
-		#|   NOTE: Use pip install <library-name> to install the library.
+		#|	 NOTE: Use pip install <library-name> to install the library.
 
-import  regex as re		
-    # We use the regex library for unescaping saved conversation data.
+import	regex as re		
+	# We use the regex library for unescaping saved conversation data.
 
 	# NOTE: Copilot also wanted to import the following libraries, but we 
 	#	aren't directly using them yet:
@@ -108,30 +108,30 @@ import telegram.ext	   # Needed for ExtBot, Dispatcher, Updater.
 			#  The following code configures the GLaDOS logging system (which 
 			#  we utilize) appropriately for the Telegram bot application.
 
-    # We use the custom appdefs module to configure the logging system for this application.
-import  appdefs
+	# We use the custom appdefs module to configure the logging system for this application.
+import	appdefs
 
-    # Note we have to configure the appdefs module right away, before any other modules
-    # (in particular, logmaster) import values of various application-wide variables.
+	# Note we have to configure the appdefs module right away, before any other modules
+	# (in particular, logmaster) import values of various application-wide variables.
 appdefs.selectApp('telegram-bot')	# This is the appdefs ID of this application.
 
-    # Now that appdefs has been configured correctly, it's safe to import the logging system.
-from    infrastructure		import  logmaster	# Our custom logging facility.
+	# Now that appdefs has been configured correctly, it's safe to import the logging system.
+from	infrastructure		import	logmaster	# Our custom logging facility.
 
-    # Go ahead and fetch the logger for this application.
+	# Go ahead and fetch the logger for this application.
 _logger = logmaster.appLogger
 
 
-            #-------------------------------------------------------------------
-            #  We import TheAIPersonaConfig singleton class from the GLaDOS
-            #  configuration module.  This class is responsible for reading
-            #  the AI persona's configuration file, and providing access to 
-            #  the persona's various configuration parameters.  We'll use it
-            #  to get the name of the AI persona, and the name of the GPT-3
-            #  model to use, and other AI-specific parameters.
+			#-------------------------------------------------------------------
+			#  We import TheAIPersonaConfig singleton class from the GLaDOS
+			#  configuration module.  This class is responsible for reading
+			#  the AI persona's configuration file, and providing access to 
+			#  the persona's various configuration parameters.	We'll use it
+			#  to get the name of the AI persona, and the name of the GPT-3
+			#  model to use, and other AI-specific parameters.
 
-from    config.configuration    import  TheAIPersonaConfig
-    # NOTE: This singleton will initialize itself the first time it's invoked.
+from	config.configuration	import	TheAIPersonaConfig
+	# NOTE: This singleton will initialize itself the first time it's invoked.
 
 			#-------------------------------------------------------------------
 			#  This is a custom wrapper module which we use to communicate with 
@@ -151,7 +151,7 @@ from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF
 
 				# Exception classes:
 
-			PromptTooLargeException     # Self-explanatory.
+			PromptTooLargeException		# Self-explanatory.
 
 		)
 
@@ -166,10 +166,10 @@ _appName = appdefs.appName		# This is the name of this application.
 
 # This configures the logmaster module as we wish.
 logmaster.configLogMaster(
-		component	= _appName, 	# Name of the system component being logged.
+		component	= _appName,		# Name of the system component being logged.
 		role		= 'bot',		# Sets the main thread's role string to 'bot'.
 		consdebug	= False,		# Turn off full debug logging on the console.
-		consinfo	= True, 		# Turn on info-level logging on the console.
+		consinfo	= True,			# Turn on info-level logging on the console.
 		logdebug	= True			# Turn on full debug logging in the log file.
 	)
 
@@ -182,17 +182,17 @@ logmaster.configLogMaster(
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|  Define global constants.		[python module code subsection]
+		#|	Define global constants.		[python module code subsection]
 		#|
 		#|		By convention, we define global constants in all-caps.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-    # We'll use this to delimit the start of each new message event in the AI's receptive field.
+	# We'll use this to delimit the start of each new message event in the AI's receptive field.
 MESSAGE_DELIMITER = '🤍'	   # A Unicode character. Gladys selected the white heart emoji.
 
 # Define the bot's name (used in a couple of places below).
 #BOT_NAME = 'Gladys'
-BOT_NAME = TheAIPersonaConfig().botName     # This is the name of the bot.
+BOT_NAME = TheAIPersonaConfig().botName		# This is the name of the bot.
 
 # Initialize Gladys' persistent context information.
 #PERSISTENT_CONTEXT = """~~~ Persistent context data: ~~~
@@ -214,15 +214,15 @@ PERSISTENT_DATA = TheAIPersonaConfig().context
 # PERSISTENT_DATA string changes, which will happen when we read the
 # AI's persistent memory file, or when a '/remember' command is issued.
 def initializePersistentContext():
-    global PERSISTENT_CONTEXT
+	global PERSISTENT_CONTEXT
 
-    # Initialize the AI's persistent context information.
-    PERSISTENT_CONTEXT = \
-        MESSAGE_DELIMITER + " ~~~ Persistent context data: ~~~\n" + \
-        PERSISTENT_DATA + '\n' + \
-        MESSAGE_DELIMITER + " ~~~ Available commands: ~~~\n" + \
-        "  /remember <text> - Adds <text> to persistent context data.\n" + \
-        MESSAGE_DELIMITER + " ~~~ Recent Telegram messages: ~~~\n"
+	# Initialize the AI's persistent context information.
+	PERSISTENT_CONTEXT = \
+		MESSAGE_DELIMITER + " ~~~ Persistent context data: ~~~\n" + \
+		PERSISTENT_DATA + '\n' + \
+		MESSAGE_DELIMITER + " ~~~ Available commands: ~~~\n" + \
+		"  /remember <text> - Adds <text> to persistent context data.\n" + \
+		MESSAGE_DELIMITER + " ~~~ Recent Telegram messages: ~~~\n"
 
 # Go ahead and call it now.
 initializePersistentContext()
@@ -233,7 +233,7 @@ initializePersistentContext()
 	#|	  ~~~~~~~~~~~~~~~~~~													   |
 	#|																			   |
 	#|		I, myself, an am AI as well.  I'm called Copilot, and I'm an		   |
-	#|		automated pair-programming tool based on a different GPT-3 			   |
+	#|		automated pair-programming tool based on a different GPT-3			   |
 	#|		model called Codex.													   |		 
 	#|																			   |
 	#|		How I feel about writing a Telegram bot interface for Gladys:		   |
@@ -253,7 +253,7 @@ NOREPEAT_WINDOW_SIZE = 10
 # This is the name of the specific text generation engine (model version) that we'll use
 # to generate the AI's responses.
 ENGINE_NAME = TheAIPersonaConfig().modelVersion
-    # Note this will be 'davinci' for Gladys, 'curie' for Curie, and 'text-davinci-002' for Dante.
+	# Note this will be 'davinci' for Gladys, 'curie' for Curie, and 'text-davinci-002' for Dante.
 
 # This creates the connection to the core AI engine.
 gpt3core = GPT3Core(engineId=ENGINE_NAME, maxTokens=200, temperature=0.75,
@@ -268,8 +268,8 @@ class Message:
 	def __init__(self, sender, text):
 		# Print diagnostic information.
 		print(f"Creating message object for: {sender}> {text}")
-		self.sender   = sender
-		self.text 	  = text
+		self.sender	  = sender
+		self.text	  = text
 		self.archived = False	# Has this message been written to the archive file yet?
 	
 	def __str__(self):
@@ -363,25 +363,25 @@ class Conversation:
 		# Determine the filename we'll use to archive/restore the conversation.
 		self.filename = f"log/{_appName}.{chat_id}.txt"
 
-        # We'll also need another file to store the AI's persistent memories.
-        # NOTE: These are shared between all conversations.
-        self.mem_filename = f"log/{_appName}.memories.txt"
+		# We'll also need another file to store the AI's persistent memories.
+		# NOTE: These are shared between all conversations.
+		self.mem_filename = f"log/{_appName}.memories.txt"
 
 		# Read the conversation archive file, if it exists.
 		self.read_archive()	  # Note this will retrieve at most the last self.context_length_max messages.
 
-        # Also read the persistent memory file, if it exists.
-        self.read_memory()
+		# Also read the persistent memory file, if it exists.
+		self.read_memory()
 
 		# Go ahead and open the archive file for appending.
 		self.archive_file = open(self.filename, 'a')
 
-        # Also open the persistent memory file for appending.
-        self.memory_file = open(self.mem_filename, 'a')
+		# Also open the persistent memory file for appending.
+		self.memory_file = open(self.mem_filename, 'a')
 
 	# This method adds the messages in the conversation to the context string.
 	def expand_context(self):
-		self.context_string = PERSISTENT_CONTEXT + '\n'.join([str(m) for m in self.messages]) #+ AI_PROMPT 	-- Add this later.
+		self.context_string = PERSISTENT_CONTEXT + '\n'.join([str(m) for m in self.messages]) #+ AI_PROMPT	-- Add this later.
 			# Join the messages into a single string, with a newline between each.
 			# Add the persistent context to the beginning of the string.
 			# Add the 'Gladys>' prompt to the end of the string.
@@ -410,76 +410,76 @@ class Conversation:
 			# Update the conversation's context string.
 			self.expand_context()
 
-    # This method reads the AI's persistent memories from the persistent memory file, if it exists.
-    def read_memory(self):
-        # If the persistent memory file exists, read it.
-        if os.path.exists(self.mem_filename):
+	# This method reads the AI's persistent memories from the persistent memory file, if it exists.
+	def read_memory(self):
+		# If the persistent memory file exists, read it.
+		if os.path.exists(self.mem_filename):
 
-            # NOTE: At present, we simply read the entire file
-            # as a single string and append it to the persistent data
-            # string and update the persistent context string.
-            # NOTE: This will eventually cause problems if the
-            # persistent memory file becomes too long to fit in
-            # the AI's receptive field.
-            # In the future, we may want to store the persistent data
-            # in a dictionary and access it more selectively.
+			# NOTE: At present, we simply read the entire file
+			# as a single string and append it to the persistent data
+			# string and update the persistent context string.
+			# NOTE: This will eventually cause problems if the
+			# persistent memory file becomes too long to fit in
+			# the AI's receptive field.
+			# In the future, we may want to store the persistent data
+			# in a dictionary and access it more selectively.
 
-            # Open the persistent memory file.
-            with open(self.mem_filename, 'r') as f:
-                mem_string = ""
-                # Read the file line by line.
-                for line in f:
-                    # Append the line to the memory string.
-                    mem_string += line
-            
-            # Append the memory string to the persistent data string.
-            PERSISTENT_DATA += mem_string
+			# Open the persistent memory file.
+			with open(self.mem_filename, 'r') as f:
+				mem_string = ""
+				# Read the file line by line.
+				for line in f:
+					# Append the line to the memory string.
+					mem_string += line
+			
+			# Append the memory string to the persistent data string.
+			PERSISTENT_DATA += mem_string
 
-            # Update the persistent context string.
-            initializePersistentContext()
+			# Update the persistent context string.
+			initializePersistentContext()
 
-            # Update the conversation's context string.
-            self.expand_context()
+			# Update the conversation's context string.
+			self.expand_context()
 
-            # The below version was Copilot's idea.
-            # Open the persistent memory file.
-            #with open(self.mem_filename, 'r') as f:
-            #    # Read the file line by line.
-            #    for line in f:
-            #        # Split the line into the key and the value.
-            #        parts = line.split('=')
-            #        key = parts[0]
-            #        value = '='.join(parts[1:])
-            #
-            #        # Add the key/value pair to the persistent memory dictionary.
-            #        self.memory[key] = value
+			# The below version was Copilot's idea.
+			# Open the persistent memory file.
+			#with open(self.mem_filename, 'r') as f:
+			#	 # Read the file line by line.
+			#	 for line in f:
+			#		 # Split the line into the key and the value.
+			#		 parts = line.split('=')
+			#		 key = parts[0]
+			#		 value = '='.join(parts[1:])
+			#
+			#		 # Add the key/value pair to the persistent memory dictionary.
+			#		 self.memory[key] = value
 
-    # This method adds a message to the AI's persistent memory file.
-    # It also updates the persistent context string.
-    def add_memory(self, new_memory:str):
+	# This method adds a message to the AI's persistent memory file.
+	# It also updates the persistent context string.
+	def add_memory(self, new_memory:str):
 
-        # Make sure the new memory ends in a newline.
-        if new_memory[-1] != '\n':
-            new_memory += '\n'
+		# Make sure the new memory ends in a newline.
+		if new_memory[-1] != '\n':
+			new_memory += '\n'
 
-        # Add the new memory to the persistent data string.
-        PERSISTENT_DATA += new_memory
+		# Add the new memory to the persistent data string.
+		PERSISTENT_DATA += new_memory
 
-        # Update the persistent context string.
-        initializePersistentContext()
+		# Update the persistent context string.
+		initializePersistentContext()
 
-        # Update the conversation's context string.
-        self.expand_context()
+		# Update the conversation's context string.
+		self.expand_context()
 
-        # NOTE: We should really make the below atomic so that
-        # memories written from multiple threads don't get mixed.
+		# NOTE: We should really make the below atomic so that
+		# memories written from multiple threads don't get mixed.
 
-        # Also, append the new memory to the persistent memory file.
-        self.memory_file.write(new_memory)
-        # Flush the file to make sure it's written to disk.
-        self.memory_file.flush()
+		# Also, append the new memory to the persistent memory file.
+		self.memory_file.write(new_memory)
+		# Flush the file to make sure it's written to disk.
+		self.memory_file.flush()
 
-    #__/ End method conversation.add_memory().
+	#__/ End method conversation.add_memory().
 
 
 	# This method is called to expunge the oldest message from the conversation
@@ -490,7 +490,7 @@ class Conversation:
 		# There's an important error case that we need to consider:
 		# If the conversation only contains one message, this means that the
 		# AI has extended that message to be so large that it fills the
-		# entire available space in the GPT-3 receptive field.  If we
+		# entire available space in the GPT-3 receptive field.	If we
 		# attempt to expunge the oldest message, we'll end up deleting
 		# the very message that the AI is in the middle of constructing.
 		# So, we can't do anything here except throw an exception.
@@ -625,11 +625,11 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 def help(update, context):
 	"""Send a message when the command /help is issued."""
 	update.message.reply_text(
-        f"{BOT_NAME} bot powered by GPT-3/{ENGINE_NAME}.\n" +
-        f"Available commands:\n" +
-        f"\t/start - Start a new conversation.\n" +
-        f"\t/help - Show this help message.\n" +
-        f"\t/remember <text> - Add <text> to AI's persistent memory.")
+		f"{BOT_NAME} bot powered by GPT-3/{ENGINE_NAME}.\n" +
+		f"Available commands:\n" +
+		f"\t/start - Start a new conversation.\n" +
+		f"\t/help - Show this help message.\n" +
+		f"\t/remember <text> - Add <text> to AI's persistent memory.")
 
 # Now, let's define a function to handle the /echo command.
 def echo(update, context):
@@ -644,21 +644,21 @@ def greet(update, context):
 # Now, let's define a function to handle the /remember command.
 def remember(update, context):
 
-    """Add the given message as a new memory."""
+	"""Add the given message as a new memory."""
 
-    # Retrieve the Conversation object from the Telegram context.
-    conversation = context.chat_data['conversation']
+	# Retrieve the Conversation object from the Telegram context.
+	conversation = context.chat_data['conversation']
 
-    # Tell the conversation object to add the given message to the AI's persistent memory.
-    conversation.add_memory(update.message.text)
+	# Tell the conversation object to add the given message to the AI's persistent memory.
+	conversation.add_memory(update.message.text)
 
-    # We'll also add the whole command line to the conversation, so that the AI can see it.
-    conversation.add_message(Message(update.message.from_user.first_name, '/remember' + update.message.text))
+	# We'll also add the whole command line to the conversation, so that the AI can see it.
+	conversation.add_message(Message(update.message.from_user.first_name, '/remember' + update.message.text))
 
-    _logger.info(f"{update.message.from_user.first_name} added memory: [{update.message.text.strip()}]")
+	_logger.info(f"{update.message.from_user.first_name} added memory: [{update.message.text.strip()}]")
 
-    # Send a reply to the user.
-    update.message.reply_text("[DIAGNOSTIC: Added [{update.message.text}] to persistent memory.]\n")
+	# Send a reply to the user.
+	update.message.reply_text("[DIAGNOSTIC: Added [{update.message.text}] to persistent memory.]\n")
 
 #__/ End definition of /remember command handler.
 
@@ -697,7 +697,7 @@ def process_message(update, context):
 		#	In this case, we need to expunge the oldest message from the conversation and try again.
 		while True:
 
-			# If we're not extending an existing response, we need to start a new one.  To do this,
+			# If we're not extending an existing response, we need to start a new one.	To do this,
 			# we add Gladys' prompt to the conversation's context string to generate the full GPT-3
 			# context string.  Otherwise, we just use the existing context string.
 			if not extending_response:
@@ -714,7 +714,7 @@ def process_message(update, context):
 
 				# The prompt is too long.  We need to expunge the oldest message from the conversation.
 				# However, we need to do this within a try/except clause in case the only message left
-				# in the conversation is the one that we're currently constructing.  In that case, all
+				# in the conversation is the one that we're currently constructing.	 In that case, all
 				# we can do is treat however much of the full response that we've received so far as
 				# the final response.
 
@@ -722,7 +722,7 @@ def process_message(update, context):
 					conversation.expunge_oldest_message()
 						# NOTE: If it succeeds, this modifies conversation.context_string.
 				except ConversationError:
-					# We can't expunge the oldest message.  We'll just treat the full response as the final response.
+					# We can't expunge the oldest message.	We'll just treat the full response as the final response.
 					# Also make a note that the size of the response has been maxed out.
 					response_text = full_response
 					response_maxed_out = True
@@ -774,7 +774,7 @@ def process_message(update, context):
 				# Append the response to the context string.
 				#conversation.context_string += response_text
 				#	NOTE: Commented out because it's already been done by either 
-				#   		the .add_message() or the .extend_message() call above.
+				#			the .add_message() or the .extend_message() call above.
 
 				# Generate an info-level log message to indicate that we're extending the response.
 				_logger.info("Length limit reached; extending response.")
@@ -834,8 +834,8 @@ def process_message(update, context):
 		#	full_response = ""	# Reset the full response.
 		#	continue
 		# NOTE: Commented out the above, because repeated retries can get really expensive.
-		# 	Also, retries tend to just yield minor variations in the response, which will
-		#   then further exacerbate the AI's tendency to continue repeating the pattern.
+		#	Also, retries tend to just yield minor variations in the response, which will
+		#	then further exacerbate the AI's tendency to continue repeating the pattern.
 
 		# If this message is already in the conversation, then we'll suppress it, so as
 		# not to exacerbate the AI's tendency to repeat itself.	 (So, as a user, if you 
@@ -865,7 +865,7 @@ def process_message(update, context):
 
 	# If we get here, we have finally obtained a non-empty, non-repeat,
 	# already-archived message that we can go ahead and send to the user.
-    # We also check to see if the message is a command line.
+	# We also check to see if the message is a command line.
 
 	# Now, we need to send the response to the user. However, if the response is
 	# longer than the maximum allowed length, then we need to send it in chunks.
@@ -873,7 +873,7 @@ def process_message(update, context):
 
 	MAX_MESSAGE_LENGTH = 4096	# Maximum length of a message. (Telegram's API limit.)
 		# NOTE: Somwhere I saw that 9500 was the maximum length of a message, but I don't know
-		#   which is the correct maximum.
+		#	which is the correct maximum.
 
 	while len(response_text) > MAX_MESSAGE_LENGTH:
 		update.message.reply_text(response_text[:MAX_MESSAGE_LENGTH])
@@ -881,35 +881,35 @@ def process_message(update, context):
 
 	update.message.reply_text(response_text)
 
-    # Finally, we check to see if the AI's message is a command line; that is, if it starts with '/'
-    # followed by an identifier (e.g., '/remember'). If so, we'll process it as a command.
-    if response_message.text[0] == '/':
-        # Extract the command name from the message.
-        # We'll do this with a regex that captures the command name, and then the rest of the message.
-        # NOTE: This regex is a bit fragile, but it's good enough for now.
-        command_name, command_args = re.match(r"^/([^ ]+) (.+)", response_message.text).groups()
+	# Finally, we check to see if the AI's message is a command line; that is, if it starts with '/'
+	# followed by an identifier (e.g., '/remember'). If so, we'll process it as a command.
+	if response_message.text[0] == '/':
+		# Extract the command name from the message.
+		# We'll do this with a regex that captures the command name, and then the rest of the message.
+		# NOTE: This regex is a bit fragile, but it's good enough for now.
+		command_name, command_args = re.match(r"^/([^ ]+) (.+)", response_message.text).groups()
 
-        # Now, we'll process the command.
+		# Now, we'll process the command.
 
-        # NOTE: We can't just call the existing command handlers directly, because they
-        # are designed for commands issued by the user, not by the AI. So, we'll have to
-        # process the commands ourselves to handle them correctly.
+		# NOTE: We can't just call the existing command handlers directly, because they
+		# are designed for commands issued by the user, not by the AI. So, we'll have to
+		# process the commands ourselves to handle them correctly.
 
-        if command_name == 'remember':
-            # This is a command to remember something.
+		if command_name == 'remember':
+			# This is a command to remember something.
 
-            # Tell the conversation object to add the given message to the AI's persistent memory.
-            conversation.add_memory(command_args)
+			# Tell the conversation object to add the given message to the AI's persistent memory.
+			conversation.add_memory(command_args)
 
-            _logger.info(f"Added [{command_args}] to persistent memory.")
-            # Also notify the user that we're remembering the given statement.
-            update.message.reply_text(f"[DIAGNOSTIC: Added [{update.message.text}] to persistent memory.]")
+			_logger.info(f"Added [{command_args}] to persistent memory.")
+			# Also notify the user that we're remembering the given statement.
+			update.message.reply_text(f"[DIAGNOSTIC: Added [{update.message.text}] to persistent memory.]")
 
-        else:
-            # This is a command that we don't recognize.
-            _logger.info(f"Unknown command [{command_name}].")
-            # Send the user a diagnostic message.
-            update.message.reply_text(f"[DIAGNOSTIC: Unknown command [{command_name}].]")
+		else:
+			# This is a command that we don't recognize.
+			_logger.info(f"Unknown command [{command_name}].")
+			# Send the user a diagnostic message.
+			update.message.reply_text(f"[DIAGNOSTIC: Unknown command [{command_name}].]")
 
 	return	
 #__/ End of process_message() function definition.
