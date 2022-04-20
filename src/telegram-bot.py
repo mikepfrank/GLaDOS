@@ -207,19 +207,25 @@ BOT_NAME = TheAIPersonaConfig().botName		# This is the name of the bot.
 #"""
 
 # Initialize the AI's persistent context data.
-PERSISTENT_DATA = TheAIPersonaConfig().context
+PERSISTENT_DATA = TheAIPersonaConfig().context 
+    # NOTE: This should end with a newline. But if it doesn't, we'll add one.
 
 # This function initializes the AI's persistent context information
 # based on the PERSISTENT_DATA string. We'll call it whenever the
 # PERSISTENT_DATA string changes, which will happen when we read the
 # AI's persistent memory file, or when a '/remember' command is issued.
 def initializePersistentContext():
-	global PERSISTENT_CONTEXT
+
+	global PERSISTENT_DATA, PERSISTENT_CONTEXT  # So we can modify these.
+
+    # Ensure that PERSISTENT_DATA ends with a newline.
+    if PERSISTENT_DATA[-1] != '\n':
+        PERSISTENT_DATA += '\n'
 
 	# Initialize the AI's persistent context information.
 	PERSISTENT_CONTEXT = \
 		MESSAGE_DELIMITER + " ~~~ Persistent context data: ~~~\n" + \
-		PERSISTENT_DATA + '\n' + \
+		PERSISTENT_DATA + \
 		MESSAGE_DELIMITER + " ~~~ Available commands: ~~~\n" + \
 		"  /remember <text> - Adds <text> to persistent context data.\n" + \
 		MESSAGE_DELIMITER + " ~~~ Recent Telegram messages: ~~~\n"
