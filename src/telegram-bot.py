@@ -413,7 +413,7 @@ class Conversation:
 	# This method reads the AI's persistent memories from the persistent memory file, if it exists.
 	def read_memory(self):
 
-        global PERSISTENT_DATA  # We declare this global so we can modify it.
+		global PERSISTENT_DATA	# We declare this global so we can modify it.
 
 		# If the persistent memory file exists, read it.
 		if os.path.exists(self.mem_filename):
@@ -461,7 +461,7 @@ class Conversation:
 	# It also updates the persistent context string.
 	def add_memory(self, new_memory:str):
 
-        global PERSISTENT_DATA  # We declare this global so we can modify it.
+		global PERSISTENT_DATA	# We declare this global so we can modify it.
 
 		# Make sure the new memory ends in a newline.
 		if new_memory[-1] != '\n':
