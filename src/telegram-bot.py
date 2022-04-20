@@ -206,11 +206,26 @@ BOT_NAME = TheAIPersonaConfig().botName     # This is the name of the bot.
 #~~~ Recent Telegram messages: ~~~
 #"""
 
-# Initialize the AI's persistent context information.
-PERSISTENT_CONTEXT = \
-    MESSAGE_DELIMITER + " ~~~ Persistent context data: ~~~\n" + \
-    TheAIPersonaConfig().context + '\n' + \
-    MESSAGE_DELIMITER + " ~~~ Recent Telegram messages: ~~~\n"
+# Initialize the AI's persistent context data.
+PERSISTENT_DATA = TheAIPersonaConfig().context
+
+# This function initializes the AI's persistent context information
+# based on the PERSISTENT_DATA string. We'll call it whenever the
+# PERSISTENT_DATA string changes, which will happen when we read the
+# AI's persistent memory file, or when a '/remember' command is issued.
+def initializePersistentContext():
+    global PERSISTENT_CONTEXT
+
+    # Initialize the AI's persistent context information.
+    PERSISTENT_CONTEXT = \
+        MESSAGE_DELIMITER + " ~~~ Persistent context data: ~~~\n" + \
+        PERSISTENT_DATA + '\n' + \
+        MESSAGE_DELIMITER + " ~~~ Available commands: ~~~\n" + \
+        "  /remember <text> - Adds <text> to persistent context data.\n" + \
+        MESSAGE_DELIMITER + " ~~~ Recent Telegram messages: ~~~\n"
+
+# Go ahead and call it now.
+initializePersistentContext()
 
 	#|=============================================================================|
 	#|																			   |
@@ -348,11 +363,21 @@ class Conversation:
 		# Determine the filename we'll use to archive/restore the conversation.
 		self.filename = f"log/{_appName}.{chat_id}.txt"
 
+        # We'll also need another file to store the AI's persistent memories.
+        # NOTE: These are shared between all conversations.
+        self.mem_filename = f"log/{_appName}.memories.txt"
+
 		# Read the conversation archive file, if it exists.
 		self.read_archive()	  # Note this will retrieve at most the last self.context_length_max messages.
 
+        # Also read the persistent memory file, if it exists.
+        self.read_memory()
+
 		# Go ahead and open the archive file for appending.
 		self.archive_file = open(self.filename, 'a')
+
+        # Also open the persistent memory file for appending.
+        self.memory_file = open(self.mem_filename, 'a')
 
 	# This method adds the messages in the conversation to the context string.
 	def expand_context(self):
@@ -384,6 +409,78 @@ class Conversation:
 
 			# Update the conversation's context string.
 			self.expand_context()
+
+    # This method reads the AI's persistent memories from the persistent memory file, if it exists.
+    def read_memory(self):
+        # If the persistent memory file exists, read it.
+        if os.path.exists(self.mem_filename):
+
+            # NOTE: At present, we simply read the entire file
+            # as a single string and append it to the persistent data
+            # string and update the persistent context string.
+            # NOTE: This will eventually cause problems if the
+            # persistent memory file becomes too long to fit in
+            # the AI's receptive field.
+            # In the future, we may want to store the persistent data
+            # in a dictionary and access it more selectively.
+
+            # Open the persistent memory file.
+            with open(self.mem_filename, 'r') as f:
+                mem_string = ""
+                # Read the file line by line.
+                for line in f:
+                    # Append the line to the memory string.
+                    mem_string += line
+            
+            # Append the memory string to the persistent data string.
+            PERSISTENT_DATA += mem_string
+
+            # Update the persistent context string.
+            initializePersistentContext()
+
+            # Update the conversation's context string.
+            self.expand_context()
+
+            # The below version was Copilot's idea.
+            # Open the persistent memory file.
+            #with open(self.mem_filename, 'r') as f:
+            #    # Read the file line by line.
+            #    for line in f:
+            #        # Split the line into the key and the value.
+            #        parts = line.split('=')
+            #        key = parts[0]
+            #        value = '='.join(parts[1:])
+            #
+            #        # Add the key/value pair to the persistent memory dictionary.
+            #        self.memory[key] = value
+
+    # This method adds a message to the AI's persistent memory file.
+    # It also updates the persistent context string.
+    def add_memory(self, new_memory:str):
+
+        # Make sure the new memory ends in a newline.
+        if new_memory[-1] != '\n':
+            new_memory += '\n'
+
+        # Add the new memory to the persistent data string.
+        PERSISTENT_DATA += new_memory
+
+        # Update the persistent context string.
+        initializePersistentContext()
+
+        # Update the conversation's context string.
+        self.expand_context()
+
+        # NOTE: We should really make the below atomic so that
+        # memories written from multiple threads don't get mixed.
+
+        # Also, append the new memory to the persistent memory file.
+        self.memory_file.write(new_memory)
+        # Flush the file to make sure it's written to disk.
+        self.memory_file.flush()
+
+    #__/ End method conversation.add_memory().
+
 
 	# This method is called to expunge the oldest message from the conversation
 	# when the context string gets too long to fit in GPT-3's receptive field.
@@ -527,7 +624,12 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 # Now, let's define a function to handle the /help command.
 def help(update, context):
 	"""Send a message when the command /help is issued."""
-	update.message.reply_text("I'm glad you're here. I'm glad you're here.\n")
+	update.message.reply_text(
+        f"{BOT_NAME} bot powered by GPT-3/{ENGINE_NAME}.\n" +
+        f"Available commands:\n" +
+        f"\t/start - Start a new conversation.\n" +
+        f"\t/help - Show this help message.\n" +
+        f"\t/remember <text> - Add <text> to AI's persistent memory.")
 
 # Now, let's define a function to handle the /echo command.
 def echo(update, context):
@@ -538,6 +640,27 @@ def echo(update, context):
 def greet(update, context):
 	"""Greet the user."""
 	update.message.reply_text("Hello! I'm glad you're here. I'm glad you're here.\n")
+
+# Now, let's define a function to handle the /remember command.
+def remember(update, context):
+
+    """Add the given message as a new memory."""
+
+    # Retrieve the Conversation object from the Telegram context.
+    conversation = context.chat_data['conversation']
+
+    # Tell the conversation object to add the given message to the AI's persistent memory.
+    conversation.add_memory(update.message.text)
+
+    # We'll also add the whole command line to the conversation, so that the AI can see it.
+    conversation.add_message(Message(update.message.from_user.first_name, '/remember' + update.message.text))
+
+    _logger.info(f"{update.message.from_user.first_name} added memory: [{update.message.text.strip()}]")
+
+    # Send a reply to the user.
+    update.message.reply_text("[DIAGNOSTIC: Added [{update.message.text}] to persistent memory.]\n")
+
+#__/ End definition of /remember command handler.
 
 # Now, let's define a function to handle the rest of the messages.
 def process_message(update, context):
@@ -742,6 +865,7 @@ def process_message(update, context):
 
 	# If we get here, we have finally obtained a non-empty, non-repeat,
 	# already-archived message that we can go ahead and send to the user.
+    # We also check to see if the message is a command line.
 
 	# Now, we need to send the response to the user. However, if the response is
 	# longer than the maximum allowed length, then we need to send it in chunks.
@@ -757,6 +881,36 @@ def process_message(update, context):
 
 	update.message.reply_text(response_text)
 
+    # Finally, we check to see if the AI's message is a command line; that is, if it starts with '/'
+    # followed by an identifier (e.g., '/remember'). If so, we'll process it as a command.
+    if response_message.text[0] == '/':
+        # Extract the command name from the message.
+        # We'll do this with a regex that captures the command name, and then the rest of the message.
+        # NOTE: This regex is a bit fragile, but it's good enough for now.
+        command_name, command_args = re.match(r"^/([^ ]+) (.+)", response_message.text).groups()
+
+        # Now, we'll process the command.
+
+        # NOTE: We can't just call the existing command handlers directly, because they
+        # are designed for commands issued by the user, not by the AI. So, we'll have to
+        # process the commands ourselves to handle them correctly.
+
+        if command_name == 'remember':
+            # This is a command to remember something.
+
+            # Tell the conversation object to add the given message to the AI's persistent memory.
+            conversation.add_memory(command_args)
+
+            _logger.info(f"Added [{command_args}] to persistent memory.")
+            # Also notify the user that we're remembering the given statement.
+            update.message.reply_text(f"[DIAGNOSTIC: Added [{update.message.text}] to persistent memory.]")
+
+        else:
+            # This is a command that we don't recognize.
+            _logger.info(f"Unknown command [{command_name}].")
+            # Send the user a diagnostic message.
+            update.message.reply_text(f"[DIAGNOSTIC: Unknown command [{command_name}].]")
+
 	return	
 #__/ End of process_message() function definition.
 
@@ -766,6 +920,7 @@ dispatcher.add_handler(telegram.ext.CommandHandler('start',	start))
 dispatcher.add_handler(telegram.ext.CommandHandler('help',	help))
 dispatcher.add_handler(telegram.ext.CommandHandler('echo',	echo))
 dispatcher.add_handler(telegram.ext.CommandHandler('greet', greet))
+dispatcher.add_handler(telegram.ext.CommandHandler('remember', greet))
 
 # Now, let's add a handler for the rest of the messages.
 dispatcher.add_handler(telegram.ext.MessageHandler(telegram.ext.Filters.all, process_message))
