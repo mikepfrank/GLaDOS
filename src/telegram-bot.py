@@ -931,7 +931,7 @@ dispatcher.add_handler(telegram.ext.CommandHandler('start', start))
 dispatcher.add_handler(telegram.ext.CommandHandler('help',  help))
 dispatcher.add_handler(telegram.ext.CommandHandler('echo',  echo))
 dispatcher.add_handler(telegram.ext.CommandHandler('greet', greet))
-dispatcher.add_handler(telegram.ext.CommandHandler('remember', greet))
+dispatcher.add_handler(telegram.ext.CommandHandler('remember', remember))
 
 # Now, let's add a handler for the rest of the messages.
 dispatcher.add_handler(telegram.ext.MessageHandler(telegram.ext.Filters.all, process_message))
