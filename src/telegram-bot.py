@@ -908,7 +908,7 @@ def process_message(update, context):
 
 			_logger.info(f"Added [{command_args}] to persistent memory.")
 			# Also notify the user that we're remembering the given statement.
-			update.message.reply_text(f"[DIAGNOSTIC: Added [{update.message.text}] to persistent memory.]")
+			update.message.reply_text(f"[DIAGNOSTIC: Added [{command_args}] to persistent memory.]")
 
 		else:
 			# This is a command that we don't recognize.
