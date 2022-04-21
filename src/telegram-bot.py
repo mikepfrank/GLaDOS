@@ -363,7 +363,7 @@ class Conversation:
         # The following is a string which we'll use to accumulate the conversation text.
         self.context_string = PERSISTENT_CONTEXT    # Start with just the persistent context data.
         self.context_length = 0             # Initially there are no Telegram messages in the context.
-        self.context_length_max = 100       # Max number N of messages to include in the context.
+        self.context_length_max = 200       # Max number N of messages to include in the context.
         self.bot_name = BOT_NAME            # The name of the bot. ('Gladys' in this case.)
 
         # Determine the filename we'll use to archive/restore the conversation.
