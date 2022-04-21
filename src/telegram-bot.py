@@ -817,13 +817,16 @@ def process_message(update, context):
         # Now, we consider the response text to be the full response that we just accumulated.
         response_text = full_response
 
-        # Strip off any trailing whitespace from the response, since Telegram will ignore it anyway.
-        response_text = response_text.rstrip()
+        # Strip off any leading or trailing whitespace.
+        response_text = response_text.strip()
 
-        # If the response starts with a space (which is expected, after the '>'), trim it off.
-        response_text = response_text.lstrip(' ')
-        #if response_text[0] == ' ':
-        #  response_text = response_text[1:]
+        ## Strip off any trailing whitespace from the response, since Telegram will ignore it anyway.
+        #response_text = response_text.rstrip()
+        #
+        ## If the response starts with a space (which is expected, after the '>'), trim it off.
+        #response_text = response_text.lstrip(' ')
+        ##if response_text[0] == ' ':
+        ##  response_text = response_text[1:]
 
         # If the response is empty, then return early. (Can't even send an empty message anyway.)
         if response_text == "":
