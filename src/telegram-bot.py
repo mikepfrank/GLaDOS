@@ -363,7 +363,7 @@ class Conversation:
         # The following is a string which we'll use to accumulate the conversation text.
         self.context_string = PERSISTENT_CONTEXT    # Start with just the persistent context data.
         self.context_length = 0             # Initially there are no Telegram messages in the context.
-        self.context_length_max = 100       # Max number N of messages to include in the context.
+        self.context_length_max = 200       # Max number N of messages to include in the context.
         self.bot_name = BOT_NAME            # The name of the bot. ('Gladys' in this case.)
 
         # Determine the filename we'll use to archive/restore the conversation.
@@ -660,16 +660,19 @@ def remember(update, context):
     # Retrieve the Conversation object from the Telegram context.
     conversation = context.chat_data['conversation']
 
+    # Get the command's argument, which is the text to remember.
+    text = ' '.join(update.message.text.split(' ')[1:])
+
     # Tell the conversation object to add the given message to the AI's persistent memory.
-    conversation.add_memory(update.message.text)
+    conversation.add_memory(text)
 
     # We'll also add the whole command line to the conversation, so that the AI can see it.
-    conversation.add_message(Message(update.message.from_user.first_name, '/remember' + update.message.text))
+    conversation.add_message(Message(update.message.from_user.first_name, update.message.text))
 
-    _logger.info(f"{update.message.from_user.first_name} added memory: [{update.message.text.strip()}]")
+    _logger.info(f"{update.message.from_user.first_name} added memory: [{text.strip()}]")
 
     # Send a reply to the user.
-    update.message.reply_text(f"[DIAGNOSTIC: Added [{update.message.text}] to persistent memory.]\n")
+    update.message.reply_text(f"[DIAGNOSTIC: Added [{text.strip()}] to persistent memory.]\n")
 
 #__/ End definition of /remember command handler.
 
