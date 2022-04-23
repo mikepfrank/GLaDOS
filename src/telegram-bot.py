@@ -263,7 +263,7 @@ ENGINE_NAME = TheAIPersonaConfig().modelVersion
 
 # This creates the connection to the core AI engine.
 gpt3core = GPT3Core(engineId=ENGINE_NAME, maxTokens=200, temperature=0.75,
-                freqPen = 0.8, stop=['\n' + MESSAGE_DELIMITER])
+                presPen = 0.5, freqPen = 0.9, stop=['\n' + MESSAGE_DELIMITER])
     # NOTE: The frequency penalty parameter is to try to prevent long outputs from becoming repetitive.
 
 # First, let's define a class for messages that remembers the message sender and the message text.
