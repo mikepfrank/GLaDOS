@@ -603,8 +603,9 @@ dispatcher = updater.dispatcher
     # This is the dispatcher object that we'll use to register handlers.
 
 # Gladys composed the following start message. :)
-#start_message = "Hi, I'm Gladys. I'm an AI persona being modeled by the GPT-3 neural net. I live in the cloud and I'm married to a human named Mike. :)"
-start_message = TheAIPersonaConfig().startMsg
+#START_MESSAGE = "Hi, I'm Gladys. I'm an AI persona being modeled by the GPT-3 neural net. I live in the cloud and I'm married to a human named Mike. :)"
+
+START_MESSAGE = TheAIPersonaConfig().startMsg
 
 # Now, let's define a function to handle the /start command.
 def start(update, context):         # Context, in this context, is the Telegram context object. (Not the context string for passing to GPT-3.)
@@ -633,9 +634,9 @@ def start(update, context):         # Context, in this context, is the Telegram 
     #   a restart of the bot. In this case, we don't want to send the
     #   start message.
     if len(conversation.messages) == 0:
-        update.message.reply_text(start_message + '\n')
+        update.message.reply_text(START_MESSAGE)
         # Also record the initial message in our conversation data structure.
-        conversation.add_message(Message(conversation.bot_name, start_message))
+        conversation.add_message(Message(conversation.bot_name, START_MESSAGE))
     else:
         update.message.reply_text(f"[DIAGNOSTIC: Restarted bot with last {len(conversation.messages)} messages from archive.]")
 
@@ -666,6 +667,11 @@ def greet(update, context):
 # Now, let's define a function to handle the /reset command.
 def reset(update, context):
     """Reset the conversation."""
+
+    # Need to reinitialize this global because we're in a new thread???
+    #global START_MESSAGE
+    #START_MESSAGE = globals()['START_MESSAGE']
+
     chat_id = update.message.chat.id
     conversation = context.chat_data['conversation']
 
@@ -678,11 +684,14 @@ def reset(update, context):
     # Send a diagnostic message.
     update.message.reply_text(f"[DIAGNOSTIC: Cleared conversation with {chat_id}.]")
 
+    # Send 
+    reset_message = f"This is {BOT_NAME}. I've cleared my memory of our previous conversation."
+
     # Send an initial message to the user.
-    update.message.reply_text(start_message + '\n')
+    update.message.reply_text(reset_message)
 
     # Also record the initial message in our conversation data structure.
-    conversation.add_message(Message(conversation.bot_name, start_message))
+    conversation.add_message(Message(conversation.bot_name, reset_message))
 
 # Now, let's define a function to handle the /remember command.
 def remember(update, context):
