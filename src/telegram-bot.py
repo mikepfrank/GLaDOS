@@ -570,6 +570,15 @@ class Conversation:
         self.archive_file.flush()
         message.archived = True
 
+    # The following method clears the entire conversational memory.
+    # However, it does not erase the archive file or clear the 
+    # persistent memory file.
+    def clear_memory(self):
+        """Clear the entire conversational memory."""
+        self.messages = []
+        self.context_length = 0
+        self.expand_context()   # Update the context string.
+
     # This method checks whether a given message is already in the conversation,
     # within the last NOREPEAT_WINDOW_SIZE messages. This is used to help prevent 
     # the bot from getting into a loop where it sends the same message over and 
@@ -640,7 +649,9 @@ def help(update, context):
         f"Available commands:\n" +
         f"\t/start - Start a new conversation.\n" +
         f"\t/help - Show this help message.\n" +
-        f"\t/remember <text> - Add <text> to AI's persistent memory.")
+        f"\t/remember <text> - Add <text> to AI's persistent memory.\n" +
+        #f"\t/forget <text> - Remove <text> from AI's persistent memory.\n" +
+        f"\t/reset - Clear the AI's short-term conversational memory.\n")
 
 # Now, let's define a function to handle the /echo command.
 def echo(update, context):
@@ -651,6 +662,24 @@ def echo(update, context):
 def greet(update, context):
     """Greet the user."""
     update.message.reply_text("Hello! I'm glad you're here. I'm glad you're here.\n")
+
+# Now, let's define a function to handle the /reset command.
+def reset(update, context):
+    """Reset the conversation."""
+    chat_id = update.message.chat.id
+    conversation = context.chat_data['conversation']
+
+    # Print diagnostic information.
+    print(f"Resetting conversation with {chat_id}.")
+
+    # Clear the conversation.
+    conversation.clear()
+
+    # Send an initial message to the user.
+    update.message.reply_text(start_message + '\n')
+
+    # Also record the initial message in our conversation data structure.
+    conversation.add_message(Message(conversation.bot_name, start_message))
 
 # Now, let's define a function to handle the /remember command.
 def remember(update, context):
@@ -935,9 +964,12 @@ def process_message(update, context):
 # Next, we need to register the command handlers.
 dispatcher.add_handler(telegram.ext.CommandHandler('start', start))
 dispatcher.add_handler(telegram.ext.CommandHandler('help',  help))
+dispatcher.add_handler(telegram.ext.CommandHandler('remember', remember))
+dispatcher.add_handler(telegram.ext.CommandHandler('reset', reset))
+
+# The following two commands are not really needed. They're here for testing purposes.
 dispatcher.add_handler(telegram.ext.CommandHandler('echo',  echo))
 dispatcher.add_handler(telegram.ext.CommandHandler('greet', greet))
-dispatcher.add_handler(telegram.ext.CommandHandler('remember', remember))
 
 # Now, let's add a handler for the rest of the messages.
 dispatcher.add_handler(telegram.ext.MessageHandler(telegram.ext.Filters.all, process_message))
