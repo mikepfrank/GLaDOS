@@ -573,7 +573,7 @@ class Conversation:
     # The following method clears the entire conversational memory.
     # However, it does not erase the archive file or clear the 
     # persistent memory file.
-    def clear_memory(self):
+    def clear(self):
         """Clear the entire conversational memory."""
         self.messages = []
         self.context_length = 0
@@ -674,6 +674,9 @@ def reset(update, context):
 
     # Clear the conversation.
     conversation.clear()
+
+    # Send a diagnostic message.
+    update.message.reply_text(f"[DIAGNOSTIC: Cleared conversation with {chat_id}.]")
 
     # Send an initial message to the user.
     update.message.reply_text(start_message + '\n')
