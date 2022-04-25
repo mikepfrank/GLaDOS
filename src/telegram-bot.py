@@ -99,6 +99,8 @@ import  regex as re
 import telegram
 import telegram.ext    # Needed for ExtBot, Dispatcher, Updater.
 
+# The following packages are from the openai library.
+from openai.error import RateLimitError         # Detects quota exceeded.
 
         #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         #| Imports of local (programmer-defined) Python libraries.
@@ -765,6 +767,7 @@ def process_message(update, context):
                 completion = gpt3core.genCompletion(context_string)
                 response_text = completion.text
                 break
+
             except PromptTooLargeException:             # Imported from gpt3.api module.
 
                 # The prompt is too long.  We need to expunge the oldest message from the conversation.
@@ -786,6 +789,17 @@ def process_message(update, context):
                 # We've successfully expunged the oldest message.  We need to try again.
                 continue
         
+            except RateLimitError:      # This normally indicates that our monthly quota was exceeded.
+
+                # We exceeded our OpenAI API quota. There isn't really anything we can
+                # do here except send a diagnostic message to the user.
+
+                _logger.error("process_message(): OpenAI quota exceeded.")
+
+                update.message.reply_text("[DIAGNOSTIC: Out of monthly quota for AI service.]")
+                
+                return  # That's all she wrote.
+
         # Unless the total response length has just maxed out the available space,
         # if we get here, then we have a new chunk of response from GPT-3 that we
         # need to process.
