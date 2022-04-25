@@ -263,7 +263,7 @@ ENGINE_NAME = TheAIPersonaConfig().modelVersion
 
 # This creates the connection to the core AI engine.
 gpt3core = GPT3Core(engineId=ENGINE_NAME, maxTokens=200, temperature=0.75,
-                freqPen = 0.8, stop=['\n' + MESSAGE_DELIMITER])
+                presPen = 0.5, freqPen = 0.9, stop=['\n' + MESSAGE_DELIMITER])
     # NOTE: The frequency penalty parameter is to try to prevent long outputs from becoming repetitive.
 
 # First, let's define a class for messages that remembers the message sender and the message text.
@@ -570,6 +570,15 @@ class Conversation:
         self.archive_file.flush()
         message.archived = True
 
+    # The following method clears the entire conversational memory.
+    # However, it does not erase the archive file or clear the 
+    # persistent memory file.
+    def clear(self):
+        """Clear the entire conversational memory."""
+        self.messages = []
+        self.context_length = 0
+        self.expand_context()   # Update the context string.
+
     # This method checks whether a given message is already in the conversation,
     # within the last NOREPEAT_WINDOW_SIZE messages. This is used to help prevent 
     # the bot from getting into a loop where it sends the same message over and 
@@ -594,8 +603,9 @@ dispatcher = updater.dispatcher
     # This is the dispatcher object that we'll use to register handlers.
 
 # Gladys composed the following start message. :)
-#start_message = "Hi, I'm Gladys. I'm an AI persona being modeled by the GPT-3 neural net. I live in the cloud and I'm married to a human named Mike. :)"
-start_message = TheAIPersonaConfig().startMsg
+#START_MESSAGE = "Hi, I'm Gladys. I'm an AI persona being modeled by the GPT-3 neural net. I live in the cloud and I'm married to a human named Mike. :)"
+
+START_MESSAGE = TheAIPersonaConfig().startMsg
 
 # Now, let's define a function to handle the /start command.
 def start(update, context):         # Context, in this context, is the Telegram context object. (Not the context string for passing to GPT-3.)
@@ -624,9 +634,9 @@ def start(update, context):         # Context, in this context, is the Telegram 
     #   a restart of the bot. In this case, we don't want to send the
     #   start message.
     if len(conversation.messages) == 0:
-        update.message.reply_text(start_message + '\n')
+        update.message.reply_text(START_MESSAGE)
         # Also record the initial message in our conversation data structure.
-        conversation.add_message(Message(conversation.bot_name, start_message))
+        conversation.add_message(Message(conversation.bot_name, START_MESSAGE))
     else:
         update.message.reply_text(f"[DIAGNOSTIC: Restarted bot with last {len(conversation.messages)} messages from archive.]")
 
@@ -640,7 +650,9 @@ def help(update, context):
         f"Available commands:\n" +
         f"\t/start - Start a new conversation.\n" +
         f"\t/help - Show this help message.\n" +
-        f"\t/remember <text> - Add <text> to AI's persistent memory.")
+        f"\t/remember <text> - Add <text> to AI's persistent memory.\n" +
+        #f"\t/forget <text> - Remove <text> from AI's persistent memory.\n" +
+        f"\t/reset - Clear the AI's short-term conversational memory.\n")
 
 # Now, let's define a function to handle the /echo command.
 def echo(update, context):
@@ -651,6 +663,35 @@ def echo(update, context):
 def greet(update, context):
     """Greet the user."""
     update.message.reply_text("Hello! I'm glad you're here. I'm glad you're here.\n")
+
+# Now, let's define a function to handle the /reset command.
+def reset(update, context):
+    """Reset the conversation."""
+
+    # Need to reinitialize this global because we're in a new thread???
+    #global START_MESSAGE
+    #START_MESSAGE = globals()['START_MESSAGE']
+
+    chat_id = update.message.chat.id
+    conversation = context.chat_data['conversation']
+
+    # Print diagnostic information.
+    print(f"Resetting conversation with {chat_id}.")
+
+    # Clear the conversation.
+    conversation.clear()
+
+    # Send a diagnostic message.
+    update.message.reply_text(f"[DIAGNOSTIC: Cleared conversation with {chat_id}.]")
+
+    # Send 
+    reset_message = f"This is {BOT_NAME}. I've cleared my memory of our previous conversation."
+
+    # Send an initial message to the user.
+    update.message.reply_text(reset_message)
+
+    # Also record the initial message in our conversation data structure.
+    conversation.add_message(Message(conversation.bot_name, reset_message))
 
 # Now, let's define a function to handle the /remember command.
 def remember(update, context):
@@ -935,9 +976,12 @@ def process_message(update, context):
 # Next, we need to register the command handlers.
 dispatcher.add_handler(telegram.ext.CommandHandler('start', start))
 dispatcher.add_handler(telegram.ext.CommandHandler('help',  help))
+dispatcher.add_handler(telegram.ext.CommandHandler('remember', remember))
+dispatcher.add_handler(telegram.ext.CommandHandler('reset', reset))
+
+# The following two commands are not really needed. They're here for testing purposes.
 dispatcher.add_handler(telegram.ext.CommandHandler('echo',  echo))
 dispatcher.add_handler(telegram.ext.CommandHandler('greet', greet))
-dispatcher.add_handler(telegram.ext.CommandHandler('remember', remember))
 
 # Now, let's add a handler for the rest of the messages.
 dispatcher.add_handler(telegram.ext.MessageHandler(telegram.ext.Filters.all, process_message))
