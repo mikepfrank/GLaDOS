@@ -19,7 +19,11 @@ Here we document the various top-level files that exist immediately under the `s
 	
 	**NOTE:** This file is executable, but it should not be executed directly from within this directory, but rather from the parent directory `GLaDOS/`, which contains the `log/` subdirectory, where we will create the system log file.
 
-4.	**Development To-Do List** ([`To-Do.txt`](To-Do.txt "To-Do.txt file")) - 
+4.	**Telegram Bot Server Application Program** ([`telegram-bot.py`](telegram-bot.py "telegram-bot.py file")) -
+	This is the auxilliary top-level Python application program implementing the AI persona's Telegram bot server. 
+	Once this is up and running, the bot service can handle any number of simultaneous individual and group chats.
+
+5.	**Development To-Do List** ([`To-Do.txt`](To-Do.txt "To-Do.txt file")) - 
 	Some notes pertaining to what still needs to be done on the GLaDOS implementation. (Note that this file may often be badly out-of-date.)
 	
 
