@@ -258,14 +258,27 @@ AI_PROMPT = f'\n{MESSAGE_DELIMITER} {BOT_NAME}>'
 # within which we'll exclude messages in that region from being repeated by the AI.
 NOREPEAT_WINDOW_SIZE = 10
 
+# Initialize & retrieve the AI persona configuration object.
+aiconf = TheAIPersonaConfig()
+
+# Retrieve some API config parameters we'll use.
+temperature = aiconf.temperature
+presPen = aiconf.presencePenalty
+freqPen = aiconf.frequencyPenalty
+
 # This is the name of the specific text generation engine (model version) that we'll use
 # to generate the AI's responses.
-ENGINE_NAME = TheAIPersonaConfig().modelVersion
+ENGINE_NAME = aiconf.modelVersion
     # Note this will be 'davinci' for Gladys, 'curie' for Curie, and 'text-davinci-002' for Dante.
 
 # This creates the connection to the core AI engine.
-gpt3core = GPT3Core(engineId=ENGINE_NAME, maxTokens=200, temperature=0.75,
-                presPen = 0.5, freqPen = 0.9, stop=['\n' + MESSAGE_DELIMITER])
+
+#gpt3core = GPT3Core(engineId=ENGINE_NAME, maxTokens=200, temperature=0.8,
+#                presPen = 0.8, freqPen = 1.2, stop=['\n' + MESSAGE_DELIMITER])
+	# NOTE: Really we should be getting the parameters from the AI config.
+
+gpt3core = GPT3Core(engineId=ENGINE_NAME, maxTokens=200, temperature=temperature,
+                presPen=presPen, freqPen=freqPen, stop=['\n' + MESSAGE_DELIMITER])
     # NOTE: The frequency penalty parameter is to try to prevent long outputs from becoming repetitive.
 
 # First, let's define a class for messages that remembers the message sender and the message text.
