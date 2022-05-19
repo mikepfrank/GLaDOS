@@ -123,6 +123,21 @@ from    infrastructure      import  logmaster   # Our custom logging facility.
     # Go ahead and fetch the logger for this application.
 _logger = logmaster.appLogger
 
+            #-------------------------------------------------------------------
+            # Import some time-related functions we'll use.
+
+from    infrastructure.time     import  (
+                envTZ,      # Pre-fetched value of the time-zone ('TZ') environment
+						    #	variable setting.
+                timeZone,   # Returns a TimeZone object expressing the user's
+						    #	time-zone preference (from TZ).
+                tznow,      # Returns a current datetime object localized to the
+						    #	user's timezone preference (from TZ).
+                tzAbbr      # Returns an abbreviation for the given time zone offset,
+						    #	which defaults to the user's time zone preference.
+            )
+        # Time-zone related functions we use in the Clock app.
+
 
             #-------------------------------------------------------------------
             #  We import TheAIPersonaConfig singleton class from the GLaDOS
@@ -281,6 +296,29 @@ gpt3core = GPT3Core(engineId=ENGINE_NAME, maxTokens=200, temperature=temperature
                 presPen=presPen, freqPen=freqPen, stop=['\n' + MESSAGE_DELIMITER])
     # NOTE: The frequency penalty parameter is to try to prevent long outputs from becoming repetitive.
 
+# The following code will be used to display the current date/time to the AI, including the time zone.
+
+# Time format string to use (minutes are included, but not seconds).
+_TIME_FORMAT = "%A, %B %d, %Y, %I:%M %p"
+# The following function will get the current date/time as a string, including the timezone.
+def timeString():
+    dateTime = tznow()  # Function to get the current date and time in the local timezone.
+    fmtStr = _TIME_FORMAT  # The base format string to use.
+
+    # Is the 'TZ' environment variable set?
+    #   If so, then we can add '(%Z)' (time zone abbreviation) to the format str.
+    if envTZ is not None:
+        fmtstr = fmtstr + " (%Z)"
+    
+    timeStr = dateTime.strftime(fmtStr)  # Format the date/time string.
+
+    # If 'TZ' was not set, then we have to try to guess the time zone name from the offset.
+    if envTZ is None:
+        tzAbb = tzAbbr()    # Function to get the time zone abbreviation from the offset.
+        timeStr = timeStr + f" ({tzAbb})"
+
+    return timeStr
+
 # First, let's define a class for messages that remembers the message sender and the message text.
 class Message:
     """Instances of this class store the message sender and the message text
@@ -402,10 +440,18 @@ class Conversation:
 
     # This method adds the messages in the conversation to the context string.
     def expand_context(self):
-        self.context_string = PERSISTENT_CONTEXT + '\n'.join([str(m) for m in self.messages]) #+ AI_PROMPT  -- Add this later.
+
+        # First, we'll start the context string out with a line that gives
+        # the current date and time, in the local timezone (from TZ).
+        self.context_string = f"{timeString()}\n"   # This function is defined above.
+
+        # The implementation Copilot suggested is below; we're not using this one right now.
+        #self.context_string += f"{datetime.now(tz=LOCAL_TZ).strftime('%Y-%m-%d %H:%M:%S')}\n"
+
+        # Now we'll add the persistent context, and then the last N messages.
+        self.context_string += PERSISTENT_CONTEXT + '\n'.join([str(m) for m in self.messages])
             # Join the messages into a single string, with a newline between each.
             # Add the persistent context to the beginning of the string.
-            # Add the 'Gladys>' prompt to the end of the string.
 
     # This method reads recent messages from the conversation archive file, if it exists.
     def read_archive(self):
