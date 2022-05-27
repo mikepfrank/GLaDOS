@@ -308,7 +308,7 @@ def timeString():
     # Is the 'TZ' environment variable set?
     #   If so, then we can add '(%Z)' (time zone abbreviation) to the format str.
     if envTZ is not None:
-        fmtstr = fmtstr + " (%Z)"
+        fmtStr = fmtStr + " (%Z)"
     
     timeStr = dateTime.strftime(fmtStr)  # Format the date/time string.
 
