@@ -326,7 +326,7 @@ class Message:
 
     def __init__(self, sender, text):
         # Print diagnostic information.
-        print(f"Creating message object for: {sender}> {text}")
+        _logger.debug(f"Creating message object for: {sender}> {text}")
         self.sender   = sender
         self.text     = text
         self.archived = False   # Has this message been written to the archive file yet?
