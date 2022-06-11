@@ -123,6 +123,21 @@ from    infrastructure      import  logmaster   # Our custom logging facility.
     # Go ahead and fetch the logger for this application.
 _logger = logmaster.appLogger
 
+            #-------------------------------------------------------------------
+            # Import some time-related functions we'll use.
+
+from    infrastructure.time     import  (
+                envTZ,      # Pre-fetched value of the time-zone ('TZ') environment
+						    #	variable setting.
+                timeZone,   # Returns a TimeZone object expressing the user's
+						    #	time-zone preference (from TZ).
+                tznow,      # Returns a current datetime object localized to the
+						    #	user's timezone preference (from TZ).
+                tzAbbr      # Returns an abbreviation for the given time zone offset,
+						    #	which defaults to the user's time zone preference.
+            )
+        # Time-zone related functions we use in the AI's date/time display.
+
 
             #-------------------------------------------------------------------
             #  We import TheAIPersonaConfig singleton class from the GLaDOS
@@ -171,8 +186,10 @@ logmaster.configLogMaster(
         component   = _appName,     # Name of the system component being logged.
         role        = 'bot',        # Sets the main thread's role string to 'bot'.
         consdebug   = False,        # Turn off full debug logging on the console.
-        consinfo    = True,         # Turn on info-level logging on the console.
-        logdebug    = True          # Turn on full debug logging in the log file.
+        #consinfo    = True,         # Turn on info-level logging on the console.
+        consinfo    = False,        # Turn off info-level logging on the console.
+        #logdebug    = True          # Turn on full debug logging in the log file.
+        logdebug    = False         # Turn off full debug logging in the log file.
     )
 
 
@@ -258,15 +275,51 @@ AI_PROMPT = f'\n{MESSAGE_DELIMITER} {BOT_NAME}>'
 # within which we'll exclude messages in that region from being repeated by the AI.
 NOREPEAT_WINDOW_SIZE = 10
 
+# Initialize & retrieve the AI persona configuration object.
+aiconf = TheAIPersonaConfig()
+
+# Retrieve some API config parameters we'll use.
+temperature = aiconf.temperature
+presPen = aiconf.presencePenalty
+freqPen = aiconf.frequencyPenalty
+
 # This is the name of the specific text generation engine (model version) that we'll use
 # to generate the AI's responses.
-ENGINE_NAME = TheAIPersonaConfig().modelVersion
+ENGINE_NAME = aiconf.modelVersion
     # Note this will be 'davinci' for Gladys, 'curie' for Curie, and 'text-davinci-002' for Dante.
 
 # This creates the connection to the core AI engine.
-gpt3core = GPT3Core(engineId=ENGINE_NAME, maxTokens=200, temperature=0.75,
-                presPen = 0.5, freqPen = 0.9, stop=['\n' + MESSAGE_DELIMITER])
+
+#gpt3core = GPT3Core(engineId=ENGINE_NAME, maxTokens=200, temperature=0.8,
+#                presPen = 0.8, freqPen = 1.2, stop=['\n' + MESSAGE_DELIMITER])
+	# NOTE: Really we should be getting the parameters from the AI config.
+
+gpt3core = GPT3Core(engineId=ENGINE_NAME, maxTokens=200, temperature=temperature,
+                presPen=presPen, freqPen=freqPen, stop=['\n' + MESSAGE_DELIMITER])
     # NOTE: The frequency penalty parameter is to try to prevent long outputs from becoming repetitive.
+
+# The following code will be used to display the current date/time to the AI, including the time zone.
+
+# Time format string to use (minutes are included, but not seconds).
+_TIME_FORMAT = "%A, %B %d, %Y, %I:%M %p"
+# The following function will get the current date/time as a string, including the timezone.
+def timeString():
+    dateTime = tznow()  # Function to get the current date and time in the local timezone.
+    fmtStr = _TIME_FORMAT  # The base format string to use.
+
+    # Is the 'TZ' environment variable set?
+    #   If so, then we can add '(%Z)' (time zone abbreviation) to the format str.
+    if envTZ is not None:
+        fmtStr = fmtStr + " (%Z)"
+    
+    timeStr = dateTime.strftime(fmtStr)  # Format the date/time string.
+
+    # If 'TZ' was not set, then we have to try to guess the time zone name from the offset.
+    if envTZ is None:
+        tzAbb = tzAbbr()    # Function to get the time zone abbreviation from the offset.
+        timeStr = timeStr + f" ({tzAbb})"
+
+    return timeStr
 
 # First, let's define a class for messages that remembers the message sender and the message text.
 class Message:
@@ -275,7 +328,7 @@ class Message:
 
     def __init__(self, sender, text):
         # Print diagnostic information.
-        print(f"Creating message object for: {sender}> {text}")
+        _logger.debug(f"Creating message object for: {sender}> {text}")
         self.sender   = sender
         self.text     = text
         self.archived = False   # Has this message been written to the archive file yet?
@@ -389,10 +442,18 @@ class Conversation:
 
     # This method adds the messages in the conversation to the context string.
     def expand_context(self):
-        self.context_string = PERSISTENT_CONTEXT + '\n'.join([str(m) for m in self.messages]) #+ AI_PROMPT  -- Add this later.
+
+        # First, we'll start the context string out with a line that gives
+        # the current date and time, in the local timezone (from TZ).
+        self.context_string = f"{timeString()}\n"   # This function is defined above.
+
+        # The implementation Copilot suggested is below; we're not using this one right now.
+        #self.context_string += f"{datetime.now(tz=LOCAL_TZ).strftime('%Y-%m-%d %H:%M:%S')}\n"
+
+        # Now we'll add the persistent context, and then the last N messages.
+        self.context_string += PERSISTENT_CONTEXT + '\n'.join([str(m) for m in self.messages])
             # Join the messages into a single string, with a newline between each.
             # Add the persistent context to the beginning of the string.
-            # Add the 'Gladys>' prompt to the end of the string.
 
     # This method reads recent messages from the conversation archive file, if it exists.
     def read_archive(self):
@@ -423,6 +484,9 @@ class Conversation:
 
         global PERSISTENT_DATA  # We declare this global so we can modify it.
 
+        # Boolean to keep track of whether we've already read any lines from the persistent memory file.
+        read_lines = False
+
         # If the persistent memory file exists, read it.
         if os.path.exists(self.mem_filename):
 
@@ -440,6 +504,14 @@ class Conversation:
                 mem_string = ""
                 # Read the file line by line.
                 for line in f:
+
+                    # If we haven't already read any lines from the persistent memory file,
+                    # add a separator line to the memory string.
+                    if not read_lines:
+                        mem_string += MESSAGE_DELIMITER + \
+                            " ~~~ Memories added using '/remember' command: ~~~\n"
+                        read_lines = True
+
                     # Append the line to the memory string.
                     mem_string += line
             
@@ -493,6 +565,57 @@ class Conversation:
         self.memory_file.flush()
 
     #__/ End method conversation.add_memory().
+
+    # This method removes a message from the AI's persistent memory file.
+    # It also updates the persistent context string.
+    def remove_memory(self, text_to_remove:str):
+            
+        global PERSISTENT_DATA  # We declare this global so we can modify it.
+
+        # Make sure the text to remove ends in a newline.
+        # (This avoids leaving blank lines in the persistent data string.)
+        if text_to_remove[-1] != '\n':
+            text_to_remove += '\n'
+
+        # Remove the memory from the persistent data string.
+        PERSISTENT_DATA = PERSISTENT_DATA.replace(text_to_remove, '')
+
+        # Update the persistent context string.
+        initializePersistentContext()
+
+        # Update the conversation's context string.
+        self.expand_context()
+
+        # Also remove the memory from the persistent memory file.
+        # We'll use the following algorithm:
+        #   (1) Close the "write" file descriptor and reopen it in "read" mode.
+        #   (2) Return the read position to the start of the file.
+        #   (3) Read the entire file into a string.
+        #   (4) Remove the text to remove from the string.
+        #   (5) Close the file again and reopen it for writing.
+        #   (6) Write the string back to the file.
+        #   (7) Flush the file to make sure it's written to disk.
+
+        # Close the "write" file descriptor.
+        self.memory_file.close()
+        # Reopen it in "read" mode.
+        self.memory_file = open(self.mem_filename, 'r')
+        # Return the read position to the start of the file.
+        self.memory_file.seek(0)
+        # Read the entire file into a string.
+        mem_string = self.memory_file.read()
+        # Remove the text to remove from the string.
+        mem_string = mem_string.replace(text_to_remove, '')
+        # Close the file again and reopen it for writing.
+        self.memory_file.close()
+        # Reopen it for writing.
+        self.memory_file = open(self.mem_filename, 'w')
+        # Write the string back to the file.
+        self.memory_file.write(mem_string)
+        # Flush the file to make sure it's written to disk.
+        self.memory_file.flush()
+
+    #__/ End method conversation.remove_memory().
 
 
     # This method is called to expunge the oldest message from the conversation
@@ -653,7 +776,7 @@ def help(update, context):
         f"\t/start - Start a new conversation.\n" +
         f"\t/help - Show this help message.\n" +
         f"\t/remember <text> - Add <text> to AI's persistent memory.\n" +
-        #f"\t/forget <text> - Remove <text> from AI's persistent memory.\n" +
+        f"\t/forget <text> - Remove <text> from AI's persistent memory.\n" +
         f"\t/reset - Clear the AI's short-term conversational memory.\n")
 
 # Now, let's define a function to handle the /echo command.
@@ -718,6 +841,39 @@ def remember(update, context):
     update.message.reply_text(f"[DIAGNOSTIC: Added [{text.strip()}] to persistent memory.]\n")
 
 #__/ End definition of /remember command handler.
+
+# Now, let's define a function to handle the /forget command.
+def forget(update, context):
+    
+    """Remove the given message from the AI's persistent memory."""
+    
+    # Retrieve the Conversation object from the Telegram context.
+    conversation = context.chat_data['conversation']
+
+    # Get the command's argument, which is the text to forget.
+    text = ' '.join(update.message.text.split(' ')[1:])
+
+    # Tell the conversation object to remove the given message from the AI's persistent memory.
+    conversation.remove_memory(text)
+
+    # We'll also add the whole command line to the conversation, so that the AI can see it.
+    conversation.add_message(Message(update.message.from_user.first_name, update.message.text))
+
+    _logger.info(f"{update.message.from_user.first_name} removed memory: [{text.strip()}]")
+
+    # Send a reply to the user.
+    update.message.reply_text(f"[DIAGNOSTIC: Removed [{text.strip()}] from persistent memory.]\n")
+
+    # Copilot wrote the following amusing diagnostic code. But we don't really need it.
+    ## Now, let's see if the AI has any memories left.
+    #if len(conversation.memories) == 0:
+    #    update.message.reply_text(f"I'm sorry, I don't remember anything else.\n")
+    #else:
+    #    update.message.reply_text(f"I remember these things:\n")
+    #    for memory in conversation.memories:
+    #        update.message.reply_text(f"\t{memory}\n")
+
+#__/ End definition of /forget command handler.
 
 # Now, let's define a function to handle the rest of the messages.
 def process_message(update, context):
@@ -967,6 +1123,7 @@ def process_message(update, context):
         # are designed for commands issued by the user, not by the AI. So, we'll have to
         # process the commands ourselves to handle them correctly.
 
+        # Check to see if the AI typed the '/remember' command.
         if command_name == 'remember':
             # This is a command to remember something.
 
@@ -976,6 +1133,17 @@ def process_message(update, context):
             _logger.info(f"Added [{command_args}] to persistent memory.")
             # Also notify the user that we're remembering the given statement.
             update.message.reply_text(f"[DIAGNOSTIC: Added [{command_args}] to persistent memory.]")
+
+        # Check to see if the AI typed the '/forget' command.
+        elif command_name == 'forget':
+            # This is a command to forget something.
+
+            # Tell the conversation object to remove the given message from the AI's persistent memory.
+            conversation.remove_memory(command_args)
+
+            _logger.info(f"Removed [{command_args}] from persistent memory.")
+            # Also notify the user that we're forgetting the given statement.
+            update.message.reply_text(f"[DIAGNOSTIC: Removed [{command_args}] from persistent memory.]")
 
         else:
             # This is a command that we don't recognize.
@@ -991,6 +1159,7 @@ def process_message(update, context):
 dispatcher.add_handler(telegram.ext.CommandHandler('start', start))
 dispatcher.add_handler(telegram.ext.CommandHandler('help',  help))
 dispatcher.add_handler(telegram.ext.CommandHandler('remember', remember))
+dispatcher.add_handler(telegram.ext.CommandHandler('forget', forget))
 dispatcher.add_handler(telegram.ext.CommandHandler('reset', reset))
 
 # The following two commands are not really needed. They're here for testing purposes.

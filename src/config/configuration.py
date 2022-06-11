@@ -911,7 +911,7 @@ class	TheAIPersonaConfig:
 				
 				.nCompletions [int]		- Number of completions to return from the
 											GPT-3 API. (Default value is 1.)
-				
+ 
 				.doStream [bool]		- Whether or not to stream the GPT-3 API
 											responses. (Default value is False.)
 				
@@ -1034,7 +1034,8 @@ class	TheAIPersonaConfig:
 		if 'field-conf' in conf:
 			theAIConfig.fieldConf = fieldConf = conf['field-conf']
 				# TODO: Make sure value given is valid.
-			_logger.info(f"    [Config/AI]     AI config: The AI's field configuration is {fieldConf}.")
+			_logger.normal(f"    [Config/AI]     AI config: Retrieved the AI's field configuration.")
+			_logger.debug(f"    [Config/AI]     AI config: The AI's field configuration is {fieldConf}.")
 		else:
 			_logger.warn("parseConf(): The required field-conf parameter "
 							"was not provided.")
@@ -1046,7 +1047,7 @@ class	TheAIPersonaConfig:
 		if 'max-visible-tokens' in fieldConf:
 			theAIConfig.maxVisibleTokens = maxTok = fieldConf['max-visible-tokens']
 				# TODO: Make sure value given is valid.
-			_logger.normal(f"    [Config/AI]     AI config: The AI's receptive field size is {maxTok}.")
+			_logger.normal(f"    [Config/AI]     AI config:     The AI's receptive field size is {maxTok}.")
 		else:
 			_logger.warn("parseConf(): The required max-visible-tokens parameter "
 							"was not provided.")
@@ -1063,6 +1064,7 @@ class	TheAIPersonaConfig:
 		if 'mind-conf' in conf:
 			theAIConfig.mindConf = mindConf = conf['mind-conf']
 				# TODO: Make sure value given is valid.
+			_logger.normal(f"    [Config/AI]     AI config: Retrieved the AI's mind configuration.")
 			_logger.debug(f"    [Config/AI]     AI config: The AI's mind configuration is {mindConf}.")
 		else:
 			_logger.warn("parseConf(): The required mind-conf parameter "
@@ -1076,7 +1078,7 @@ class	TheAIPersonaConfig:
 		if 'persona-name' in mindConf:
 			theAIConfig.personaName = personaName = mindConf['persona-name']
 				# TODO: Make sure value given is valid.
-			_logger.normal(f"    [Config/AI]     AI config: The AI persona's name is {personaName}.")
+			_logger.normal(f"    [Config/AI]     AI config:     The AI persona's name is {personaName}.")
 		else:
 			_logger.warn("parseConf(): The required persona-name parameter "
 							"was not provided.")
@@ -1089,7 +1091,7 @@ class	TheAIPersonaConfig:
 		if 'persona-id' in mindConf:
 			theAIConfig.personaID = personaID = mindConf['persona-id']
 				# TODO: Make sure value given is valid.
-			_logger.normal(f"    [Config/AI]     AI config: The AI persona's short ID is {personaID}.")
+			_logger.normal(f"    [Config/AI]     AI config:     The AI persona's short ID is {personaID}.")
 		else:
 			_logger.warn("parseConf(): The required persona-id parameter "
 							"was not provided.")
@@ -1102,7 +1104,7 @@ class	TheAIPersonaConfig:
 		if 'persona-user-account' in mindConf:
 			theAIConfig.personaUsername = personaUsername = mindConf['persona-user-account']
 				# TODO: Make sure value given is valid.
-			_logger.normal(f"    [Config/AI]     AI config: The AI persona's user account is {personaUsername}.")
+			_logger.normal(f"    [Config/AI]     AI config:     The AI persona's user account is {personaUsername}.")
 		else:
 			_logger.warn("parseConf(): The required persona-user-account parameter "
 							"was not provided.")
@@ -1115,7 +1117,7 @@ class	TheAIPersonaConfig:
 		if 'model-family' in mindConf:
 			theAIConfig.modelFamily = modelFamily = mindConf['model-family']
 				# TODO: Make sure value given is valid.
-			_logger.normal(f"    [Config/AI]     AI config: The AI's model family is {modelFamily}.")
+			_logger.normal(f"    [Config/AI]     AI config:     The AI's model family is {modelFamily}.")
 		else:
 			_logger.warn("parseConf(): The required model-family parameter "
 							"was not provided.")
@@ -1128,7 +1130,7 @@ class	TheAIPersonaConfig:
 		if 'model-version' in mindConf:
 			theAIConfig.modelVersion = modelVersion = mindConf['model-version']
 				# TODO: Make sure value given is valid.
-			_logger.normal(f"    [Config/AI]     AI config: The AI's model version is {modelVersion}.")
+			_logger.normal(f"    [Config/AI]     AI config:     The AI's model version is {modelVersion}.")
 		else:
 			_logger.warn("parseConf(): The required model-version parameter "
 							"was not provided.")
@@ -1141,7 +1143,7 @@ class	TheAIPersonaConfig:
 		if 'sys-notification-threshold' in mindConf:
 			theAIConfig.sysNotifyThresh = sysNotifyThresh = mindConf['sys-notification-threshold']
 				# TODO: Make sure value given is valid.
-			_logger.normal("    [Config/AI]     AI config: The importance threshold for "
+			_logger.normal("    [Config/AI]     AI config:     The importance threshold for "
 						   f"system notifications is {sysNotifyThresh}.")
 		else:
 			_logger.warn("parseConf(): The sys-notification-threshold parameter "
@@ -1153,7 +1155,7 @@ class	TheAIPersonaConfig:
 
 		if 'min-query-tokens' in mindConf:
 			theAIConfig.minQueryTokens = minQueryTokens = mindConf['min-query-tokens']
-			_logger.normal("    [Config/AI]     AI config: The minimum size of "
+			_logger.normal("    [Config/AI]     AI config:     The minimum size of "
 						   f"the response region is {minQueryTokens}.")
 		else:
 			theAIConfig.minQueryTokens = 42		# Default
@@ -1163,7 +1165,7 @@ class	TheAIPersonaConfig:
 
 		if 'example-response' in mindConf:
 			theAIConfig.exampleResponse = exampleResponse = mindConf['example-response']
-			_logger.normal("    [Config/AI]     AI config: The example response "
+			_logger.normal("    [Config/AI]     AI config:     The example response "
 						   f" is: [{exampleResponse}].")
 		else:
 			theAIConfig.exampleResponse = None	# Default
@@ -1178,7 +1180,8 @@ class	TheAIPersonaConfig:
 		if 'api-conf' in conf:
 			theAIConfig.apiConf = apiConf = conf['api-conf']
 				# TODO: Make sure value given is valid.
-			_logger.debug(f"    [Config/AI]     AI config: The AI's API configuration is {apiConf}.")
+			_logger.normal(f"    [Config/AI]     AI config: Retrieved the AI's API configuration.")
+			_logger.info(f"    [Config/AI]     AI config: The AI's API configuration is {apiConf}.")
 		else:
 			_logger.warn("parseConf(): The required api-conf parameter "
 							"was not provided.")
@@ -1187,57 +1190,68 @@ class	TheAIPersonaConfig:
 		# Go ahead and pull out the parameter values from the API conf record.
 
 		if 'max-returned-tokens' in apiConf:
-			theAIConfig.maxReturnedTokens = apiConf['max-returned-tokens']
+			theAIConfig.maxReturnedTokens = maxRetTok = apiConf['max-returned-tokens']
+			_logger.normal(f"    [Config/AI]     AI config:    max-returned-token = {maxRetTok}.")
 		else:
 			theAIConfig.maxReturnedTokens = None # No default value provided in config file.
 
 		if 'temperature' in apiConf:
-			theAIConfig.temperature = apiConf['temperature']
+			theAIConfig.temperature = temper = apiConf['temperature']
+			_logger.normal(f"    [Config/AI]     AI config:    temperature = {temper}.")
 		else:
 			theAIConfig.temperature = None	# No default value provided in config file.
 
 		if 'top-p' in apiConf:
-			theAIConfig.topP = apiConf['top-p']
+			theAIConfig.topP = topP = apiConf['top-p']
+			_logger.normal(f"    [Config/AI]     AI config:    top-p = {topP}.")
 		else:
 			theAIConfig.topP = None	# No default value provided in config file.
 
 		if 'n-completions' in apiConf:
-			theAIConfig.nCompletions = apiConf['n-completions']
+			theAIConfig.nCompletions = nCompl = apiConf['n-completions']
+			_logger.normal(f"    [Config/AI]     AI config:    n-completions = {nCompl}.")
 		else:
 			theAIConfig.nCompletions = None	# No default value provided in config file.
 
 		if 'do-stream' in apiConf:
-			theAIConfig.doStream = apiConf['do-stream']
+			theAIConfig.doStream = doStr = apiConf['do-stream']
+			_logger.normal(f"    [Config/AI]     AI config:    do-stream = {doStr}.")
 		else:
 			theAIConfig.doStream = None	# No default value provided in config file.
 
 		if 'log-probs' in apiConf:
-			theAIConfig.logProbs = apiConf['log-probs']
+			theAIConfig.logProbs = logProbs = apiConf['log-probs']
+			_logger.normal(f"    [Config/AI]     AI config:    log-probs = {logProbs}.")
 		else:
 			theAIConfig.logProbs = None	# No default value provided in config file.
 
 		if 'do-echo' in apiConf:
-			theAIConfig.doEcho = apiConf['do-echo']
+			theAIConfig.doEcho = doEcho = apiConf['do-echo']
+			_logger.normal(f"    [Config/AI]     AI config:    do-echo = {doEcho}.")
 		else:
 			theAIConfig.doEcho = None	# No default value provided in config file.
 
 		if 'stop-sequences' in apiConf:
-			theAIConfig.stopSequences = apiConf['stop-sequences']
+			theAIConfig.stopSequences = stopSeqs = apiConf['stop-sequences']
+			_logger.normal(f"    [Config/AI]     AI config:    stop-sequences = {stopSeqs}.")
 		else:
 			theAIConfig.stopSequences = None	# No default value provided in config file.
 
 		if 'presence-penalty' in apiConf:
-			theAIConfig.presencePenalty = apiConf['presence-penalty']
+			theAIConfig.presencePenalty = presPen = apiConf['presence-penalty']
+			_logger.normal(f"    [Config/AI]     AI config:    presence-penalty = {presPen}.")
 		else:
 			theAIConfig.presencePenalty = None	# No default value provided in config file.
 
 		if 'frequency-penalty' in apiConf:
-			theAIConfig.frequencyPenalty = apiConf['frequency-penalty']
+			theAIConfig.frequencyPenalty = freqPen = apiConf['frequency-penalty']
+			_logger.normal(f"    [Config/AI]     AI config:    frequency-penalty = {freqPen}.")
 		else:
 			theAIConfig.frequencyPenalty = None	# No default value provided in config file.
 
 		if 'best-of' in apiConf:
-			theAIConfig.bestOf = apiConf['best-of']
+			theAIConfig.bestOf = bestOf = apiConf['best-of']
+			_logger.normal(f"    [Config/AI]     AI config:    best-of = {bestOf}.")
 		else:
 			theAIConfig.bestOf = None	# No default value provided in config file.
 
@@ -1251,6 +1265,7 @@ class	TheAIPersonaConfig:
 		
 		if 'telegram-conf' in conf:
 			theAIConfig.telegramConf = telegramConf = conf['telegram-conf']
+			_logger.normal(f"    [Config/AI]     AI config: Retrieved the AI's Telegram configuration.")
 			_logger.debug(f"    [Config/AI]     AI config: The AI's Telegram configuration is {telegramConf}.")
 		else:
 			_logger.warn("parseConf(): The required telegram-conf parameter "
@@ -1261,13 +1276,13 @@ class	TheAIPersonaConfig:
 
 		if 'bot-name' in telegramConf:
 			theAIConfig.botName = botName = telegramConf['bot-name']
-			_logger.normal(f"    [Config/AI]     AI config: The AI persona's Telegram bot name is {botName}.")
+			_logger.normal(f"    [Config/AI]     AI config:     The AI persona's Telegram bot name is {botName}.")
 		else:
 			theAIConfig.botName = None	# No default value provided in config file.
 
 		if 'start-message' in telegramConf:
 			theAIConfig.startMsg = startMessage = telegramConf['start-message']
-			_logger.normal(f"    [Config/AI]     AI config: The AI persona's Telegram start message is {startMessage}.")
+			_logger.normal(f"    [Config/AI]     AI config:     The AI persona's Telegram start message is {startMessage}.")
 		else:
 			theAIConfig.startMsg = None	# No default value provided in config file.
 
