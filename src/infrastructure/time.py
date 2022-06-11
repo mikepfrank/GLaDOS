@@ -3,13 +3,22 @@
 
 __all__ = {
 	# Classes
-		'DateTime',
+		'DateTime',		# Just a new name for the datetime.datetime class.
 
 	# Globals
-		'envTZ'
+		'envTZ'			# Pre-fetched value of the time-zone ('TZ') environment
+						#	variable setting.
 
 	# Functions
-		'timeZone', 'tzAbbr', 'tznow',
+	
+		'timeZone',		# Returns a TimeZone object expressing the user's
+						#	time-zone preference (from TZ).
+
+		'tzAbbr',		# Returns an abbreviation for the given time zone offset,
+						#	which defaults to the user's time zone preference.
+
+		'tznow',		# Returns a current datetime object localized to the
+						#	user's timezone preference (from TZ).
 	}
 
 from os import path, getenv
