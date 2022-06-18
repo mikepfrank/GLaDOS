@@ -84,7 +84,7 @@ An "event" in general, in this content, is an object that provides a textual rep
 
 ### 9. Receptive field facility ([`field/`](field "field/ directory"))
 
-This package maintains the state of a "receptive field", which maintains the body of information that is currently present and visible in the AI's field of immediate "perceptual awareness."  Our understanding is that GPT-3's architecture limits the size of this field to a maximum of 2,048 tokens.  (Actually less, because part of this space is also needed to hold the response to a given query.)  Within GLaDOS, the receptive field normally shows the AI the most recent ~2,000 tokens worth of information contained in the AI's history buffer, as well as its currently-open windows and some header/footer information.  The receptive field can be considered the primary input interface to the core AI from GLaDOS (and the outside world in general).
+This package maintains the state of a "receptive field", which maintains the body of information that is currently present and visible in the AI's field of immediate "perceptual awareness."  Our understanding is that GPT-3's architecture limits the size of this field to a maximum of 2,048 tokens (or 4,000 in the case of davinci v2).  (Actually less, because part of this space is also needed to hold the response to a given query.)  Within GLaDOS, the receptive field normally shows the AI the most recent ~2,000 (or ~4,000) tokens worth of information contained in the AI's history buffer, as well as its currently-open windows and some header/footer information.  The receptive field can be considered the primary input interface to the core AI from GLaDOS (and the outside world in general).
 
 
 ### 10. GPT-3 Interface ([`gpt3/`](gpt3 "gpt3/ directory"))

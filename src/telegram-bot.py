@@ -191,7 +191,7 @@ logmaster.configLogMaster(
         #logdebug    = True          # Turn on full debug logging in the log file.
         logdebug    = False         # Turn off full debug logging in the log file.
     )
-
+# NOTE: Debug logging is currently turned off to save disk space.
 
     #|=========================================================================|
     #|  Main program.                           [python module code section]   |
@@ -767,17 +767,28 @@ def start(update, context):         # Context, in this context, is the Telegram 
 
     return
 
+# Below is the help string for the bot. (Displayed when '/help' is typed in the chat.)
+HELP_STRING = f"""
+{BOT_NAME} bot powered by GPT-3/{ENGINE_NAME}.
+Available commands:
+    /start - Start a new conversation.
+    /help - Show this help message.
+    /remember <text> - Add <text> to AI's persistent memory.
+    /forget <text> - Remove <text> from AI's persistent memory.
+    /reset - Clear the AI's short-term conversational memory."""
+
 # Now, let's define a function to handle the /help command.
 def help(update, context):
-    """Send a message when the command /help is issued."""
-    update.message.reply_text(
-        f"{BOT_NAME} bot powered by GPT-3/{ENGINE_NAME}.\n" +
-        f"Available commands:\n" +
-        f"\t/start - Start a new conversation.\n" +
-        f"\t/help - Show this help message.\n" +
-        f"\t/remember <text> - Add <text> to AI's persistent memory.\n" +
-        f"\t/forget <text> - Remove <text> from AI's persistent memory.\n" +
-        f"\t/reset - Clear the AI's short-term conversational memory.\n")
+    """Display the help string when the command /help is issued."""
+    update.message.reply_text(HELP_STRING)
+
+#        f"{BOT_NAME} bot powered by GPT-3/{ENGINE_NAME}.\n" +
+#        f"Available commands:\n" +
+#        f"\t/start - Start a new conversation.\n" +
+#        f"\t/help - Show this help message.\n" +
+#        f"\t/remember <text> - Add <text> to AI's persistent memory.\n" +
+#        f"\t/forget <text> - Remove <text> from AI's persistent memory.\n" +
+#        f"\t/reset - Clear the AI's short-term conversational memory.\n")
 
 # Now, let's define a function to handle the /echo command.
 def echo(update, context):
@@ -1141,6 +1152,8 @@ def process_message(update, context):
             # Tell the conversation object to remove the given message from the AI's persistent memory.
             conversation.remove_memory(command_args)
 
+            # NOTE: We should probably change what we output below depending on whether the
+            #   given statement was actually removed from the persistent memory.
             _logger.info(f"Removed [{command_args}] from persistent memory.")
             # Also notify the user that we're forgetting the given statement.
             update.message.reply_text(f"[DIAGNOSTIC: Removed [{command_args}] from persistent memory.]")
@@ -1162,7 +1175,18 @@ dispatcher.add_handler(telegram.ext.CommandHandler('remember', remember))
 dispatcher.add_handler(telegram.ext.CommandHandler('forget', forget))
 dispatcher.add_handler(telegram.ext.CommandHandler('reset', reset))
 
-# The following two commands are not really needed. They're here for testing purposes.
+# Command list to enter into BotFather.
+COMMAND_LIST = f"""
+start - Starts the bot, reloading conversation history, if any.
+help - Displays general help and command help.
+remember - Adds the given statement to the bot's persistent context data.
+forget - Removes the given statement from the bot's persistent context data.
+reset - Clears the bot's memory of the conversation. Useful for breaking output loops.
+"""
+print("NOTE: You should enter the following command list into BotFather at bot creation time:")
+print(COMMAND_LIST)
+
+# The following two commands are not really needed at all. They're just here for testing purposes.
 dispatcher.add_handler(telegram.ext.CommandHandler('echo',  echo))
 dispatcher.add_handler(telegram.ext.CommandHandler('greet', greet))
 
