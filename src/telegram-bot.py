@@ -247,6 +247,7 @@ def initializePersistentContext():
         PERSISTENT_DATA + \
         MESSAGE_DELIMITER + " ~~~ Available commands: ~~~\n" + \
         "  /remember <text> - Adds <text> to persistent context data.\n" + \
+        "  /forget <text>   - Removes <text> from persistent context data.\n" + \
         MESSAGE_DELIMITER + " ~~~ Recent Telegram messages: ~~~\n"
 
 # Go ahead and call it now.
