@@ -585,7 +585,7 @@ class Conversation:
         # If the text to remove isn't present in the persistent data string,
         # we need to report this as an error to both the AI and the user.
         if text_to_remove not in PERSISTENT_DATA:
-            self.add_message(Message(SYS_NAME, f"Error: [{text_to_remove}] not found in persistent memory."))
+            self.add_message(Message(SYS_NAME, f"Error: [{text_to_remove.rstrip()}] not found in persistent memory."))
             return False    # Return false to indicate that the memory wasn't removed.
             # This will tell the caller to report failure to the user.
 
