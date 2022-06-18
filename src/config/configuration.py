@@ -1282,7 +1282,7 @@ class	TheAIPersonaConfig:
 
 		if 'start-message' in telegramConf:
 			theAIConfig.startMsg = startMessage = telegramConf['start-message']
-			_logger.normal(f"    [Config/AI]     AI config:     The AI persona's Telegram start message is {startMessage}.")
+			_logger.normal(f"    [Config/AI]     AI config:     The AI persona's Telegram start message is [{startMessage}].")
 		else:
 			theAIConfig.startMsg = None	# No default value provided in config file.
 
