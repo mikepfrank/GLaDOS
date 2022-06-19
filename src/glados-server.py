@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #|						TOP OF FILE:	glados-server.py
-#|------------------------------------------------------------------------------
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #|
 #|	FILE NAME:		glados-server.py			   [Python 3 application script]
 #|
@@ -22,80 +22,80 @@
 #|		Layer #1:	infrastructure.logmaster
 #|		Layer #0:	appdefs
 #|
-#|------------------------------------------------------------------------------
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #|	 The below module documentation string will be displayed by pydoc3.
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 """
-		FILE DESCRIPTION:
-		=================
+	FILE DESCRIPTION:
+	=================
 
-			This script constitutes the main server process executable for the
-			GLaDOS system.	Within the OS process running this script, threads 
-			are created to carry out the following functions (at the minimum):
+		This script constitutes the main server process executable for the
+		GLaDOS system.	Within the OS process running this script, threads 
+		are created to carry out the following functions (at the minimum):
 
-					1. Primary "mind" thread for the A.I. itself.
+				1. Primary "mind" thread for the A.I. itself.
 
-					2. Various GLaDOS processes, which may include 'bridge' 
-						processes for communicating to external systems (e.g.,
-						Internet-based services), or to local resources (e.g., 
-						Unix command prompt), or to internal subsystems of
-						the GLaDOS system itself, such as the memory system,
-						the settings interface, & the book authoring system.
+				2. Various GLaDOS processes, which may include 'bridge' 
+					processes for communicating to external systems (e.g.,
+					Internet-based services), or to local resources (e.g., 
+					Unix command prompt), or to internal subsystems of
+					the GLaDOS system itself, such as the memory system,
+					the settings interface, & the book authoring system.
 
-					3. A thread for managing the text-based 'windowing' system
-						inside of GLaDOS, which is the primary 'GUI' seen by 
-						the A.I.  (The windowing system itself is not a GLaDOS
-						process per se; it is used by the A.I. to interact 
-						*with* GLaDOS processes.)
-					
-			For more details, please consult the README.md file within this
-			directory and/or the contents of this program's major packages:
+				3. A thread for managing the text-based 'windowing' system
+					inside of GLaDOS, which is the primary 'GUI' seen by 
+					the A.I.  (The windowing system itself is not a GLaDOS
+					process per se; it is used by the A.I. to interact 
+					*with* GLaDOS processes.)
+				
+		For more details, please consult the README.md file within this
+		directory and/or the contents of this program's major packages:
+		
+			* apps - Application system, and individual apps.
 			
-				* apps - Application system, and individual apps.
-				
-				* auth - Authorities or permissions system.
-				
-				* commands - Command interface system.
-				
-				* config - Configuration system.
-				
-				* console - Console user interface.
-				
-				* display - Display manager.
-				
-				* entities - Reification system.
-				
-				* events - Event records.
-				
-				* field - AI's receptive field (interface to AI).
-				
-				* gpt3 - API wrapper for the underlying OpenAI model.
-				
-				* helpsys - Interactive help system.
-				
-				* history - Cognitive history buffer facilty.
-				
-				* infrastructure - Reusable low-level modules.
-				
-				* memory - Long-term memory storage facility.
-				
-				* mind - AI's cognitive system.
-				
-				* processes - Wrapper layer for major subprocesses.
-				
-				* settings - For interactive control of settings.
-				
-				* supervisor - Major supervisory system of the OS.
-				
-				* terminal - For interacting with non-console users.
-				
-				* text - Low-level text buffer facility.
+			* auth - Authorities or permissions system.
+			
+			* commands - Command interface system.
+			
+			* config - Configuration system.
+			
+			* console - Console user interface.
+			
+			* display - Display manager.
+			
+			* entities - Reification system.
+			
+			* events - Event records.
+			
+			* field - AI's receptive field (interface to AI).
+			
+			* gpt3 - API wrapper for the underlying OpenAI model.
+			
+			* helpsys - Interactive help system.
+			
+			* history - Cognitive history buffer facilty.
+			
+			* infrastructure - Reusable low-level modules.
+			
+			* memory - Long-term memory storage facility.
+			
+			* mind - AI's cognitive system.
+			
+			* processes - Wrapper layer for major subprocesses.
+			
+			* settings - For interactive control of settings.
+			
+			* supervisor - Major supervisory system of the OS.
+			
+			* terminal - For interacting with non-console users.
+			
+			* text - Low-level text buffer facility.
 
-				* users - Support for AI and human users.
-				
-				* tokenizer - Local implementation of GPT tokenizer.
-				
-				* windows - Text windows within the receptive field.
+			* users - Support for AI and human users.
+			
+			* tokenizer - Local implementation of GPT tokenizer.
+			
+			* windows - Text windows within the receptive field.
 
 """
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -103,7 +103,7 @@
 #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|==========================================================================
 	#|
 	#|	0. Preliminaries								   [module code section]
 	#|	================
@@ -185,11 +185,32 @@ LOG_DEBUG = False	# Tell logmaster: Don't save debug-level output to log file.
 global CONS_INFO	# This controls info-level output to console.
 CONS_INFO = False	# Tell logmaster: Don't diplay info-level output on console.
 
-	#----------------------------------------------------------------------
-	# Before doing anything else, we start a virtual terminal and have it
-	# grab control of the stdout/stderr output streams, so that any early 
-	# output that gets generated will be remembered for display within the
-	# paneled console environment after that is started up.
+
+	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#| LAYER 0:	Modules that don't import any other custom modules.
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|  The appdefs module contains application-wide definitions.  These 
+		#|	are used, in particular, by the logmaster module.  This module is 
+		#|	imported here (very early!), so that we can configure it appropri-
+		#|	ately for the present application before logmaster gets imported 
+		#|	(since logmaster imports definitions from it).
+
+import appdefs
+appdefs.selectApp("glados-server")		# Tell appdefs module which application we are in.
+
+from 	appdefs						import	systemName, appName
+	# Name of the present application.	Used for configuring logmaster.
+
+
+	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#| LAYER 1:	Modules that only import modules from layer #0.
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|  Before doing anything else, we start a virtual terminal and have 
+		#|	it grab control of the stdout/stderr output streams, so that any 
+		#|	early output that gets generated will be remembered for display 
+		#|	within the paneled console environment after that is started up.
 
 from console.virterm import VirTerm		# Vitrual I/O terminal facility.
 global _virTerm
@@ -202,10 +223,10 @@ if RAW_DEBUG:
 	print("Virtual terminal grabbed stdout/stderr output streams.")
 
 
-		#|----------------------------------------------------------------------
-		#| Here we do a little bit more preliminary work, prior to starting the 
-		#| main program. Namely, we (conditionally) display some raw diagnostics 
-		#| to note that we are starting to load the main program.
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|  Here we do a little bit more preliminary work, prior to starting 
+		#|	the main program. Namely, we (conditionally) display some raw diag-
+		#|	nostics to note that we are starting to load the main program.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# First, get the name of the current file, for use in raw debug messages.
@@ -244,7 +265,7 @@ if __name__ == "__main__":
 
 from	time				import	sleep		# Gives other threads time to work.
 from	sys					import	stderr		# Used for error output to console.
-from	collections.abc		import	Iterable	# Used for type hints in declarations.
+#from	collections.abc		import	Iterable	# Used for type hints in declarations.
 
 		#|======================================================================
 		#|	1.2. Imports of custom application modules. [module code subsection]
@@ -260,35 +281,25 @@ if __name__ == "__main__":
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 				#---------------------------------------------------------------
-				#  The appdefs module contains application-wide definitions.
-				#  These are used, in particular, by the logmaster module.
-				#  This module is imported here, so that we can configure it
-				#  appropriately for the present application before logmaster
-				#  is imported (since logmaster imports definitions from it).
-
-import appdefs
-appdefs.selectApp("glados-server")		# Tell appdefs module which application we are in.
-
-				#---------------------------------------------------------------
 				#  The logmaster module defines our logging framework; we
 				#  import specific definitions we need from it.	(This is a
 				#  little cleaner stylistically than "from ... import *".)
 
-#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#| LAYER 1:
+	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#| LAYER 1:
 
 from infrastructure.logmaster import (	# (From code layer #1.)
-		sysName,			# Name of this system, 'GLaDOS'.
+		#sysName,			# Name of this system, 'GLaDOS'.
 		appLogger,			# Top-level logger for the application.
 		configLogMaster,	# Function to configure logmaster module.
-		setComponent,		# Dynamically sets the current software component.
+		#setComponent,		# Dynamically sets the current software component.
 		setThreadRole,		# Dynamically sets the current thread's role.
 		doDebug,			# Boolean: Whether to display debug-level output.
 		doInfo,				# Boolean: Whether to display info-level output.
 		doNorm,				# Boolean: Whether to display normal output.
-		testLogging,		# Function to test logging facility.
+		#testLogging,		# Function to test logging facility.
 		updateStderr,		# Function to update what stderr is used.
-		initLogMaster,		# Function to initialize the logmaster facility.
+		#initLogMaster,		# Function to initialize the logmaster facility.
 	)
 
 
@@ -297,14 +308,8 @@ from infrastructure.logmaster import (	# (From code layer #1.)
 			#|	Here we order them by code layer, lowest-layer modules first.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#| LAYER 0:	Modules that don't import any other custom modules.
-
-from 	appdefs						import	systemName, appName
-	# Name of the present application.	Used for configuring logmaster.
-
-#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#| LAYER 2: Modules that don't import any modules from above Layer 1.
+	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#| LAYER 2: Modules that don't import any modules from above Layer 1.
 
 from	settings.settings			import	TheSettingsFacility
 	# This facility is for keeping track of all of the available settings.
@@ -312,15 +317,15 @@ from	settings.settings			import	TheSettingsFacility
 from	helpsys.helpSystem			import	TheHelpSystem
 	# This singleton class anchors the interactive help system.
 
-#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#| LAYER 2: Modules that don't import any modules from above Layer 3.
+	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#| LAYER 3: Modules that don't import any modules from above Layer 2.
 
 from 	config.configuration		import	TheConfiguration
 	# This singleton class will manage loading of the GLaDOS system 
 	# configuration from config files on system startup.
 
-#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#| LAYER 8: Modules that don't import any modules from above Layer 7.
+	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#| LAYER 8: Modules that don't import any modules from above Layer 7.
 
 from	console.console				import	ConsoleClient
 	# The "console client" starts up and manages the main GLaDOS system
@@ -331,8 +336,8 @@ from	console.console				import	ConsoleClient
 	# can be seen by the AI and also by human system operators, additional 
 	# system debugging information not visible to the AI may appear here.
 
-#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#| LAYER 13: Modules that don't import any modules from above Layer 12.
+	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#| LAYER 13: Modules that don't import any modules from above Layer 12.
 
 from 	supervisor.supervisor		import	TheSupervisor
 	# This singleton class will manage startup of the Supervisor 
@@ -423,7 +428,7 @@ global	_logger		# Module logger.  (Here, same as application logger.)
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		#|-----------------------------------------------------------------
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|
 		#|	_initLogging()						  [module private function]
 		#|
@@ -431,7 +436,7 @@ global	_logger		# Module logger.  (Here, same as application logger.)
 		#|		the logging system. It is called only once per appli-
 		#|		cation run, near the start of _main().
 		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 def _initLogging():
 
@@ -473,9 +478,9 @@ def _initLogging():
 #__/ End _initLogging().
 
 
-		#|----------------------------------------------------------------------
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|
-		#|	 _main()								   [module private function]
+		#|	 _main()								 [module private function]
 		#|
 		#|		Main routine of this module.  It is private; we do not
 		#|		export it, and other modules shouldn't attempt to call it.
@@ -648,10 +653,8 @@ def _main():
 
 	if doNorm:
 		print()
-		#_logger.normal("") # At this point we can't just print() to stdout or we'll mess up curses.
 		_logger.normal(f"[Main] (4) Starting up the {systemName} subsystems...")
 		print()
-		#_logger.normal("")
 	
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#| This starts up the supervisor, which in turn initializes and
@@ -660,8 +663,8 @@ def _main():
 			#| exits, that's because the whole system is shutting down.
 
 	supervisor.startup() # Tells the supervisor to start everything up.
-			# NOTE: This also starts up all of the other major 
-			# subsystems of GLaDOS.
+		# NOTE: This also starts up all of the other major 
+		# subsystems of GLaDOS.
 				
 
 		#|======================================================================

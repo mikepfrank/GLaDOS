@@ -24,18 +24,18 @@
 
 
 	MODULE DESCRIPTION:
-	-------------------
+	===================
 
-		This module initializes the GLaDOS command interface. This is the
-		interface that allows the AI to type commands to the GLaDOS system
-		and have them be executed by the system.
-		
-		The command interface is organized into "command modules" associated
-		with specific facilities or processes within the GLaDOS system.	 New
-		command modules can be added dynamically into the interface.  In the
-		main loop of the system, when the A.I. generates a text event, it is
-		parsed to see if it matches a command template, and if so, then 
-		control is dispatched to an appropriate command handler.
+		This module implements GLaDOS' text-based windowing system.
+	
+
+	MODULE PUBLIC CLASSES:
+	======================
+
+		TheWindowSystem:
+
+			This singleton class anchors the window system. It is the
+			only class that should be instantiated by the supervisor.
 
 """
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -209,14 +209,15 @@ class Application_: pass	# Do this instead to avoid circular imports.
 
 global __all__	# List of public symbols exported by this module.
 __all__ = [
-		'TextBuffer',			# Class for an adjustable-sized buffer of text spooled to the window.
 		'WindowImage',			# A sort of text buffer that contains a static rendered window image.
 		'WindowCommandModule',	# A command module that contains commands for controlling a specific window.
 		'ViewPort',				# Represents the current view a window has on its underlying text buffer.
 		'Window',				# Class for a single window within the GLaDOS text window system.
 		'Windows',				# Class for a collection of text windows.
 		'WindowSnapshot',		# Class for a static, frozen record of what a given window contained at a specific point in time.
-		'TheWindowSystem',			# A singleton class for the entire window subsystem of GLaDOS.
+		'TheWindowSystem',		# A singleton class for the entire window subsystem of GLaDOS.
+		#'TextBuffer',			# Class for an adjustable-sized buffer of text spooled to the window.
+			# (This was moved to the text/buffer.py module.)
 	]
 
 
@@ -231,11 +232,16 @@ __all__ = [
 
 # Window system classes:
 #
-#		TextBuffer				- An adjustable-sized buffer of text spooled to the window.
 #		Window					- A text window within the GLaDOS window system.
 #		Windows					- A collection of text windows.
 #		WindowSnapshot			- A static image of a text window at a given point in time.
+#		WindowImage				- A sort of text buffer that contains a static rendered window image.
+#		WindowCommandModule		- A command module that contains commands for controlling a specific window.
+#		ViewPort				- Represents the current view a window has on its underlying text buffer.
 #		TheWindowSystem			- The entire window subsystem in a given GLaDOS system instance.
+#
+#		TextBuffer				- An adjustable-sized buffer of text spooled to the window.
+#			(This one was moved to the text.buffer module.)
 
 class Window: pass	# Forward declaration
 
@@ -421,15 +427,15 @@ class Window:	# A text window within the GLaDOS window system.
 
 	# A window has:
 	#		- A title (textual label).
-	#		- An aplication it's serving.
+	#		- An application it's serving.
 	#		- A text history buffer.
 	#		- A window image (another text buffer).
 	#		- A list of snapshots.
 	#		- Whether it is the currently active window.
 	#		- An associated process.
-	#		- Its state (open, minimized, or closed)
-	#		- Its current size (number of lines to view)
-	#		- Whether it is trying to stay in the receptive field
+	#		- Its state (open, minimized, or closed).
+	#		- Its current size (number of lines to view).
+	#		- Whether it is trying to stay in the receptive field.
 	#		- Whether it anchors to the top or bottom of the receptive field or is floating.
 	#		- A set of past snapshots taken of it that are known to exist in the system.
 	#		- A command module for controlling this window when it is active.
@@ -915,11 +921,21 @@ class Window:	# A text window within the GLaDOS window system.
 		if win._isOpen:
 			TheReceptiveField().updateView(loudly=loudly)
 		
+# Class for keeping track of the set of windows presently instantiated in the system.
+# So far this class is pretty trivial. It's just a list of windows. We'll add more
+# functionality later.
 
 class Windows:
 	def Windows(self):
 		self._windowList = []
 
+
+# Class for a window snapshot. This is a static image of a window, and is used to
+# archive the appearance of a window at a given time in the system's history buffer.
+# When a window scrolls off the top of the screen, it creates a snapshot of itself
+# and adds it to the history buffer for later reference. Eventually items in the
+# history buffer will be spooled out to disk for long-term persistent storage.
+# NOTE: This class is not yet implemented.
 
 class WindowSnapshot:	# A static image of a text window at a given point in time.
 
@@ -932,6 +948,9 @@ class WindowSnapshot:	# A static image of a text window at a given point in time
 	#		- Its current size (number of lines to inspect).
 	
 	pass
+
+# Singleton class anchoring the window system. The constructor creates the window
+# system if it doesn't already exist.
 
 @singleton		
 class TheWindowSystem:
