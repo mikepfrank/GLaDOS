@@ -123,6 +123,9 @@ from    infrastructure      import  logmaster   # Our custom logging facility.
     # Go ahead and fetch the logger for this application.
 _logger = logmaster.appLogger
 
+    # Get the directory to be used for logging.
+LOG_DIR = logmaster.LOG_DIR
+
             #-------------------------------------------------------------------
             # Import some time-related functions we'll use.
 
@@ -192,6 +195,8 @@ logmaster.configLogMaster(
         logdebug    = False         # Turn off full debug logging in the log file.
     )
 # NOTE: Debug logging is currently turned off to save disk space.
+
+# Remember the name of the log directory, for later reference.
 
     #|=========================================================================|
     #|  Main program.                           [python module code section]   |
@@ -426,11 +431,11 @@ class Conversation:
         self.bot_name = BOT_NAME            # The name of the bot. ('Gladys' in this case.)
 
         # Determine the filename we'll use to archive/restore the conversation.
-        self.filename = f"log/{_appName}.{chat_id}.txt"
+        self.filename = f"{LOG_DIR}/{_appName}.{chat_id}.txt"
 
         # We'll also need another file to store the AI's persistent memories.
         # NOTE: These are shared between all conversations.
-        self.mem_filename = f"log/{_appName}.memories.txt"
+        self.mem_filename = f"{LOG_DIR}/{_appName}.memories.txt"
 
         # Read the conversation archive file, if it exists.
         self.read_archive()   # Note this will retrieve at most the last self.context_length_max messages.
@@ -964,6 +969,17 @@ def process_message(update, context):
             # context string.  Otherwise, we just use the existing context string.
             if not extending_response:
                 context_string = conversation.context_string + AI_PROMPT 
+
+                # At this point, we want to archive the context_string to a file in the
+                # log/ directory called 'latest-prompt.txt'. This provides an easy way
+                # for the system operator to monitor what the AI is seeing, without
+                # having to turn on debug-level logging and search through the log file.
+
+                # Open the file for writing.
+                with open(f"{LOG_DIR}/latest-prompt.txt", "w") as f:
+                    # Write the context string to the file.
+                    f.write(context_string)
+
             else:
                 context_string = conversation.context_string
 

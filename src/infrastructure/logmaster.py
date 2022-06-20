@@ -529,7 +529,7 @@ __all__ = [
 	'NORMAL_LEVEL',							 # Public global variables.
 	'LOG_FILENAME', 'LOG_FORMATSTR',
 	'CONS_WARN', 'CONS_INFO', 'CONS_DEBUG',
-	'LOG_INFO', 'LOG_DEBUG',
+	'LOG_INFO', 'LOG_DEBUG', 'LOG_DIR',
 	'systemName', 'sysName', 'appName',
 	'log_level', 'console_level', 'minLevel',
 	'doDebug', 'doInfo', 'doNorm', 'doWarn', 'doErr',
@@ -655,11 +655,14 @@ if not "systemName" in dir():	# If appdefs did not already define systemName,
 else:
 	sysName = systemName	# Shorter synonym for systemName
 
+global	LOG_DIR
+LOG_DIR = 'log'	# Default log directory.
+
 if not "appName" in dir():		# If appdefs did not already define systemName,
 	appName = systemName + ".(Unknown App)"
 		# The name of this application program (child of system).	 
 else:									# Application name was defined.
-	LOG_FILENAME = 'log/' + appName + ".log"	 # Construct the default log file name.
+	LOG_FILENAME = f'{LOG_DIR}/' + appName + ".log"	 # Construct the default log file name.
 
 if not "LOG_FILENAME" in dir():		# If not already defined above,
 	LOG_FILENAME = "script.log"		# Set it to a generic default log file name.
@@ -3410,7 +3413,7 @@ def configLogMaster(sysname:str = None, appname:str = None,
 			#-Warning: Other modules that have already imported
 			# names from appdefs will still have the old value of
 			# appName in their module's copy of this global.
-		LOG_FILENAME = 'log/' + appName + ".log"
+		LOG_FILENAME = f'{LOG_DIR}/' + appName + ".log"
 		
 	if filename:			LOG_FILENAME					= filename
 	if formatstr:			LOG_FORMATSTR					= formatstr

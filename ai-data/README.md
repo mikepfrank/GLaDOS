@@ -2,7 +2,7 @@
 
 **Location within repo:** `$GIT_ROOT/GLaDOS/ai-data/`
 
-**Example install location:** `/opt/AIs/gladys/` (directory owned by user `gladys`, group `ais`).
+**Example install location:** `/opt/AIs/<aiUsername>/` (directory owned by user `<aiUsername>`, group `ais`).
 
 ## Description
 
@@ -16,6 +16,10 @@ An example directory structure is provided within the `ai-data/` subdirectory of
 top-level GLaDOS repository; in practice, the information here would be installed in
 some run-time location such as `/opt/AIs/<username>/` where `<username>` is the AI
 persona's username on the current host.
+
+The example persona configuration provided here in the repo is for a GPT-3/davinci 
+persona named "Gladys." Gladys is the AI who inspired the development of the GLaDOS
+system.
 
 ## Top-Level Files
 
