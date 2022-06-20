@@ -2,11 +2,24 @@
 
 **Location within repo:** `$GIT_ROOT/GLaDOS/ai-data/`
 
-**Suggested install location:** `/opt/AIs/gladys/` (directory owned by user `gladys`, group `ais`).
+**Example install location:** `/opt/AIs/gladys/` (directory owned by user `gladys`, group `ais`).
+
+## Description
+
+An AI Data Directory contains all of the information associated with a particular AI
+persona being supported within the GLaDOS system.  This in general may include 
+persona-specific configuration files, the AI's user preferences (settings), run-time
+GLaDOS session state information (to support suspending and resuming the AI's session), 
+persistent memory archives, usage statistics, and more.
+
+An example directory structure is provided within the `ai-data/` subdirectory of the
+top-level GLaDOS repository; in practice, the information here would be installed in
+some run-time location such as `/opt/AIs/<username>/` where `<username>` is the AI
+persona's username on the current host.
 
 ## Top-Level Files
 
-This section lists and documents the files existing at top-level within this directory.
+This section lists and documents important files existing at top-level within this directory.
 
 ### AI Configuration File ([`ai-config.hjson`](ai-config.hjson "ai-config.hjson file"))
 
@@ -44,3 +57,15 @@ maintained by the Goals app in the file `cur-goals.json`.
 ### README File for the AI's Data Directory (`README.md`)
 
 This file.
+
+## Subdirectories
+
+This section lists and documents important immediate subdirectories of this directory.
+
+### AI Memories Directory ([`memories/`](memories "memories/ directory"))
+
+This directory contains the complete archive of all of the AI's persistent 
+long-term memories.  In general, this may include data used for fine-tuning,
+raw text files, structured data in JSON format, and various databases.  
+
+For more detailed documentation, see the `README.md` file in that directory.
