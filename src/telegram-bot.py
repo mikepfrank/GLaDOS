@@ -233,8 +233,14 @@ SYS_NAME = 'SYSTEM'   # This refers to the present system, i.e., the Telegram bo
 #~~~ Recent Telegram messages: ~~~
 #"""
 
+PERSISTENT_DATA = ""  # Empty string initially.
+
 def initializePersistentData():
-    
+
+    """Initialize the persistent data string (prior to adding data from memory file)."""
+
+    global PERSISTENT_DATA
+
     # This function initializes the AI's persistent context data.
 
     # Initialize the main data for the AI's persistent context.
