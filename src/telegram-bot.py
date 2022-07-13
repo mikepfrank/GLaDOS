@@ -123,6 +123,9 @@ from    infrastructure      import  logmaster   # Our custom logging facility.
     # Go ahead and fetch the logger for this application.
 _logger = logmaster.appLogger
 
+    # Get the directory to be used for logging.
+LOG_DIR = logmaster.LOG_DIR
+
             #-------------------------------------------------------------------
             # Import some time-related functions we'll use.
 
@@ -193,6 +196,8 @@ logmaster.configLogMaster(
     )
 # NOTE: Debug logging is currently turned off to save disk space.
 
+# Remember the name of the log directory, for later reference.
+
     #|=========================================================================|
     #|  Main program.                           [python module code section]   |
     #|                                                                         |
@@ -228,9 +233,19 @@ SYS_NAME = 'SYSTEM'   # This refers to the present system, i.e., the Telegram bo
 #~~~ Recent Telegram messages: ~~~
 #"""
 
-# Initialize the AI's persistent context data.
-PERSISTENT_DATA = TheAIPersonaConfig().context 
-    # NOTE: This should end with a newline. But if it doesn't, we'll add one.
+def initializePersistentData():
+    
+    # This function initializes the AI's persistent context data.
+
+    # Initialize the main data for the AI's persistent context.
+    PERSISTENT_DATA = TheAIPersonaConfig().context 
+        # NOTE: This should end with a newline. But if it doesn't, we'll add one.
+
+    # Ensure that PERSISTENT_DATA ends with a newline.
+    if PERSISTENT_DATA[-1] != '\n':
+        PERSISTENT_DATA += '\n'
+
+initializePersistentData()
 
 # This function initializes the AI's persistent context information
 # based on the PERSISTENT_DATA string. We'll call it whenever the
@@ -239,10 +254,6 @@ PERSISTENT_DATA = TheAIPersonaConfig().context
 def initializePersistentContext():
 
     global PERSISTENT_DATA, PERSISTENT_CONTEXT  # So we can modify these.
-
-    # Ensure that PERSISTENT_DATA ends with a newline.
-    if PERSISTENT_DATA[-1] != '\n':
-        PERSISTENT_DATA += '\n'
 
     # Initialize the AI's persistent context information.
     PERSISTENT_CONTEXT = \
@@ -426,11 +437,11 @@ class Conversation:
         self.bot_name = BOT_NAME            # The name of the bot. ('Gladys' in this case.)
 
         # Determine the filename we'll use to archive/restore the conversation.
-        self.filename = f"log/{_appName}.{chat_id}.txt"
+        self.filename = f"{LOG_DIR}/{_appName}.{chat_id}.txt"
 
         # We'll also need another file to store the AI's persistent memories.
         # NOTE: These are shared between all conversations.
-        self.mem_filename = f"log/{_appName}.memories.txt"
+        self.mem_filename = f"{LOG_DIR}/{_appName}.memories.txt"
 
         # Read the conversation archive file, if it exists.
         self.read_archive()   # Note this will retrieve at most the last self.context_length_max messages.
@@ -518,7 +529,10 @@ class Conversation:
 
                     # Append the line to the memory string.
                     mem_string += line
-            
+
+            # Reinitialize the persistent data string.
+            initializePersistentData()
+
             # Append the memory string to the persistent data string.
             PERSISTENT_DATA += mem_string
 
@@ -964,6 +978,17 @@ def process_message(update, context):
             # context string.  Otherwise, we just use the existing context string.
             if not extending_response:
                 context_string = conversation.context_string + AI_PROMPT 
+
+                # At this point, we want to archive the context_string to a file in the
+                # log/ directory called 'latest-prompt.txt'. This provides an easy way
+                # for the system operator to monitor what the AI is seeing, without
+                # having to turn on debug-level logging and search through the log file.
+
+                # Open the file for writing.
+                with open(f"{LOG_DIR}/latest-prompt.txt", "w") as f:
+                    # Write the context string to the file.
+                    f.write(context_string)
+
             else:
                 context_string = conversation.context_string
 

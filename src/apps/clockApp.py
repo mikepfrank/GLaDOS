@@ -83,7 +83,7 @@ class The_Clock_App(Clock_App_):
 
 		# Default format string to use in 'minutes' mode.
 	_DEFAULT_MINUTES_FORMAT = "%A, %B %d, %Y, %I:%M %p"
-			# This is like: Sunday, January 17, 2021, 12:02 PM MST
+			# This is like: Sunday, January 17, 2021, 12:02 PM (MST)
 
 		# Default format string to use in 'seconds' mode.
 	_DEFAULT_SECONDS_FORMAT = "%A, %B %d, %Y, %I:%M:%S %p"
@@ -110,7 +110,7 @@ class The_Clock_App(Clock_App_):
 
 			# Get the mode config.
 		if 'mode' in conf:
-		 	mode = conf['mode']		# 'minutes' or 'seconds'
+			mode = conf['mode']		# 'minutes' or 'seconds'
 		else:
 			mode = 'minutes'	# Default to 'minutes.'
 
