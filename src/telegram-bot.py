@@ -233,9 +233,19 @@ SYS_NAME = 'SYSTEM'   # This refers to the present system, i.e., the Telegram bo
 #~~~ Recent Telegram messages: ~~~
 #"""
 
-# Initialize the AI's persistent context data.
-PERSISTENT_DATA = TheAIPersonaConfig().context 
-    # NOTE: This should end with a newline. But if it doesn't, we'll add one.
+def initializePersistentData():
+    
+    # This function initializes the AI's persistent context data.
+
+    # Initialize the main data for the AI's persistent context.
+    PERSISTENT_DATA = TheAIPersonaConfig().context 
+        # NOTE: This should end with a newline. But if it doesn't, we'll add one.
+
+    # Ensure that PERSISTENT_DATA ends with a newline.
+    if PERSISTENT_DATA[-1] != '\n':
+        PERSISTENT_DATA += '\n'
+
+initializePersistentData()
 
 # This function initializes the AI's persistent context information
 # based on the PERSISTENT_DATA string. We'll call it whenever the
@@ -244,10 +254,6 @@ PERSISTENT_DATA = TheAIPersonaConfig().context
 def initializePersistentContext():
 
     global PERSISTENT_DATA, PERSISTENT_CONTEXT  # So we can modify these.
-
-    # Ensure that PERSISTENT_DATA ends with a newline.
-    if PERSISTENT_DATA[-1] != '\n':
-        PERSISTENT_DATA += '\n'
 
     # Initialize the AI's persistent context information.
     PERSISTENT_CONTEXT = \
@@ -523,7 +529,10 @@ class Conversation:
 
                     # Append the line to the memory string.
                     mem_string += line
-            
+
+            # Reinitialize the persistent data string.
+            initializePersistentData()
+
             # Append the memory string to the persistent data string.
             PERSISTENT_DATA += mem_string
 
