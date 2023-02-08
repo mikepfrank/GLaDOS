@@ -890,8 +890,12 @@ class	TheAIPersonaConfig:
 
 		_logger.normal(f"    [Config/AI]   Loading AI configuration from {aiConfigPath}...")
 
-		with open(_AI_CONFIG_PATHNAME) as cf:
-			conf = load(cf)			# Load structure from hjson file.
+		try:
+			with open(_AI_CONFIG_PATHNAME) as cf:
+				conf = load(cf)			# Load structure from hjson file.
+		except e:
+			_logger.error(f"Got exception: {str(e)} while trying to load {_AI_CONFIG_PATHNAME}!")
+			raise e
 
 		pconf = pformat(conf, indent=4, width=224)
 
