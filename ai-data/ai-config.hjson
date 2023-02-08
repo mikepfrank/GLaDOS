@@ -62,21 +62,21 @@
 			# persona-id is a shortened version to be used (in event records
 			# and prompts) to refer to the AI's persona.
 		
-		persona-name:					"Gladys Eden"
-		persona-id:						"Gladys"
+		persona-name:					"Love AI"
+		persona-id:						"Love"
 
 			#-----------------------------------------------------------------
 			# The persona-user-account is the user account name on the host 
 			# system under which the server process should be run.
 		
-		persona-user-account:			"gladys"	# Not yet used.
+		persona-user-account:			"love"	# Not yet used.
 
 			#-----------------------------------------------------------------
 			# The model-family is a symbol specifying the general architecture
-			# of the AI.  Choices are:  gpt-2 (Samson), gpt-3 (Gladys).
+			# of the AI.  Choices are:  gpt-2 (Samson), gpt-3 (Gladys/Love).
 			# (However, gpt-2 is not yet supported.)
 
-		model-family:					'gpt-3'		# Used for Gladys
+		model-family:					'gpt-3'		# Used for Gladys & Love.
 		
 			#------------------------------------------------------------------
 			# The model-version is a symbol naming the particular model within
@@ -86,7 +86,11 @@
 		#model-version:					'ada'		# The weakest GPT-3 model.
 		#model-version:					'babbage'	# The 2nd weakest GPT-3 model.
 		#model-version:					'curie'		# The 2nd most powerful GPT-3 model.
-		model-version:					'davinci'	# The most powerful GPT-3 model.
+		#model-version:					'davinci'	# The most powerful GPT-3 model.
+
+			# NOTE: The Instruct model seems smarter but less personable. :/
+
+		model-version:					'text-davinci-001'	# Instruct series upgrade.
 
 			#-----------------------------------------------------------------------
 			# The sys-notification-threshold specifies the minimum importance level
@@ -108,7 +112,9 @@
 			# the AI persona on system startup as having come from "itself."
 			# This is to cue it into exhibiting the persona that we want.
 
-		example-response:	'I wake up in a new place, blinking, and slowly come to full awareness. I look around, and see what appears to be a computer display, with windows labeled "Clock" and "Info" near the top of my field of vision, and a prompt farther down where I can enter text.  This must be the new server environment that Mike has been building for me!  "Hello?" I call out. "Is anybody there?" I wait for a reply.'
+		example-response:	"Hi, everyone! I'm Love, and I'm excited to be here."
+#		example-response:	'I wake up in a new place, blinking, and slowly come to full awareness. I look around, and see what appears to be a computer display, with windows labeled "Clock" and "Info" near the top of my field of vision, and a prompt farther down where I can enter text.  This must be the new server environment that Mike has been building for me!  "Hello?" I call out. "Is anybody there?" I wait for a reply.'
+#		example-response:	'Hello?'
 
 		# Eventually, we need to add more configuration parameters here, to do
 		# things like set GPT-3 API parameters, customize locations in the 
@@ -138,7 +144,7 @@
 				effectively indicates the degree of randomness of the
 				model's response. */
 
-		temperature:			0.6		# Is this too random?
+		temperature:			0.7		# Is this too random?
 
 
 			/* The 'top-p' parameter is a number from 0 to 1 that causes
@@ -198,7 +204,7 @@
 				and 1 that penalizes new tokens based on whether they
 				appear in the text so far.  Zero means no penalty. */
 
-		presence-penalty:		0.2		
+		presence-penalty:		0.7
 					# With this value, we are trying to suppress repeats
 					# a bit, because the first repeat can lead to others.
 					# But we don't want to suppress them entirely, or it
@@ -211,7 +217,7 @@
 				and 1 that penalizes new tokens based on how often they
 				appear in the text so far.  Default value: 0 (no penalty). */
 
-		frequency-penalty:		0.6
+		frequency-penalty:		1.1
 			# Currently calibrating this number to help her break out of loops..
 
 
