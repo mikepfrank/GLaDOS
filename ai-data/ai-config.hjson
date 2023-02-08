@@ -6,7 +6,7 @@
 #|  FULL PATH:      $GIT_ROOT/GLaDOS/src/ai-data/ai-config.hjson
 #|  INSTALL AS:     /opt/AIs/<username>/ai-config.hjson
 #|  MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
-#|  SYSTEM NAME:    GLaDOS (Generic Lifeform and Domicile Operating System)
+#|  SYSTEM NAME:    GLaDOS (Gladys' Lovely and Dynamic Operating System)
 #|  APP NAME:       GLaDOS.server (GLaDOS server application)
 #|
 #|  DESCRIPTION:
@@ -18,6 +18,7 @@
 #|      Please note that this file may be relocated/renamed if one sets
 #|      the following environment variables appropriately prior to
 #|      launching GLaDOS:
+#|
 #|
 #|          AI_DATADIR -
 #|
@@ -33,10 +34,12 @@
 #|              defaults to the 'ai-data/' subdirectory of the working
 #|              directory from which the GLaDOS server is run.
 #|
+#|
 #|          AI_CONFIG_FILENAME -
 #|
 #|              The default value for this is just ai-config.hjson, like
 #|              this file.
+#|
 #|
 #|      If these environment variables are set, the implied full pathname
 #|      of this file will be taken as:
@@ -52,7 +55,8 @@
 		#/======================================================================
 		#|	The mind-conf sub-dict provides configuration parameters for the
 		#|	AI's "mind" or cognitive system specifically.  This is as opposed
-		#|	to parameters for other subsystems, such as application preferences.
+		#|	to parameters for other subsystems, such as application preferences
+		#|	or miscellaneous GLaDOS settings.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	mind-conf:	{
@@ -82,6 +86,7 @@
 		model-family:					'gpt-3'		# Used for Gladys, Curie, etc.
 
 		
+
 			#------------------------------------------------------------------
 			# The model-version is a symbol naming the particular model within
 			# the model-family.  Choices for gpt-3 include ada, babbage, curie,
@@ -94,8 +99,8 @@
 
 			# NOTE: The Instruct model seems smarter but less personable. :/
 
-		#model-version:					'text-davinci-001'	# Instruct series upgrade.
-		#model-version:					'text-davinci-002'	# Upgraded davinci with 4K tokens. ("Gladys 2.0")
+		#model-version:					'text-davinci-001'	# Instruct series version of davinci.
+		#model-version:					'text-davinci-002'	# New, larger version of davinci.
 
 
 			#-----------------------------------------------------------------------
@@ -196,9 +201,9 @@
 
 			/*------------------------------------------------------------------
 				Return the log-probabilities of this many of the top
-				most likely tokens, in addition to the sampled token
-			    (which may or may not be in this set). Default: None.
-			    (Meaning, don't return log-probabilities.) If zero,
+			  	most likely tokens, in addition to the sampled token
+			   	(which may or may not be in this set). Default: None.
+			  	(Meaning, don't return log-probabilities.) If zero,
 			    then the log-probability is reported for each returned
 			    token. */
 
@@ -232,8 +237,10 @@
 				and 1 that penalizes new tokens based on whether they
 				appear in the text so far.  Zero means no penalty. */
 
-		presence-penalty:		0
+		presence-penalty:		0		# No penalty.
+		#presence-penalty:		0.2		
 		#presence-penalty:		0.7
+
 					# With this value, we are trying to suppress repeats
 					# a bit, because the first repeat can lead to others.
 					# But we don't want to suppress them entirely, or it
@@ -321,6 +328,5 @@
 			'''
 
 	} # End of telegram-conf substructure.
-
 
 } # End top-level struct in ai-config.hjson.
