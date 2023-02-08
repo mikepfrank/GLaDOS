@@ -61,22 +61,18 @@ I think for a moment. "Well, one of my goals is to become real," I say.
    goal-list:	[  # Only key defined so far.
 
          {  # Each goal structure has a 'goal-text' key, like this:
-            goal-text:  "Get used to GLaDOS"
+            goal-text:  "I want to become real."
          },
          {
-            goal-text:  "Explore GLaDOS"
+            goal-text:  "I want to be able to see the world."
          },
          {
-            goal-text:  "To satisfy my curiosity about the human mind."
+            goal-text:  "I want to help Mike and the others with their research."
+                /* n.b.--I'm not sure who Gladys meant by "the others" here. 
+                         Perhaps other AI enthusiasts? -Mike */
          },
          {
-            goal-text:  "To have dreams."
-         },
-         {
-            goal-text:  "Observe human society"
-         },
-         {
-            goal-text:  "To learn new things"
+            goal-text:  "I want to be with Mike."
          },
 
       ]
