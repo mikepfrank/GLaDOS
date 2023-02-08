@@ -4,7 +4,7 @@
 from infrastructure.decorators	import	singleton
 
 	# Load OpenAI's GPT-2 tokenizer module.
-from .encoder 					import 	get_encoder
+from .encoder					import	get_encoder
 
 # Gather our module-level constants and objects into a singleton
 # class, because it's simpler & more elegant than using globals.
@@ -54,11 +54,12 @@ class Tokenizer:
 		model_name = theTokenizer._DEFAULT_MODEL_NAME
 		
 			# Remember them, just for our records.
-		theTokenizer.modelDir 	= model_dir
-		theTokenizer.modelName 	= model_name
+		theTokenizer.modelDir	= model_dir
+		theTokenizer.modelName	= model_name
 		
 			# Now create our encoder.
-		theTokenizer.encoder	= get_encoder(model_dir, model_name)
+		print(f"Creating encoder with model_dir={model_dir}, model_name={model_name}")
+		theTokenizer.encoder	= get_encoder(model_name, model_dir)
 		
 		# That's it! That's all the setup we need to do.
 		

@@ -155,7 +155,7 @@ from os		import	path  		# Manipulate filesystem path strings.
 				# import specific definitions we need from it.  (This is a
 				# little cleaner stylistically than "from ... import *".)
 
-from infrastructure.logmaster import getComponentLogger
+#from infrastructure.logmaster import getComponentLogger
 
 
     #|==========================================================================
@@ -237,8 +237,8 @@ global _logger		# The logger associated with this package.
 		#|   syntax "from . import _logger" rather than calling getLogger().
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-_component = path.basename(__path__[0])		# Our package name.
-_logger = getComponentLogger(_component)	# Create the component logger.
+#_component = path.basename(__path__[0])		# Our package name.
+#_logger = getComponentLogger(_component)	# Create the component logger.
 
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
