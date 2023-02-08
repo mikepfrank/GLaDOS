@@ -201,7 +201,7 @@ class AppLaunchCommand(Command):
 		else:
 			argList = None
 
-		_logger.info("Handling app-launch command for app {app} with "
+		_logger.info(f"Handling app-launch command for app {app} with "
 					 f"cmdWord='{cmdWord}', argList='{argList}'.")
 
 		app.launch()	# Launch the app (if not already launched).

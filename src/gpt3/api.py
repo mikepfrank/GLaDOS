@@ -224,28 +224,30 @@ __all__ = [
 #
 #    engine-name        field-size    price	(per 1,000 tokens)
 #    ----               ----------    -----
-#    ada                2048          0.0008	# = $0.80 / 1M tokens
-#    babbage            2048          0.0012	# = $1.20 / 1M tokens
-#    curie              2048          0.006		# = $6.00 / 1M tokens
-#    davinci            2048          0.06		# = $60.00 / 1M tokens
-#    text-ada-001       2048          0.0008
-#    text-babbage-001   2048          0.0012
-#    text-curie-001     2048          0.006
-#    text-davinci-001   2048          0.06
-#    text-davinci-002   4096          0.06
+#    ada                2048          0.0004	# = $0.40 / 1M tokens
+#    babbage            2048          0.0005	# = $0.50 / 1M tokens
+#    curie              2048          0.002		# = $2.00 / 1M tokens
+#    davinci            2048          0.02		# = $20.00 / 1M tokens
+#    text-ada-001       2048          0.0004
+#    text-babbage-001   2048          0.0005
+#    text-curie-001     2048          0.002
+#    text-davinci-001   2048          0.02
+#	 code-davinci-002	4096		  0.02		# Actually free for now?
+#    text-davinci-002   4096          0.02
 
 # The below statement was written by Codex, with format adjustments by MPF.
 
 _ENGINE_ATTRIBS = {
-    'ada':				{'engine-name': 'ada', 		    	'field-size': 2048, 'price': 0.0008},
-    'babbage':			{'engine-name': 'babbage',	    	'field-size': 2048, 'price': 0.0012},
-    'curie':			{'engine-name': 'curie',	    	'field-size': 2048, 'price': 0.006},
-    'davinci':			{'engine-name': 'davinci',	    	'field-size': 2048, 'price': 0.06},
-    'text-ada-001':		{'engine-name': 'text-ada-001',	    'field-size': 2048, 'price': 0.0008},
-    'text-babbage-001': {'engine-name': 'text-babbage-001', 'field-size': 2048, 'price': 0.0012},
-    'text-curie-001':	{'engine-name': 'text-curie-001',   'field-size': 2048, 'price': 0.006},
-    'text-davinci-001': {'engine-name': 'text-davinci-001', 'field-size': 2048, 'price': 0.06},
-    'text-davinci-002': {'engine-name': 'text-davinci-002', 'field-size': 4096, 'price': 0.06}
+    'ada':				{'engine-name': 'ada', 		    	'field-size': 2048, 'price': 0.0004},
+    'babbage':			{'engine-name': 'babbage',	    	'field-size': 2048, 'price': 0.0005},
+    'curie':			{'engine-name': 'curie',	    	'field-size': 2048, 'price': 0.002},
+    'davinci':			{'engine-name': 'davinci',	    	'field-size': 2048, 'price': 0.02},
+    'text-ada-001':		{'engine-name': 'text-ada-001',	    'field-size': 2048, 'price': 0.0004},
+    'text-babbage-001': {'engine-name': 'text-babbage-001', 'field-size': 2048, 'price': 0.0005},
+    'text-curie-001':	{'engine-name': 'text-curie-001',   'field-size': 2048, 'price': 0.002},
+    'text-davinci-001': {'engine-name': 'text-davinci-001', 'field-size': 2048, 'price': 0.02},
+    'code-davinci-002': {'engine-name': 'code-davinci-002', 'field-size': 4096, 'price': 0.02},
+    'text-davinci-002': {'engine-name': 'text-davinci-002', 'field-size': 4096, 'price': 0.02},
 }
 
 # Given an engine name and an attribute name, return the attribute value.
@@ -325,6 +327,7 @@ inputToks = {
 		'text-babbage-001':		0,
 		'text-curie-001':		0,
 		'text-davinci-001':		0,
+		'code-davinci-002':		0,
 		'text-davinci-002':		0,
 	}
 
@@ -337,6 +340,7 @@ outputToks = {
 		'text-babbage-001':		0,
 		'text-curie-001':		0,
 		'text-davinci-001':		0,
+		'code-davinci-002':		0,
 		'text-davinci-002':		0,
 	}
 
@@ -353,6 +357,7 @@ expenditures = {
 		'text-babbage-001':		0,
 		'text-curie-001':		0,
 		'text-davinci-001':		0,
+		'code-davinci-002':		0,
 		'text-davinci-002':		0,
 	}
 
@@ -1055,6 +1060,9 @@ class Completion:
 			# If we get here, we know we have enough space for our query + result,
 			# so we can proceed with the request to the actual underlying API.
 			complStruct = openai.Completion.create(**apiArgs)
+
+			# Show returned model identifier on debug output.
+			_logger.debug(f"[GPT-3 API] Model identifier is: {complStruct['model']}.")
 
 			# This measures the length of the response in tokens, and updates
 			# the global record of API usage statistics accordingly.			
