@@ -232,7 +232,7 @@ __all__ = [
 #    text-babbage-001   2048          0.0012
 #    text-curie-001     2048          0.006
 #    text-davinci-001   2048          0.06
-#    text-davinci-002   4000          0.06	# I thought it was 4096, but apparently not!
+#    text-davinci-002   4096          0.06
 
 # The below statement was written by Codex, with format adjustments by MPF.
 
@@ -245,7 +245,7 @@ _ENGINE_ATTRIBS = {
     'text-babbage-001': {'engine-name': 'text-babbage-001', 'field-size': 2048, 'price': 0.0012},
     'text-curie-001':	{'engine-name': 'text-curie-001',   'field-size': 2048, 'price': 0.006},
     'text-davinci-001': {'engine-name': 'text-davinci-001', 'field-size': 2048, 'price': 0.06},
-    'text-davinci-002': {'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06}
+    'text-davinci-002': {'engine-name': 'text-davinci-002', 'field-size': 4096, 'price': 0.06}
 }
 
 # Given an engine name and an attribute name, return the attribute value.
@@ -1011,14 +1011,12 @@ class Completion:
 			# of tokens that can be accommodated in the query + response together.
 			fieldSize = _get_field_size(self.core.conf.engineId)
 
-			# For some reason, the engines that supposedly
-			# can only handle 2,048 and 4000 tokens in
-			# their query + response together actually are
-			# able to handle 2,049 and 4001 tokens
-			# respectively. So, we'll adjust the value of
+			# For some reason, the engines that supposedly can only handle
+			# 2,048 tokens in their query + response together actually are
+			# able to handle 2,049 tokens. So, we'll adjust the value of
 			# fieldSize in that case.
-			if fieldSize in (2048, 4000):
-				fieldSize += 1
+			if fieldSize == 2048:
+				fieldSize = 2049
 
 			# NOTE: Still need to research whether the engines that supposedly
 			# can only handle 4,000 tokens can similarly handle 4,001 tokens.

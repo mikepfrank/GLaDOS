@@ -644,7 +644,6 @@ NOTSET		  =	 logging.NOTSET	# The default value for log_level
 				#|
 				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global	sysName
 #global	systemName,sysName
 #global	appName
 global	LOG_FILENAME
