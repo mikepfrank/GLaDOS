@@ -8,7 +8,7 @@ The ``main`` branch is intended for major releases (but there aren't any yet).
 
 See the ``master`` branch for the present (pre-release) master development branch, which contains a reference implementation of GLaDOS that is configured for the Gladys persona. Gladys is a persona exhibited by the GPT-3/davinci engine.
 
-There are also development branches for various experimental AI personas; some of these dev branches may include code changes that still need to be folded back into the master branch.
+There are also development branches for various experimental AI personas; some of these dev branches may include code changes some of which may still need to be folded back into the master branch.
 
 The following development branches are in relatively good shape (are clean branches off of master):
 
