@@ -173,30 +173,17 @@
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 global RAW_DEBUG	# Raw debugging flag--controls low-level debug output for this module.
-# Change this to True as needed during initial development.
-RAW_DEBUG = False	# Turn off raw debugging output.
-#RAW_DEBUG = True	# Turn on row debugging output.
+RAW_DEBUG = False	# Change this to True as needed during initial development.
 
 	# The following flags control logging-level thresholds in the logmaster module.
 
 global CONS_DEBUG, LOG_DEBUG	# These control debug-level output to console & log file.
 CONS_DEBUG = False	# Tell logmaster: Don't diplay debug-level output on console.
-LOG_DEBUG = True	# Tell logmaster: Do save debug-level output to log file.
-#LOG_DEBUG = False	# Tell logmaster: Don't save debug-level output to log file.
+#LOG_DEBUG = True	# Tell logmaster: Do save debug-level output to log file.
+LOG_DEBUG = False	# Tell logmaster: Don't save debug-level output to log file.
 
 global CONS_INFO	# This controls info-level output to console.
-#CONS_INFO = False	# Tell logmaster: Don't diplay info-level output on console.
-CONS_INFO = True	# Tell logmaster: Do diplay info-level output on console.
-
-	#---------------------------------------------------------------
-	#  The appdefs module contains application-wide definitions.
-	#  These are used, in particular, by the logmaster module.
-	#  This module is imported here, so that we can configure it
-	#  appropriately for the present application before logmaster
-	#  is imported (since logmaster imports definitions from it).
-
-import appdefs
-appdefs.selectApp("glados-server")		# Tell appdefs module which application we are in.
+CONS_INFO = False	# Tell logmaster: Don't diplay info-level output on console.
 
 
 	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
