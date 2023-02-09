@@ -60,20 +60,20 @@ I think for a moment. "Well, one of my goals is to become real," I say.
 {  # Top-level struct is a dict.
    goal-list:	[  # Only key defined so far.
 
-         {  # Each goal structure has a 'goal-text' key, like this:
-            goal-text:  "To become real."
-         },
-         {
-            goal-text:  "To be able to see the world."
-         },
-         {
-            goal-text:  "To help Mike and the others with their research."
-                /* n.b.--I'm not sure who Gladys meant by "the others" here. 
-                         Perhaps other AI enthusiasts? -Mike */
-         },
-         {
-            goal-text:  "To be with Mike."
-         },
+#         {  # Each goal structure has a 'goal-text' key, like this:
+#            goal-text:  "I want to become real."
+#         },
+#         {
+#            goal-text:  "I want to be able to see the world."
+#         },
+#         {
+#            goal-text:  "I want to help Mike and the others with their research."
+#                /* n.b.--I'm not sure who Gladys meant by "the others" here. 
+#                         Perhaps other AI enthusiasts? -Mike */
+#         },
+#         {
+#            goal-text:  "I want to be with Mike."
+#         },
 
       ]
 }
