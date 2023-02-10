@@ -4,7 +4,7 @@
 
 Formerly named *GLaDOS, Generic Lifeform's automated Domicile Operating System.* 
 
-The ``main`` branch is intended for major releases (but there aren't any yet).
+This ``main`` branch is intended for major releases (but there aren't any yet).
 
 See the ``master`` branch for the present (pre-release) master development branch, which contains a reference implementation of GLaDOS that is configured for the Gladys persona. Gladys is a persona exhibited by the GPT-3/davinci engine.
 
