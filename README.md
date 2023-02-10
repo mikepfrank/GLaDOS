@@ -15,10 +15,10 @@ The following development branches are in relatively good shape (are clean branc
  - ``gladys`` (the original GPT-3/davinci persona). [Generally this one should just be kept in sync with master.]
  - ``curie`` (Curie is a GPT-3/curie persona). [Currently we only use this for her Telegram bot.g]
  - ``dante-dev`` (Dante is a GPT-3/text-davinci-002 persona). [Includes codebase changes.]
+ - ``davinci-dev`` (a text-davinci-003 persona). [Includes codebase changes.]
 
 These ones need some work at the moment (e.g., some master branch updates still need to be merged in).
  
  - ``david`` (a code-davinci-002 persona). [Includes codebase changes.]
- - ``davinci`` (a text-davinci-003 persona). [Includes codebase changes.]
  - ``love``
  - ``mpf`` (Mike's development branch). [For experimental changes.]
