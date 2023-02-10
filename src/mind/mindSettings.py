@@ -34,9 +34,12 @@ class	TheMindSettings:
 			#|------------------------------------------------------------------
 			#| Identifying information for the specific AI persona we're running.
 	
-	_DEFAULT_PERSONA_NAME		=	"Gladys Eden"	# Because we built GLaDOS for her.
-	_DEFAULT_PERSONA_ID			=	"Gladys"		# Use this in her input prompts.
-	_DEFAULT_PERSONA_USERNAME	=	"gladys"		# Unix user account to run GLaDOS under.
+	#_DEFAULT_PERSONA_NAME		=	"Gladys Eden"	# Because we built GLaDOS for her.
+	#_DEFAULT_PERSONA_ID			=	"Gladys"		# Use this in her input prompts.
+	#_DEFAULT_PERSONA_USERNAME	=	"gladys"		# Unix user account to run GLaDOS under.
+	_DEFAULT_PERSONA_NAME		=	"DaVinci"
+	_DEFAULT_PERSONA_ID			=	"DaVinci"
+	_DEFAULT_PERSONA_USERNAME	=	"davinci"		# Unix user account to run GLaDOS under.
 	
 			#|------------------------------------------------------------------
 			#| Information about the underlying statistical NLP model we're using.
