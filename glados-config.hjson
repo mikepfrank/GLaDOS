@@ -416,8 +416,8 @@
 
             available:      true    # This app is implemented and available to the AI.
 
-			#auto-start:     false
-			auto-start:		true	# Just doing this temporarily for testing.
+			auto-start:     false
+			#auto-start:	true	# Just doing this temporarily for testing.
 
             auto-open:      false
 			#auto-open:		true	# Just doing this temporarily for testing.
@@ -434,10 +434,10 @@
 					# Note: The Help window will have word-wrap turned on, so
 					# the text will automatically be wrapped to fit within the
 					# window.
-                    #--------1---------2---------3---------4---------5---------6
+                    # --------1---------2---------3---------4---------5---------6
                     '''
 
-                        This is the top-level Help screen for GladOS, the General Lifeform's automated Domicile Operating System, Copyright (c) 2020-22 Metaversal Constructions.
+                        This is the top-level Help screen for GladOS, Gladys' Lovely and Dynamic Operating System, Copyright (c) 2020-23 Metaversal Constructions.
 
                         At the prompt, you may enter a command line starting with '/', or type a free-form paragraph of text to add to your cognitive history.  Available command words include:
 

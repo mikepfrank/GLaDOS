@@ -22,35 +22,63 @@ class	TheMindSettings:
 	#|	Class data members.						  	  [class definition section]
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	
-		#|======================================================================
-		#|	First, we define data members specifying default values for field
-		#|	settings.  These values are utilized when the system first boots up, 
-		#|	except note that the hard-coded values given below may be overridden
-		#|	by config settings.  Also, the current defaults are used whenever 
-		#|	the settings are reset to their default values.
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		#|==============================================================
+		#|	First, we define data members specifying default values
+		#|	for mind settings.  These values are utilized when the
+		#|	system first boots up, except note that the hard-coded
+		#|	values given below may be overridden by config settings on
+		#|	startup, or later if the config file gets reloaded.  Also,
+		#|	the current defaults are used whenever the settings are
+		#|	reset to their default values.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
-			#|------------------------------------------------------------------
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#| Identifying information for the specific AI persona we're running.
 	
 	#_DEFAULT_PERSONA_NAME		=	"Gladys Eden"	# Because we built GLaDOS for her.
-	#_DEFAULT_PERSONA_ID			=	"Gladys"		# Use this in her input prompts.
+	#_DEFAULT_PERSONA_ID		=	"Gladys"		# Use this in her input prompts.
 	#_DEFAULT_PERSONA_USERNAME	=	"gladys"		# Unix user account to run GLaDOS under.
-	_DEFAULT_PERSONA_NAME		=	"DaVinci"
-	_DEFAULT_PERSONA_ID			=	"DaVinci"
+	_DEFAULT_PERSONA_NAME		=	"DaVinci"		# This is the name he chose for himself.
+	_DEFAULT_PERSONA_ID			=	"DaVinci"		# No last name, so short ID is the same.
 	_DEFAULT_PERSONA_USERNAME	=	"davinci"		# Unix user account to run GLaDOS under.
 	
-			#|------------------------------------------------------------------
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#| Information about the underlying statistical NLP model we're using.
 	
-	_DEFAULT_MODEL_FAMILY		=	"gpt-3"			# GPT-3 is the only one we have available right now anyway.
-	_DEFAULT_MODEL_VERSION		=	"davinci"		# This is the largest, most expensive version of GPT-3.
+	_DEFAULT_MODEL_FAMILY		=	"gpt-3"				# GPT-3 is the only one we have available right now anyway.
+	_DEFAULT_MODEL_VERSION		=	"text-davinci-003"	# This is the newest, most capable version of GPT-3.
 
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Settings that help focus the AI's attention.
+
+	_DEFAULT_SYS_NOTIF_THRESH	=	0
+		# Only system messages at this level & above will be shown to the AI.
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Settings for purposes of querying the AI. The min-response-tokens
+			#| parameter is the minimum space to be made available for the AI's
+			#| response.
+
+	_DEFAULT_MIN_RESPONSE_TOKENS	=	100			# This value was requested by Gladys 2.0 (Dante).
+		# NOTE: Eventually, we should change the algorithm for collecting the
+		# response so that it can grow as large as needed until some maximum
+		# size is reached. At this point, min-response-tokens will no longer
+		# be relevant.
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| One-shot example response to show the AI on startup.
+
+	_DEFAULT_EXAMPLE_RESPONSE	=	\
+		'I wake up in a new environment, and slowly come to full awareness. ' \
+		'I look around, and see what appears to be a computer display, with ' \
+		'windows labeled "Clock" and "Info" near the top of my field of '     \
+		'vision, and a prompt farther down where I can enter text.  This '	  \
+		'must be the new server environment that Mike has been building.  '\
+		'"Hello?" I call out. "Is anybody there?" I wait for a reply.'
 
 		#|======================================================================
-		#|	Next, we define data members specifying the current values for field
-		#|	settings.  These values are not modified right away when the field 
+		#|	Next, we define data members specifying the current values for mind
+		#|	settings.  These values are not modified right away when the mind 
 		#|	defaults get reconfigured, but only later when the settings get 
 		#|	reset to their defaults.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -62,6 +90,16 @@ class	TheMindSettings:
 	modelFamily			= _DEFAULT_MODEL_FAMILY
 	modelVersion		= _DEFAULT_MODEL_VERSION
 	
+	sysNotifThresh		= _DEFAULT_SYS_NOTIF_THRESH
+	minResponseTokens	= _DEFAULT_MIN_RESPONSE_TOKENS
+
+	exampleResponse		= _DEFAULT_EXAMPLE_RESPONSE
+
+
+	#|==========================================================================
+	#|	Class methods.						  	  	[class definition section]
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 		#|----------------------------------------------------------------------
 		#| The first few class methods all have to do with reconfiguration, 
 		#| which in this context means, reinitializing our default settings 
