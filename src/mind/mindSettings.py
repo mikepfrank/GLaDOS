@@ -131,21 +131,27 @@ class	TheMindSettings:
 		mindConf = TheConfiguration().mindConf
 		if mindConf is not None:
 			# Update each of our specific configurable parameters.
-			tmsc.configDefaultPersonaName(mindConf)
-			tmsc.configDefaultPersonaID(mindConf)
-			#tmsc.configDefaultPersonaUsername(mindConf)
-			#tmsc.configDefaultModelFamily(mindConf)
-			#tmsc.configDefaultModelVersion(mindConf)
+			tmsc.configDefaultPersonaName(mindConf)         # Retrieve the default persona name from sys config.
+			tmsc.configDefaultPersonaID(mindConf)			# Retrieve the default persona ID from sys config.
+			#tmsc.configDefaultPersonaUsername(mindConf)	# Retrieve the default persona username from sys config.
+			#tmsc.configDefaultModelFamily(mindConf)		# Retrieve the default model family from sys config.
+			#tmsc.configDefaultModelVersion(mindConf)		# Retrieve the default model version from sys config.
+			#tmsc.configDefaultSysNotifThresh(mindConf)		# Retrieve the default system notification threshold from sys config.
+			#tmsc.configDefaultMinResponseTokens(mindConf)	# Retrieve the default minimum response tokens from sys config.
+			#tmsc.configDefaultExampleResponse(mindConf)	# Retrieve the default example response from sys config.
 		
 		# Retrieve the mind conf sub-structure, if any, from the AI config file.
 		mindConf = TheAIPersonaConfig().mindConf
 		if mindConf is not None:
 			# Update each of our specific configurable parameters.
-			tmsc.configDefaultPersonaName(mindConf)
-			tmsc.configDefaultPersonaID(mindConf)
-			#tmsc.configDefaultPersonaUsername(mindConf)
-			#tmsc.configDefaultModelFamily(mindConf)
-			#tmsc.configDefaultModelVersion(mindConf)
+			tmsc.configDefaultPersonaName(mindConf)			# Retrieve the default persona name from AI config.
+			tmsc.configDefaultPersonaID(mindConf)			# Retrieve the default persona ID from AI config.
+			#tmsc.configDefaultPersonaUsername(mindConf)	# Retrieve the default persona username from AI config.
+			#tmsc.configDefaultModelFamily(mindConf)		# Retrieve the default model family from AI config.
+			#tmsc.configDefaultModelVersion(mindConf)		# Retrieve the default model version from AI config.
+			#tmsc.configDefaultSysNotifThresh(mindConf)		# Retrieve the default system notification threshold from AI config.
+			#tmsc.configDefaultMinResponseTokens(mindConf)	# Retrieve the default minimum response tokens from AI config.
+			#tmsc.configDefaultExampleResponse(mindConf)	# Retrieve the default example response from AI config.
 
 
 		#|===============================================================
@@ -154,7 +160,7 @@ class	TheMindSettings:
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
 	@classmethod
-	def configDefaultPersonaName(theMindSettingsClass:type, mindConf):
+	def configDefaultPersonaName(theMindSettingsClass:type, mindConf:dict):
 
 		"""This method replaces the above hard-coded default value for
 			the name of the AI persona with the value loaded from
@@ -174,7 +180,7 @@ class	TheMindSettings:
 		
 
 	@classmethod
-	def configDefaultPersonaID(theMindSettingsClass:type, mindConf):
+	def configDefaultPersonaID(theMindSettingsClass:type, mindConf:dict):
 
 		"""This method replaces the above hard-coded default value for
 			the short ID of the AI persona with the value loaded from
@@ -204,7 +210,7 @@ class	TheMindSettings:
 			personaName:str=None,
 		):
 
-		# If personaName is not specified, just set it to the default.
+		# If personaName is not specified, just revert it to the default.
 		if personaName is None:
 			personaName = theMindSettingsClass._DEFAULT_PERSONA_NAME
 			
@@ -216,7 +222,7 @@ class	TheMindSettings:
 			personaID:str=None,
 		):
 
-		# If newWidth is not specified, just set it to the default.
+		# If newWidth is not specified, just revert it to the default.
 		if personaID is None:
 			personaID = theMindSettingsClass._DEFAULT_PERSONA_ID
 
@@ -224,8 +230,20 @@ class	TheMindSettings:
 		theMindSettingsClass.personaID = personaID
 		# We should probably do more stuff here to propagate this change throughout the system.
 
+	@classmethod
+	def updatePersonaUsername(theMindSettingsClass,
+			personaUsername:str=None,
+		):
+
+		# If personaUsername is not specified, just revert it to the default.
+		if personaUsername is None:
+			personaUsername = theMindSettingsClass._DEFAULT_PERSONA_USERNAME
+
+			# Update our class variable
+		theMindSettingsClass.personaUsername = personaUsername
+
 # Note the below settings module needs to get installed at the
-# time that the receptive field facility is initialized.
+# time that the mind system is initialized.
 
 @singleton
 class TheMindSettingsModule(SettingsModule):
@@ -245,6 +263,8 @@ class TheMindSettingsModule(SettingsModule):
 		# Default module location: At top level.
 		if inModule is None:
 			inModule=TheSettingsFacility().rootSettingsModule
+
+		# Create the various settings specific to this module.
 
 		personaIdSetting = Setting(
 			name='persona_id',
