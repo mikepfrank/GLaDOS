@@ -1,12 +1,12 @@
 # mindSettings.py
-# Manages settings for the "mind" package, i.e., the Cognitive System.
+# Manages settings for the "mind" package, i.e., the Cognitive System of GladOS.
 
 from	typing						import	ClassVar
 	# We use this for argument type hints in class methods.
 
 from	infrastructure.decorators	import	singleton	# Singleton class decorator.
 
-from	settings.settings		import	Setting, SettingsModule
+from	settings.settings		import	Setting, SettingsModule, TheSettingsFacility, StringType
 from	config.configuration	import	TheConfiguration, TheAIPersonaConfig
 
 class	TheMindSettings:	pass
@@ -21,7 +21,6 @@ class	TheMindSettings:
 	#|==========================================================================
 	#|	Class data members.						  	  [class definition section]
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
 		#|==============================================================
 		#|	First, we define data members specifying default values
 		#|	for mind settings.  These values are utilized when the
@@ -89,6 +88,11 @@ class	TheMindSettings:
 	
 	modelFamily			= _DEFAULT_MODEL_FAMILY
 	modelVersion		= _DEFAULT_MODEL_VERSION
+
+	#|==========================================================================
+	#|	Class methods.						  	  	[class definition section]
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 	
 	sysNotifThresh		= _DEFAULT_SYS_NOTIF_THRESH
 	minResponseTokens	= _DEFAULT_MIN_RESPONSE_TOKENS
@@ -108,11 +112,11 @@ class	TheMindSettings:
 		#| change the current values of any settings.
 		
 	@classmethod
-	def config(theMindSettingsClass:ClassVar):
+	def config(theMindSettingsClass:type):
 		theMindSettingsClass.reconfigure()		# Just a synonym.
 
 	@classmethod
-	def reconfigure(theMindSettingsClass:ClassVar):
+	def reconfigure(theMindSettingsClass:type):
 	
 		"""Reconfigure all of the default settings for this class based on
 			what's been read from the system/AI configuration files."""
@@ -150,7 +154,7 @@ class	TheMindSettings:
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
 	@classmethod
-	def configDefaultPersonaName(theMindSettingsClass:ClassVar, mindConf):
+	def configDefaultPersonaName(theMindSettingsClass:type, mindConf):
 
 		"""This method replaces the above hard-coded default value for
 			the name of the AI persona with the value loaded from
@@ -170,7 +174,7 @@ class	TheMindSettings:
 		
 
 	@classmethod
-	def configDefaultPersonaID(theMindSettingsClass:ClassVar, mindConf):
+	def configDefaultPersonaID(theMindSettingsClass:type, mindConf):
 
 		"""This method replaces the above hard-coded default value for
 			the short ID of the AI persona with the value loaded from
@@ -191,10 +195,12 @@ class	TheMindSettings:
 
 		#|============================================================
 		#| Below are class methods for updating our current settings.
+		#| Note this changes the current values of the settings, not
+		#| the configuration file defaults or the saved settings.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
 	@classmethod
-	def updatePersonaName(theMindSettingsClass:ClassVar, 
+	def updatePersonaName(theMindSettingsClass:type, 
 			personaName:str=None,
 		):
 
@@ -203,7 +209,7 @@ class	TheMindSettings:
 			personaName = theMindSettingsClass._DEFAULT_PERSONA_NAME
 			
 			# Update our class variable
-		mindSettingsClass.personaName = personaName
+		theMindSettingsClass.personaName = personaName
 
 	@classmethod
 	def updatePersonaID(theMindSettingsClass,
@@ -215,7 +221,7 @@ class	TheMindSettings:
 			personaID = theMindSettingsClass._DEFAULT_PERSONA_ID
 
 			# Update our class variable
-		mindSettingsClass.personaID = personaID
+		theMindSettingsClass.personaID = personaID
 		# We should probably do more stuff here to propagate this change throughout the system.
 
 # Note the below settings module needs to get installed at the
@@ -243,7 +249,7 @@ class TheMindSettingsModule(SettingsModule):
 		personaIdSetting = Setting(
 			name='persona_id',
 			settingType=StringType(),	# Should be a string.
-			defaultValue=TheFieldSettings._DEFAULT_PERSONA_ID,	# Should be Gladys unless differently config'd.
+			defaultValue=TheMindSettings._DEFAULT_PERSONA_ID,	# Should be Gladys unless differently config'd.
 			description="Persona ID",
 			docstring="""This is a short name for the AI's persona.""",
 			inModule=theMindSettingsModule,
