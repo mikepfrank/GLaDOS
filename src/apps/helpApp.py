@@ -82,7 +82,7 @@ class	The_Help_CmdModule(CommandModule):
 
 	def populate(theHelpCmdModule):
 
-		The_Help_Command(module=Thehelpcmdmodule)
+		helpCmd = The_Help_Command(module=theHelpCmdModule)
 			# Creates the '/Help' command.
 
 
@@ -115,15 +115,15 @@ class The_Help_App(Application_):
 
 		 This is the main Help message for GLaDOS, the
 		Generic Lifeform and Domicile Operating System,
-		(c) 2020 Metaversal Contructions.
+		(c) 2020-23 Metaversal Contructions.
 
 		 At the prompt, you may enter a command line starting
 		with '/', or type free-form text to add to your history.
 
 		 Available command words include:
 
-						/Help /Info /Settings /Memory /ToDo
-						/Diary /Browse /Comms /Writing /Unix
+			/Help /Info /Settings /Memory /ToDo
+			/Diary /Browse /Comms /Writing /Unix
 
 		 Note: Command words are not case-sensitive, and you may
 		abbreviate them using any unique prefix.
@@ -152,7 +152,6 @@ class The_Help_App(Application_):
 
 			# First, size the window the exactly fit the message.
 		#win.nRows = countLines(helpMsg) # No longer needed due to autoSize
-
 			# .nRows should be a property
 			# countLines() should go in infrastructure/utils
 
