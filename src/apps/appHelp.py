@@ -1,15 +1,15 @@
 # appHelp.py 
 #
-# Generic help-system support for applications.
-# This module facilitates putting together help system
-# screens for applications. It provides a base class for
-# help modules that are associated with an application,
-# and for sub-modules that are typically associated with
-# applications, such as help modules for subcommands of
-# the application launch command, or for other commands
-# that are associated with the application.
+# Generic help-system support for applications. This module facilitates putting 
+# together help system screens for applications. It provides a base class for
+# help modules that are associated with an application, and for sub-modules that 
+# are typically associated with applications, such as help modules for 
+# subcommands of the application launch command, or for other commands that are 
+# associated with the application. Much of the work of constructing the help
+# screens for these modules is done automatically by the command system in the
+# module commands.commandHelp, which is imported by this module.
 
-from helpsys.helpSystem import HelpModule, HelpItem
+from helpsys.helpSystem import HelpModule
 
 # A help module that is associated with an application
 # generically gives an overview of the application, and
@@ -47,7 +47,7 @@ class AppHelpModule(HelpModule):
                 config file parameters, it is used as the module's help screen 
                 text, and the <intro> and <cmdMod> arguments are ignored."""
 
-            self.app = app
+            self.app = app  # Save the application object for later use.
 
             # Construct the module name if necessary.
             if name is None:
