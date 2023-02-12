@@ -47,7 +47,8 @@ class Application_: pass	# Abstract class for applications.
 class AppSystem_: pass		# Abstract class for the whole application system.
 
 # Forward declarations.
-class AppLaunchCommand: pass		# Class for app-launch commands.
+class AppCommandModule: 	pass	# Class for command modules for apps.
+class AppLaunchCommand: 	pass	# Class for app-launch commands.
 class The_AppSys_CmdModule: pass	# Top-level command module for app system.
 
 
@@ -84,6 +85,55 @@ def the_appSys_cmdModule(appSys:AppSystem_ = None):
 		_logger.info("        [Apps/Init] the_appSys_cmdModule(): The application system's command module is already being initialized, so I'll just return it.")
 
 		return _the_appSys_cmdModule	# It's already started being created; just return it. 
+
+
+class AppCommandModule(CommandModule):
+	"""
+		appCommands.AppCommandModule					 		  [public class]
+		
+			This is the base class for all command modules for apps.  It 
+			provides the basic functionality for all apps, including the 
+			ability to launch the app, to foreground the app, and to 
+			activate the app's command module. Maybe also commands to
+			hide, suspend, resume, and quit the app. It can also include
+			subordinate command modules for the app, including modules
+			containing commands and/or subcommands that are specific to 
+			the app which are activated when the app has the command focus.
+	"""
+	
+	def __init__(newAppCmdModule:AppCommandModule,
+				appName:str,				# A capitalized app name to use, like 'Goals'.
+				application:Application_	# The application this command module is associated with.
+			):
+					
+		"""Instance initializer for app command modules."""
+
+		# First do generic initialization for all command modules.
+		super().__init__(desc = f"{appName} app's command module")
+		
+		newAppCmdModule._appName = appName
+		newAppCmdModule._application = application
+
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	
+	
+	@property
+	def appName(newAppCmdModule:AppCommandModule) -> str:
+		"""Return the app name for this command module."""
+		return newAppCmdModule._appName
+
+	def genHelpText(thisAppCmdModule:AppCommandModule) -> str:
+		"""
+			Generates a string containing help text an app's command module.
+		"""
+
+		self = thisAppCmdModule		# For convenience.
+
+		helpText = f"The following commands are available when the {self.appName} application has the command focus:\n"
+		helpText += self._commands.genHelpText()
+
+		return helpText
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -129,6 +179,7 @@ class AppLaunchCommand(Command):
 					the command focus is visually indicated with different 
 					window decorations (e.g., '===' instead of '~~~' for 
 					horizontal borders, command hints in lower border).
+					[NOTE: This is not yet implemented.]
 	"""
 	
 	def __init__(newAppLaunchCmd:AppLaunchCommand,
@@ -168,6 +219,11 @@ class AppLaunchCommand(Command):
 		# Now dispatch to default initialization for Command instances.
 		super(AppLaunchCommand, cmd).__init__(
 			name = appName,		# Use the app's name as the command name.
+			usageText = f"/{appName}",	# The usage text for this command. Simple!
+			shortDesc = f"Launch/refresh the {appName} app.",	
+				# A short description of this command.
+			longDesc = f"Launches the {appName} app, or refreshes it if it's already running.",	
+				# A long description of this command.
 			takesArgs = False,	# The app-launch command doesn't allow any argument list yet.
 			#cmdFmt = fmtStr,	# This was assembled above.
 			#unique = True,		# App-launch commands are intended to be unique. (Now default.)
@@ -214,7 +270,7 @@ class AppLaunchCommand(Command):
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-# Normally we would make this a singleton class, but this breaks badly due to a circulaty problem.
+# Normally we would make this a singleton class, but this breaks badly due to a circularity problem.
 # Instead, use the function the_appSys_cmdModule() above like a constructor.
 #@singleton
 

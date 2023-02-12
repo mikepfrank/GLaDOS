@@ -167,6 +167,8 @@ __all__ = [
 		#|	1.1. Imports of standard python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+from typing				import	List
+
 from os					import	path
 	# Manipulate filesystem path strings.
 
@@ -223,7 +225,11 @@ from	entities.entity		import	(
 				Human_Entity_,
 				The_CommandInterface_Entity
 			)
-	
+
+from	helpsys.helpSystem	import	(
+				HelpItem				# Base class for help items.
+					# (We use this to generate the help items for commands.)
+			)
 
 from	supervisor.action	import	(
 				Action_,			# Abstract base class for general actions.
@@ -345,6 +351,7 @@ _genericStdCmdPat = re.compile(_GENERIC_STD_CMD_REGEX, re.VERBOSE)
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+class	CommandHelpItem:		pass	# A help item summarizing a command.
 class	Command:				pass	# A single command type.
 class	Subcommand:				pass	# A special case of another command.
 class	Commands:				pass	# A list of commands.
@@ -377,6 +384,33 @@ def downcase(name:str):
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+class CommandHelpItem(HelpItem):
+    """A CommandHelpItem is a specialized type of HelpItem, which separately 
+      tracks the usageText and shortDesc attributes for a command."""
+
+    def __init__(newHelpItem:CommandHelpItem, 
+				usageText:str="(unset command usage string)", 
+				shortDesc:str="(unset command short description)"):
+        # NOTE: Callers should really always supply all the parameters!
+
+        item = newHelpItem
+
+        item._usageText = usageText  # Store the usage text for later use.
+        item._shortDesc = shortDesc  # Store the short description for later use.
+
+        # Generate the text from usageText and shortDesc and pass it to the superclass initializer.
+        text = f"{usageText} - {shortDesc}"
+        super().__init__(text)
+
+    @property
+    def usageText(thisHelpItem:CommandHelpItem):
+        return thisHelpItem._usageText
+
+    @property
+    def shortDesc(thisHelpItem:CommandHelpItem):
+        return thisHelpItem._shortDesc
+
+
 class Command:
 
 	"""commandInterface.Command									  [public class]
@@ -398,7 +432,30 @@ class Command:
 			.name:str - Symbolic name for this command pattern. Usually
 				(but not necessarily always) this is also an alphanumeric
 				word that invokes the command if following a slash ('/').
-				
+				For example, the 'help' command has the name 'help', and
+				is invoked by typing '/help' at the command line.
+
+			.usageText:str - A short string summarizing the usage format of
+				this command in a human-readable way, e.g. "/<cmdName> <arg1> 
+				<arg2> ...".  This is used by the help system in the course of 
+				generating a HelpItem and a help screen to describe the command 
+				to the user.
+			
+			.shortDesc:str - A short text string describing the function of
+				the command. This is used in the help system in the course 
+				of generating a HelpItem for the command to describe the
+				command to the user. A good short description is usually just 
+				one line, or at most a single sentence. A typical format for 
+				the HelpItem that gets auto-generated for a command is:
+					<usageText> - <shortDesc>
+
+			.longDesc:str - Longer text string describing the function of
+				the command in more detail. This is used in the help system
+				in the course of generating a full help screen for the 
+				command in response to a "/help <cmdName>" command. A good
+				long description is usually a paragraph or two, or at most
+				about a half-page of text.
+
 			.standard:bool=True - If this is True (the default), then the
 				command may be invoked by including '/<cmdName>' at the
 				start of the input line (or anywhere in the input line,
@@ -441,6 +498,13 @@ class Command:
 			.cmdModule:CommandModule - Command module to which this
 				command is associated.
 
+			.helpItem:HelpItem - HelpItem object that is generated for this
+				command. This is used in the help system to generate help
+				screens for command modules that this command is contained
+				in. This is automatically generated when the command is
+				initialized, and (aspirationally) is updated whenever the 
+				command's usage text or short description is changed.
+
 
 		Subclasses may define the following class-level variables:
 		==========================================================
@@ -449,6 +513,15 @@ class Command:
 		  ------------
 
 			.name:str - If defined, this is used to initialize cmd.name.
+
+			.usageText:str - If defined, this is used to initialize
+				cmd.usageText.
+
+			.shortDesc:str - If defined, this is used to initialize
+				cmd.shortDesc.
+
+			.longDesc:str - If defined, this is used to initialize
+				cmd.longDesc.
 
 			.cmdFormat:str - If defined, this is used to initialize cmd.cmdFormat.
 
@@ -526,6 +599,9 @@ class Command:
 	def __init__(
 			newCmd:		Command,	# Newly-created command object to be initialized.
 			name:		str  =None,	# Symbolic name of this command pattern.
+			usageText:	str  =None,	# Short text string describing the usage of this command.
+			shortDesc:	str  =None,	# Short text string describing the function of this command.
+			longDesc:	str  =None,	# Long text string describing the function of this command.
 			standard:	bool =None,	# True (default) -> command may be invoked by '/<name>'.
 			takesArgs:	bool =None,	# True (default) -> command may take an optional argument list.
 			anywhere:	bool =None,	# True -> command may start anywhere on the input line.
@@ -596,10 +672,18 @@ class Command:
 			# if not provided by caller, but provided by class definition.
 		
 		if name is None 		and hasattr(cmd,'name'):
-
 			name = cmd.name
 
 		_logger.info(f"Initializing command '{name}'...")
+
+		if usageText is None 	and hasattr(cmd,'usageText'):
+			usageText = cmd.usageText
+
+		if shortDesc is None 	and hasattr(cmd,'shortDesc'):
+			shortDesc = cmd.shortDesc
+
+		if longDesc is None 	and hasattr(cmd,'longDesc'):
+			longDesc = cmd.longDesc
 
 		if standard is None:
 
@@ -677,6 +761,9 @@ class Command:
 			# Store initializer arguments in instance attributes.
 		
 		cmd.name			= name
+		cmd.usageText		= usageText
+		cmd.shortDesc		= shortDesc
+		cmd.longDesc		= longDesc
 		cmd.standard		= standard
 		cmd.takesArgs		= takesArgs
 		cmd.anywhere		= anywhere
@@ -687,6 +774,12 @@ class Command:
 		cmd.unique			= unique
 		cmd.cmdModule		= cmdModule
 		
+			# Automatically generate and store a help item for this command.
+			# This will be used in assembling the help screen text for the
+			# command module that the command is a part of.
+		
+		cmd.helpItem = CommandHelpItem(cmd.name, cmd.usageText, cmd.shortDesc)
+
 			# If command format was not provided, try to generate it automatically.
 
 		if cmdFmt is None:
@@ -749,6 +842,7 @@ class Command:
 		if name is None:
 			cmd.cmdFormat = _GENERIC_STD_CMD_REGEX
 			unique = False	# The default regex is most definitely NOT a unique pattern.
+				# Not used currently?
 
 			# NOTE: The above can be appropriate if we wish to add an unnamed "generic
 			# command" # to the system, such that if the user puts
@@ -1082,7 +1176,7 @@ class Subcommand(Command):
 		Each of the command words that may appear after '/goal' denotes
 		a subcommand; for example, one of the subcommands is:
 
-			/goal add ["<description>"]
+			/goal add "<description>"
 
 		which is considered a special case of the '/goal' command.
 
@@ -1354,6 +1448,36 @@ class Commands:
 		else:
 			return []
 
+def getHelpList(cmds:Commands) -> List[CommandHelpItem]:
+
+    """Returns a list of CommandHelpItem objects, for all commands in
+      the command list."""
+
+    helpList = []
+
+    for cmd in cmds._cmdOD.values():
+      helpList += [cmd.helpItem]
+
+    return helpList
+
+def genHelpText(cmds:Commands) -> str:
+
+	"""Generates a help text string for the given command list.
+		The help text is a display of the help text for all 
+		commands in the list, on separate lines with a blank
+		line in between them, in the order in which they appear 
+		in the command list.  The help text is returned as a
+		string."""
+
+	helpList = getHelpList(cmds)
+
+	helpText = ""
+
+	for item in helpList:
+		helpText += f" - {item.text}\n\n"
+
+	return helpText
+
 #__/ End class Commands.
 
 
@@ -1518,21 +1642,39 @@ class CommandModule:
 
 	#__/
 
+	def getHelpList(self) -> List[CommandHelpItem]:
+		"""
+			Returns a list of help items for all commands
+			in this module.
+		"""
+		return self._commands.getHelpList()
+	
+	# Note: The following can be overridden by subclasses
+	# for specific types of command modules, if desired.
+	def genHelpText(self) -> str:
+		"""
+			Generates a string containing help text for all
+			commands in this module.
+		"""
+		helpText = f"Help for commands in module {self.name}:\n"
+		helpText += self._commands.genHelpText()
+
+		return helpText
 
 #__/ End public class commandInterface.CommandModule.
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class CommandModules:
 
-	"""An instance of this class represents a collection of
-		command modules. It is kept ordered for the simple
-		reason that in case of a collision between command
-		names between modules, the one in the module that
+	"""An instance of this class represents a collection of command modules. It 
+		is kept ordered for the simple reason that in case of a collision 
+		between command names in different modules, the one in the module that
 		was installed first takes priority."""
 			# Is this a good policy? The idea is so if a developer accidentally
-			# introduces a name collision in a app module with a more fundamental 
-			# system module, he will notice it right away during testing.
-		
+			# introduces a name collision in an app module with a more fundamental 
+			# system module, he will notice it right away during app testing, instead
+			# of silently overriding the system command.
+
 	def __init__(self):
 		self._commandModuleList = []
 
@@ -1726,7 +1868,8 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 		if match:
 			
 			cmdId = match.group(1)		# Command identifier part of the match.
-			argList = match.group(2)	# Argument list, if any (or None).
+			#argList = match.group(2)	# Argument list, if any (or None).
+				# (Currently unused.)
 
 			# Now that we have extracted a potential command identifier,
 			# we must try to look up commands matching that identifier.
@@ -1751,7 +1894,6 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 			#|--------------------------------------------------------------
 			#| Alright, since that didn't work, next let's check to see if
 			#| we can find the standard pattern anywhere in the line.
-
 
 		match = _genericStdCmdPat.search(inputLine)
 		if match:

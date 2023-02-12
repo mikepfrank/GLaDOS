@@ -15,7 +15,7 @@
 """
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-__all__ = [ 'TheHelpSystem' ]
+__all__ = [ 'HelpItem', 'HelpModule', 'TheHelpSystem' ]
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from infrastructure.logmaster	import getLoggerInfo, ThreadActor
@@ -72,6 +72,18 @@ class HelpModule:
 		in the Help app's window, which displays the items and sub-modules
 		contained in the module."""
 
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#| Class properties. May be overridden by subclasses.
+	#|
+	#| 		helpScreenText - The complete text of the help screen for this
+	#| 			module. This is used when the module is displayed in the
+	#| 			Help app's window. It is constructed from the module's
+	#| 			intro text, the text of its help items, and the text of
+	#| 			its sub-modules. This is a class property, so it may be
+	#| 			overridden by subclasses.
+	#|
+	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	def __init__(newHelpModule:HelpModule, name:str="(unnamed help module)",
 					topic:str="(unspecified topic)", intro:str=None):
 			# NOTE: Callers should really always supply the 'name' and 'topic' parameters.
@@ -86,6 +98,8 @@ class HelpModule:
 			argument should also always be provided."""
 
 		pass
+
+	
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
@@ -105,7 +119,7 @@ class _TheRootHelpModule(HelpModule):
 		# app initializes.
 
 		intro=("Welcome to GLaDOS, the General Lifeform's automated Domicile "
-			   "Operating System, (c)2020-21 Metaversal Constructions.  This "
+			   "Operating System, (c)2020-23 Metaversal Constructions.  This "
 			   "is the top-level screen of GLaDOS's interactive Help system.  "
 			   "Topics and subtopics are organized in hiarchical menus, and "
 			   "you can drill down into them by typing the topic number.")

@@ -45,6 +45,10 @@ from	commands.commandInterface	import	(
 
 from	helpsys.helpSystem			import	HelpModule	# We'll subclass this.
 
+from	.appCommands				import	AppCommandModule
+		# Base class from which we derive CommandModule subclasses for 
+		# specific applications.
+
 from	.application				import	Application_
 		# Base class from which we derive subclasses for specific applications.
 
@@ -321,6 +325,10 @@ class	The_GoalsAdd_Subcommand(Goals_Subcommand_):
 
 	name			= 'goals-add'
 
+	usageText		= '/goal add "<desc>"'
+	shortDesc		= 'Adds a new goal "<desc>" to the goal list.'
+	longDesc		= 'Adds a new goal "<desc>" to the end of the goal list.'
+
 	#word			= 'add'
 
 	argListRegex	= strRegex		# '"<desc>"' argument.
@@ -342,6 +350,10 @@ class	The_GoalsAdd_Subcommand(Goals_Subcommand_):
 class	The_GoalsChange_Subcommand(Goals_Subcommand_):
 
 	name			= 'goals-change'
+
+	usageText		= '/goal change <goalNum> [to] "<desc>"'
+	shortDesc		= 'Changes the description of goal <goalNum> to "<desc>".'
+	longDesc		= 'Changes the description of goal number <goalNum> to "<desc>".'
 
 	#word			= 'change'
 
@@ -367,6 +379,11 @@ class	The_GoalsDelete_Subcommand(Goals_Subcommand_):
 
 	name			= 'goals-delete'
 
+	usageText		= '/goal delete <goalNum>'
+	shortDesc		= 'Deletes goal <goalNum> from the goal list.'
+	longDesc		= 'Deletes goal number <goalNum> from the goal list. " \
+						"Subsequent goals are moved upwards to fill the gap.'
+
 	#word			= 'delete'
 
 	argListRegex	= numRegex					# <N> argument.
@@ -389,6 +406,11 @@ class	The_GoalsDelete_Subcommand(Goals_Subcommand_):
 class	The_GoalsInsert_Subcommand(Goals_Subcommand_):
 
 	name			= 'goals-insert'
+
+	usageText		= '/goal insert <goalNum> "<desc>"'
+	shortDesc		= 'Inserts a new goal "<desc>" at position <goalNum> in the goal list.'
+	longDesc		= 'Inserts a new goal "<desc>" at position <goalNum> in the goal list. ' \
+						'Subsequent goals are moved downwards to make room.'
 
 	#word			= 'insert'
 
@@ -414,6 +436,11 @@ class	The_GoalsInsert_Subcommand(Goals_Subcommand_):
 class	The_GoalsMove_Subcommand(Goals_Subcommand_):
 
 	name			= 'goals-move'
+
+	usageText		= '/goal move <fromNum> to <toNum>'
+	shortDesc		= 'Moves goal <fromNum> to position <toNum> in the goal list.'
+	longDesc		= 'Moves goal number <fromNum> to position <toNum> in the goal list. ' \
+						'Goals in between the old and new locations are moved accordingly.'
 
 	#word			= 'move'
 
@@ -443,7 +470,7 @@ class	The_Goals_Command(Command):
 		The '/Goals' command just dispatches to any of several subcommands:
 
 			/goal add "<desc>"
-			/goal change <N> "<desc>"
+			/goal change <N> [to] "<desc>"
 			/goal delete <N>
 			/goal insert <N> "<desc>"
 			/goal move <N> to <M>
@@ -453,6 +480,12 @@ class	The_Goals_Command(Command):
 	"""
 
 	name = 'Goals'	# Case-insensitive though. Prefix-invocable.
+
+	usageText = '/goal <subcommand> <args>'		# Generic suggesed usage.
+	shortDesc = 'Manages the goal list.'
+	longDesc = 'Manages the goal list. ' \
+				'The subcommands are: ' \
+				'add, change, delete, insert, move.'
 
 		# Override the default value of this class-level variable,
 		# because we do have subcommands.
@@ -475,7 +508,7 @@ class	The_Goals_Command(Command):
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
-class The_Goals_CmdModule(CommandModule):
+class The_Goals_CmdModule(AppCommandModule):
 
 	"""This singleton class implements the command module for the
 		Goals app. It provides the version of the '/Goals' command
@@ -492,12 +525,13 @@ class The_Goals_CmdModule(CommandModule):
 
 		_logger.info("Initializing the Goals app's command module...")
 
-		super().__init__(desc="Goals app's command module")
-			# Default initialization for command modules.
+			# Do default initialization for application command modules.
+		super().__init__(appName="Goals", application=The_Goals_App())
 
-			# Install this module in the command interface.
+			# Install this module in the global command interface.
 		cmdIF = TheCommandInterface()
 		cmdIF.installModule(thisCmdModule)
+
 
 	def populate(theGoalsCmdModule:The_Goals_CmdModule):
 
@@ -507,6 +541,10 @@ class The_Goals_CmdModule(CommandModule):
 
 			# This initializes the Goals command.
 		The_Goals_Command(cmdModule=goalsCmdMod)
+			# Note: This is actually a separate command from the '/Goals'
+			# app-launch command, which is automatically installed by the
+			# application system when the Goals app is initialized.
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
