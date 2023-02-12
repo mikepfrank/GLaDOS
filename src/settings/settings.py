@@ -105,6 +105,7 @@
 #|			RangeType		- Short range of integers.
 #|			IntegerType		- Wide range of integers.
 #|			ContinuousType	- Continuous ranges of numbers.
+#|			StringType		- String of characters.
 #|
 #|		In the future, types may be associated with 'widgets' within the 
 #|		settings app which are used to display/adjust their options.  (Or, is 
@@ -191,20 +192,22 @@ class	ValueList:				pass	# List of possible values, available for some types.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 class	Setting:
-	"""
-	"""
+	"""This class represents a single setting, which is a named value that 
+		can be adjusted by the user."""
 
 	def __init__(newSetting:Setting,
-			name:str=None,					# This is a short identifier string that can be used to name this setting e.g. in a /set command line.
-			settingType:SettingType_=None,	
-			defaultValue:object=None,		# This is the default value that should be used for this setting.
-			description:str=None,
-			docstring:str=None,
-			inModule:SettingsModule=None,
-			updateMethod:Callable=None,		# This method is called to cause the new setting value to actually take effect in the system.
+			name:str				 =None,	# This is a short identifier string that can be used to name this setting e.g. in a /set command line.
+			settingType:SettingType_ =None,	# This is the type of setting, which determines how it is displayed and how it can be adjusted.
+			defaultValue:object		 =None,	# This is the default value that should be used for this setting.
+			description:str			 =None,	# This is a short description of the setting, which may be displayed in the settings app.
+			docstring:str			 =None,	# This is a longer description of the setting, which may be displayed in the settings app.
+			inModule:SettingsModule	 =None,	# This is the settings module that this setting is a part of.
+			updateMethod:Callable	 =None,	# This method is called to cause the new setting value to actually take effect in the system.
 		):
-		"""
-		"""
+		"""This is the instance initializer for a new setting object."""
+
+			# Initialize private instance attributes for this setting.
+
 		newSetting._name 			= name
 		newSetting._type 			= settingType
 		newSetting._defaultValue	= defaultValue
@@ -213,8 +216,10 @@ class	Setting:
 		newSetting._inModule		= inModule
 		newSetting._updateMethod	= updateMethod
 		
-			# Initialize current value of setting.
+			# Initialize current value of setting to its default value.
+
 		newSetting._curValue		= defaultValue
+
 
 	def setValue(thisSetting:Setting, newValue:object):
 		"""Sets the value of the setting to the given value, then calls the 
@@ -225,6 +230,12 @@ class	Setting:
 				# It really is a new value!  Store it and update the system.
 			thisSetting._curValue = newValue	# Remember the setting's new value.
 			thisSetting._updateMethod()			# Call this setting's update method.
+
+
+	def getValue(thisSetting:Setting) -> object:
+		"""Returns the current value of the setting."""
+		return thisSetting._curValue
+
 
 	def resetToDefault(thisSetting:Setting):
 		"""This causes the setting to reinitialize itself to its default
@@ -289,6 +300,9 @@ class	SettingsModule:
 
 @singleton
 class	_TheRootSettingsModule(SettingsModule):
+	"""This is the root settings module, which is the top-level module in the
+		hierarchy of settings modules.  It is a singleton, so there is only one
+		instance of this class."""
 
 	def __init__(theRootSettingsModule:_TheRootSettingsModule,
 			name:str='glados',
@@ -296,16 +310,14 @@ class	_TheRootSettingsModule(SettingsModule):
 			docstring:str="""These are the top-level settings of the GLaDOS system.""",
 			subModules:Iterable=None,
 		):
+		"""This is the instance initializer for the root settings module."""
 
-		"""
-		"""
-
-		#/-----------------------------------------------------------
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| At this point, we could go ahead and create the list of 
 		#| top-level settings, but we're not quite ready to do that.
-		#\-----------------------------------------------------------
+		#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-		#/-----------------------------------------------------------
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| At this point, we could go ahead and create the list of 
 		#| top-level submodules, but we're not quite ready to do that.
 		#| The eventual list of installed submodules will include:
@@ -324,7 +336,7 @@ class	_TheRootSettingsModule(SettingsModule):
 		#|
 		#|		- TheAPISettingsModule (for the GPT-3 API)
 		#|
-		#\-----------------------------------------------------------
+		#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 			# Delegate completion of instance initialization to the 
 			# next class in the class resolution sequence.
@@ -350,6 +362,7 @@ class	TheSettingsFacility(_SettingsFacility_):
 			# _TheRootSettingsModule, which initializes the root 
 			# setings module.  Link it from an instance attribute.
 		theSettingsFacility._rootModule = _TheRootSettingsModule()
+		# NOTE: Later, we'll install other modules under the root module.
 	
 	def addToplevelModule(theSettingsFacility:TheSettingsFacility,
 			settingsModule=SettingsModule	# The settings module to add at top level.
