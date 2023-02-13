@@ -18,16 +18,25 @@
 __all__ = [ 'HelpItem', 'HelpModule', 'TheHelpSystem' ]
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 from infrastructure.logmaster	import getLoggerInfo, ThreadActor
 
 global _logger		# Logger serving the current module.
 global _component	# Name of our software component, as <sysName>.<pkgName>.
 			
 (_logger, _component) = getLoggerInfo(__file__)		# Fill in these globals.
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+from	typing		import	List
 
 from	infrastructure.decorators	import	singleton, classproperty
 		# A simple decorator for singleton classes.
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Dummy class declarations (for use in type hints only).
+
+class AppSystem_ : pass		# Dummy abstract base class for application systems.
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Forward class declarations (for use in type hints only).
@@ -38,8 +47,8 @@ class _TheRootHelpModule: pass	# The root node of the help-module hierarchy.
 class HelpModule: pass		# An help module, which can contain items and sub-modules.
 class HelpItem: pass		# An individual help item that may be contained in a module.
 
-#===============================================================================
-# Class definitions.
+#/==============================================================================
+#|  Class definitions.
 
 class HelpItem:
 
@@ -65,6 +74,7 @@ class HelpItem:
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 class HelpModule:
 
 	"""A help module is a collection of help items and sub-modules (which are
@@ -73,78 +83,385 @@ class HelpModule:
 		contained in the module."""
 
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	#| Class properties. May be overridden by subclasses.
+	#| 	The following may be defined as class attributes/properties by 
+	#|	specific subclasses of HelpModule; they may also be passed to the
+	#|	instance initializer, and/or be overridden as instance attributes.
+	#|
+	#|      name - The name of this module. This is used for debugging and
+	#| 			should be unique among all modules.
+	#|
+	#| 		topicName - The name of the topic that this help module describes.
+	#| 			This is used as a /help subcommand name for displaying this 
+	#|			help module.
+	#|		
+	#| 		topicDesc - A short description of the topic that this help module
+	#| 			describes. This is used as a title string for this help module,
+	#|			and also a description of the topic when it appears as a sub-
+	#|			module of a higher-level module.
+	#|
+	#|		introText - The introductory text for this module. This is used
+	#|			when the module is displayed in the Help app's window. It
+	#|			should be a short paragraph that describes the topic of the
+	#|			module. 
+	#|
+	#|		helpItems - A list of help items contained in this module. These
+	#|			are displayed in the Help app's window when this module is
+	#|			displayed, below the introductory text and above the list of
+	#|			sub-modules.
+	#|
+	#|		subModules - A list of sub-modules contained in this module. Their
+	#|			topic names and descriptions are displayed in the Help app's 
+	#|			window when this module is displayed, below the list of help
+	#|			items.
+	#|
+	#|		parentModule - The parent module of this module, if any. This is
+	#|			used to construct the help screen text for this module.
+	#|			It is typically displayed in the Help app's window when this\
+	#|			module is displayed, below all other text.
 	#|
 	#| 		helpScreenText - The complete text of the help screen for this
 	#| 			module. This is used when the module is displayed in the
 	#| 			Help app's window. It is constructed from the module's
 	#| 			intro text, the text of its help items, and the text of
-	#| 			its sub-modules. This is a class property, so it may be
-	#| 			overridden by subclasses.
+	#| 			its sub-modules.
 	#|
 	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	def __init__(newHelpModule:HelpModule, name:str="(unnamed help module)",
-					topic:str="(unspecified topic)", intro:str=None):
-			# NOTE: Callers should really always supply the 'name' and 'topic' parameters.
-			# The topic string specifies how this module is described when it appears as
-			# a sub-module of higher-level modules; it may also be used as a title string
-			# at the top of the screen for this module. The 'intro' argument, if provided,
-			# gives text that should appear as a "module introduction" at the top of its
-			# screen.
+	def __init__(newHelpModule:HelpModule, 
+					name		:str = None,	# The name of this module.
+					topicName	:str = None,	# The name of the module's topic.
+					topicDesc	:str = None,	# A short description of the topic.
+					introText	:str = None,	# The introductory text for this module.
+					helpItems	:List[HelpItem] = None,	
+						# The list of help items in this module.
+					subModules	:List[HelpModule] = None,
+						# The list of sub-modules in this module.
+					parentModule:HelpModule = None,
+						# The parent module of this module, if any.
+				):
+			# NOTE: Callers should really always supply most of these argument 
+			# values, unless they are defined as subclass attributes. The
+			# helpItems and subModules arguments are optional; individual
+			# help items and sub-modules may be added later via the addItem()
+			# and addSubModule() methods.
+			# 
+			# Note the topicDesc string specifies how this module is described 
+			# when it appears as a sub-module of higher-level modules; it may 
+			# also be used as a title string at the top of the screen for this 
+			# module. 
+			#
+			# The 'intro' argument, if provided, gives text that should appear 
+			# as a "module introduction" at the top of its screen.
 
 		"""Instance initializer for new help modules. The <name> argument should
-			always be provided, and is a module name used in debugging. The <topic>
-			argument should also always be provided."""
+			always be provided, and is a module name used in debugging. The 
+			<topicName> argument should also always be provided, as it is the
+			subcommand name used to access the module via the /help command."""
 
-		pass
 
+		module = newHelpModule		# This new help module being initialized.
+
+
+		# For arguments that are not provided, check to see if they are
+		# defined as class attributes, and if so, use those values instead.
+
+		if name is None and hasattr(module, 'name'):
+			name = module.name
+
+		if topicName is None and hasattr(module, 'topicName'):
+			topicName = module.topicName
+		
+		if topicDesc is None and hasattr(module, 'topicDesc'):
+			topicDesc = module.topicDesc
+		
+		if introText is None and hasattr(module, 'introText'):
+			introText = module.introText
+		
+		if helpItems is None and hasattr(module, 'helpItems'):
+			helpItems = module.helpItems
+		
+		if subModules is None and hasattr(module, 'subModules'):
+			subModules = module.subModules
+
+		if parentModule is None and hasattr(module, 'parentModule'):
+			parentModule = module.parentModule
+
+
+		# Initialize any remaining uninitialized arguments to placeholder values.
+
+		if name is None:
+			name = "(unnamed help module)"
+
+		if topicName is None:
+			topicName = "(unspecified topic)"
+
+		if topicDesc is None:
+			topicDesc = "(unspecified description)"
+
+		if introText is None:
+			introText = "(missing module intro text)"
+
+		if helpItems is None:
+			helpItems = []		# Empty list of help items initially.
+		
+		if subModules is None:
+			subModules = []		# Empty list of sub-modules initially.
+
+
+		# Call the .genHelpText() method to generate the help text for this
+		# module and store it in the 'helpScreenText' attribute.
+
+		module.genHelpText()
+
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|  Class public methods defined below:
+	#|
+	#|		addItem(thisHelpModule:HelpModule, helpItem:HelpItem)
+	#|
+	#|		addSubModule(thisHelpModule:HelpModule, subModule:HelpModule)
+	#|
+	#|		genHelpText(thisHelpModule:HelpModule)
+	#|
+	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	def addItem(thisHelpModule:HelpModule, helpItem:HelpItem):
+
+		"""Add a new help item to this help module. The <helpItem> argument
+			should be a HelpItem instance."""
+
+		module = thisHelpModule		# This help module.
+
+		if not isinstance(helpItem, HelpItem):
+			raise TypeError("The 'helpItem' argument must be a HelpItem instance.")
+
+		module.helpItems.append(helpItem)
+
+		# Re-generate the help text for this module.
+
+		module.genHelpText()
 	
+	def addSubModule(thisHelpModule:HelpModule, subModule:HelpModule):
+
+		"""Add a new sub-module to this help module. The <subModule> argument
+			should be a HelpModule instance."""
+
+		module = thisHelpModule		# This help module.
+
+		if not isinstance(subModule, HelpModule):
+			raise TypeError("The 'subModule' argument must be a HelpModule instance.")
+
+		module.subModules.append(subModule)
+
+		# Re-generate the help text for this module.
+
+		module.genHelpText()
+	
+	def genHelpText(thisHelpModule:HelpModule):
+
+		"""Generate the help text for this help module. This method is called
+			automatically when the module is initialized, and also whenever
+			items or sub-modules are added to the module."""
+
+		module = thisHelpModule		# This help module.
+
+		# Start with the topic name and description.
+
+		helpText = module.topicName + " - " + module.topicDesc + "\n\n"
+
+		# Add the intro text for this module.
+
+		helpText += module.introText + "\n\n"
+
+		# Add the help items in this module.
+
+		for helpItem in module.helpItems:
+			helpText += helpItem.helpText + "\n\n"
+
+		# Add the sub-modules in this module.
+
+		for subModule in module.subModules:
+			helpText += subModule.topicName + " - " + subModule.topicDesc + "\n"
+
+		# If there is a parent module, remind the user they can use the "up" 
+		# command to return to it. (This command is in the command module for
+		# the help application, and is available when that application has the
+		# command focus.)
+
+		if module.parentModule is not None:
+			helpText += "\nUse '/up' to return to the " \
+				+ module.parentModule.topicName + " topic.\n"
+
+		# Store the generated help text in the 'helpScreenText' attribute.
+
+		module.helpScreenText = helpText
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 @singleton
-class _TheRootHelpModule(HelpModule):
+class _TheRootHelpModule(HelpModule):	# The root of the help module hierarchy.
 
 	"""This is the unique help module that sits at the root of the help module
 		hierarchy.  It is initialized when the help system is initialized.
 		Other help modules will get installed somewhere under this module."""
 
-	def __init__(theRootHelpModule:_TheRootHelpModule):
+	name = "root-module"		# Name of this module.
+	topicName = "GladOS"		# Name of this module's topic.
+	topicDesc = "How to Use the GLaDOS Operating Environment"	
+		# Description of this module's topic.
+	introText = ( \
+		"Welcome to GlaDOS, Gladys' Lovely and Dynamic Operating System, " \
+		"(c)2020-23 Metaversal Constructions.  This is the top-level screen " \
+		"of GLaDOS's interactive Help system.  Help topics and subtopics are " \
+		"organized in hiarchical menus, and you can drill down into them by " \
+		"typing /help <topicName>.")
 
-		rootModule = theRootHelpModule
-
-		# This creates a default intro text string to appear in the root help
-		# module. Note that may can be overridden later by the 'main-msg'
-		# app-config parameter in the glados-config.hjson file when the Help
-		# app initializes.
-
-		intro=("Welcome to GLaDOS, the General Lifeform's automated Domicile "
-			   "Operating System, (c)2020-23 Metaversal Constructions.  This "
-			   "is the top-level screen of GLaDOS's interactive Help system.  "
-			   "Topics and subtopics are organized in hiarchical menus, and "
-			   "you can drill down into them by typing the topic number.")
-
-			# This calls the default instance initializer for all help modules.
-		super(_TheRootHelpModule.__wrapped__, rootModule).__init__(name='root-module',
-		   topic="How to Use the GLaDOS Operating Environment", intro=intro)
-
-		
+	# Nothing else to do here.  The rest of the initialization is done by the
+	# HelpModule class initializer.
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 @singleton
 class TheHelpSystem:
 
-	"""This singleton class anchors the help system. Other systems may
-		access it by calling the class constructor TheHelpSystem(),
-		which just returns the singleton instance."""
+	"""This singleton class anchors the help system. Other systems may access it 
+		by calling the class constructor TheHelpSystem(), which just returns the 
+		unique singleton instance."""
+
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|  Data attributes.							 [class documentation block]
+	#|  ================
+	#|
+	#|  The following are the private class/instance attributes used in this
+	#|  class.  They are listed here for reference, but are not intended to be
+	#|  accessed directly by other classes.  Instead, they should be accessed
+	#|  via the public properties and methods defined below.
+	#|
+	#|		_rootModule:HelpModule - The root of the help module hierarchy.
+	#|
+	#|      _currentModule:HelpModule - The currently selected help module.
+	#|			Initially, this is set to the root module. Later, it may be
+	#|			set to other modules as the user drills down into the help
+	#|			hierarchy. Generally, it is the module that is currently
+	#|			displayed on the help screen or was most recently displayed,
+	#|			although it may be set to a different module if the user
+	#|			invokes the help system with a specific topic name. Also,
+	#|          certain actions may cause the current module to be changed
+	#|		    as a side effect, such as, closing the help window may cause
+	#|			the current module to revert to the root module.
+	#|
+	#|		_appSystem:AppSystem - The application system. This is used to
+	#|			access the Help application. The application system is 
+	#|			initialized after the help system, so we can't get a reference
+	#|			to it in the initializer, so we have to wait until later to
+	#|			get the reference.
+	#|
+	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	def __init__(theHelpSystem:TheHelpSystem):
 
 		helpSys = theHelpSystem
 		
-		# Create and store the root help module.
+		# Create and store a reference to the root help module.
 		helpSys._rootModule = _TheRootHelpModule()
+
+		# Set the current module to the root module.
+		helpSys._currentModule = helpSys._rootModule
+
+		# Initialize the application system reference to None, so we can
+		# tell that it hasn't been set properly yet. We can initialize it
+		# later after the application system is initialized by calling the
+		# setAppSystem() method.
+		helpSys._appSystem = None
 
 	@property
 	def rootModule(theHelpSystem:TheHelpSystem):
-		return thehelpsystem._rootModule
+		return theHelpSystem._rootModule
+	
+	@property
+	def currentModule(theHelpSystem:TheHelpSystem):
+		return theHelpSystem._currentModule
+
+	@currentModule.setter
+	def currentModule(theHelpSystem:TheHelpSystem, newModule:HelpModule):
+		theHelpSystem._currentModule = newModule
+	
+	@property
+	def appSystem(theHelpSystem:TheHelpSystem):
+		return theHelpSystem._appSystem
+
+	@appSystem.setter
+	def appSystem(theHelpSystem:TheHelpSystem, newAppSystem:AppSystem_):
+		theHelpSystem._appSystem = newAppSystem
+
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|  Class public methods defined below:
+	#|  ===================================
+	#|
+	#|		setAppSystem(thisHelpSystem:TheHelpSystem, newAppSystem:AppSystem)
+	#|
+	#|			Sets the application system reference. This is called by the
+	#|			system supervisor after the application system is initialized.
+	#|
+	#|		addToplevelItem(thisHelpSystem:TheHelpSystem, helpItem:HelpItem)
+	#|
+	#|			Adds a new top-level help item to the root help module.
+	#|
+	#|		addToplevelModule(thisHelpSystem:TheHelpSystem, helpModule:HelpModule)
+	#|
+	#|			Adds a new top-level help module under the root help module.
+	#|
+	#|		lookupModule(thisHelpSystem:TheHelpSystem, moduleName:str=None, topicName:str=None)
+	#|
+	#|			Searches the help module hierarchy for a module with the given
+	#|			name (if provided) or topic name (if provided).  This will 
+	#|			first search all sub-modules of the current module, in depth-
+	#|			first order, and then search all sub-modules of the root
+	#|			module, in depth-first order.  If no module is found, this
+	#|			method returns None.
+	#|
+	#|		showHelpScreen(thisHelpSystem:TheHelpSystem, moduleName:str=None, topicName:str=None)
+	#|
+	#|			Displays the help screen for the given module or topic name (if 
+	#|			provided).  If neither a module name or a topic name is 
+	#|			provided, the current module is used.  If the indicated module
+	#|			is not found, a temporary error help module is displayed.  Note
+	#|			that this method invokes the Help application, which must be
+	#|			installed in the system and available, and the windowing system
+	#|			must already be initialized and running.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	def setAppSystem(thisHelpSystem:TheHelpSystem, theAppSystem:AppSystem_):
+		thisHelpSystem.appSystem = theAppSystem
+
+	def addToplevelItem(thisHelpSystem:TheHelpSystem, helpItem:HelpItem):
+		thisHelpSystem.rootModule.addItem(helpItem)
+
+	def addToplevelModule(thisHelpSystem:TheHelpSystem, helpModule:HelpModule):
+		thisHelpSystem.rootModule.addModule(helpModule)
+
+	def lookupModule(thisHelpSystem:TheHelpSystem, moduleName:str=None, topicName:str=None) -> HelpModule:
+
+		"""Searches the help module hierarchy for a module with the given
+			name (if provided) or topic name (if provided).  This will first
+			search all sub-modules of the current module, in depth-first order,
+			and then search all sub-modules of the root module, in depth-first
+			order.  If no module is found, this method returns None."""
+
+		helpSys = thisHelpSystem
+
+		# First, check the module sub-hierarchy under the current module.
+		if helpSys.currentModule is not None:
+			module = helpSys.currentModule.lookupModule(moduleName, topicName)
+			if module is not None:
+				return module
+
+		# If that fails, check the module sub-hierarchy under the root module.
+		if helpSys.rootModule is not None:
+			module = helpSys.rootModule.lookupModule(moduleName, topicName)
+			if module is not None:
+				return module
+
+		# If we get here, we didn't find the module.
+		return None

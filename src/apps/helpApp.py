@@ -25,11 +25,26 @@ from	.application			import	Application_
 @singleton
 class	The_Help_Command(Command):
 
-	"""The '/Help' command launches the Help app (if not already launched),
-		moves its window to the bottom of the receptive field (if not
-		already there) to call attention to it, and sets the input focus to it."""
+	# NOTE: This is the version of the /Help command that takes priority 
+	# when the Help app is active, so that we can process requests for
+	# help on individual commands. Note this is separate from the app-
+	# launch command that launches the Help app if it's not alreadyy
+	# running. However, if the /help command is provided bare with no
+	# arguments, then the version of the Help command here will not
+	# match, and instead the app-launch command will be invoked, which
+	# will have the effect of refreshing the Help app's window (bringing
+	# it to the front, if it's not already there, and moving it to the
+	# bottom of the receptive field, if it's not already there).
 
-	initName = 'Help'	# Initialize name of this command to 'Help'.
+	"""The '/help <command-or-topic>' command is used for bringing up 
+		help screens for individual commands, and other topics that have 
+		help modules currently installed. It searches the list of currently
+		installed help modules for a module with a name that matches the
+		<command-or-topic> argument. If it finds one, it displays the help
+		screen for that module in the Help app's window. If it doesn't find
+		one, it displays an error message on the console."""
+
+	name = 'Help'	# Initialize name of this command to 'Help'.
 
 		# Rather than writing a regex like the below for each prefix-invokable
 		# command, wouldn't it be a heckuva lot better to just code up a general
@@ -103,9 +118,41 @@ class The_Help_HelpModule(HelpModule):
 class The_Help_App(Application_):
 
 	"""
-	The "Help" tool simply displays some basic information
-	about how to use GLaDOS (for the A.I.'s benefit).
+		The_Help_App			    [public singleton class--GLaDOS application]
+		============
+
+			The "Help" app initially displays some basic information about how 
+			to use GLaDOS (for the A.I.'s benefit).  It also allows the user to 
+			navigate the interactive help system to bring up help screens for
+			individual commands or subcommands, and other topics that have help 
+			modules currently installed.
+
+			The app's window normally is slid, upon first being opened, down to 
+			a floating location initially near the bottom of the AI's receptive 
+			field, just above any anchored windows and the pinned field elements 
+			such as the input area and the prompt separator. Currently it moves 
+			with the history data, and may scroll off the top of the receptive 
+			field if not refreshed. When refreshed, it will slide back down to 
+			its initial floating location.
+
+		USAGE:
+		======
+		
+			Currently available /help command formats include:
+
+				- /Help - Open or refresh the Help app.
+
+				- /help <command-or-topic> - Display help for 
+					the given command or topic.
+				
+				- /help <command>-<subcommand> - Display help
+					for the given subcommand.
 	"""
+
+	# NOTE: This may be displayed at the bottom of the Help app's window to
+	# give the user a hint about how to use the variants of the /help command.
+	usageHint = "USAGE: '/help ( <command> | <command>-<subcommand> | <topic>)'."
+
 
 	# Note the string literal given here is just a default Help
 	# message, which may be overridden by the main-msg attribute

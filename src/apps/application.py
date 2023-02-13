@@ -100,6 +100,9 @@ global _component	# Name of our software component, as <sysName>.<pkgName>.
 			#|	1.3.2. These modules are specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+from apps.appHelp				import	AppHelpModule	
+	# Generic help module for GLaDOS applications.
+
 from field.placement			import	Placement
 		# This is needed to place application windows on the receptive field.
 
@@ -181,11 +184,13 @@ class	Application_:	pass	# Abstract base class for applications.
 			
 class Application_:
 
-	"""Abstract base class for GLaDOS applications."""
+	"""Abstract base class for GLaDOS applications. This class is not
+		actually instantiated, but is the superclass from which the
+		class for each specific application should be derived."""
 	
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#|	Public data members:							   [class documentation]
-	#|	--------------------
+	#|	====================
 	#|
 	#|		.name [string]	- Short name for the application.
 	#|
@@ -215,6 +220,64 @@ class Application_:
 	#|		.commandModule [CommandModule] - The top-level command module that
 	#|			is installed on behalf of this application in GLaDOS' command interface.
 	#|			Provides all of the commands associated with the application.
+	#|
+	#|		.dataDir [string]		- The path to the application's data directory.
+	#|
+	#|		.conf [dict]		- Application-specific configuration parameters.
+	#|
+	#|		.confFile [string]	- Path to the application's configuration file.
+	#|
+	#|		.confFileDir [string] - Path to the directory containing the application's
+	#|			configuration file.
+	#|
+	#|
+	#|	Public properties:
+	#|	==================
+	#|
+	#|		.launched [bool]	- True if/when the app has been started.
+	#|
+	#|		.hasFocus [bool]	- Is this the app that currently has the command focus?
+	#|
+	#|		.isRunning [bool]	- True if the app is running (i.e., not suspended).
+	#|
+	#|		.isSuspended [bool]	- True if the app is suspended.
+	#|
+	#|		.isTerminated [bool]	- True if the app has been terminated.
+	#|
+	#|		.isInitialized [bool]	- True if the app has been initialized.
+	#|
+	#|		.isNotYetStarted [bool]	- True if the app has been initialized, but not yet started.
+	#|
+	#|		.isInitializing [bool]	- True if the app is in the process of being initialized.
+	#|
+	#|		.isOpen [bool]		- True if the app is open (i.e., its window(s) are open).
+	#|
+	#|		.isClosed [bool]	- True if the app is closed (i.e., its window(s) are closed).
+	#|
+	#|	
+	#|  Public data members that may be overridden by subclasses:
+	#|  =========================================================
+	#|
+	#|		.helpModule [HelpModule] - The top-level help module that is installed
+	#|			on behalf of this application in GLaDOS' help system. (This will be
+	#|			set to a generic appHelp.AppHelpModule instance if the application
+	#|			does not provide its own help module.)
+	#|
+	#|
+	#|	Public data members that may be provided by subclasses:
+	#|	=======================================================
+	#|
+	#|		.helpText [string] - If provided, this string will be displayed on 
+	#|			the main screen of the help module for this application. (This
+	#|			overrides any help text that might have been automatically
+	#|			generated for the application by appHelp.AppHelpModule.)
+	#|			This is used by appHelp.AppHelpModule, but it may be overridden 
+	#|			by the application's help-text config parameter, or by the 
+	#|			application's custom help module, if it exists.
+	#|
+	#|		.introText [string] - If provided, this string will be displayed on
+	#|			the screen of the help module for this application, followed by
+	#|			any help text for the application's command module.
 	#|
 	#|
 	#|	Private data members:
@@ -339,6 +402,39 @@ class Application_:
 		"""Boolean property: Has this app been launched?"""
 		return thisApp._launched
 
+	@property
+	def hasFocus(thisApp):
+		"""Boolean property: Does this app currently have the command focus?"""
+		return thisApp._hasFocus
+
+	# Method to retrieve the "intro" text for this application's help screen.
+	# May be overridden by subclasses, if they want to provide a custom method
+	# for generating their intro text.
+
+	def getIntroText(thisApp):
+		"""Returns the introductory text for this application's help screen."""
+
+		# Default placeholder intro text if none is provided by the app.
+		introText = f"""This is the main help screen for {thisApp.name}, " \
+			"which is a GLaDOS application.  Its introductory help text has " \
+			"not yet been defined."""
+
+		# Next, check for an '.introText' (instance or class) attribute, 
+		# and use that as the intro text if it exists.
+		if hasattr(thisApp, 'introText'):
+			introText = thisApp.introText
+
+		# Next, look for an 'intro-text' attribute in the app's configuration 
+		# dictionary, and use that as the intro text if it exists.
+		if 'intro-text' in thisApp._conf:
+			introText = thisApp._conf['intro-text']
+
+		# Cache the intro text in a private instance attribute, for reference.
+		thisApp._introText = introText
+
+		# Return the intro text.
+		return thisApp._introText
+
 
 	def grabFocus(app):
 
@@ -391,7 +487,7 @@ class Application_:
 	
 		"""This virtual method should be overridden in application-specific
 			subclasses.	 It should create a command module for the application
-			(i.e., an instance of CommandModule or one of its subclasses) and
+			(i.e., an instance of AppCommandModule or one of its subclasses) and
 			return it.	Generally, the command module should have been pre-
 			loaded with all of the application's commands."""
 

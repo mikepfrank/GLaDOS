@@ -170,6 +170,9 @@ from 	processes.processSystem		import	TheProcessSystem
 from	entities.entity				import	System_Entity_, The_Supervisor_Entity
 	# This is a singleton entity denoting the supervisor subsystem itself.
 
+from	helpsys.helpSystem			import	TheHelpSystem
+	# This singleton represents the Help system.
+
 from	settings.settings			import	TheSettingsFacility
 	# This facility is for keeping track of all the available settings.
 
@@ -411,12 +414,14 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 		#|		These data members keep references to the various 
 		#|		subsystems that we manage:
 		#|
-		#|			._actionSystem
-		#|			._commandInterface
-		#|			._windowSystem
-		#|			._processSystem
-		#|			._appSystem
-		#|			._cognitiveSystem
+		#|			._actionSystem			- The action communication system.
+		#|			._helpSystem			- Maintains help module hierarchy.
+		#|			._commandInterface		- The system's command interface.
+		#|			._settingsSystem		- For managing system settings.
+		#|			._windowSystem			- The windowing system.
+		#|			._processSystem			- For managing subprocesses.
+		#|			._appSystem				- For managing GladOS applications.
+		#|			._cognitiveSystem		- For managing the AI's mind.
 		#|
 		#|		(We don't use any of these yet; using singletons instead.)
 		#|
@@ -435,7 +440,10 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 				This method is responsible for creating and initializing 
 				all of the other major subsystems of GLaDOS, including:
 				
+					* The action system (supervisor.action).
+					* The help system (helpsys.HelpSystem).
 					* The command interface (command.CommandInterface).
+					* The settings system (settings.settings).
 					* The window system (windows.WindowSystem).
 					* The process system (process.ProcessSystem).
 					* The application system (apps.appSystem).
@@ -466,6 +474,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 		# As a small initial task, we link up the supervisor (i.e., ourselves) with the console client.
 		supervisor.setConsole(console)
 		
+
 			#|===============================================================
 			#| First, we initialize all of the major GLaDOS subsystems.
 			#|
@@ -473,6 +482,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 			#| since these constructors all maintain their own singletons,
 			#| but are included just to document that a value is returned.
 		
+
 				#|--------------------------------------------------------------
 				#| (0) We initialize our action system. This is a part of the
 				#| supervisor subsystem that processes, and decides what to do 
@@ -493,9 +503,24 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 			# NOTE: Maybe this isn't needed; the console could just import the 
 			# action module and call TheActionSystem() directly?
 		
-		
+
 				#|--------------------------------------------------------------
-				#| (1) We start up the command interface subsystem next.  We do 
+				#| (1) Next, we initialize the help system.  This is a subsystem
+				#| 	that maintains a hierarchy of help modules, which are objects
+				#| 	that provide help information for various aspects of the
+				#| 	system.  The help system is used by the command interface
+				#| 	subsystem to provide help information to the user.  We
+				#| 	initialize it here because it needs to be available to the
+				#| 	command interface subsystem, which is initialized next,
+				#|  so that command modules can create and initialize their
+				#|  associated help modules as they come into being.
+
+		_logger.info("    [Supervisor] Initializing the help system...")
+		supervisor._helpSystem = hs = TheHelpSystem()
+		
+
+				#|--------------------------------------------------------------
+				#| (2) We start up the command interface subsystem next.  We do 
 				#| this because, in general, every other subsystem of GLaDOS may 
 				#| include an associated command module, which needs to be 
 				#| installed in the command interface, so it needs to be 
@@ -512,7 +537,22 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 				
 
 				#|--------------------------------------------------------------
-				#| (2) Next, we initialize the virtual text-based window system 
+				#| (3) Next, we initialize the settings facility.  This is a
+				#| subsystem that maintains a hierarchy of settings modules,
+				#| which are objects that provide settings information for
+				#| various aspects of the system.  The settings system is used
+				#| to adjust various system parameters, and to save and restore
+				#| system settings.  We initialize it here because it needs to
+				#| be available to the subsequent subsystems, which may include
+				#| associated settings modules, which need to be installed in
+				#| the settings facility as they come into being.
+		
+		_logger.info("    [Supervisor] Initializing the settings facility...")
+		supervisor._settingsFacility = sf = TheSettingsFacility()
+
+
+				#|--------------------------------------------------------------
+				#| (4) Next, we initialize the virtual text-based window system 
 				#| for use by the AI.  (Note this is distinct from the curses-
 				#| based window system being utilized by the console display.)  
 				#| We do this now because the next step will be to initialize
@@ -525,7 +565,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 		
 		
 				#|--------------------------------------------------------------
-				#| (3) Next, we initialize the process system.  This is needed 
+				#| (5) Next, we initialize the process system.  This is needed 
 				#| to support any background GLaDOS sub-processes that may need 
 				#| to be created in order to support individual apps that will 
 				#| be launched from within GLaDOS, and furthermore, there may be 
@@ -540,7 +580,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 				
 				
 				#|--------------------------------------------------------------
-				#| (4) Now we can initialized the application subsystem.  This 
+				#| (6) Now we can initialized the application subsystem.  This 
 				#| allows individual GLaDOS applications to be launched as 
 				#| needed, and some of them will even be launched automatically 
 				#| on system startup in .start(), below.
@@ -550,7 +590,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 		
 		
 				#|--------------------------------------------------------------
-				#| (5) Finally, we can initialize the A.I.'s cognitive system.
+				#| (7) Finally, we can initialize the A.I.'s cognitive system.
 				#| We pass it a pointer to the console, because it will need to
 				#| be able to update the console display when the field changes.
 		
@@ -590,6 +630,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 		
 	#__/ End singleton instance initializer for class TheSupervisor.
 
+
 	def setConsole(theSupervisor:TheSupervisor, console:ConsoleClient):
 		
 		"""Connect ourselves up with the console, so it can communicate
@@ -599,9 +640,11 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 		supervisor._console = console
 		console.setSupervisor(supervisor)
 
+
 	@property
 	def console(theSupervisor:TheSupervisor):
 		return theSupervisor._console
+
 
 	def connect_AI_inputs(theSupervisor):
 	
@@ -626,6 +669,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 			#| the content that you produce gets distributed to all of them!"
 		
 		TheActionNewsNetwork().addChannels(aiInputChannels)
+
 
 	def startup(theSupervisor):
 	
@@ -665,6 +709,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 		_logger.debug("  [Supervisor] Creating and initiating startup announcement action.")
 		_AnnounceStartupAction().initiate()
 	
+
 	def startMainloop(theSupervisor):
 		
 		supervisor = theSupervisor
@@ -674,6 +719,7 @@ class TheSupervisor:	# Singleton class for the GLaDOS supervisor subsystem.
 		
 		_logger.debug("theSupervisor.startMainloop(): Starting main supervisor thread.")
 		superthread.start()
+
 
 	@property
 	def thread(theSupervisor):

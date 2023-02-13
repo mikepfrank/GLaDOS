@@ -1,4 +1,6 @@
 # goalsApp.py
+# Implements the 'Goals' application within GLaDOS, which is a simple
+# application that allows the AI user to create and manage a list of goals.
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -6,17 +8,19 @@ __all__ = [ 'The_Goals_App' ]
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-from os import path
-from json import load as json_load
-from hjson import load as hjson_load
+from os		import 	path
+from json	import 	load 	as json_load
+from hjson	import 	load 	as hjson_load
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 from infrastructure.logmaster	import getLoggerInfo, ThreadActor
 
 global _logger		# Logger serving the current module.
 global _component	# Name of our software component, as <sysName>.<pkgName>.
 			
 (_logger, _component) = getLoggerInfo(__file__)		# Fill in these globals.
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 from	infrastructure.decorators	import	singleton, classproperty
@@ -27,7 +31,10 @@ from	entities.entity				import	The_GoalsApp_Entity		# Us!
 from	config.configuration		import	TheAIPersonaConfig
 		# Singleton that provides the configuration of the current AI persona.
 
-from	supervisor.action			import	(
+from	supervisor.action			import	(	# Action subsystem.h
+
+			# These functions are used to output messages to the AI user
+			# while processing actions.
 
 				output,		# Used for normal output.
 				info,		# Used for info output.
@@ -37,36 +44,41 @@ from	supervisor.action			import	(
 			)
 
 from	commands.commandInterface	import	(
-				Command,
-				Subcommand,
-				CommandModule,
-				TheCommandInterface
+				Command,				# Base class for commands.
+				Subcommand,				# Base class for subcommands.
+				#CommandModule,			# Not currently used.
+				TheCommandInterface		# Singleton for the command interface.
 			)
 
 from	helpsys.helpSystem			import	HelpModule	# We'll subclass this.
 
 from	.appCommands				import	AppCommandModule
-		# Base class from which we derive CommandModule subclasses for 
-		# specific applications.
+			# Base class from which we derive CommandModule subclasses for 
+			# specific applications.
 
 from	.application				import	Application_
-		# Base class from which we derive subclasses for specific applications.
+			# Base class from which we derive subclasses for specific applications.
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Forward declarations that allow us to use these names as type hints early on.
 
-class The_Goals_App: pass		# Anchor point for this module.
+class The_Goals_App: 			pass	# Anchor point for this module.
 
-class The_Goals_Command: pass		# The /Goals command.
-class The_Goals_CmdModule: pass		# Command module for the Goals app.
-class The_Goals_HelpModule: pass	# Help module for the Goals app.
+class The_Goals_Command: 		pass	# The /Goals command.
+class The_Goals_CmdModule: 		pass	# Command module for the Goals app.
+class The_Goals_HelpModule: 	pass	# Help module for the Goals app.
 
-class GoalList: pass			# List-of-goals structure.
-class Goal: pass				# And individual goal
+class GoalList: 				pass	# List-of-goals structure.
+class Goal: 					pass	# And individual goal.
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 class Goal:
+	"""A goal is a simple structure that contains a text description of a goal
+		and a sequence number that is used to identify the goal in a list of
+		goals.  The sequence number is assigned when the goal is created, and
+		is used to identify the goal in the list of goals when processing
+		commands to modify the goal list."""
 
 		# Class variable: How many goals have been created?
 	_nGoals = 0
@@ -95,6 +107,8 @@ class Goal:
 		
 
 class GoalList:
+
+	"""A goal list is a simple structure that contains a list of goals."""
 
 	@property
 	def goals(goalList):
@@ -185,6 +199,7 @@ class GoalList:
 
 		output(The_GoalsApp_Entity(),
 			   f"Added new goal #{newGoal.num}: {newGoalDesc}")
+
 
 	def changeGoal(goalList:GoalList, goalNum:int, newGoalDesc:str):
 		
@@ -288,6 +303,7 @@ class GoalList:
 			   f"Moved goal \"{movingGoalText}\" from #{fromGoal} to #{toGoal}.")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 class	Goals_Subcommand_: pass
 class	Goals_Subcommand_(Subcommand):
 
@@ -319,6 +335,9 @@ strRegex = r'\s+"([^"]*)"'	# Matches a string argument ' "<str>"'.
 	# characters that are not double quotation marks, then another
 	# double quotation mark. Capture everything inside the quotation
 	# marks as a group.
+	# NOTE: This regex does not allow for embedded double quotation
+	# marks in the string. Should we modify it to allow for that
+	# using backslash escapes?
 
 @singleton
 class	The_GoalsAdd_Subcommand(Goals_Subcommand_):
@@ -329,7 +348,7 @@ class	The_GoalsAdd_Subcommand(Goals_Subcommand_):
 	shortDesc		= 'Adds a new goal "<desc>" to the goal list.'
 	longDesc		= 'Adds a new goal "<desc>" to the end of the goal list.'
 
-	#word			= 'add'
+	#word			= 'add'			# This attribute is not currently used.
 
 	argListRegex	= strRegex		# '"<desc>"' argument.
 
@@ -570,13 +589,16 @@ class The_Goals_App(Application_):
 			The idea behind this app is that it allows the A.I. to view
 			and edit its list of high-level goals.
 
-			Its window normally is moved, upon first being opened, to an
-			anchoring position near the bottom of the AI's receptive field,
-			just above the pinned elements such as the input area and the
-			prompt separator.
+			Its window normally is slid, upon first being opened, down to a
+			floating location initially near the bottom of the AI's receptive 
+			field, just above any anchored windows and the pinned field
+			elements such as the input area and the prompt separator. Currently
+			it moves with the history data, and may scroll off the top of the
+			receptive field if not refreshed. When refreshed, it will slide
+			back down to its initial floating location.
 
 			The Goals app lists the current goals in its window, and when
-			its window is open, it enables its commend module, which
+			its window is open, it enables its command module, which
 			provides the following commands:
 
 				/goal (add|change|delete|insert|move) <N> [to <M>] ["<desc>"]
@@ -591,24 +613,28 @@ class The_Goals_App(Application_):
 
 				/goal delete <N>
 
-					Deletes goal #<N>.
+					Deletes goal #<N> (moving others up)
 
 				/goal insert <N> "<desc>"
 
-					Inserts a new goal at position #<N> (displacing others down).
+					Inserts a new goal at position #<N> (displacing others 
+					down).
 				
 				/goal move <N> to <M>
 
-					Moves goal #N to position #M in the list (moving others as needed).
+					Moves goal #N to position #M in the list (moving others as 
+					needed).
 			
-
-			The 'Goals' app can be used by the A.I. to modify its list
-			of high-level goals.
+			The 'Goals' app can thus be used by the A.I. to maintain and update 
+			its list of high-level goals.
 	"""
 
-	#usageHint = "To edit, type: '/goal (add|change|delete|insert|move) [<N> [to <M>]] [\"<desc>\"]'."
-	#usageHint = "USAGE: /goal (add|change|delete|insert|move) <arguments>"
+	# NOTE: The following usage hint is displayed at the bottom of the goal 
+	# app's window when it is open. It is not used when the app is closed.
 	usageHint = "USAGE: '/goal (add|change|delete|insert|move) [<N> [to <M>]] [\"<desc>\"]'."
+		# Old versions:
+		#usageHint = "To edit, type: '/goal (add|change|delete|insert|move) [<N> [to <M>]] [\"<desc>\"]'."
+		#usageHint = "USAGE: /goal (add|change|delete|insert|move) <arguments>"
 
 	def appSpecificInit(theGoalsApp:The_Goals_App, appConf:dict):
 
