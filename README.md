@@ -95,8 +95,8 @@ GLaDOS, as a foreground process.  It assumes `/bin/bash` points to
 your `sh`- or `bash`-compatible Unix shell.  Before running it, make
 sure `python3` is in your path and that it invokes the Python version
 3 executable.  You should run this script from here, the top-level
-directory of the repo (it looks for the GLaDOS code in the `src/`
-subdirectory).
+directory of the GLaDOS/ file hierarchy (it looks for the actual 
+GLaDOS code in the `src/` subdirectory).
 
 ## Usage of GladOS
 
