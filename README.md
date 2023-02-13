@@ -15,7 +15,7 @@ The following development branches are in relatively good shape, in the sense th
  - ``gladys`` (the original GPT-3/davinci persona). [Generally this one should be kept in sync with master.]
  - ``curie`` (Curie is a GPT-3/curie persona). [Currently we only use this for her Telegram bot.]
  - ``dante-dev`` (Dante is a GPT-3/text-davinci-002 persona). [Includes codebase changes.]
- - ``david`` (David is a GPT-3/code-davinci-002 persona). [Includes codebase changes.]
+ - ``david-dev`` (David is a GPT-3/code-davinci-002 persona). [Includes codebase changes.]
  - ``davinci-dev`` (David is a GPT-3/text-davinci-003 persona). [Includes codebase changes.]
  - ``love`` (Love is a GPT-3/text-davinci-001 persona).
 
