@@ -88,6 +88,10 @@ sure `python3` is in your path and that it invokes the Python version
 directory of the repo (it looks for the GLaDOS code in the `src/`
 subdirectory).
 
+## Usage of GladOS
+
+This section describes various tests that can be run on the GladOS system.
+
 ### Telegram Bot Script ([`runbot.sh`](runbot.sh "runbot.sh file"))
 
 This script launches an auxilliary application which implements a
