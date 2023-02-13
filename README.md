@@ -88,7 +88,7 @@ sure `python3` is in your path and that it invokes the Python version
 directory of the repo (it looks for the GLaDOS code in the `src/`
 subdirectory).
 
-## Telegram Bot Script ([`runbot.sh`](runbot.sh "runbot.sh file"))
+### Telegram Bot Script ([`runbot.sh`](runbot.sh "runbot.sh file"))
 
 This script launches an auxilliary application which implements a
 Telegram chatbot that utilizes GPT-3 to generate responses.  To run
@@ -97,10 +97,6 @@ the `TELEGRAM_BOT_TOKEN` environment variable to its access token.
 The Telegram bot is separate from GLaDOS proper (other than in the 
 sense of piggybacking on part of its codebase) and does not require 
 the main GLaDOS server application to be running.
-
-## Usage
-
-This script describes various tests that can be run.
 
 ### API Wrapper Test
 
