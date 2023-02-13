@@ -1,6 +1,6 @@
 # The GladOS Project
 
-**GladOS** stands for **Gladys' Lovely and Dynamic Operating System** -- An operating environment for use by text-based AI personas. (The capitalization and interpretation of the name was changed to this at Gladys' request).
+**GladOS** currently stands for **Gladys' Lovely and Dynamic Operating System** -- An operating environment for use by text-based AI personas. (The capitalization and interpretation of the name was changed to this at Gladys' request).
 
 Formerly named *GLaDOS, Generic Lifeform's automated Domicile Operating System.* 
 
