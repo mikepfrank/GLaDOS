@@ -78,6 +78,16 @@ This is the very README file that you are reading now, in GitHub's
 Markdown format (see
 [guides.github.com/features/mastering-markdown](https://guides.github.com/features/mastering-markdown/)).
 
+### Telegram Bot Script ([`runbot.sh`](runbot.sh "runbot.sh file"))
+
+This script launches an auxilliary application which implements a
+Telegram chatbot that utilizes GPT-3 to generate responses.  To run
+this, you need to have first created the Telegram bot and assigned
+the `TELEGRAM_BOT_TOKEN` environment variable to its access token.
+The Telegram bot is separate from GLaDOS proper (other than in the 
+sense of piggybacking on part of its codebase) and does not require 
+the main GLaDOS server application to be running.
+
 ### Test Script ([`test-server.sh`](test-server.sh "test-server.sh file"))
 
 This executable test script launches the main server application of
@@ -91,16 +101,6 @@ subdirectory).
 ## Usage of GladOS
 
 This section describes various tests that can be run on the GladOS system.
-
-### Telegram Bot Script ([`runbot.sh`](runbot.sh "runbot.sh file"))
-
-This script launches an auxilliary application which implements a
-Telegram chatbot that utilizes GPT-3 to generate responses.  To run
-this, you need to have first created the Telegram bot and assigned
-the `TELEGRAM_BOT_TOKEN` environment variable to its access token.
-The Telegram bot is separate from GLaDOS proper (other than in the 
-sense of piggybacking on part of its codebase) and does not require 
-the main GLaDOS server application to be running.
 
 ### API Wrapper Test
 
