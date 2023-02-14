@@ -31,6 +31,7 @@ class AppHelpModule(HelpModule):
                 intro   =None,  # Introductory text for the module (retrieved from the app if None).
                 text    =None,  # Full text of the module's screen (constructed automatically if None).
                 cmdMod  =None,  # Main command module for the application (retrieved from the app if None).
+                config  =None,  # Config file parameters for the help module (retrieved from the app if None).
             ):
     
             """Instance initializer for the AppHelpModule class. The <app> 
@@ -51,7 +52,8 @@ class AppHelpModule(HelpModule):
 
             # Construct the module name if necessary.
             if name is None:
-                name = app.name + " help"
+                name = app.name     # Use the application's name as the module name.
+                # This lets the user type "/help <appname>" to get the app's help screen.
 
             # Construct the module topic if necessary.
             if topic is None:
@@ -66,22 +68,31 @@ class AppHelpModule(HelpModule):
             
             # Retrieve the main command module for the application if necessary.
             if cmdMod is None:
-                cmdMod = app.getCmdMod()    # Try to get the command module from the app object.
-            
-            # Construct the module's help screen text if necessary.
-            # This is retrieved from the application object if possible,
-            # or from the system config file (which takes precedence).
-            if text is None:
-                text = app.getHelpText()
-                    # (This also checks the system config file.)
-                if text is None:
-                    # Assemble the help screen text from the intro and command module, if possible.
-                    if intro is not None and cmdMod is not None:
-                        text = intro + '\n\n' + cmdMod.getHelpText()
-                    elif intro is not None:
-                        text = intro
-                    elif cmdMod is not None:
-                        text = cmdMod.getHelpText()
+                cmdMod = app.commandModule    # Get the app object's command module.
+
+            # For each command in the app's command module, we'll retrieve a HelpItem
+            # for it, and add it to the module's list of items.
+            if cmdMod is not None:
+                for cmd in cmdMod.commands:
+                    self.addItem(cmd.helpItem)
+
+            # NOTE: The following should now be done automatically by the
+            # HelpModule initializer, which is called below.
+
+            # # Construct the module's help screen text if necessary.
+            # # This is retrieved from the application object if possible,
+            # # or from the system config file (which takes precedence).
+            # if text is None:
+            #     text = app.getHelpText()
+            #         # (This also checks the system config file.)
+            #     if text is None:
+            #         # Assemble the help screen text from the intro and command module, if possible.
+            #         if intro is not None and cmdMod is not None:
+            #             text = intro + '\n\n' + cmdMod.getHelpText()
+            #         elif intro is not None:
+            #             text = intro
+            #         elif cmdMod is not None:
+            #             text = cmdMod.getHelpText()
 
             super(AppHelpModule, self).__init__(name, topic, intro, text)
                 # Pass along the topic, intro, and text to the superclass initializer.

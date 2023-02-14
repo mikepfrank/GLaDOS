@@ -194,6 +194,9 @@ class Application_:
 	#|
 	#|		.name [string]	- Short name for the application.
 	#|
+	#|		.helpIntro [string] - Introductory text for the application's 
+	#| 			main help screen.
+	#|
 	#|		.state [string]	- State of the application.  One of:
 	#|
 	#|			'initializing'		- Hasn't finished being initialized yet.
@@ -291,15 +294,30 @@ class Application_:
 	#|
 	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	"""
-		Generically, an application also has the following associated
-		elements:
+	# This default help intro message is just a placeholder.  It should be
+	# overridden by the Application_ subclass for each application.
+	helpIntro = \
+		"This application's introductory help text has not yet been defined. " \
+		"Please contact the application's developer for more information."
 
-			- A data directory (within the AI's data directory).
-				This is used to preserve application state
-				information in between GLaDOS system runs.
-				[NOT YET IMPLEMENTED]
-	"""
+	# The class to be used for creating the application's main help module.
+	# This may be overridden by the application's subclass.
+	helpModuleClass = AppHelpModule		# appHelp.AppHelpModule
+		# This is a generic help module class for applications.
+		# It includes help items for the application's commands.
+
+	# The application's main help module, if it has been created. (It hasn't yet.)
+	helpModule = None
+
+	# """
+	# 	Generically, an application also has the following associated
+	# 	elements:
+
+	# 		- A data directory (within the AI's data directory).
+	# 			This is used to preserve application state
+	# 			information in between GLaDOS system runs.
+	# 			[NOT YET IMPLEMENTED]
+	# """
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	newApplication.__init__()				   [special instance method]
@@ -435,6 +453,7 @@ class Application_:
 		# Return the intro text.
 		return thisApp._introText
 
+	# Method to create the help module for this application.
 
 	def grabFocus(app):
 
@@ -448,18 +467,56 @@ class Application_:
 				# The window should respond by changing its decorator style.
 				
 
-	def appSpecificInit(self, conf:dict):
+	def appSpecificInit(thisApp, conf:dict):
 
 		"""This method performs application-specific initialization,
 			using the 'conf' dictionary, which comes from the 'app-config'
 			attribute in the system config file (glados-config.hjson).
 
 			Please note that this is a virtual method (placeholder) which
-			needs to be overridden by each application-specific subclass."""
+			should be overridden by each application-specific subclass."""
 
-		pass	# Does nothing.
+		app = thisApp	# For convenience.
+
+		# Create the application's help module, if it doesn't already
+		# exist, and install it in the GLaDOS interactive help system.
+		app.helpModule = app.createHelpModule()
 		
 	#__/ End appSpecificInit().
+
+
+	def createHelpModule(thisApp):		# Create app's main help module.
+
+		"""This virtual method should be overridden in application-specific
+			subclasses.	 It should create a help module for the application
+			(i.e., an instance of AppHelpModule or one of its subclasses) and
+			return it.	Generally, the help module should populate itself with 
+			]all of the application's help topics."""
+
+		app = thisApp	# For convenience.
+
+		helpModule = app.helpModule		# Get initial value (probably None).
+
+		# If this app's help module was already created, return it. 
+		if helpModule is not None:
+			return helpModule
+
+			#|------------------------------------------------------------
+			#| Create the help module for this application. This is done
+			#| using the application's .helpModuleClass attribute and/or
+			#| the application's configuration dictionary, which may
+			#| contain a 'help' attribute.
+
+		helpModuleClass = app.helpModuleClass
+		if helpModuleClass is not None:
+			# Get the app's help module's configuration dictionary.
+			helpConf = conf.get('help', None)
+			helpModule = helpModuleClass(app, config=helpConf)
+
+		else:
+			helpModule = None
+
+		return helpModule
 
 
 	def initCommandModule(self):
@@ -542,9 +599,8 @@ class Application_:
 		self.start()		# First, start up the app, if not already started.
 		self.openWins()		# Next, tell it to open its windows, if not already open.
 
-		self.foreground()
+		self.foreground()	# Bring the app to the foreground.
 
-		# TODO: Foreground the app, give it the command focus.
 
 	def foreground(thisApp):
 
@@ -573,6 +629,11 @@ class Application_:
 			# Reset the app's window location back to its initial placement.
 
 		app.activateCommandModule()
+			# Activate the app's command module, if it has one.
+			# This effectively gives the app the command focus.
+
+		# TODO: Update window decorations? (e.g., change border style to '===',
+		# and add command hints to lower border).
 
 
 	def openWins(thisApp):	# Subclasses should override this.

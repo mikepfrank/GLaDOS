@@ -385,31 +385,54 @@ def downcase(name:str):
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 class CommandHelpItem(HelpItem):
-    """A CommandHelpItem is a specialized type of HelpItem, which separately 
+
+	"""A CommandHelpItem is a specialized type of HelpItem, which separately 
       tracks the usageText and shortDesc attributes for a command."""
 
-    def __init__(newHelpItem:CommandHelpItem, 
-				usageText:str="(unset command usage string)", 
-				shortDesc:str="(unset command short description)"):
+	def __init__(
+				newHelpItem:CommandHelpItem,
+				name		:str="unset-command-name",
+				usageText	:str="(unset command usage string)", 
+				shortDesc	:str="(unset command short description)",
+				longDesc	:str="(unset command long description)"
+			):
         # NOTE: Callers should really always supply all the parameters!
 
-        item = newHelpItem
+		item = newHelpItem
 
-        item._usageText = usageText  # Store the usage text for later use.
-        item._shortDesc = shortDesc  # Store the short description for later use.
+		item._name 		= name		 # Store the name for later use.
+		item._usageText = usageText  # Store the usage text for later use.
+		item._shortDesc = shortDesc  # Store the short description for later use.
+		item._longDesc 	= longDesc	 # Store the long description for later use.	
 
         # Generate the text from usageText and shortDesc and pass it to the superclass initializer.
-        text = f"{usageText} - {shortDesc}"
-        super().__init__(text)
+		# Also pass longDesc as the verboseDesc parameter to the superclass initializer.
+		text = f"{usageText} - {shortDesc}"
+		item._text = text
 
-    @property
-    def usageText(thisHelpItem:CommandHelpItem):
-        return thisHelpItem._usageText
+		super().__init__(
+			name		= name, 
+			text		= text, 
+			shortDesc	= shortDesc, 
+			verboseDesc	= longDesc)
 
-    @property
-    def shortDesc(thisHelpItem:CommandHelpItem):
-        return thisHelpItem._shortDesc
+	@property
+	def usageText(thisHelpItem:CommandHelpItem):
+		return thisHelpItem._usageText
 
+	@property
+	def shortDesc(thisHelpItem:CommandHelpItem):
+		return thisHelpItem._shortDesc
+
+	# Special override for the superclass's topicDesc property.
+	# For command help items, the topicDesc is the same as the usageText.
+	# (For most help items, the topicDesc is the same as the shortDesc.)
+	# We do this because we want the usage to appear at the upper-right
+	# corner of the help screen for the item's temporary ItemHelpModule,
+	# whereas for non-command items, we want the shortDesc to appear there.
+	@property
+	def topicDesc(thisHelpItem:CommandHelpItem):
+		return thisHelpItem.usageText
 
 class Command:
 
@@ -525,6 +548,12 @@ class Command:
 
 			.cmdFormat:str - If defined, this is used to initialize cmd.cmdFormat.
 
+			.argListRegex:str - If defined, this is a regex that is used to 
+				parse the command's argument list.
+
+			.argListDoc:str	- If defined, this is a doc string for the command's 
+				argument list.
+
 			.cmdModule:CommandModule - If defined, this is used to
 				initialize cmd.module.
 
@@ -532,23 +561,18 @@ class Command:
 		  Overrideable:
 		  -------------
 
-			.standard:bool=True - Default value of cmd.standard.
+			.standard	: bool=True  - Default value of cmd.standard.
+			.takesArgs	: bool=True  - Default value of cmd.takesArgs.
+			.needsArgs	: bool=False - Default value of cmd.needsArgs.
+			.anywhere	: bool=False - Default value of cmd.anywhere.
+			.caseSens	: bool=False - Default value of cmd.caseSens.
+			.prefInvoc	: bool=True	 - Default value of cmd.prefInvoc.
+			.hasSubcmds : bool=False - Default value of cmd.hasSubcmds.
+			.unique		: bool=True	 - Default value of cmd.unique.
 
-			.takesArgs:bool=True - Default value of cmd.takesArgs.
-
-			.anywhere:bool=False - Default value of cmd.anywhere.
-
-			.caseSens:bool=False - Default value of cmd.caseSens.
-
-			.prefInvoc:bool=True - Default value of cmd.prefInvoc.
-
-			.hasSubcmds:bool=False - Default value of cmd.hasSubcmds.
-
-			.unique:bool=True - Default value of cmd.unique.
-
-			.actionClass:class=CommandAction_ - Subclass of CommandAction_
-				that is suitable for the creation of actions for executing
-				this command.
+			.actionClass:class=CommandAction_ - Subclasses should override this 
+				with a subclass of CommandAction_ that is suitable for the 
+				creation of actions for executing this command.
 
 
 		Instance public methods:
@@ -564,7 +588,7 @@ class Command:
 				the command's functionality in more detail, beyond its basic
 				pattern matching. It will be passed the groups (substrings)
 				parsed out by the command's regex. For standard commands, this
-				just consists of the command name (or prefix) and argument list.
+				just consists of the command's argument list as a single string.
 				The default method should be overridden by subclasses.
 
 			.genCmdAction(text:str, by:Entity_) - Generates a command
@@ -590,6 +614,7 @@ class Command:
 
 	standard	= True		# By default, commands may be invoked by '/<name>'.
 	takesArgs	= True		# By default, commands may take an optional argument list.
+	needsArgs	= False		# By default, commands don't require an argument list.
 	anywhere	= False		# By default, commands can't start anywhere on the command line (only at the start of the line).
 	caseSens	= False		# By default, command format matching is case-insensitive.
 	prefInvoc	= True		# By default, any unique prefix can be used to invoke a command.
@@ -604,6 +629,7 @@ class Command:
 			longDesc:	str  =None,	# Long text string describing the function of this command.
 			standard:	bool =None,	# True (default) -> command may be invoked by '/<name>'.
 			takesArgs:	bool =None,	# True (default) -> command may take an optional argument list.
+			needsArgs:	bool =None,	# True -> command requires an argument list.
 			anywhere:	bool =None,	# True -> command may start anywhere on the input line.
 			caseSens:	bool =None,	# True -> command name should be treated as case-sensitive.
 			prefInvoc:	bool =None, # True (default) -> any unique prefix can be used to invoke the command.
@@ -631,6 +657,10 @@ class Command:
 					takesArgs:bool=True - If this is true, then the automatically-
 						generated pattern for this command will allow an optional
 						argument list.
+
+					needsArgs:bool=False - If this is True, then the automatically-
+						generated pattern for this command will require an argument
+						list.
 
 					anywhere:bool=False - If this is True, then we can match
 						the command anywhere on the input line (assuming its
@@ -699,6 +729,13 @@ class Command:
 			else:
 				takesArgs = True	# Commands allow argument lists by default.
 
+		if needsArgs is None:
+
+			if hasattr(cmd, 'needsArgs'):
+				needsArgs = cmd.needsArgs
+			else:
+				needsArgs = False	# Commands don't require argument lists by default.
+
 		if anywhere is None:
 
 			if hasattr(cmd, 'anywhere'):
@@ -737,7 +774,8 @@ class Command:
 
 			cmdFmt = cmd.cmdFormat
 
-			# NOTE: A custom format MUST be provided if standard=False!
+			# NOTE: A custom format MUST be provided (either in a class
+			# attribute or in an initializer argument) if standard=False!
 
 		if unique is None:
 
@@ -766,6 +804,7 @@ class Command:
 		cmd.longDesc		= longDesc
 		cmd.standard		= standard
 		cmd.takesArgs		= takesArgs
+		cmd.needsArgs		= needsArgs
 		cmd.anywhere		= anywhere
 		cmd.caseSensitive 	= caseSens
 		cmd.prefixInvocable = prefInvoc
@@ -778,7 +817,12 @@ class Command:
 			# This will be used in assembling the help screen text for the
 			# command module that the command is a part of.
 		
-		cmd.helpItem = CommandHelpItem(cmd.name, cmd.usageText, cmd.shortDesc)
+		cmd.helpItem = CommandHelpItem(
+			name		= cmd.name, 
+			usageText	= cmd.usageText, 
+			shortDesc	= cmd.shortDesc, 
+			longDesc	= cmd.longDesc
+		)
 
 			# If command format was not provided, try to generate it automatically.
 
@@ -938,6 +982,7 @@ class Command:
 		restChars = name[1:]	# Remaining characters of command name, if any.
 
 		# Note: First char should be alphanumeric or '_'.
+		# NOTE: The following does not capture what actual command word prefix was used. Should we?
 
 		regex = regex + firstChar + optRestRE(restChars)
 			# This matches any nonzero-length prefix of the command name,
@@ -959,12 +1004,22 @@ class Command:
 					# subcommand word as a group (since we'll need to
 					# use it to look up the subcommand).
 
-			regex = regex + r'(\s+(\S.*)?)?'
-			# This matches an optional argument list (with leading whitespace).
+			regex = regex + r'(\s+(\S.*)?)'
+				# ^ This capture-matches an argument list (with leading 
+				# whitespace). The argument list itself is captured as a group, 
+				# so that we can pass it to the command's handler function. Note 
+				# that any further parsing of the argument list is the 
+				# responsibility of the command's handler function.
+
+			if not cmd.needsArgs:
+				regex = regex + '?'		# The argument list is optional.
+
 
 		regex = regex + '$'		# At this point we must be at the end of the string.
+
+			#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#|
-			#| Explanation:
+			#| Explanation of the construction above:
 			#|
 			#|		1. The previous regex scanned everything through the '/'.
 			#|
@@ -1025,7 +1080,58 @@ class Command:
 		return match
 			# Note this is not really a boolean value, but can
 			# still be used as an if condition appropriately.
+			
+	#__/ End instance method command.matches().
 
+
+	# This method by used by subclasses to parse the command's argument list
+	# using its argListPattern attribute.  The argListPattern attribute is
+	# expected to be a compiled regular expression object.  The argument list
+	# is expected to be a single string in the first group of the list.
+
+	def parseArgs(thisCommand:Command,  # This command object.
+				  restGroups:list  		# Groups after command word.
+			):
+
+		"""Parses the argument list from the given list of groups
+			after the command word.  The argument list is expected
+			to be a single string in the first group of the list."""
+
+		cmd = thisCommand			# Shorter name for this command.
+
+		argList = restGroups[0]		# There should be only one group: Rest of line.
+
+		_logger.info(f"About to parse {cmd.name} arguments from argList [{argList}]...")
+
+		if argList is None:
+			error(The_CommandInterface_Entity(),
+				  f"The '/{cmd.name}' command needs an argument list.")
+			_logger.error(f"Command {cmd.name} wasn't given an argument list!")
+			return
+
+		match = cmd.argListPattern.match(argList)
+
+		if match:	# We got a match; go ahead and dispatch to subcommand.
+			groups = match.groups()
+			groupDict = match.groupdict()
+			cmd.handle(groups, groupDict)	# Dispatch to subcommand handler.
+				# The .handle() method may use either/both of the groups
+				# and groupDict arguments, depending on whether its regex
+				# uses named groups or not.
+		else:
+			# The Command's regex didn't match the rest of the command line.
+			# A sensible thing to do here would be to report an error message
+			# to the AI containing the argListDoc, to explain the required format.
+
+			error(The_CommandInterface_Entity(),
+				  f"The required command format is: /{cmd.name} {cmd.argListDoc[1:]}")
+
+			# For now, also report the error to the system log.
+			_logger.error(f"Command {cmd.name} arglist [{argList}] didn't "
+						  f"match pattern [{cmd.argListDoc}].")
+
+	#__/ End instance method command.parseArgs().
+	
 
 	def genCmdAction(cmd, cmdLine:str, invoker:Entity_):
 
@@ -1126,7 +1232,7 @@ class Command:
 	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#| Public instance methods for class Commands.    [class definition section]
 
-	def prefixes(cmd):
+	def prefixes(cmd):		# NOTE: I don't think we're using this currently.
 
 		"""Return a list of all prefixes of the name of this command (without
 			regard to their possible uniqueness, or lack thereof). The shortest
@@ -1206,11 +1312,15 @@ class Subcommand(Command):
 		sc.parent = parent	# Remember our parent command.
 
 		#subcmdName		= sc.name
-		argListRegex	= sc.argListRegex
-		#argListDoc		= sc.argListDoc
 
-		sc.argListPattern = re.compile(argListRegex, re.IGNORECASE)
-			# For now, we always do case-insensitive parsing.
+		if hasattr(sc, 'argListRegex'):
+			argListRegex		= sc.argListRegex
+			sc.argListPattern 	= re.compile(argListRegex, re.IGNORECASE)
+				# For now, we always do case-insensitive matching of argument lists.
+		else:
+			_logger.error(f"Subcommand {sc.name} has no argListRegex attribute!")
+
+		#argListDoc		= sc.argListDoc
 
 	def parseArgs(thisSubcommand:Subcommand,  # This subcommand object.
 				  restGroups:list  # Groups after subcommand word.
@@ -1226,14 +1336,14 @@ class Subcommand(Command):
 			error(The_CommandInterface_Entity(),
 				  f"The '/{sc.parent.name} {sc.word}' subcommand needs an argument list.")
 			_logger.error(f"Subcommand {sc.name} wasn't given an argument list!")
-			# Really need to report the error within GladOS also.
 			return
 
 		match = sc.argListPattern.match(argList)
 
 		if match:	# We got a match; go ahead and dispatch to subcommand.
 			groups = match.groups()
-			sc.handle(groups)
+			groupDict = match.groupdict()
+			sc.handle(groups, groupDict)
 		else:
 			# The subcommand's regex didn't match the rest of the command line.
 			# A sensible thing to do here would be to report an error message

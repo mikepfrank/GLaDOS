@@ -234,8 +234,7 @@ class AppLaunchCommand(Command):
 	
 		"""This is the handler method that is called when a generic app-launch
 			command is invoked. The <groups> argument, if present, is a list
-			of match groups; it should include the command word (or prefix),
-			and the argument list (if any)."""
+			of match groups; it should include the argument list (if any)."""
 			
 		cmd = thisAppLaunchCmd
 		
@@ -245,20 +244,24 @@ class AppLaunchCommand(Command):
 			# Really should give some kind of error
 			return
 
-		if len(groups) >= 1:
-			cmdWord = groups[0]
-		else:
-			cmdWord = None
+		# NOTE: The auto-generated command regex (which we use for app-launch
+		# commands) doesn't even include a match group for the command word, so
+		# we don't need to worry about extracting it here. (Commented out.)
+		#
+		#if len(groups) >= 1:
+		#	cmdWord = groups[0]
+		#else:
+		#	cmdWord = None
 
-			# Currently the app-launch commands don't even allow argument lists,
+			# Currently the app-launch commands don't even use argument lists,
 			# but this code will be needed in the future if that changes.
-		if len(groups) >= 2:
-			argList = groups[1]
+		if len(groups) >= 1:
+			argList = groups[0]
 		else:
 			argList = None
 
-		_logger.info("Handling app-launch command for app {app} with "
-					 f"cmdWord='{cmdWord}', argList='{argList}'.")
+		_logger.info(f"Handling app-launch command for app {app} with "
+					 f"argList='{argList}'.")
 
 		app.launch()	# Launch the app (if not already launched).
 			# (This automatically also foregrounds the app, whether or

@@ -58,31 +58,37 @@ class HelpItem:
 		important property of a help item is its textual appearance, wich 
 		will appear in the help window when that item is displayed.  A help 
 		item may also have a name, which is used for lookup and debugging 
-		purposes.  The name is not displayed in the help window.  If there 
-		is no name, the help item is anonymous and is not accessible by name.
-		Finally, a help item may have a verbose description, which is used
-		to populate the intro text when creating a temporary help module
-		to describe just this one item in greater detail.  This is used
-		when the user requests help on a specific item by name."""
+		purposes.  The name is not necessarily displayed anywhere in the 
+		help window displaying the item.  If there is no name, the help item 
+		is anonymous and is not accessible by name.  Finally, a help item may 
+		have a verbose description, which is used to help populate the intro 
+		text when creating a temporary help module to describe just this one 
+		item in greater detail.  This is used when the user requests help on 
+		a specific item by name."""
 
 	def __init__(newHelpItem:HelpItem, 
 			name:str=None,	# By default, the help item is anonymous.]
 			text:str="(missing help item text)",
-			verboseDesc:str=None
+			shortDesc:str=None,		# Short description of the item.
+			verboseDesc:str=None	# Verbose description of the item.
 		):
 			# NOTE: Callers should really always supply the 'text' parameter.
 			# name should be supplied if the item needs to be searchable.
 			# verboseDesc should be supplied if the item needs to be
 			# able to be described in greater detail in its own help screen.
+			# shortDesc is only needed to serve as the topicDesc for a
+			# temporary help module that is created to display the item
+			# in greater detail.
 
 		"""Instance initializer for new help items. The <text> argument should
 			always be provided."""
 		
 		item = newHelpItem
 
-		item._name = name	# Store the name (if any) for later use.
-		item._text = text	# Store the text for later use.
-		item._verboseDesc = verboseDesc	# Store the verbose description (if any).
+		item._name 			= name			# Store the name (if any) for later use.
+		item._text 			= text			# Store the text for later use.
+		item._shortDesc 	= shortDesc		# Store the short description (if any).
+		item._verboseDesc 	= verboseDesc	# Store the verbose description (if any).
 
 	@property
 	def name(thisHelpItem:HelpItem):
@@ -93,13 +99,32 @@ class HelpItem:
 		return thisHelpItem._text
 
 	@property
+	def shortDesc(thisHelpItem:HelpItem):
+		return thisHelpItem._shortDesc
+
+	@property
 	def verboseDesc(thisHelpItem:HelpItem):
 		return thisHelpItem._verboseDesc
 
+	# Define a special property .topicDesc that will be used by ItemHelpModule
+	# to retrieve the .topicDesc property of the temporary help module that 
+	# will be created to display this item in greater detail.  This is set to
+	# the shortDesc of the item here, but may be overridden by subclasses.
+
+	@property
+	def topicDesc(thisHelpItem:HelpItem):
+		return thisHelpItem.shortDesc
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-class HelpModule:
+class HelpModule_:	# Abstract base class for all help modules.
+	pass
+
+@singleton
+class TheNullHelpModule(HelpModule_):	# Placeholder for a missing help module.
+	pass
+
+class HelpModule(HelpModule_):
 
 	"""A help module is a collection of help items and sub-modules (which are
 		in turn also help modules). It corresponds roughly to a screen viewable
@@ -112,11 +137,12 @@ class HelpModule:
 	#|	instance initializer, and/or be overridden as instance attributes.
 	#|
 	#|      name - The name of this module. This is used for debugging and
-	#| 			should be unique among all modules.
+	#| 			should be unique among all modules.  It may also be used
+	#|			as a /help subcommand name for displaying this help module.
 	#|
 	#| 		topicName - The name of the topic that this help module describes.
-	#| 			This is used as a /help subcommand name for displaying this 
-	#|			help module.
+	#| 			This may also be used as a /help subcommand name for displaying 
+	#|			this help module.
 	#|		
 	#| 		topicDesc - A short description of the topic that this help module
 	#| 			describes. This is used as a title string for this help module,
@@ -162,20 +188,23 @@ class HelpModule:
 						# The list of sub-modules in this module.
 					parentModule:HelpModule = None,
 						# The parent module of this module, if any.
+					temporary	:bool = None,	# True if this is a temporary module.
 				):
 			# NOTE: Callers should really always supply most of these argument 
-			# values, unless they are defined as subclass attributes. The
-			# helpItems and subModules arguments are optional; individual
-			# help items and sub-modules may be added later via the addItem()
-			# and addSubModule() methods.
+			# values, unless they are defined as subclass attributes, or as 
+			# instance attributes by an initializer for a derived subclass. The 
+			# helpItems and subModules arguments are optional; individual help 
+			# items and sub-modules may be added later via the addItem() and 
+			# addSubModule() methods.
 			# 
 			# Note the topicDesc string specifies how this module is described 
 			# when it appears as a sub-module of higher-level modules; it may 
-			# also be used as a title string at the top of the screen for this 
+			# also be used in a header string at the top of the screen for this 
 			# module. 
 			#
 			# The 'intro' argument, if provided, gives text that should appear 
-			# as a "module introduction" at the top of its screen.
+			# as a "module introduction" at the top of its screen (but afer
+			# the help screen header).
 
 		"""Instance initializer for new help modules. The <name> argument should
 			always be provided, and is a module name used in debugging. The 
@@ -187,7 +216,8 @@ class HelpModule:
 
 
 		# For arguments that are not provided, check to see if they are
-		# defined as class attributes, and if so, use those values instead.
+		# defined as existing class or instance attributes, and if so, use 
+		# those values instead.
 
 		if name is None and hasattr(module, 'name'):
 			name = module.name
@@ -210,6 +240,9 @@ class HelpModule:
 		if parentModule is None and hasattr(module, 'parentModule'):
 			parentModule = module.parentModule
 
+		if temporary is None and hasattr(module, 'temporary'):
+			temporary = module.temporary
+
 
 		# Initialize any remaining uninitialized arguments to placeholder values.
 
@@ -231,21 +264,42 @@ class HelpModule:
 		if subModules is None:
 			subModules = []		# Empty list of sub-modules initially.
 
+		if temporary is None:
+			temporary = False	# Default to non-temporary module.
+
+		# As a special case, if we get here and the parentModule argument is 
+		# still None, then we set the parentModule argument to the root help 
+		# module. This helps us avoid creating non-temporary help modules that are not 
+		# reachable from the root module. (And if this module is temporary, this at
+		# least lets us use the '/up' command to get back to the root module.)
+		if parentModule is None:
+			parentModule = _TheRootHelpModule()	# Get the root help module.
+
 
 		# Store the values obtained above as instance attributes.
 
-		module.name = name
-		module.topicName = topicName
-		module.topicDesc = topicDesc
-		module.introText = introText
-		module.helpItems = helpItems
-		module.subModules = subModules
+		module.name 		= name
+		module.topicName 	= topicName
+		module.topicDesc 	= topicDesc
+		module.introText 	= introText
+		module.helpItems 	= helpItems
+		module.subModules 	= subModules
 		module.parentModule = parentModule
+
 
 		# Call the .genHelpText() method to generate the help text for this
 		# module and store it in the 'helpScreenText' attribute.
 
 		module.genHelpText()
+
+
+		# Go ahead and automatically add this module to the parent module's 
+		# list of sub-modules, but only if this module is not temporary, and 
+		# the parent module is not TheNullHelpModule().
+
+		if temporary is False and parentModule is not TheNullHelpModule():
+			parentModule.addSubModule(module)
+
 
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#|  Class public methods defined below:
@@ -292,7 +346,7 @@ class HelpModule:
 
 		module.genHelpText()
 	
-	
+
 	def genHelpText(thisHelpModule:HelpModule):
 
 		"""Generate the help text for this help module. This method is called
@@ -301,7 +355,7 @@ class HelpModule:
 
 		module = thisHelpModule		# This help module.
 
-		# Start with the topic name and description.
+		# Help screen header -- Start with the topic name and description.
 
 		helpText = module.topicName + " - " + module.topicDesc + "\n\n"
 
@@ -309,12 +363,12 @@ class HelpModule:
 
 		helpText += module.introText + "\n\n"
 
-		# Add the help items in this module.
+		# Add the help items in this module, if any.
 
 		for helpItem in module.helpItems:
 			helpText += helpItem.helpText + "\n\n"
 
-		# Add the sub-modules in this module.
+		# Add the sub-modules in this module, if any.
 		# If there are sub-modules, add the text "Subtopics:" to the help
 		# text, followed by a list of the sub-modules.
 
@@ -329,7 +383,8 @@ class HelpModule:
 		# the help application, and is available when that application has the
 		# command focus.)
 
-		if module.parentModule is not None:
+		parentModule = module.parentModule
+		if parentModule is not None and parentModule is not TheNullHelpModule():
 			helpText += "\nUse '/up' to return to the " \
 				+ module.parentModule.topicName + " topic.\n"
 
@@ -338,50 +393,40 @@ class HelpModule:
 		module.helpScreenText = helpText
 
 
-	def lookupModule(thisHelpModule:HelpModule, moduleName:str=None, topicName:str=None):
+	def lookupModule(thisHelpModule:HelpModule, identifier:str=None):
 
-		"""Lookup a help module by name and/or topic. The <moduleName> argument
-			should be a module name, and the <topicName> argument should be a
-			topic name. If either argument is not provided, it is ignored. If
-			both arguments are provided, the first module matching either name
-			is returned. If no module is found, None is returned. This help
-			module and its recursive tree of sub-modules are searched in depth-
-			first order. We also search the helpItems list of this module for
-			any help items that are not proper sub-modules, and if there is one
-			with a name attribute that matches moduleName or topicName, we
-			return that help item as a temporary help module."""
-
-		# NOTE TO SELF: We need to rethink whether it makes sense to have help
-		# items as distinct from help modules.  It seems like it might be better
-		# for each help item to also be a help module, and for the help module
-		# to have its introText set to the topicDesc attribute of the help item.
-		# I suppose we could just dynamically convert help items to temporary 
-		# help modules as needed, while still keeping the help items in the 
-		# helpItems list to distinguish them from proper sub-modules (which can
-		# have recursive structures of their own).  This would also allow us to
-		# still have help items that are not sub-modules, which might be useful 
-		# for extra things like "See also" links.
+		"""Lookup a help module by name or topic. The <identifier> argument
+			should be a module name or a topic name. The first module with a
+			matching name or topic name is returned. If no module is found,
+			None is returned. This help module and its recursive tree of 
+			sub-modules are searched in depth-first order. We also search the 
+			helpItems list of each module for any help items (which are not 
+			proper sub-modules), and if there is one with a name attribute that 
+			matches <identifier>, we return that help item as a temporary help 
+			module."""
 
 		module = thisHelpModule		# This help module.
 
-		# If both moduleName and topicName are None, return None.
+		# If the identifier is None, return None.
 		
-		if moduleName is None and topicName is None:
+		if identifier is None:
 			return None
 
 		# If either of them matches this module directly, we'll just return 
-		# this module.
+		# this module. NOTE: Do case-insensitive comparisons.
 
-		if moduleName == module.name or topicName == module.topicName:
+		if identifier.lower() == module.name.lower() or \
+			identifier.lower() == module.topicName.lower():
 			return module
-
+		
 		# We'll next search the helpItems list of this module for any help
 		# items that are not proper sub-modules, and if there is one with a
 		# name attribute that matches moduleName or topicName, we return that
-		# help item as a temporary help module.
+		# help item as a temporary help module. (But one with us as parent.)
 
 		for helpItem in module.helpItems:
-			if helpItem.name == moduleName or helpItem.name == topicName:
+			# Case-insensitive comparisons.
+			if identifier.lower() == helpItem.name.lower():
 				return ItemHelpModule(helpItem, parent=module)
 
 		# If we get here, we didn't find a matching help item, so we'll search
@@ -390,10 +435,11 @@ class HelpModule:
 		# its sub-modules.
 
 		for subModule in module.subModules:
-			if subModule.name == moduleName or subModule.topicName == topicName:
+			if identifier.lower() == subModule.name.lower() or \
+				identifier.lower() == subModule.topicName.lower():
 				return subModule
 			else:
-				subModuleResult = subModule.lookupModule(moduleName, topicName)
+				subModuleResult = subModule.lookupModule(identifier)
 				if subModuleResult is not None:
 					return subModuleResult
 
@@ -402,6 +448,20 @@ class HelpModule:
 		return None
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+class TemporaryHelpModule_(HelpModule):
+
+	"""This is an abstract base class for temporary help modules. A temporary
+		help module is a help module that is generated on the fly, and is not
+		added to the help module hierarchy, but it may be viewed in the Help
+		application. The purpose of a temporary help module is to provide
+		help information for a help item that is not a proper sub-module, or
+		other dynamically generated help information."""
+
+	parentModule = TheNullHelpModule()		# We're an orphan by default.
+
+	temporary = True						# We're temporary.
+
 
 # The ItemHelpModule class generates a temporary help module for a help item;
 # it is used by the lookupModule() method of the HelpModule class. It is
@@ -414,7 +474,7 @@ class HelpModule:
 # attribute of the help item, if it is not None, or else it will be set
 # to simply, "No further information is available for this item."
 
-class ItemHelpModule(HelpModule):
+class ItemHelpModule(TemporaryHelpModule_):
 
 	"""This is a temporary help module that is generated for a help item
 		that is not a proper sub-module. It is used by the lookupModule()
@@ -426,24 +486,32 @@ class ItemHelpModule(HelpModule):
 
 		"""Initialize the temporary help module."""
 
-		# Set the name and topicName attributes to the .name attribute of the
-		# help item.
+		# Set both the name and topicName attributes of the temporary module
+		# to the .name attribute of the help item.
 
-		self.name = helpItem.name
-		self.topicName = helpItem.name
+		self.name		= helpItem.name
+		self.topicName	= helpItem.name
 
-		# Set the topicDesc attribute to the .text attribute of the help item.
+		# Set the topicDesc attribute to the .topicDesc property of the help item.
+		# (This may be defined differently for different classes of help items.)
 
-		self.topicDesc = helpItem.text
+		self.topicDesc = helpItem.topicDesc
 
-		# Set the introText attribute to the .verboseDesc attribute of the
-		# help item, if it is not None, or else set it to "No further
-		# information is available for this item."
+		# Set the introText attribute to the .shortDesc attribute of the 
+		# help item followed by two newlines (to separate it from
+		# the verboseDesc attribute), but only if it's set and different 
+		# from topicDesc, then followed by the .verboseDesc attribute
+		# of the help item, if it is not None, or else follow it with 
+		# "No further information is available for this item."
 
+		introText = ""
+		if helpItem.shortDesc is not None and helpItem.shortDesc != self.topicDesc:
+			introText += helpItem.shortDesc + "\n\n"
 		if helpItem.verboseDesc is not None:
-			self.introText = helpItem.verboseDesc
+			introText += helpItem.verboseDesc
 		else:
-			self.introText = "No further information is available for this item."
+			introText += "No further information is available for this item."
+		self.introText = introText	# Set the introText attribute.
 
 		# Set the parentModule attribute to the parent module, if provided.
 
@@ -474,6 +542,13 @@ class _TheRootHelpModule(HelpModule):	# The root of the help module hierarchy.
 		"of GLaDOS's interactive Help system.  Help topics and subtopics are " \
 		"organized in hiarchical menus, and you can drill down into them by " \
 		"typing /help <topicName>.")
+
+	parentModule = TheNullHelpModule()	# The parent module of this module.
+		# This is the null module, which is a singleton that is used as the
+		# parent of the root module, and as the parent of any module that
+		# doesn't have a parent. We use this instead of None in order to
+		# avoid automatically assigning the parent module to the root module
+		# when the root module is initialized.
 
 	# Nothing else to do here.  The rest of the initialization is done by the
 	# HelpModule class initializer.
@@ -544,6 +619,10 @@ class TheHelpSystem:
 	@currentModule.setter
 	def currentModule(theHelpSystem:TheHelpSystem, newModule:HelpModule):
 		theHelpSystem._currentModule = newModule
+		# Should we automatically update the help window here?  Probably not,
+		# since this is a setter method, and it's not clear that the caller
+		# would expect the help window to be updated.  Instead, we'll leave
+		# it up to the caller to update the help window if desired.
 	
 	@property
 	def appSystem(theHelpSystem:TheHelpSystem):
@@ -579,15 +658,13 @@ class TheHelpSystem:
 	#|			module, in depth-first order.  If no module is found, this
 	#|			method returns None.
 	#|
-	#|		showHelpScreen(thisHelpSystem:TheHelpSystem, moduleName:str=None, topicName:str=None)
+	#|		showHelpScreen(thisHelpSystem:TheHelpSystem, helpModule:HelpModule=None)
 	#|
-	#|			Displays the help screen for the given module or topic name (if 
-	#|			provided).  If neither a module name or a topic name is 
-	#|			provided, the current module is used.  If the indicated module
-	#|			is not found, a temporary error help module is displayed.  Note
-	#|			that this method invokes the Help application, which must be
-	#|			installed in the system and available, and the windowing system
-	#|			must already be initialized and running.
+	#|			Displays the help screen for the given help module.  If no
+	#|			module is provided, the current module is used.  This method 
+	#|			invokes the Help application, which must be installed in the 
+	#|			system and available, and the windowing system must already 
+	#|			be initialized and running.
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -600,27 +677,68 @@ class TheHelpSystem:
 	def addToplevelModule(thisHelpSystem:TheHelpSystem, helpModule:HelpModule):
 		thisHelpSystem.rootModule.addModule(helpModule)
 
-	def lookupModule(thisHelpSystem:TheHelpSystem, moduleName:str=None, topicName:str=None) -> HelpModule:
+	def lookupModule(thisHelpSystem:TheHelpSystem, identifier:str=None) -> HelpModule:
 
-		"""Searches the help module hierarchy for a module with the given
-			name (if provided) or topic name (if provided).  This will first
-			search all sub-modules of the current module, in depth-first order,
-			and then search all sub-modules of the root module, in depth-first
-			order.  If no module is found, this method returns None."""
+		"""Searches the help module hierarchy for a module or item with the 
+			given name or topic name.  This will first search all sub-modules of 
+			the current module, in depth-first order, and then search all sub-
+			modules of the root module, in depth-first order.  If no matching 
+			module or item is found, this method returns None.  If an item is 
+			found, it is converted to a temporary help module and returned.  If 
+			a module is found, it is returned."""
 
 		helpSys = thisHelpSystem
 
+		# [NOTE: Eventually, we may want to extend this method to support
+		# prefix matching, so that if the given identifier matches any prefix
+		# of a module name or topic name, the such first module or item is 
+		# returned.  For now, we'll just do exact (but case-insensitive) 
+		# matching.]
+
 		# First, check the module sub-hierarchy under the current module.
 		if helpSys.currentModule is not None:
-			module = helpSys.currentModule.lookupModule(moduleName, topicName)
+			module = helpSys.currentModule.lookupModule(identifier)
 			if module is not None:
 				return module
 
+		# NOTE: Another thing we could do here is to proceed up the module
+		# hierarchy to successive ancestor modules, searching the subtrees
+		# of each ancestor module for the module we're looking for.  This
+		# would give priority to 'sibling' or 'cousin' modules over distant
+		# parts of the module hierarchy.  However, this is probably overkill
+		# for now, and we can always add this feature later if we want to.
+
 		# If that fails, check the module sub-hierarchy under the root module.
 		if helpSys.rootModule is not None:
-			module = helpSys.rootModule.lookupModule(moduleName, topicName)
+			module = helpSys.rootModule.lookupModule(identifier)
 			if module is not None:
 				return module
 
 		# If we get here, we didn't find the module.
 		return None
+
+	def showHelpScreen(thisHelpSystem:TheHelpSystem, module:HelpModule=None):
+		
+		"""Displays the help screen for the given module (if provided).  If no 
+			module name is provided, the current module is used.  Note that this 
+			method works by invoking the Help application, which must be 
+			installed in the system and available, and also the windowing system 
+			must already be initialized and running."""
+
+		helpSys = thisHelpSystem
+
+		appSys = helpSys.appSystem
+		if appSys is None:
+			raise RuntimeError("No application system available")
+
+		helpApp = appSys('Help')	# Get the help application.
+
+		if helpApp is None:
+			raise RuntimeError("No help application available")
+
+		# Tell the help application to update its help screen (if needed).
+		helpApp.updateHelpScreen(module)
+
+		# Tell the help application to display the help screen (or refresh
+		# it if it's already displayed).
+		helpApp.launch()
