@@ -78,17 +78,7 @@ This is the very README file that you are reading now, in GitHub's
 Markdown format (see
 [guides.github.com/features/mastering-markdown](https://guides.github.com/features/mastering-markdown/)).
 
-### Test Script ([`test-server.sh`](test-server.sh "test-server.sh file"))
-
-This executable test script launches the main server application of
-GLaDOS, as a foreground process.  It assumes `/bin/bash` points to
-your `sh`- or `bash`-compatible Unix shell.  Before running it, make
-sure `python3` is in your path and that it invokes the Python version
-3 executable.  You should run this script from here, the top-level
-directory of the repo (it looks for the GLaDOS code in the `src/`
-subdirectory).
-
-## Telegram Bot Script ([`runbot.sh`](runbot.sh "runbot.sh file"))
+### Telegram Bot Script ([`runbot.sh`](runbot.sh "runbot.sh file"))
 
 This script launches an auxilliary application which implements a
 Telegram chatbot that utilizes GPT-3 to generate responses.  To run
@@ -98,9 +88,19 @@ The Telegram bot is separate from GLaDOS proper (other than in the
 sense of piggybacking on part of its codebase) and does not require 
 the main GLaDOS server application to be running.
 
-## Usage
+### Test Script ([`test-server.sh`](test-server.sh "test-server.sh file"))
 
-This script describes various tests that can be run.
+This executable test script launches the main server application of
+GLaDOS, as a foreground process.  It assumes `/bin/bash` points to
+your `sh`- or `bash`-compatible Unix shell.  Before running it, make
+sure `python3` is in your path and that it invokes the Python version
+3 executable.  You should run this script from here, the top-level
+directory of the GLaDOS/ file hierarchy (it looks for the actual 
+GLaDOS code in the `src/` subdirectory).
+
+## Usage of GladOS
+
+This section describes various tests that can be run on the GladOS system.
 
 ### API Wrapper Test
 
