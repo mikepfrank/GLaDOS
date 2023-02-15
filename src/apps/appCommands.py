@@ -60,7 +60,8 @@ class The_AppSys_CmdModule: pass	# Top-level command module for app system.
 	# which causes unexpected results (._appSys member not being available).
 	# This global is added as a hack to work around this problem.
 
-_the_appSys_cmdModule = None	# Not yet created
+global _the_appSys_cmdModule	# The top-level command module object for the app system.
+_the_appSys_cmdModule = None	# Not yet created at Python module load time.
 
 	# Here's a special "constructor" function for the above global variable to 
 	# work around the above-mentioned issue with the singleton construction.
@@ -181,7 +182,15 @@ class AppLaunchCommand(Command):
 					horizontal borders, command hints in lower border).
 					[NOTE: This is not yet implemented.]
 	"""
-	
+
+	# NOTE: The app-launch commands are all created after all of the apps
+	# have been created and registered. Thus, it's our responsibility to
+	# make sure that the app-launch commands insert themselves into the
+	# applications' respective command modules, so that the CommandHelp-
+	# Items for these commands will be shown in the application's help 
+	# module, as well as in the app system's help module.  This is done 
+	# in the AppLaunchCommand constructor below.
+
 	def __init__(newAppLaunchCmd:AppLaunchCommand,
 				appName:str,	# A capitalized app name to use, like 'Goals'.
 				application:Application_	# The application to launch.
@@ -191,8 +200,9 @@ class AppLaunchCommand(Command):
 			unique format string."""
 
 		cmd = newAppLaunchCmd	# Shorter name for this command.
-		
-		cmd._app = application	# Remember our app.
+		app = application		# Shorter name for the app to launch.
+
+		cmd._app = app		# Remember our app.
 		
 			#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#|	Here, we put together a regex for purposes of parsing this
@@ -216,18 +226,34 @@ class AppLaunchCommand(Command):
 		appSysCmdMod = the_appSys_cmdModule()	# Fetch this 'singleton'.
 				# Note this isn't actually a @singleton due to a circularity problem.
 
+			# Initialize some instance variables appropriately.
+
+		cmd.name 		= appName		# Use the app's name as the command name.
+		cmd.usageText 	= f"/{appName}"	# The usage text for this command. Simple!
+		cmd.shortDesc 	= f"Launch/refresh the {appName} app."	# A short description of this command.
+		cmd.longDesc 	= f"Launches the {appName} app, or refreshes it if it's already running."	
+			# A long description of this command.
+		cmd.takesArgs 	= False	# The app-launch command doesn't allow any argument list yet.
+		cmd.cmdModule 	= appSysCmdMod	# The app-sys command module singleton.
+
 		# Now dispatch to default initialization for Command instances.
-		super(AppLaunchCommand, cmd).__init__(
-			name = appName,		# Use the app's name as the command name.
-			usageText = f"/{appName}",	# The usage text for this command. Simple!
-			shortDesc = f"Launch/refresh the {appName} app.",	
-				# A short description of this command.
-			longDesc = f"Launches the {appName} app, or refreshes it if it's already running.",	
-				# A long description of this command.
-			takesArgs = False,	# The app-launch command doesn't allow any argument list yet.
-			#cmdFmt = fmtStr,	# This was assembled above.
-			#unique = True,		# App-launch commands are intended to be unique. (Now default.)
-			cmdModule = appSysCmdMod)	# The app-sys command module singleton.
+		super(AppLaunchCommand, cmd).__init__()
+
+		# Instead of passing all these things as arguments to the 
+		# superclass initializer, we now set them as instance variables 
+		# above, and then call the superclass initializer, which will
+		# notice they're already set. Because, this just seems more 
+		# straightforward?
+		#
+		# super(AppLaunchCommand, cmd).__init__(
+		# 	name = appName,		# Use the app's name as the command name.
+		# 	usageText = f"/{appName}",	# The usage text for this command. Simple!
+		# 	shortDesc = f"Launch/refresh the {appName} app.",	
+		# 		# A short description of this command.
+		# 	longDesc = f"Launches the {appName} app, or refreshes it if it's already running.",	
+		# 		# A long description of this command.
+		# 	takesArgs = False,	# The app-launch command doesn't allow any argument list yet.
+		# 	cmdModule = appSysCmdMod)	# The app-sys command module singleton.
 			
 
 	def handler(thisAppLaunchCmd:AppLaunchCommand, groups:list=None):
@@ -273,8 +299,12 @@ class AppLaunchCommand(Command):
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-# Normally we would make this a singleton class, but this breaks badly due to a circularity problem.
-# Instead, use the function the_appSys_cmdModule() above like a constructor.
+# Normally we would make the following be a singleton class, but this breaks 
+# badly due to a circularity problem.  Instead, use the function 
+# 
+# 						the_appSys_cmdModule() 
+# 
+# above to construct the unique instance .
 #@singleton
 
 class	The_AppSys_CmdModule(CommandModule):
@@ -315,6 +345,7 @@ class	The_AppSys_CmdModule(CommandModule):
 		super(The_AppSys_CmdModule, module).__init__(desc="'command module for application system'")
 		# .__wrapped__ isn't needed because this isn't really a singleton.
 	
+	
 	def populate(thisAppSysCmdMod:The_AppSys_CmdModule):
 	
 		"""Populates this command module with all of its commands."""
@@ -332,6 +363,12 @@ class	The_AppSys_CmdModule(CommandModule):
 			
 				# Create the app's launch command.
 			appLaunchCmd = AppLaunchCommand(appName, app)
+
+				# Insert the launch command's helpItem at the front
+				# the app's AppCommandModule's helpItem list.
+
+			appCmdMod = app.commandModule
+			appCmdMod.helpItems.insert(0, appLaunchCmd.helpItem)
 			
 				# Add it to this module.
 			#module.addCommand(appLaunchCmd)

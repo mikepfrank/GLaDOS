@@ -103,6 +103,9 @@ global _component	# Name of our software component, as <sysName>.<pkgName>.
 from apps.appHelp				import	AppHelpModule	
 	# Generic help module for GLaDOS applications.
 
+from apps.appCommands			import	AppCommandModule
+	# Generic command module for GLaDOS applications.
+
 from field.placement			import	Placement
 		# This is needed to place application windows on the receptive field.
 
@@ -308,6 +311,16 @@ class Application_:
 
 	# The application's main help module, if it has been created. (It hasn't yet.)
 	helpModule = None
+
+	# The class to be used for creating the application's main command module.
+	# This may be overridden by the application's subclass.
+	cmdModuleClass = AppCommandModule		# Default command module class.
+		# This is a generic command module class for applications.
+		# It includes commands for starting, stopping, and suspending 
+		# the application.
+
+	# The application's main command module, if it has been created. (It hasn't yet.)
+	cmdModule = None
 
 	# """
 	# 	Generically, an application also has the following associated
@@ -517,6 +530,8 @@ class Application_:
 			helpModule = None
 
 		return helpModule
+
+	#__/ End createHelpModule().
 
 
 	def initCommandModule(self):

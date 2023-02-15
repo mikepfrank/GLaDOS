@@ -167,7 +167,7 @@ __all__ = [
 		#|	1.1. Imports of standard python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from typing				import	List
+from typing				import	List, ClassVar
 
 from os					import	path
 	# Manipulate filesystem path strings.
@@ -198,6 +198,9 @@ import re	# Standard regular expression facility.
 from infrastructure.decorators	import	singleton
 	# A simple decorator for singleton classes.
 
+from infrastructure.utils		import	count	# Count items in an iterable.
+
+
 				#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 				#| 1.3.1.1. The logmaster module defines our logging framework.
 				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -219,16 +222,21 @@ global _component	# Name of our software component, as <sysName>.<pkgName>.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 from	entities.entity		import	(
-				Entity_,				# Abstract base class for reified entities.
-				AI_Entity_,
-				Operator_Entity,
-				Human_Entity_,
-				The_CommandInterface_Entity
+				Entity_,			# Abstract base class for reified entities.
+				AI_Entity_,			# Abstract base class for AI entities.
+				Operator_Entity,	# Entity representing the system operator.
+				Human_Entity_,		# Abstract base class for human entities.
+				The_CommandInterface_Entity	# Entity representing the command interface.
 			)
 
 from	helpsys.helpSystem	import	(
-				HelpItem				# Base class for help items.
+
+				HelpItem,				# Base class for help items.
 					# (We use this to generate the help items for commands.)
+
+				HelpModule,				# A help module.
+					# (We subclass this for a couple of purposes.)
+
 			)
 
 from	supervisor.action	import	(
@@ -352,17 +360,22 @@ _genericStdCmdPat = re.compile(_GENERIC_STD_CMD_REGEX, re.VERBOSE)
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 class	CommandHelpItem:		pass	# A help item summarizing a command.
+class	CmdMod_HelpModule:		pass	# A help module containing help for a set of commands.
+class	CmdIface_HelpModule:	pass	# A help module containing help for the command interface.
+
 class	Command:				pass	# A single command type.
 class	Subcommand:				pass	# A special case of another command.
 class	Commands:				pass	# A list of commands.
 class	CommandModule:			pass	# A pluggable command module.
 class	CommandModules:			pass	# A whole list of command modules.
-class	TheCommandInterface:	pass	# Singleton anchor for this module.
+
+class	TheCommandInterface:	pass	
+	# Singleton anchor for this entire 'commands' package defining GladOS' command interface.
 
 
 	#|==========================================================================
 	#|
-	#|	5. Private functions.							   [module code section]
+	#|	4. Private functions.							   [module code section]
 	#|
 	#|		Private functions defined for use internally in this module.
 	#|
@@ -433,6 +446,67 @@ class CommandHelpItem(HelpItem):
 	@property
 	def topicDesc(thisHelpItem:CommandHelpItem):
 		return thisHelpItem.usageText
+
+
+class CmdMod_HelpModule(HelpModule):
+
+	"""A CmdMod_HelpModule is a specialized type of HelpModule, which 
+		contains a list of CommandHelpItems associated with the commands
+		in a particular CommandModule.  In addition to the standard
+		HelpModule methods, it also provides the following methods:
+
+			.addCommandHelpItem(cmd:Command) -> None
+				Add a CommandHelpItem for the given command to this help module.
+
+			.getCommandHelpItem(cmdName:str) -> CommandHelpItem
+				Return the CommandHelpItem for the command with the given name.
+
+			.getCommandHelpItems() -> List[CommandHelpItem]
+				Return a list of all the CommandHelpItems in this help module.
+
+		"""
+
+	def __init__(newHelpModule:CmdMod_HelpModule, cmdMod:CommandModule):
+		"""Create a new CmdMod_HelpModule for the given CommandModule."""
+		super().__init__(name=cmdMod.name)
+		newHelpModule._cmdMod = cmdMod
+		newHelpModule._cmdHelpItems = {}
+
+		# Add a CommandHelpItem for each command in the given CommandModule.
+		for cmd in cmdMod.commands:
+			newHelpModule.addCommandHelpItem(cmd)
+
+	def addCommandHelpItem(newHelpModule:CmdMod_HelpModule, cmd:Command):
+		"""Add a CommandHelpItem for the given command to this help module."""
+		cmdHelpItem = CommandHelpItem(
+			name		= cmd.name, 
+			usageText	= cmd.usageText, 
+			shortDesc	= cmd.shortDesc, 
+			longDesc	= cmd.longDesc)
+		newHelpModule._cmdHelpItems[cmd.name] = cmdHelpItem
+		newHelpModule.addHelpItem(cmdHelpItem)
+
+	def getCommandHelpItem(newHelpModule:CmdMod_HelpModule, cmdName:str):
+		"""Return the CommandHelpItem for the given command name, or None if none."""
+		return newHelpModule._cmdHelpItems.get(cmdName, None)
+
+	def getCommandHelpItems(newHelpModule:CmdMod_HelpModule):
+		"""Return a list of all the CommandHelpItems in this help module."""
+		return list(newHelpModule._cmdHelpItems.values())
+
+#__/ end CmdMod_HelpModule class.
+
+
+@singleton
+class The_CmdIface_HelpModule(HelpModule):
+
+	"""The_CmdIface_HelpModule is a singleton subclass of HelpModule, 
+		which is the top-level help module for the entire command 
+		interface subsystem. It includes subtopics for each of the 
+		command modules currently installed in the system."""
+
+	pass	# Not yet implemented.
+
 
 class Command:
 
@@ -637,6 +711,8 @@ class Command:
 			cmdFmt:		str  =None,	# Custom format string for parsing this command.
 			unique:		bool =None,	# True (default) -> format is supposed to be unique.
 			cmdModule:	CommandModule=None	# Command module this command is in.
+				# (Note: If cmdModule is not provided, then it's the caller's responsibility
+				# to assign this command to an appropriate command module at a later time.)
 		):
 		
 		"""
@@ -1131,7 +1207,7 @@ class Command:
 						  f"match pattern [{cmd.argListDoc}].")
 
 	#__/ End instance method command.parseArgs().
-	
+
 
 	def genCmdAction(cmd, cmdLine:str, invoker:Entity_):
 
@@ -1356,8 +1432,304 @@ class Subcommand(Command):
 			_logger.error(f"Subcommand {sc.name} arglist [{argList}] didn't "
 						  f"match pattern [{sc.argListDoc}].")
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-class Commands:
+
+#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#|	A note on some terminology used below:
+#|
+#|		- A "base class" is just, one from which other classes may be derived.  
+#|			It is not necessarily abstract or virtual.
+#|
+#|		- A "derived class" is one that is subclassed from another class.  It 
+#|			may be concrete or abstract, and either virtual or non-virtual.
+#|			(See below for definitions of these terms.)
+#|
+#|		- An "abstract" base class is one that cannot be directly instantiated -
+#|			i.e., any direct instances of it are non-functional.  It must be
+#|			subclassed in order to be useful. Corresponds roughly to the 
+#|			"interface" concept in Java.
+#|
+#|		- A "virtual method" is one that is defined in an abstract base class,
+#|			but which is not implemented there.  It must be implemented in
+#|			subclasses (as with "virtual functions" in C++).  A class that
+#|			contains one or more virtual methods is abstract.
+#|
+#|		- A "concrete" class is one that can be directly instantiated.
+#|
+#|		- A "container" class is one that effectively represents an (unordered) 
+#|			set or (ordered) enumeration of other objects.
+#|
+#|		- A "virtual container" class is one that does not directly store any
+#|			members, but can be accessed in a read-only manner as if it did.
+#|
+#|		- A "non-virtual container" class is one that directly stores its
+#|			members, and may be directly modifiable.
+#|
+#|		- A "singleton" class is one that can only have one instance at a time.
+#|			(We use the @singleton decorator to enforce this.)
+#|
+#|\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+class Commands_:	# Abstract base class for command container classes.
+
+	"""commandInterface.Commands_								  [public class]
+
+			This is an abstract base class for a container class for an
+			ordered list of commands (i.e., instances of the Command class).
+			It facilitates fast lookup of commands using their symbolic
+			names, or prefixes of such. (Is this optimization really
+			necessary?)  It also provides features for more general command
+			lookup using trial regular expression matching.
+
+			If multiple commands match a given line of input (which can
+			happen if a non-unique command word prefix is provided, or if
+			custom command regexes don't guarantee uniqueness, more
+			generally), then we can return all matching commands.
+
+			This base class is abstract, and is not intended to be used
+			directly.  It provides the basic functionality for accessing
+			commands by name or prefix, and for matching commands using
+			regular expressions.  It also provides a virtual method for 
+			adding commands to the container, which is implemented by
+			(non-virtual) implementations in concrete, non-virtual 
+			subclasses.
+
+			Subclasses extending this class include:
+			
+				(1) The abstract base class CommandsBin_, from which all non-
+					virtual command container classes are derived.  This class
+					provides the basic functionality for modifying the set of
+					commands in the container, and for accessing the commands
+					in the container.
+
+				(2) The concrete derived subclass of CommandsBin_, Commands, 
+					which is used by the CommandModule class to store the 
+					commands that are available in a given module.
+
+				(3) The abstract, virtual derived class CommandsView_, which 
+					is used by the CommandInterface class to access lists of 
+					commands that are generated on the fly, based on the current
+					state of the system (in particular, the set of command
+					modules that are currently loaded and active).
+
+				(4) Concrete (but still virtual) subclasses of CommandsView_, 
+					which are used to provide different views of the available 
+					commands, based on the current state of the system.  For 
+					example, the AllCommandsView provides a view of all avail-
+					able commands, and the ActiveCommandsView provides a view 
+					of only those commands that are currently active (i.e., 
+					those that are loaded and enabled).
+
+
+		Public instance methods:
+		========================
+
+		These define the primary interface for (read-only) access to commands in
+		the container.  They are defined by the base class, and should be
+		implemented by all concrete subclasses.  For public methods to modify
+		the container, see the CommandsBin_ abstract class below.
+
+
+			.nCommands(cmds:Commands) -> int -
+
+				Returns the number of commands in the container.
+		
+
+			.enumCommands() -> Iterable[Command] -
+
+				Returns an iterable containing all of the commands in the
+				container, in the order in which they were added, or (for
+				CommandsView_ subclasses) in the order in which they are
+				enumerated by the subclass.
+			
+
+			.getCommand(cmdName:str) -> Command or None -
+
+				Returns the command with the given name, or None if no such
+				command exists.
+
+
+			.getCommandsByPrefix(cmdPrefix:str) -> Iterable[Command] -
+
+				Returns an iterable containing all of the commands in the
+				container that have the given prefix, in the order in which
+				they were added, or (for CommandsView_ subclasses) in the
+				order in which they are enumerated by the subclass.
+
+
+			.getCommandsByRegex(regex:str) -> Iterable[Command] -
+
+				Returns an iterable containing all of the commands in the
+				container that match the given regular expression, in the
+				order in which they were added, or (for CommandsView_
+				subclasses) in the order in which they are enumerated by
+				the subclass.
+
+	"""
+
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|	Virtual private attributes (must be defined in concrete subclasses):
+	#|
+	#|		Concrete subclasses must override these class attributes (as data 
+	#|		members or properties) to provide the necessary information about 
+	#|		the commands in the container, for internal use by various 
+	#|		subclass methods.
+	#|
+	#|			_desc:str
+	#|
+	#|					- A short description of the command container, 
+	#|						for use in error messages.
+	#|
+	#|			_commandEnum:Iterable[Command]	
+	#|
+	#|					- Enumerates the commands in this container.
+	#|						(Note this could be a generator; if so, then
+	#|						 it should be provided via a property, so it
+	#|						 can be accessed multiple times.)
+	#|
+	#|			_commandMap:OrderedDict		
+	#|
+	#| 					- Maps command names to commands.
+	#|
+	#\vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	_desc = '(unnamed command container)'
+	_commandEnum = None		# Not defined in this abstract base class.,
+	_commandMap = None		# Not defined in this abstract base class.
+
+
+	def __init__(self):
+		"""Constructor for the Commands_ abstract class.  This is a virtual 
+			method (i.e., method placeholder) that shouldn't be called directly.
+		"""
+		# We should maybe generate a warning here to the effect that this class 
+		# is abstract and should not be instantiated directly.
+		pass	
+
+	#__/ End Commands_ initializer.
+
+
+	def __str__(self):
+		"""Returns a string representation of the command list."""
+		return self._desc
+
+
+	def nCommands(self) -> int:
+		"""Return the number of commands in the container.
+		
+				This is a placeholder implementation that simply obtains the
+				length of the iterable returned by the enumCommands() method
+				by counting the number of elements in the iterable, in O(n)
+				time.  This is slow, but compatible with generator iterables.
+				This method should be overridden with a more efficient
+				implementation in concrete subclasses, when possible.
+		"""
+		return count(self.enumCommands())
+			# Since the value returned by .enumCommands() might be a generator,
+			# we can't just use len() to get the number of elements in the
+			# iterable.  Instead, we have to count them sequentially.
+
+	#__/ End Commands_.nCommands().
+
+
+	def enumCommands(self) -> Iterable[Command]:
+		"""Return an iterable enumerating all of the commands in the container.
+		
+				This is a placeholder implementation that may be overridden in
+				subclasses.  It simply returns the iterable stored in the
+				_commandEnum attribute, which must be defined in concrete
+				subclasses.
+		"""
+		return self._commandEnum	# Must be defined in concrete subclasses.
+			# Note that this could be a generator, in which case it should be 
+			# provided via a property, so it can be accessed multiple times.
+
+	#__/ End Commands_.enumCommands().
+
+
+	# Moved this to the CommandsBin_ abstract base class, since it's only
+	# relevant for modifying the container, not for accessing it.
+
+	# def addCommand(self, cmd:Command):
+	# 	"""Add a command to this container. Valid only for concrete, non-virtual 
+	# 		subclasses.
+		
+	# 			This is a virtual method that must be implemented in concrete,
+	# 			non-virtual subclasses.  It is called by the Command constructor to
+	# 			add a newly-created command to the container.
+
+	# 			Subclasses should enforce a constraint that only one command
+	# 			having any given exact symbolic name can be stored, to avoid
+	# 			confusion. Warnings should be issued if the user of this class
+	# 			tries to add another command under a name that already exists.
+	# 	"""
+	# 	raise NotImplementedError
+	#
+	# #__/ End Commands_.addCommand().
+
+
+	def getCommand(self, cmdName:str):
+		"""Return the command with the given name, or None if no such command exists.
+		"""
+		for cmd in self.enumCommands():
+			if cmd.name == cmdName:
+				return cmd
+		return None
+
+	def getCommandsByPrefix(self, cmdPrefix:str):
+		"""Return a list of all commands whose names start with the given prefix.
+		"""
+		cmdList = []
+		for cmd in self.enumCommands():
+			if cmd.name.startswith(cmdPrefix):
+				cmdList.append(cmd)
+		return cmdList
+
+	def getCommandsByRegex(self, cmdRegex:str):
+		"""Return a list of all commands whose names match the given regular expression.
+		"""
+		cmdList = []
+		for cmd in self.enumCommands():
+			if re.match(cmdRegex, cmd.name):
+				cmdList.append(cmd)
+		return cmdList	
+
+#__/ End abstract base class Commands_.
+
+
+class	CommandsBin_(Commands_):		# The abstract base class for modifiable command containers.
+
+	"""commandInterface.CommandsBin_							  [public class]
+
+			This is an abstract base class for modifiable command containers.
+			It defines the basic functionality for modifying the set of
+			commands in the container, as well as for accessing the commands 
+			in the container.
+	"""
+
+	_desc = '(unnamed command bin)'
+
+	def __init__(self):
+		pass
+
+	def addCommand(self, cmd:Command):
+		"""Add a command to this container.
+		
+				This is a virtual method that must be implemented in concrete,
+				non-virtual subclasses.  It is called by the Command constructor to
+				add a newly-created command to the container.
+
+				Subclasses should enforce a constraint that only one command
+				having any given exact symbolic name can be stored, to avoid
+				confusion. Warnings should be issued if the user of this class
+				tries to add another command under a name that already exists.
+		"""
+		raise NotImplementedError
+
+#__/ End abstract base class CommandsBin_.
+
+
+class Commands(CommandsBin_):		# The main concrete, non-virtual derived class for command containers.
 
 	"""commandInterface.Commands								  [public class]
 	
@@ -1381,7 +1753,16 @@ class Commands:
 		
 		Public instance methods:
 		========================
+
+
+			.enumCommands() -> Iterable[Command] -
+
+				Returns an iterable containing all of the commands in the
+				container, in the order in which they were added, or (for
+				CommandsView_ subclasses) in the order in which they are
+				enumerated by the subclass.
 			
+
 			.addCommand(cmd:Command) -
 				
 				Adds the given command to the Commands list, at the end of 
@@ -1415,12 +1796,46 @@ class Commands:
 	"""
 	
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|	Private properties:						  [class code documentation]
+	#|	====================
+	#|
+	#|	Here, we implement the abstract properties defined in the base
+	#|	Commands_ class (this overrides any definitions in superclasses).
+	#|
+	#|		Private instance properties:
+	#|		-----------------------------
+	#|
+	#|			._commandEnum:Iterable[Command]
+	#|
+	#|				An iterable enumerating all of the commands in the
+	#|				container, in the order in which they were added.
+	#|
+	#|
+	#|			._commandMap:dict
+	#|
+	#|				A dictionary mapping command names to the associated
+	#|				Command objects.  This is used to implement the
+	#|				.lookupByName() method.
+	#|
+	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	@property
+	def _commandEnum(self) -> Iterable[Command]:
+		return self._cmdOD.values()
+
+	@property
+	def _commandMap(self) -> dict:
+		return self._cmdOD
+
+
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#|	Private data members						  [class code documentation]
 	#|	for class Commands: 
 	#|	====================
 	#|
 	#|		Private instance data members:
 	#|		------------------------------
+	#|
 	#|
 	#|			._desc:str
 	#|
@@ -1485,11 +1900,16 @@ class Commands:
 
 
 	def nCmds(cmds:Commands):
+		"""Returns the number of commands in the command list.
+			Note this is a fast implementation."""
 		return len(cmds._cmdOD)
 
+	# Override the slow Commands_.nCommands() method with a fast
+	# implementation using the nCmds() method above.
 
-	def __str__(cmds:Commands):
-		return cmds._desc
+	def nCommands(cmds:Commands):
+		"""Returns the number of commands in the command list."""
+		return cmds.nCmds()
 
 
 	def addCommand(cmds:Commands, cmd:Command):
@@ -1558,58 +1978,387 @@ class Commands:
 		else:
 			return []
 
-def getHelpList(cmds:Commands) -> List[CommandHelpItem]:
+	def getHelpList(cmds:Commands_) -> List[CommandHelpItem]:
 
-    """Returns a list of CommandHelpItem objects, for all commands in
-      the command list."""
+		"""Returns a list of CommandHelpItem objects, for all commands in
+		the command list."""
 
-    helpList = []
+		helpList = []
 
-    for cmd in cmds._cmdOD.values():
-      helpList += [cmd.helpItem]
+		for cmd in cmds._cmdOD.values():
+			helpList += [cmd.helpItem]
 
-    return helpList
+		return helpList
 
-def genHelpText(cmds:Commands) -> str:
+	def genHelpText(cmds:Commands_) -> str:
 
-	"""Generates a help text string for the given command list.
-		The help text is a display of the help text for all 
-		commands in the list, on separate lines with a blank
-		line in between them, in the order in which they appear 
-		in the command list.  The help text is returned as a
-		string."""
+		"""Generates a help text string for the given command list.
+			The help text is a display of the help text for all 
+			commands in the list, on separate lines with a blank
+			line in between them, in the order in which they appear 
+			in the command list.  The help text is returned as a
+			string."""
 
-	helpList = getHelpList(cmds)
+		helpList = cmds.getHelpList(cmds)
 
-	helpText = ""
+		helpText = ""
 
-	for item in helpList:
-		helpText += f" - {item.text}\n\n"
+		for item in helpList:
+			helpText += f" - {item.text}\n\n"
 
-	return helpText
+		return helpText
 
 #__/ End class Commands.
 
 
+
+class CommandsView_(Commands_):
+
+	"""Abstract base class for a view of a virtual enumeration of commands, which 
+		allows accessing and searching the set of commands in the enumeration.
+		The difference from the Commands class is that the enumeration of 
+		commands is virtual, and is not explicitly stored in the CommandsView 
+		object. Rather, it is generated on the fly, as needed, by the
+		concrete subclass implementing the CommandsView_.  The CommandsView_
+		class is intended to be used as a base class for concrete subclasses
+		that implement a particular virtual enumeration of commands."""
+
+	_desc = "(unnamed command enumerator)"
+
+	pass	# Not yet implemented.
+
+#__/ End class CommandsView_.
+
+
+class AllCommandsView(CommandsView_):
+
+	"""A view of a virtual enumeration of all commands in the system.  The
+		enumeration is generated on the fly as needed, by the concrete subclass
+		AllCommandsView."""
+
+	_desc = 'AllCommands'
+
+	pass	# Not yet implemented.
+
+#__/ End class AllCommandsView.
+
+
+class ActiveCommandsView(CommandsView_):
+
+	"""A view of a virtual enumeration of all active commands in the system.
+		enumeration is generated on the fly as needed, by the concrete
+		subclass ActiveCommandsView."""
+
+	_desc = 'ActiveCommands'
+
+	pass	# Not yet implemented.
+
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 class CommandModule:
 
-	def nCmds(self):
-		return self.commands.nCmds()
+	"""commandInterface.CommandModule					   [module public class]
+	   ==============================
+	
+			A command module is a collection of commands that are associated
+			with a particular GladOS system, subsystem, app, or other entity.  
+			A command module is typically created by the system, subsystem,
+			app, or other entity that it is associated with, and is gets
+			populated with the command list for that entity.
 
-	def __str__(self):
+			Each command module also has an associated CommandsHelpModule,
+			which is used to generate a help screen for the command module
+			within the interactive help system.  This help module is created
+			by the command module, and is populated with the help items
+			for the commands in the command module.  It's added as a child
+			module (subtopic) of the top-level help module for the GladOS 
+			command interface. [TODO: This is not yet implemented.]
+
+		
+		Public data members:		(includes variables and properties)
+		~~~~~~~~~~~~~~~~~~~~~
+
+			cm.desc:str - A short description string for the command module.
+
+			cm.name:str - A unique symbolic name for this command module.
+				(Do we even need this?)
+
+			cm.isActive:bool - True if this command module is active,
+				False otherwise.
+
+			cm.commandBinClass:ClassVar[CommandsBin_] - 
+				The command bin class to use for this command module.
+
+			cm.commands:CommandBin_ - The command list for this command module.
+			
+			cm.nCommands:int - The number of commands in the command module.
+
+			cm.helpModuleClass:ClassVar[CommandsHelpModule] -
+				The help module class to use for this command module's help module.
+
+			cm.helpModule:CmdMod_HelpModule -
+				The help module for this command module.
+
+
+		Public methods:		(includes class and instance methods)
+		~~~~~~~~~~~~~~~~
+
+			cm.addCommand(cmd:Command) - Adds the given command to the command
+				module's command list.
+
+			cm.lookupByName(name:str) - Returns the command in the command
+				module's command list having the given name, or None if there
+				is none with that name.
+
+			cm.lookupByPrefix(prefix:str) - Returns a list of all standard,
+				prefix-invocable commands in the command module's command list
+				having the given prefix.
+
+	"""
+
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|	Public data members.	(Includes class and/or instance data members.
+	#|  ====================		Some or all of these may be properties.)
+	#|
+	#|		- desc:str -- A short description string for the command module.
+	#|
+	#|		- name:str -- A unique symbolic name for this command module.
+	#|
+	#|		- isActive:bool -- True if this command module is active, 
+	#|			False otherwise.
+	#|
+	#|		- commandBinClass:ClassVar[CommandsBin_] --
+	#| 			The command bin class to use for this command module.
+	#|
+	#|		- commands:CommandBin_ -- The command list for this command module.
+	#|
+	#|		- nCommands:int -- The number of commands in the command module.
+	#|
+	#|		- helpModuleClass:ClassVar[CommandsHelpModule] --
+	#| 			The help module class to use for this command module's help module.
+	#|
+	#|		- helpModule:CmdMod_HelpModule -- 
+	#} 			The help module for this command module.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	@property
+	def desc(self) -> str:
+		"""A short description string for this command module."""
 		return self._desc
 
-	def __init__(self, desc:str="(unnamed command module)"):
+	@property
+	def name(self) -> str:
+		"""A unique symbolic name for this command module."""
+		return self._name
 
-		self._desc = desc
+	@property
+	def isActive(self) -> bool:
+		"""True if this command module is active, False otherwise."""
+		return self._isActive
 
-		self._commands = Commands(desc=f"command list for module {self._desc}")
+	# Shorter synonym for isActive.
+	@property
+	def active(self):
+		return self.isActive
+
+	@property
+	def commandBinClass(self): # -> ClassVar[CommandsBin_]:
+		"""The command bin class to use for this command module."""
+		return self._CommandBinClass
+
+	@property
+	def commands(self) -> CommandsBin_:
+		"""The command enumeration for this command module."""
+		return self._commands
+
+	@property
+	def nCommands(self) -> int:
+		"""The number of commands in this command module."""
+		return len(self._commands)
+
+	@property
+	def helpModuleClass(self): # -> ClassVar[CommandsHelpModule]:
+		"""The help module class to use for this command module's help module."""
+		return self._helpModuleClass
+
+	@property
+	def helpModule(self) -> CmdMod_HelpModule:
+		return self._helpModule
+
+
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|	Private data members.	(Includes class and/or instance data members.)
+	#|  =====================		
+	#|
+	#|		These are not intended to be accessed directly by external
+	#|		users of this class.  They are intended to be accessed only
+	#|		by the methods of this class, or by subclasses of this class.
+	#|
+	#|		- _desc: A short description of this command module.
+	#|
+	#|		- _name: A unique symbolic name for this command module.
+	#|
+	#|		- _isActive: True if this command module is active, False
+	#|			otherwise.
+	#|
+	#|		- _commandBinClass: The command bin class to use for this
+	#|			command module.
+	#|
+	#|		- _commands: A CommandBin_ instance for this command module.
+	#|
+	#|		- _helpModuleClass: The help module class to use for this
+	#|			command module's help module.
+	#|
+	#|		- _helpModule: The help module for this command module.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	_desc = "(unnamed command module)"
+		# A short description of this command module.
+
+	_name = None	# Type str.  A symbolic name for this command module.
+
+	_isActive = False
+		# The command module is initially inactive until explicitly activated.
+
+	_commandBinClass = Commands		# This is the default command bin class.
+		# The command bin class to use for this command module.
+
+	_commands = None	# Type Commands.  The command bin for this module.
+		# This is initialized to None, and should be set to a Commands 
+		# instance by the instance initializer
+	
+	_helpModule = None	# Type CommandsHelpModule.  The help module for this
+		# command module.  This is initialized to None, and should be set
+		# to a CommandsHelpModule instance by the instance initializer.
+
+
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#| Instance special methods.
+	#| =========================
+	#|
+	#|		- __init__(desc:str) -- Instance initializer.
+	#|
+	#|		- __str__() -- Returns a short string representation of the 
+	#|						command module.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
+	def __init__(newCommandModule, 
+
+					desc		:str=None,	
+						# A short description string for this command module.
+
+					name		:str=None,	
+						# A unique symbolic name for this command module.
+
+					isActive	:bool=None,	
+						# True if this command module is active, False otherwise.
+
+					cbClass		=None,					# :ClassVar[CommandsBin_]=None,	
+						# The command bin class to use for this command module.
+
+					hmClass		=None				# :ClassVar[CmdMod_HelpModule]=None	
+						# The help module class to use for this command module's help module.
+
+				) -> None:
+
+		"""Instance initializer.	   [commandInterface.CommandModule.__init__]
+		   ~~~~~~~~~~~~~~~~~~~~~
+
+			Initializes a new command module instance.  The command module
+			is initially inactive until explicitly activated.  A new command
+			help module is also created for this command module.
+		"""
+
+		cm = newCommandModule	# For convenience.
+
+			# If no description string was provided, try to get one from
+			# the class data member.  If that doesn't work, use the default
+			# description string.  Store the description string for this
+			# module as a private instance data member.
+
+		if desc is None:
+			if cm.hasattr('_desc'):
+				desc = cm._desc
+			else:
+				desc = "(unnamed command module)"
+
+		cm._desc = desc	# Store the description string for this module.
+
+
+			# If no symbolic name was provided, try to get one from the
+			# class data member.  If that doesn't work, use the default
+			# symbolic name.  Store the symbolic name for this module as
+			# a private instance data member.
+
+		if name is None:
+			if cm.hasattr('_name'):
+				name = cm._name
+			else:
+				name = "(unnamed command module)"
+
+		cm._name = name	# Store the symbolic name for this module.
+
+
+			# If no active state was provided, try to get one from the
+			# class data member.  If that doesn't work, use the default
+			# active state.  Store the active state for this module as
+			# a private instance data member.
+
+		if isActive is None:
+			if cm.hasattr('_isActive'):
+				isActive = cm._isActive
+			else:
+				isActive = False
+
+		cm._isActive = isActive	# Store the active state for this module.
+
+
+			# If no command bin class was provided, try to get one from the
+			# class data member.  If that doesn't work, use the default
+			# command bin class.  Store the command bin class for this
+			# module as a private instance data member.
+
+		if cbClass is None:
+			if cm.hasattr('_commandBinClass'):
+				cbClass = cm._commandBinClass
+			else:
+				cbClass = Commands
+
+		cm._commandBinClass = cbClass
+
+
+			# If no help module class was provided, try to get one from the
+			# class data member.  If that doesn't work, use the default
+			# help module class.  Store the help module class for this
+			# module as a private instance data member.
+
+		if hmClass is None:
+			if cm.hasattr('_helpModuleClass'):
+				hmClass = cm._helpModuleClass
+			else:
+				hmClass = CmdMod_HelpModule
+
+		cm._helpModuleClass = hmClass
+
+		#-----------------------------------------------------------------------
+		# Now that we've finished figuring out all our initialization parame-
+		# ters, we can go ahead and create our command bin.
+
+			# Create a new command bin (of the specified type) for this command module.
+
+		cm._commands = cbClass(desc=f"command bin for command module {cm._desc}")
 			# This gives this command module an initially-empty command set.
 
-			# Command modules are initially inactive until activated.
-		self._isActive = False			
-		
+
+		#-----------------------------------------------------------------------
+		# Now that we've created our command bin, we can go ahead and populate 
+		# this command module with its commands.
+
 		# NOTE: The below causes a serious circularity problem, which is that
 		# if the constructor for a given system tries to construct its command
 		# module, and that command module tries to populate itself, and the
@@ -1619,40 +2368,37 @@ class CommandModule:
 		# Need a better design.
 
 			# Go ahead and populate this command module with its commands.
-		self.populate()
+		cm.populate()
+			# NOTE: This is a no-op for the base class, but subclasses can
+			# override this method to add commands to our command bin.
 
-	def addCommand(self, cmd):
-		self._commands.addCommand(cmd)
+		#-----------------------------------------------------------------------
+		# Now that we've finished populating our command bin, we can go ahead
+		# and create our help module.	
 
-	def populate(self):
+		cm._helpModule = hmClass(desc=f"help module for command module {cm._desc}")
 
-		"""To "populate" a command module means to flesh it out by adding
-			to it all the individual commands it is supposed to contain.
-			Subclasses should implement this virtual method."""
 
-		pass	# Need to implement this for particular subclasses.
+	#__/ End CommandModule instance initializer.
 
-	def menuStr(self):
-		"""
-			Returns a string that can serve as a 'menu'
-			listing commands present in this module. The
-			default representation is:
-			
-				"/Word1 /Word2 ... /Wordn"
-			
-			where Word1, etc. are the command words.
-		"""
-		return "(menu not implemented)"		# TODO: Implement this eventually.
-	
-	@property
-	def active(self):
-		return self._isActive
 
-	@property
-	def commands(self):
-		return self._commands
+	def __str__(self) -> str:
+		"""Returns a short string representation of the command module."""
+		return f"Command module '{self._desc}'"
 
-	def activate(self):
+
+	#/==========================================================================
+	#| Public instance methods:
+	#|
+	#|		activate() -- Activates this command module.
+	#|		addCommand() -- Adds the given command to this command module.
+	#|		nCommands() -- Returns the number of commands in this command module.
+	#|		populate() -- Populates this command module with its commands.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
+	def activate(self) -> None:
 		"""
 			To 'activate' a command module means to include
 			all of its commands in the currently active global
@@ -1660,6 +2406,24 @@ class CommandModule:
 		"""
 		self._isActive = True		# Need to do more work here.
 		
+
+	def addCommand(thisCommandModule:CommandModule, cmd:Command):
+
+		"""Adds the given command to the command list for this command module."""
+		
+		cm = thisCommandModule	# For convenience.
+
+		# Make sure the command's module is set to this command module, if it's
+		# not already set to something else.
+		if cmd.module is None:
+			cmd.module = cm
+
+		# Add the command to the command list for this command module.
+		cm._commands.addCommand(cmd)
+	
+	#__/ End CommandModule.addCommand.
+
+
 	def deactivate(self):
 		"""
 			To 'deactivate' a command module means to remove
@@ -1667,6 +2431,47 @@ class CommandModule:
 			command index.
 		"""
 		self._isActive = False		# Need to do more work here.
+
+
+	def findNonstdCmds(
+			cmdMod:CommandModule,		# This command module.
+			inputLine:str,				# The input line that it must match against.
+			anywhere:bool = False):		# If True, allow command to start anywhere.
+
+		"""Find nonstandard-format commands in this module matching the given
+			input line."""
+
+		### NOT YET IMPLEMENTED; THIS IS A STUB ###
+
+		return []
+
+	#__/
+
+
+	def getHelpList(self) -> List[CommandHelpItem]:
+		"""
+			Returns a list of help items for all commands
+			in this module.
+		"""
+		return self._commands.getHelpList()
+
+
+	# Note: The following can be overridden by subclasses
+	# for specific types of command modules, if desired.
+	def genHelpText(self) -> str:
+		"""
+			Generates a string containing help text for all
+			commands in this module.
+		"""
+		helpText = f"Help for commands in module {self.name}:\n"
+		helpText += self._commands.genHelpText()
+
+		return helpText
+
+
+	def nCommands(self) -> int:
+		return self._nCmds()
+
 
 	def lookupCommands(
 			cmdMod:CommandModule,		# This command module.
@@ -1738,38 +2543,40 @@ class CommandModule:
 			
 	#__/ End lookupCommands().
 
-	def findNonstdCmds(
-			cmdMod:CommandModule,		# This command module.
-			inputLine:str,				# The input line that it must match against.
-			anywhere:bool = False):		# If True, allow command to start anywhere.
 
-		"""Find nonstandard-format commands in this module matching the given
-			input line."""
+	def populate(self) -> None:		# Virtual method.
 
-		### NOT YET IMPLEMENTED; THIS IS A STUB ###
+		"""To "populate" a command module means to flesh it out by adding
+			to it all the individual commands it is supposed to contain.
+			Subclasses should implement this virtual method."""
 
-		return []
+		pass	# Need to implement this for particular subclasses.
 
-	#__/
+	#__/ End CommandModule.populate.
 
-	def getHelpList(self) -> List[CommandHelpItem]:
+
+	def menuStr(self):
 		"""
-			Returns a list of help items for all commands
-			in this module.
+			Returns a string that can serve as a concise 'menu'
+			listing commands present in this module. The
+			default representation is:
+			
+				"/Word1 /Word2 ... /Wordn"
+			
+			where Word1, etc. are the command words.
 		"""
-		return self._commands.getHelpList()
+		return "(menu not implemented)"		# TODO: Implement this eventually.
 	
-	# Note: The following can be overridden by subclasses
-	# for specific types of command modules, if desired.
-	def genHelpText(self) -> str:
-		"""
-			Generates a string containing help text for all
-			commands in this module.
-		"""
-		helpText = f"Help for commands in module {self.name}:\n"
-		helpText += self._commands.genHelpText()
 
-		return helpText
+
+
+	#/==========================================================================
+	#| Private instance methods.
+
+
+	def _nCmds(self):
+		return self.commands.nCmds()
+
 
 #__/ End public class commandInterface.CommandModule.
 
@@ -1812,9 +2619,27 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 			actively accessible within the system.
 		
 		
-		Public data members:
-		--------------------
-			
+		Public data attributes for class TheCommandInterface:
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		
+		Note that some of these may be implemented as read-only properties.
+
+			.allCommands [Commands]	-
+
+				This data object contains an index of all commands that
+				are presently accessible within the system. (The union of
+				all commands in all of the active command modules.) In
+				case of conflicts between command modules, the module
+				that was installed first takes priority.
+
+			.activeCommands [Commands]	-
+
+				This data object contains an index of all commands that
+				are presently actively supported in this command interface.
+				(The union of all commands in all of the active command
+				modules.) In case of conflicts between command modules,
+				the module that was installed first takes priority.
+
 			.commandModules [CommandModules]	-
 				
 				This data object contains the list of command modules that 
@@ -1831,7 +2656,15 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 	#|		Private instance data members:
 	#|		------------------------------
 	#|	
-	#|			._allCommands
+	#|			._allCommands [Commands] -
+	#|
+	#|				This data object contains an index of all commands
+	#|				that are presently accessible within the system. (The
+	#|				union of all commands in all of the active command
+	#|				modules.) In case of conflicts between command modules,
+	#|				the module that was installed first takes priority.
+	#|				(That is, existing commands are not displaced by newer
+	#|				modules.)
 	#|
 	#|			._activeCommands [Commands]	-
 	#|		
@@ -1842,6 +2675,13 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 	#|				between command modules, the module that was installed
 	#|				earliest takes precedence (that is, existing commands
 	#|				are not displaced by newer modules).
+	#|
+	#|			._commandModules [CommandModules]	-
+	#|
+	#|				This data object contains the list of command modules
+	#|				that are presently installed in this command interface.
+	#|				Some may be active, some inactive.  Modules installed
+	#|				earlier take priority over ones installed later.
 	#|
 	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	
@@ -1864,14 +2704,29 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 		
 			# Create an initially empty set of installed command modules.
 		
-		self.commandModules = CommandModules()
+		self._commandModules = CommandModules()
 		
+			# Create an initially empty list of all commands in all command modules.
+
+		self._allCommands = Commands()
+
 			# Create an initially empty list of actively supported commands.
 		
 		self._activeCommands = Commands()
 	
 	#__/ End singleton instance initializer for class TheCommandInterface.
 
+	@property
+	def allCommands(self):
+		"""Returns the Commands object containing all commands in all command 
+			modules."""
+		return self._allCommands
+
+	@property
+	def activeCommands(self):
+		"""Returns the Commands object containing all commands in all active 
+			command modules."""
+		return self._activeCommands
 
 	def installModule(self, cmdModule):
 	

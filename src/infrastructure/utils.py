@@ -30,6 +30,11 @@
 #|
 #|              WatchBox - A watchable storage location.
 #|
+#|          count()                                             [function]     |
+#|                                                                             |
+#|              Counts (inefficiently) the number of items enumerated          |
+#|              by an iterable.                                                |
+#|                                                                             |
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
     # Imports from standard python modules.
@@ -47,6 +52,28 @@ __all__ = ['get_hostname', 'get_my_ip',         # Networking functions.
            'bind', 'become', 'MutableClass',    # Class manipulation.
            'countLines', 'unsplit', 			# String manipulation.
 		   'WatchBox' ]                         # Watchable storage box.
+
+        #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        #|  count()                                 [module public function]
+        #|
+        #|      Given an iterable, this function counts how many items it 
+        #|      enumerates. (Why isn't this functionality built into 
+        #|      Python? Or is it?)
+        #|
+        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+def count(iterable:Iterable) -> int:
+    
+    """Counts the number of items in the given iterable.  Note that if the given 
+        iterable is a generator, it will be exhausted by this function."""
+
+    # The below implementation is more verbose, but slightly faster than 
+    # just doing sum(1 for f in iterable).
+    count = 0
+    if iterable is not None:
+        for item in iterable:
+            count += 1
+    return count
 
 
     #|=====================================================================

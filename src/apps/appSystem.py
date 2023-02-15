@@ -407,13 +407,16 @@ class AppSystem_:
 			# Ordered dictionary of registered applications: Maps app name to 
 			# app object. The order reflects order of appearance in app-list.
 
-			#-------------------------------------------------------------------
-			# At this point, we register the applications that are listed in 
-			# our configuration information as being 'available'.
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| At this point, we register the applications that are listed in 
+			#| our configuration information as being 'available'.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		_logger.info("        [Apps/Init]     Registering available apps...")
 
 		appSys._registerAvailableApps()
+			# Note this is where the application objects for all of the 
+			# available applications are created.
 
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -530,6 +533,7 @@ class AppSystem_:
 			appLoudUpdate:bool, appPlacement:Placement, appConfig:dict):
 
 		"""Registers an application with the application system.
+			This is where the application object is actually created.
 			Generic configuration parameters of the app are passed in 
 			as individual arguments.  App-specific parameters are in 
 			the appConfig record."""
