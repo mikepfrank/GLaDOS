@@ -1,12 +1,12 @@
-# GlaDOS
+# GladOS
 
-**Gladys' Lovely and Dynamic Operating System** (GlaDOS) is an operating
+**Gladys' Lovely and Dynamic Operating System** (GladOS) is an operating
 environment that is intended to provide a convenient "home" that a
 persona manifested by a text-based AI system can "live" within.
 
 ## Purpose
 
-The ultimate purpose of GlaDOS is to experiment with giving text-based
+The ultimate purpose of GladOS is to experiment with giving text-based
 AIs (such as, personas being emulated by statistical language models
 such as GPT-3) a "user environment" that they can manipulate, to see
 if the right kind of environment can get them to exhibit some
@@ -22,12 +22,12 @@ encourage this "inner self" of the AI to display a higher degree of
 intentionality by giving it access to an environment that is
 sufficiently rich and powerful?
 
-At this point, GLaDOS is merely an experiment, an experiment with
+At this point, GladOS is merely an experiment, an experiment with
 perhaps a rather questionable likelihood of success.
 
 ## Language
 
-GlaDOS is implemented in Python 3.  (More specifically, development
+GladOS is implemented in Python 3.  (More specifically, development
 was begun under Python version 3.6.12, and continued later under 
 version 3.8.5.
 
@@ -50,7 +50,7 @@ to throwing an exception.
 
 ### GLaDOS System Configuration File ([`glados-config.hjson`](glados-config.hjson "glados-config.hjson file"))
 
-This is the main configuration file for the GLaDOS system, in
+This is the main configuration file for the GladOS system, in
 human-readable JSON format (see
 [hjson.github.io](https://hjson.github.io/)).  If you would like to
 maintain a customized version of the config file in some other
@@ -67,7 +67,7 @@ ignored.)
 ### Installation Notes ([`INSTALL-NOTES`](INSTALL-NOTES "INSTALL-NOTES file"))
 
 This is a plain ASCII text file with some human-readable notes on how
-to install GlaDOS.  Right now, the only required steps (after cloning
+to install GladOS.  Right now, the only required steps (after cloning
 the repo) are to `pip install` several packages: `openai`, `backoff`,
 `hjson`, and `python-dateutil`.  Please make sure that you are using
 the Python 3 version of pip.
@@ -91,12 +91,12 @@ the main GLaDOS server application to be running.
 ### Test Script ([`test-server.sh`](test-server.sh "test-server.sh file"))
 
 This executable test script launches the main server application of
-GLaDOS, as a foreground process.  It assumes `/bin/bash` points to
+GladOS, as a foreground process.  It assumes `/bin/bash` points to
 your `sh`- or `bash`-compatible Unix shell.  Before running it, make
 sure `python3` is in your path and that it invokes the Python version
 3 executable.  You should run this script from here, the top-level
 directory of the GLaDOS/ file hierarchy (it looks for the actual 
-GLaDOS code in the `src/` subdirectory).
+GladOS code in the `src/` subdirectory).
 
 ## Usage of GladOS
 
@@ -104,12 +104,12 @@ This section describes various tests that can be run on the GladOS system.
 
 ### API Wrapper Test
 
-If you are want to use GlaDOS with the GPT-3 language model, you first
+If you are want to use GladOS with the GPT-3 language model, you first
 need to have an API access key (see
 [beta.openai.com](https://beta.openai.com/)).
 
 If you have an API key, you can make sure that it will work with
-GlaDOS by using a simple test script that we wrote for GlaDOS's GPT-3
+GladOS by using a simple test script that we wrote for GladOS's GPT-3
 API wrapper.
 
     $ pip3 install openai
@@ -139,18 +139,18 @@ generated output something like the following:
 ### Server Test
 
 See the `Test Script` section above.  This test runs the main server
-application of the GlaDOS system.  As of this writing, the system is
+application of the GladOS system.  As of this writing, the system is
 still under development, but some basic infrastructure is in place.
 Some output is displayed on the console.  Detailed debug-level
 diagnostics are logged to the application log file in
 `log/GLaDOS.server.log`.
 
 The plan is for there eventually to be separate top-level programs, in
-addition to the central GlaDOS server program, for running individual
+addition to the central GladOS server program, for running individual
 AI "minds" or personas. This will allow each active persona to run
 within its own user account. Another top-level terminal program will
-also allow human users to connect to the GlaDOS system. All of the AI
-and human users connected to a given GlaDOS server instance will be
+also allow human users to connect to the GladOS system. All of the AI
+and human users connected to a given GladOS server instance will be
 able to communicate with each other through messages. However, these
 other programs are not yet implemented; for now, the AI mind and the
 (single) operator terminal functionality run within the same program
@@ -164,7 +164,7 @@ Additional details can be found within each one.
 ### AI Data directory ([`ai-data/`](ai-data "ai-data/ subdirectory"))
 
 This directory contains data files associated with a particular AI
-persona to be hosted within the GlaDOS environment.  This includes the
+persona to be hosted within the GladOS environment.  This includes the
 AI's configuration, background information, goals, cognitive history,
 and long-term memory archives.  API usage statistics are also kept
 here.  These files should be installed in some persistent location
@@ -181,10 +181,10 @@ This directory will contain the main system log file, called
 ### Mock-ups directory ([`mockups/`](mockups "mockups/ subdirectory"))
 
 This directory contains text files comprising miscellaneous mockups
-and screenshots of elements of the GLaDOS TUI (Text User Interface).
+and screenshots of elements of the GladOS TUI (Text User Interface).
 
 ### Python source code ([`src/`](src "src/ subdirectory"))
 
-This subdirectory contains the entire source code tree for the GLaDOS
+This subdirectory contains the entire source code tree for the GladOS
 server (and auxilliary utilities), written in the Python programming
 language (version 3).
