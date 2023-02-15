@@ -9,21 +9,21 @@
 	IN PACKAGE:		commands
 	FULL PATH:		$GIT_ROOT/GLaDOS/src/commands/commandInterface.py
 	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
-	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
-	APP NAME:		GLaDOS.server (Main GLaDOS server application)
-	SW COMPONENT:	GLaDOS.commands (Command interface component)
+	SYSTEM NAME:	GladOS (Gladys' Lovely and Dynamic Operating System)
+	APP NAME:		GladOS.server (Main GLaDOS server application)
+	SW COMPONENT:	GladOS.commands (Command interface component)
 
 
 	MODULE DESCRIPTION:
 	-------------------
 
-		This module initializes the GLaDOS command interface. This is
+		This module initializes the GlaDOS command interface. This is
 		the interface that allows the AI to type commands to the
-		GLaDOS system and have them be executed by the system.
+		GlaDOS system and have them be executed by the system.
 		
 		The command interface is organized into "command modules"
 		associated with specific facilities, processes, or apps within
-		the GLaDOS system.  New command modules can be added
+		the GlaDOS system.  New command modules can be added
 		dynamically into the interface.  In the main loop of the
 		system, when the A.I. generates a text event, it is parsed to
 		see if it matches a command template, and if so, then control
