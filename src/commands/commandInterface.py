@@ -3,6 +3,7 @@
 #|------------------------------------------------------------------------------
 #|	 The below module documentation string will be displayed by pydoc3.
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 """FILE NAME:		commands/commandInterface.py	 [Python module source file]
 
 	MODULE NAME:	commands.commandInterface
@@ -17,13 +18,13 @@
 	MODULE DESCRIPTION:
 	-------------------
 
-		This module initializes the GlaDOS command interface. This is
+		This module initializes the GladOS command interface. This is
 		the interface that allows the AI to type commands to the
 		GlaDOS system and have them be executed by the system.
 		
 		The command interface is organized into "command modules"
 		associated with specific facilities, processes, or apps within
-		the GlaDOS system.  New command modules can be added
+		the GladOS system.  New command modules can be added
 		dynamically into the interface.  In the main loop of the
 		system, when the A.I. generates a text event, it is parsed to
 		see if it matches a command template, and if so, then control
@@ -97,7 +98,7 @@
 			* commandInterface.obtainCommandList().
 
 
-		NOTE: This module includes support for potentially matching8
+		NOTE: This module includes support for potentially matching
 		command patterns even if they don't begin at the start of the
 		line. This is only needed because the AI may occasionally make
 		a mistake and write something like "I type '/Help' at the
@@ -119,7 +120,7 @@
 	#|		Here we define the list of public names that are exported from
 	#|		this module to any other modules that do
 	#|
-	#|					from commands.commandInterface import *
+	#|				from commands.commandInterface import *
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -129,16 +130,34 @@ __all__ = [
 			#|~~~~~~~~~~
 			#| Classes.
 
-		'TheCommandInterface',	
-			# Singleton class representing the entire command interface for the
-			# current GLaDOS system instance.
-			
-		'CommandModules',
-			# Container class for a set of currently-loaded command modules.
-			
-		'CommandModule',	
-			# A CommandModule is a set of commands associated with a specific
-			# facility or application within GLaDOS.
+				#----------------------
+				# Help-related classes.
+
+		'CommandHelpItem',		# Base class.
+			# A help item for a specific command, which provides a
+			# usage format and a brief description of the command.
+
+		'CmdMod_HelpModule',	# Base class.
+			# A help module for a specific command module, which
+			# provides a brief description of the module, and a list of
+			# all commands defined by the module.
+
+		'The_CmdIface_HelpModule',	# Singleton.
+			# A help module for the command interface as a whole, which
+			# gives a general overview of the command interface, and
+			# includes various subtopics, such as a list of all installed
+			# command modules, a list of all commands, and a list of
+			# currently active commands. [Not yet implemented.]
+
+				#-------------------------
+				# Command-related classes.
+		
+		'Command',		# Class for a specific named command type.
+
+		'Subcommand',	# Class for a specific named subcommand type.
+
+				#---------------------------
+				# Command container classes.
 		
 		'Commands',			
 			# Special container class for a set of commands to allow fast lookup,
@@ -147,10 +166,22 @@ __all__ = [
 			# of all commands presently defined within the GLaDOS system. In the
 			# event of a conflict between mutliple commands demanding uniqueness,
 			# the most recently-added command takes priority.
-		
-		'Command',		# Class for a specific named command type.
 
-	]
+		'CommandModule',	
+			# A CommandModule is a set of commands associated with a specific
+			# facility or application within GLaDOS.
+
+				#-------------------------------------
+				# Top-level command interface classes.
+
+		'CommandModules',
+			# Container class for a set of currently-loaded command modules.
+
+		'TheCommandInterface',	
+			# Singleton class representing the entire command interface for the
+			# current GLaDOS system instance.			
+		
+	]	# End of __all__ list.
 
 
 	#|==========================================================================
@@ -359,9 +390,9 @@ _genericStdCmdPat = re.compile(_GENERIC_STD_CMD_REGEX, re.VERBOSE)
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-class	CommandHelpItem:		pass	# A help item summarizing a command.
-class	CmdMod_HelpModule:		pass	# A help module containing help for a set of commands.
-class	CmdIface_HelpModule:	pass	# A help module containing help for the command interface.
+class	CommandHelpItem:			pass	# A help item summarizing a command.
+class	CmdMod_HelpModule:			pass	# A help module containing help for a set of commands.
+class	The_CmdIface_HelpModule:	pass	# A help module containing help for the command interface.
 
 class	Command:				pass	# A single command type.
 class	Subcommand:				pass	# A special case of another command.
@@ -2580,7 +2611,9 @@ class CommandModule:
 
 #__/ End public class commandInterface.CommandModule.
 
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 class CommandModules:
 
 	"""An instance of this class represents a collection of command modules. It 
@@ -2603,6 +2636,9 @@ class CommandModules:
 		"""Add the given command module to this list of command modules."""
 		cmdMods = thisCmdMods
 		cmdMods._commandModuleList.append(module)
+
+#__/ End class CommandModules.
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
