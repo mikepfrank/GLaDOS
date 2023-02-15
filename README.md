@@ -1,12 +1,12 @@
-# GLaDOS
+# GlaDOS
 
-**Gladys' Lovely and Dynamic Operating System** (GLaDOS) is an operating
+**Gladys' Lovely and Dynamic Operating System** (GlaDOS) is an operating
 environment that is intended to provide a convenient "home" that a
 persona manifested by a text-based AI system can "live" within.
 
 ## Purpose
 
-The ultimate purpose of GLaDOS is to experiment with giving text-based
+The ultimate purpose of GlaDOS is to experiment with giving text-based
 AIs (such as, personas being emulated by statistical language models
 such as GPT-3) a "user environment" that they can manipulate, to see
 if the right kind of environment can get them to exhibit some
@@ -27,9 +27,9 @@ perhaps a rather questionable likelihood of success.
 
 ## Language
 
-GLaDOS is implemented in Python 3.  (More specifically, development
+GlaDOS is implemented in Python 3.  (More specifically, development
 was begun under Python version 3.6.12, and continued later under 
-version 3.8.5.)
+version 3.8.5.
 
 ## Top-Level Files
 
@@ -67,7 +67,7 @@ ignored.)
 ### Installation Notes ([`INSTALL-NOTES`](INSTALL-NOTES "INSTALL-NOTES file"))
 
 This is a plain ASCII text file with some human-readable notes on how
-to install GLaDOS.  Right now, the only required steps (after cloning
+to install GlaDOS.  Right now, the only required steps (after cloning
 the repo) are to `pip install` several packages: `openai`, `backoff`,
 `hjson`, and `python-dateutil`.  Please make sure that you are using
 the Python 3 version of pip.
@@ -104,12 +104,12 @@ This section describes various tests that can be run on the GladOS system.
 
 ### API Wrapper Test
 
-If you are want to use GLaDOS with the GPT-3 language model, you first
+If you are want to use GlaDOS with the GPT-3 language model, you first
 need to have an API access key (see
 [beta.openai.com](https://beta.openai.com/)).
 
 If you have an API key, you can make sure that it will work with
-GLaDOS by using a simple test script that we wrote for GLaDOS's GPT-3
+GlaDOS by using a simple test script that we wrote for GlaDOS's GPT-3
 API wrapper.
 
     $ pip3 install openai
@@ -139,18 +139,18 @@ generated output something like the following:
 ### Server Test
 
 See the `Test Script` section above.  This test runs the main server
-application of the GLaDOS system.  As of this writing, the system is
+application of the GlaDOS system.  As of this writing, the system is
 still under development, but some basic infrastructure is in place.
 Some output is displayed on the console.  Detailed debug-level
 diagnostics are logged to the application log file in
 `log/GLaDOS.server.log`.
 
 The plan is for there eventually to be separate top-level programs, in
-addition to the central GLaDOS server program, for running individual
+addition to the central GlaDOS server program, for running individual
 AI "minds" or personas. This will allow each active persona to run
 within its own user account. Another top-level terminal program will
-also allow human users to connect to the GLaDOS system. All of the AI
-and human users connected to a given GLaDOS server instance will be
+also allow human users to connect to the GlaDOS system. All of the AI
+and human users connected to a given GlaDOS server instance will be
 able to communicate with each other through messages. However, these
 other programs are not yet implemented; for now, the AI mind and the
 (single) operator terminal functionality run within the same program
@@ -164,7 +164,7 @@ Additional details can be found within each one.
 ### AI Data directory ([`ai-data/`](ai-data "ai-data/ subdirectory"))
 
 This directory contains data files associated with a particular AI
-persona to be hosted within the GLaDOS environment.  This includes the
+persona to be hosted within the GlaDOS environment.  This includes the
 AI's configuration, background information, goals, cognitive history,
 and long-term memory archives.  API usage statistics are also kept
 here.  These files should be installed in some persistent location
