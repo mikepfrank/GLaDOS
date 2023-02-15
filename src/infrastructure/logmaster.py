@@ -658,7 +658,7 @@ else:
 global	LOG_DIR
 LOG_DIR = 'log'	# Default log directory.
 
-if not "appName" in dir():		# If appdefs did not already define systemName,
+if not "appName" in dir():		# If appdefs did not already define appName,
 	appName = systemName + ".(Unknown App)"
 		# The name of this application program (child of system).	 
 else:									# Application name was defined.
@@ -3413,7 +3413,7 @@ def configLogMaster(sysname:str = None, appname:str = None,
 			#-Warning: Other modules that have already imported
 			# names from appdefs will still have the old value of
 			# appName in their module's copy of this global.
-		LOG_FILENAME = f'{LOG_DIR}/' + appName + ".log"
+		LOG_FILENAME = f'{LOG_DIR}/' + appname + ".log"
 		
 	if filename:			LOG_FILENAME					= filename
 	if formatstr:			LOG_FORMATSTR					= formatstr
