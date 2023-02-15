@@ -97,7 +97,7 @@
 			* commandInterface.obtainCommandList().
 
 
-		NOTE: This module includes support for potentially matching
+		NOTE: This module includes support for potentially matching8
 		command patterns even if they don't begin at the start of the
 		line. This is only needed because the AI may occasionally make
 		a mistake and write something like "I type '/Help' at the
@@ -2605,6 +2605,7 @@ class CommandModules:
 		cmdMods._commandModuleList.append(module)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 @singleton
 class TheCommandInterface:		# Singleton class for the command interface subsystem.
 
@@ -2646,6 +2647,14 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 				are presently installed in this command interface.	Some 
 				may be active, some inactive.  Modules installed earlier 
 				take priority over ones installed later.
+
+
+		Public instance methods for class TheCommandInterface:
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+
 	"""
 	
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2686,7 +2695,7 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	
 	
-	def __init__(self):
+	def __init__(theCommandInterface: TheCommandInterface):
 	
 		"""
 			commandInterface.__init__()				   [special instance method]
@@ -2698,35 +2707,81 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 		
 				The functionality of this method is simply to create
 				an initially-empty command interface (with no command
-				modules initially loaded yet).	Creates a command list and 
-				command module set, both initially empty.
+				modules initially loaded yet).	Creates an initially
+				empty list of installed command modules, and two
+				CommandsView_ objects, one for all commands in all
+				installed command modules, and one for all commands 
+				in all of the active command modules.
 		"""
 		
-			# Create an initially empty set of installed command modules.
+		tci = theCommandInterface
+
+			# Create an initially empty list of installed command modules, and
+			# store it in the instance data member _commandModules.
 		
-		self._commandModules = CommandModules()
+		cms = CommandModules()
+		tci._commandModules = cms
 		
 			# Create an initially empty list of all commands in all command modules.
 
-		self._allCommands = Commands()
+		tci._allCommands = AllCommandsView(cms)
 
 			# Create an initially empty list of actively supported commands.
 		
-		self._activeCommands = Commands()
+		tci._activeCommands = ActiveCommandsView(cms)
 	
 	#__/ End singleton instance initializer for class TheCommandInterface.
 
+
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	# The following are the read-only public properties of the command interface.
+
 	@property
-	def allCommands(self):
-		"""Returns the Commands object containing all commands in all command 
+	def allCommands(self) -> Commands_:
+		"""Returns the Commands_ object containing all commands in all command 
 			modules."""
 		return self._allCommands
 
 	@property
-	def activeCommands(self):
-		"""Returns the Commands object containing all commands in all active 
+	def activeCommands(self) -> Commands_:
+		"""Returns the Commands_ object containing all commands in all active 
 			command modules."""
 		return self._activeCommands
+
+	@property
+	def commandModules(self) -> CommandModules:
+		"""Returns the CommandModules object containing all of the installed 
+			command modules."""
+		return self._commandModules
+
+
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|	The following are the public instance methods of the command interface.
+	#|
+	#|		Brief list:
+	#|		-----------
+	#|
+	#|			installModule()	--
+	#|				Installs a given command module into the command interface.
+	#|
+	#|			lookupCommands() --
+	#|				Looks up commands in the command interface matching a given
+	#|				command identifier or (optionally) prefix.
+	#|
+	#|			findNonstdCommands() --
+	#|				Finds all non-standard format commands in the command 
+	#|				interface matching a given input line.
+	#|
+	#|			obtainCommandList() --
+	#|				Given an input line, return a list of commands that match
+	#|				the input line.\
+	#|
+	#|			checkForCommand() --
+	#|				Given an Action_ object, check to see if it is a command,
+	#|				and if so, construct and return a CommandAction to invoke 
+	#|				the command (it's the caller's responsibility to invoke the)
+
+
 
 	def installModule(self, cmdModule):
 	
@@ -2736,9 +2791,11 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 
 		self.commandModules.addModule(cmdModule)
 
+	#__/ End instance method TheCommandInterface.installModule().
+
 
 	def lookupCommands(
-			cmdIF:TheCommandInterface,	# The entire command interface anchor.
+			cmdIF:TheCommandInterface,	# This entire command interface anchor.
 			cmdID:str,					# Command identifier to lookup.
 			inputLine:str,				# The input line that it must match against.
 			anywhere:bool = False,		# If True, allow command to start anywhere.
@@ -2746,8 +2803,8 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 
 		"""Look up the given command identifier in the installed modules
 			of the command interface. Return a list of matching commands,
-			in priority order. Each element of the list must satisfy all
-			of the following criteria:
+			in priority order (highest-priority first). Each element of 
+			the list must satisfy all of the following criteria:
 
 				1. If prefix=False, then the command's symbolic name
 					must match the supplied command identifier cmdID
@@ -2756,8 +2813,8 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 
 				2. The command's module must be currently active.
 
-				3. If anywhere=False, or if the command's anywhere
-					attribute if False, then the command's pattern
+				3. If anywhere=False, or if the c-ommand's anywhere
+					attribute is False, then the command's pattern
 					must match from the *start* of the given input line;
 					otherwise, it may match anywhere in the input line.
 		"""
@@ -2765,6 +2822,9 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 			# Initialize our result to be an empty command list.
 		cmdList = []
 		
+		# NOTE: Should change the following to use the .activeCommands
+		#		CommandsView_ object once it has been implemented.
+
 			# This part is easy, we simply go through all of the
 			# active modules, asking each of them to look up their
 			# matching commands, and then we add their results to
@@ -2787,8 +2847,8 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 			inputLine:str,				# The input line that it must match against.
 			anywhere:bool = False):		# If True, allow command to start anywhere.
 
-		"""Find nonstandard-format commands in all modules matching the given
-			input line."""
+		"""Find all nonstandard-format commands in all active modules that match 
+			the given input line."""
 
 		cmdList = []
 
@@ -2902,6 +2962,7 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 
 		return cmdList	# Nothing else left to try.
 
+
 	#__/ End singleton instance method commandInterface.obtainCommandList().
 
 
@@ -2972,7 +3033,7 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 				# for the command, and construct an appropriate command action.
 
 			cmdInvoker = action.conceiver	# Who conceived the original action?
-				# They're the ones invoking this command.
+				# They're the ones we consider to be invoking this command.
 
 			cmdAction = firstCommand.genCmdAction(text, cmdInvoker)
 			
@@ -2983,14 +3044,7 @@ class TheCommandInterface:		# Singleton class for the command interface subsyste
 						  "possibleCommandLine() method; returning None.")
 			return None
 
-	
-	#def isCommand(self, text:str):
-	#
-	#	"""Is the given text invocable as a command?"""
-	#
-	#	return False	# Stub. (Not yet implemented.)
 
-	
 #__/ End public singleton class commandInterface.TheCommandInterface.
 
 

@@ -1317,8 +1317,13 @@ class TheActionProcessor:
 			# TheActionNewsNetwork.
 		action._reportCompletion()
 		
+	#__/ End public instance method action.execute().
+
+	
 	def commandInterfaceIs(inst, theCommandInterface):
 		inst._commandInterface = theCommandInterface
+
+#__/ End singleton class TheActionProcessor.
 		
 
 @singleton
