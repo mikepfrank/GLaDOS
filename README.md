@@ -86,7 +86,7 @@ this, you need to have first created the Telegram bot and assigned
 the `TELEGRAM_BOT_TOKEN` environment variable to its access token.
 The Telegram bot is separate from GLaDOS proper (other than in the 
 sense of piggybacking on part of its codebase) and does not require 
-the main GLaDOS server application to be running.
+the main GladOS server application to be running.
 
 ### Test Script ([`test-server.sh`](test-server.sh "test-server.sh file"))
 
@@ -95,7 +95,7 @@ GladOS, as a foreground process.  It assumes `/bin/bash` points to
 your `sh`- or `bash`-compatible Unix shell.  Before running it, make
 sure `python3` is in your path and that it invokes the Python version
 3 executable.  You should run this script from here, the top-level
-directory of the GLaDOS/ file hierarchy (it looks for the actual 
+directory of the GladOS/ file hierarchy (it looks for the actual 
 GladOS code in the `src/` subdirectory).
 
 ## Usage of GladOS
