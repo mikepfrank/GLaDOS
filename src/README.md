@@ -176,7 +176,7 @@ NOTE: Eventually, the core GLaDOS server will run under its own (`glados`) Unix 
 
 ### 20. Test programs ([`test/`](test "test/ directory"))
 
-This subdirectory (not really a package) contains miscellaneous top-level Python programs (other than the main `glados-server` program) for testing various aspects of the GLaDOS codebase.
+This subdirectory (not really a package) contains miscellaneous top-level Python programs (other than the main `glados-server` program) for testing various aspects of the GLaDOS codebase. **[WARNING: These have not been exercised in a while and they may not work!!]**
 
 
 ### 21. Text tools ([`text/`](text "text/ directory"))
