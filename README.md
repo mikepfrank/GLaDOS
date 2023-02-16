@@ -78,7 +78,7 @@ This is the very README file that you are reading now, in GitHub's
 Markdown format (see
 [guides.github.com/features/mastering-markdown](https://guides.github.com/features/mastering-markdown/)).
 
-## Telegram Bot Program ([`runbot.sh`](runbot.sh "runbot.sh file"))
+## <a name="telegram-server">Telegram Bot Server Script</a> ([`runbot.sh`](runbot.sh "runbot.sh file"))
 
 This executable shell script `runbot.sh` launches the Python program 
 [`src/telegram-bot.py`](src/telegram-bot.py "src/telegram-bot.py file"), 
@@ -95,7 +95,7 @@ The bot server is a command-line application with console output; we
 recommend running it under `tmux` so that it will keep running if you
 close your terminal window. You can return to it later with `tmux a`.
 
-### <a name="server-test">Server Test Script</a> ([`test-server.sh`](test-server.sh "test-server.sh file"))
+### <a name="glados-server">GladOS Server Test Script</a> ([`test-server.sh`](test-server.sh "test-server.sh file"))
 
 This executable shell script launches the main server application of
 GladOS, as a foreground process.  It assumes `/bin/bash` points to
@@ -145,12 +145,12 @@ generated output something like the following:
 
 ### Server Test
 
-<a href="#server-test">`Test Script`</a> section above.  This test runs the main server
-application of the GladOS system.  As of this writing, the system is
-still under development, but some basic infrastructure is in place.
-Some output is displayed on the console.  Detailed debug-level
-diagnostics are logged to the application log file in
-`log/GladOS.server.log`.
+See the <a href="#glados-server">GladOS Server Test Script</a> section 
+above.  This test runs the main server application of the GladOS system.  
+As of this writing, the system is still under development, but some basic 
+infrastructure is in place.  Some output is displayed on the console.  
+The Clock, Info, and Goals apps are implemented.  Diagnostics are logged 
+to the application log file in `log/GladOS.server.log`.
 
 The plan is for there eventually to be separate top-level programs, in
 addition to the central GladOS server program, for running individual
@@ -164,6 +164,10 @@ other programs are not yet implemented; for now, the AI mind and the
 as the central server.
 
 ### Telegram Bot
+
+See the <a href="#telegram-server">Telegram Bot Server Script</a> 
+section [#telegram-server][foo] above.  This runs the Telegram bot server.  You can customize
+it by changing the [source code](src) and the GladOS config file.
 
 ## Subdirectories
 
