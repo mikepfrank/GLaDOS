@@ -34,7 +34,7 @@ version 3.8.5.)
 ## Top-Level Files
 
 This section lists and documents the top-level files contained in the
-`GLaDOS` directory.
+`GladOS` directory.
 
 ### GIT Ignore file ([`.gitignore`](.gitignore ".gitignore file"))
 
@@ -48,7 +48,7 @@ stderr stream is also appended to this file.  This can be useful
 e.g. for seeing the call stack trace from a thread that has exited due
 to throwing an exception.
 
-### GLaDOS System Configuration File ([`glados-config.hjson`](glados-config.hjson "glados-config.hjson file"))
+### GladOS System Configuration File ([`glados-config.hjson`](glados-config.hjson "glados-config.hjson file"))
 
 This is the main configuration file for the GLaDOS system, in
 human-readable JSON format (see
@@ -64,10 +64,20 @@ pathname (directory and file) of the config file you want to use.  (If
 `GLADOS_CONFIG_PATH` is set, then `GLADOS_CONFIG_FILENAME` will be
 ignored.)
 
+### GladOS Test Script ([`glados-server.sh`](glados-server.sh "glados-server.sh file"))
+
+This executable test script launches the main server application of
+GladOS, as a foreground process.  It assumes `/bin/bash` points to
+your `sh`- or `bash`-compatible Unix shell.  Before running it, make
+sure `python3` is in your path and that it invokes the Python version
+3 executable.  You should run this script from here, the top-level
+directory of the repo (since it looks for the GladOS code in the `src/`
+subdirectory).
+
 ### Installation Notes ([`INSTALL-NOTES`](INSTALL-NOTES "INSTALL-NOTES file"))
 
 This is a plain ASCII text file with some human-readable notes on how
-to install GLaDOS.  Right now, the only required steps (after cloning
+to install GladOS.  Right now, the only required steps (after cloning
 the repo) are to `pip install` several packages: `openai`, `backoff`,
 `hjson`, and `python-dateutil`.  Please make sure that you are using
 the Python 3 version of pip.
@@ -77,16 +87,6 @@ the Python 3 version of pip.
 This is the very README file that you are reading now, in GitHub's
 Markdown format (see
 [guides.github.com/features/mastering-markdown](https://guides.github.com/features/mastering-markdown/)).
-
-### Test Script ([`test-server.sh`](test-server.sh "test-server.sh file"))
-
-This executable test script launches the main server application of
-GLaDOS, as a foreground process.  It assumes `/bin/bash` points to
-your `sh`- or `bash`-compatible Unix shell.  Before running it, make
-sure `python3` is in your path and that it invokes the Python version
-3 executable.  You should run this script from here, the top-level
-directory of the repo (it looks for the GLaDOS code in the `src/`
-subdirectory).
 
 ## Telegram Bot Script ([`runbot.sh`](runbot.sh "runbot.sh file"))
 
