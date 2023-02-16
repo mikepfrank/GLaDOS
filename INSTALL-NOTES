@@ -1,23 +1,27 @@
 INSTALLATION NOTES.
 ===================
 
+The current Python version being used for development is 3.8.5.
+
 Note that GLaDOS requires the following optional Python packages
 to have previously been installed:
 
 
     Used by gpt3.api module:
     ~~~~~~~~~~~~~~~~~~~~~~~~
-        pip3 install openai
-        pip3 install backoff
+        pip3 install openai             (I'm using vers. 0.2.4)
+        pip3 install backoff            (I'm using vers. 1.10.0)
 
 
     Used by the config package:
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        pip3 install hjson              (Needed to parse config files.)
+        pip3 install hjson              (I'm using vers. 3.0.2)
+            (Needed to parse config files.)
 
 
     Used by the infrastructure.time module:
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        pip3 install python-dateutil    (Needed to get time zone abbreviations right.)
+        pip3 install python-dateutil    (I'm using vers. 2.8.2)
+            (Needed to get time zone abbreviations right.)
 
 
