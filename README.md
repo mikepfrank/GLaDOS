@@ -166,8 +166,9 @@ as the central server.
 ### Telegram Bot
 
 See the <a href="#telegram-server">Telegram Bot Server Script</a> 
-section [#telegram-server][foo] above.  This runs the Telegram bot server.  You can customize
-it by changing the [source code](src) and the GladOS config file.
+section above.  This runs the [Telegram bot server](#telegram-server).  You can customize
+it by changing the [source code](src/telegram-bot.py) and the [GladOS 
+config file]().
 
 ## Subdirectories
 
