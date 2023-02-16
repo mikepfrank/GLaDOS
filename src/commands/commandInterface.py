@@ -198,10 +198,10 @@ __all__ = [
 		#|	1.1. Imports of standard python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from typing				import	List, ClassVar
+from typing				import	List	#, ClassVar - Not sure how to use this.
 
-from os					import	path
-	# Manipulate filesystem path strings.
+#from os					import	path
+#	# Manipulate filesystem path strings.
 
 from collections		import	OrderedDict
 	# Dictionary that maintains item order. We use this in the Commands class.
@@ -229,8 +229,10 @@ import re	# Standard regular expression facility.
 from infrastructure.decorators	import	singleton
 	# A simple decorator for singleton classes.
 
-from infrastructure.utils		import	count	# Count items in an iterable.
-
+from infrastructure.utils		import	(
+				count,	# Count items in an iterable.
+				seqno	# Return a unique sequence number.
+			)
 
 				#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 				#| 1.3.1.1. The logmaster module defines our logging framework.
@@ -253,7 +255,7 @@ global _component	# Name of our software component, as <sysName>.<pkgName>.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 from	entities.entity		import	(
-				Entity_,			# Abstract base class for reified entities.
+				Entity_,	# Abstract base class for all reified entities.
 				AI_Entity_,			# Abstract base class for AI entities.
 				Operator_Entity,	# Entity representing the system operator.
 				Human_Entity_,		# Abstract base class for human entities.
@@ -272,8 +274,8 @@ from	helpsys.helpSystem	import	(
 
 from	supervisor.action	import	(
 				Action_,			# Abstract base class for general actions.
-				warn,				# Generates a warning message.
-				error,				# Generates an error message. 
+				#warn,				# Generates a GladOS warning message. (Currently unused.)
+				error,				# Generates a GladOS error message. 
 				CommandAction_, 	# An action type for command actions.
 					# (so that we can turn commands into actions).
 				OperatorCommand,	# Lets us construct operator command actions.
@@ -306,7 +308,7 @@ from	mind.aiActions		import	CommandByAI_
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	#|--------------------------------------------------------------------------
-	#|	_GENERIC_STD_CMD_REGEX			  [private module-level global constant]
+	#|	_GENERIC_STD_CMD_REGEX			 [private module-level global constants]
 	#|	_genericStdCmdPat
 	#|
 	#|		These constants contain the standard default regular expression
@@ -390,17 +392,22 @@ _genericStdCmdPat = re.compile(_GENERIC_STD_CMD_REGEX, re.VERBOSE)
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+# Help-related classes.
 class	CommandHelpItem:			pass	# A help item summarizing a command.
 class	CmdMod_HelpModule:			pass	# A help module containing help for a set of commands.
 class	The_CmdIface_HelpModule:	pass	# A help module containing help for the command interface.
 
+# Command-related classes.
 class	Command:				pass	# A single command type.
 class	Subcommand:				pass	# A special case of another command.
+
+# Command container classes.
 class	Commands:				pass	# A list of commands.
 class	CommandModule:			pass	# A pluggable command module.
-class	CommandModules:			pass	# A whole list of command modules.
 
-class	TheCommandInterface:	pass	
+# Command interface classes.
+class	CommandModules:			pass	# A whole list of command modules.
+class	TheCommandInterface:	pass	# Singleton anchor for command system.
 	# Singleton anchor for this entire 'commands' package defining GladOS' command interface.
 
 
@@ -451,8 +458,8 @@ class CommandHelpItem(HelpItem):
 
         # Generate the text from usageText and shortDesc and pass it to the superclass initializer.
 		# Also pass longDesc as the verboseDesc parameter to the superclass initializer.
-		text = f"{usageText} - {shortDesc}"
-		item._text = text
+		text = f"{usageText}:\n\t{shortDesc}"
+		item._text = text	# How the helpModule will display the item.
 
 		super().__init__(
 			name		= name, 
@@ -468,12 +475,18 @@ class CommandHelpItem(HelpItem):
 	def shortDesc(thisHelpItem:CommandHelpItem):
 		return thisHelpItem._shortDesc
 
+	@property
+	def longDesc(thisHelpItem:CommandHelpItem):
+		return thisHelpItem._longDesc
+
 	# Special override for the superclass's topicDesc property.
 	# For command help items, the topicDesc is the same as the usageText.
 	# (For most help items, the topicDesc is the same as the shortDesc.)
 	# We do this because we want the usage to appear at the upper-right
 	# corner of the help screen for the item's temporary ItemHelpModule,
-	# whereas for non-command items, we want the shortDesc to appear there.
+	# which is where the module's topicDesc is normally displayed,
+	# whereas for typical non-command items, we want the shortDesc to 
+	# appear at that position.
 	@property
 	def topicDesc(thisHelpItem:CommandHelpItem):
 		return thisHelpItem.usageText
@@ -499,7 +512,19 @@ class CmdMod_HelpModule(HelpModule):
 
 	def __init__(newHelpModule:CmdMod_HelpModule, cmdMod:CommandModule):
 		"""Create a new CmdMod_HelpModule for the given CommandModule."""
-		super().__init__(name=cmdMod.name)
+		
+		# Initialize the HelpModule superclass.
+		super().__init__(
+
+				name = cmdMod.name + '-help',	# Name of the help module.
+
+				desc = f"help module for [{cmdMod.name}] command module",	
+					# Description of the help module.
+				
+				topicName = cmdMod.desc,		# Topic name for the help module.
+
+				topicDesc = cmdMod.desc,		# Topic description for the help module.
+			)
 		newHelpModule._cmdMod = cmdMod
 		newHelpModule._cmdHelpItems = {}
 
@@ -507,23 +532,23 @@ class CmdMod_HelpModule(HelpModule):
 		for cmd in cmdMod.commands:
 			newHelpModule.addCommandHelpItem(cmd)
 
-	def addCommandHelpItem(newHelpModule:CmdMod_HelpModule, cmd:Command):
+	def addCommandHelpItem(thisHelpModule:CmdMod_HelpModule, cmd:Command):
 		"""Add a CommandHelpItem for the given command to this help module."""
 		cmdHelpItem = CommandHelpItem(
 			name		= cmd.name, 
 			usageText	= cmd.usageText, 
 			shortDesc	= cmd.shortDesc, 
 			longDesc	= cmd.longDesc)
-		newHelpModule._cmdHelpItems[cmd.name] = cmdHelpItem
-		newHelpModule.addHelpItem(cmdHelpItem)
+		thisHelpModule._cmdHelpItems[cmd.name] = cmdHelpItem
+		thisHelpModule.addHelpItem(cmdHelpItem)
 
-	def getCommandHelpItem(newHelpModule:CmdMod_HelpModule, cmdName:str):
+	def getCommandHelpItem(thisHelpModule:CmdMod_HelpModule, cmdName:str):
 		"""Return the CommandHelpItem for the given command name, or None if none."""
-		return newHelpModule._cmdHelpItems.get(cmdName, None)
+		return thisHelpModule._cmdHelpItems.get(cmdName, None)
 
-	def getCommandHelpItems(newHelpModule:CmdMod_HelpModule):
+	def getCommandHelpItems(thisHelpModule:CmdMod_HelpModule):
 		"""Return a list of all the CommandHelpItems in this help module."""
-		return list(newHelpModule._cmdHelpItems.values())
+		return list(thisHelpModule._cmdHelpItems.values())
 
 #__/ end CmdMod_HelpModule class.
 
@@ -2064,7 +2089,7 @@ class CommandsView_(Commands_):
 class AllCommandsView(CommandsView_):
 
 	"""A view of a virtual enumeration of all commands in the system.  The
-		enumeration is generated on the fly as needed, by the concrete subclass
+		enumeration is generated on the fly as needed, by this concrete subclass
 		AllCommandsView."""
 
 	_desc = 'AllCommands'
@@ -2077,7 +2102,7 @@ class AllCommandsView(CommandsView_):
 class ActiveCommandsView(CommandsView_):
 
 	"""A view of a virtual enumeration of all active commands in the system.
-		enumeration is generated on the fly as needed, by the concrete
+		enumeration is generated on the fly as needed, by this concrete
 		subclass ActiveCommandsView."""
 
 	_desc = 'ActiveCommands'
@@ -2110,10 +2135,14 @@ class CommandModule:
 		Public data members:		(includes variables and properties)
 		~~~~~~~~~~~~~~~~~~~~~
 
-			cm.desc:str - A short description string for the command module.
-
 			cm.name:str - A unique symbolic name for this command module.
-				(Do we even need this?)
+				(Example: "sys-cmds".) Useful for debugging.
+
+			cm.desc:str - A short description string for the command module.
+				(Example: "System commands".)
+
+			cm.longDesc:str - A longer description string for the command module.
+				(Example: "These commands control the GladOS system as a whole.")
 
 			cm.isActive:bool - True if this command module is active,
 				False otherwise.
@@ -2124,6 +2153,26 @@ class CommandModule:
 			cm.commands:CommandBin_ - The command list for this command module.
 			
 			cm.nCommands:int - The number of commands in the command module.
+
+		  Help-related data members:
+		  --------------------------
+
+			cm.introText:str - A string of introductory text to display when
+				the user accesses the command module's help topic.  (Example:
+				"This is the set of all of the top-level commands for the
+				GladOS operating environment.  They are used to control the 
+				system as a whole.") If not set, the command module's longDesc
+				is used for this instead.
+
+			cm.topicName:str - A unique symbolic name for the command module's
+				help topic.  (Example: "sys-cmds".)  This allows the user to
+				access the command module's help topic using a command like
+				'/help sys-cmds'.  If not set, the command module's name is
+				used for this as well.
+
+			cm.topicDesc:str - A short-ish description string for the command 
+				module's help topic.  (Example: "System commands".) If not
+				set, the command module's desc is used for this instead.
 
 			cm.helpModuleClass:ClassVar[CommandsHelpModule] -
 				The help module class to use for this command module's help module.
@@ -2152,9 +2201,11 @@ class CommandModule:
 	#|	Public data members.	(Includes class and/or instance data members.
 	#|  ====================		Some or all of these may be properties.)
 	#|
+	#|		- name:str -- A unique symbolic name for this command module.
+	#|
 	#|		- desc:str -- A short description string for the command module.
 	#|
-	#|		- name:str -- A unique symbolic name for this command module.
+	#|		- longDesc:str -- A longer description string for the command module.
 	#|
 	#|		- isActive:bool -- True if this command module is active, 
 	#|			False otherwise.
@@ -2166,6 +2217,18 @@ class CommandModule:
 	#|
 	#|		- nCommands:int -- The number of commands in the command module.
 	#|
+	#|	Help-related data members:
+	#|
+	#|		- topicName:str -- A unique symbolic name for the command module's
+	#|			help topic.  If not set, the command module's name is
+	#|			used for this as well.
+	#|
+	#|		- topicDesc:str -- A short description string for the command
+	#|			module's help topic.
+	#|
+	#|		- introText:str -- A string of introductory text to display when
+	#|			the user accesses the command module's help topic.
+	#|
 	#|		- helpModuleClass:ClassVar[CommandsHelpModule] --
 	#| 			The help module class to use for this command module's help module.
 	#|
@@ -2175,14 +2238,19 @@ class CommandModule:
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	@property
+	def name(self) -> str:
+		"""A unique symbolic name for this command module."""
+		return self._name
+
+	@property
 	def desc(self) -> str:
 		"""A short description string for this command module."""
 		return self._desc
 
 	@property
-	def name(self) -> str:
-		"""A unique symbolic name for this command module."""
-		return self._name
+	def longDesc(self) -> str:
+		"""A longer description string for this command module."""
+		return self._longDesc
 
 	@property
 	def isActive(self) -> bool:
@@ -2209,6 +2277,25 @@ class CommandModule:
 		"""The number of commands in this command module."""
 		return len(self._commands)
 
+		# ------------------------
+		# Help-related properties:
+
+	@property
+	def topicName(self) -> str:
+		"""A unique symbolic name for this command module's help topic."""
+		return self._topicName
+
+	@property
+	def topicDesc(self) -> str:
+		"""A short description string for this command module's help topic."""
+		return self._topicDesc
+
+	@property
+	def introText(self) -> str:
+		"""A string of introductory text to display when the user accesses
+		this command module's help topic."""
+		return self._introText
+
 	@property
 	def helpModuleClass(self): # -> ClassVar[CommandsHelpModule]:
 		"""The help module class to use for this command module's help module."""
@@ -2227,9 +2314,11 @@ class CommandModule:
 	#|		users of this class.  They are intended to be accessed only
 	#|		by the methods of this class, or by subclasses of this class.
 	#|
+	#|		- _name: A unique symbolic name for this command module.
+	#|
 	#|		- _desc: A short description of this command module.
 	#|
-	#|		- _name: A unique symbolic name for this command module.
+	#|		- _longDesc: A longer description of this command module.
 	#|
 	#|		- _isActive: True if this command module is active, False
 	#|			otherwise.
@@ -2239,6 +2328,18 @@ class CommandModule:
 	#|
 	#|		- _commands: A CommandBin_ instance for this command module.
 	#|
+	#|	  Help-related private data members:
+	#|	  ----------------------------------
+	#|
+	#|		- _topicName: A unique symbolic name for the command module's
+	#|			help topic.
+	#|
+	#|		- _topicDesc: A short description string for the command
+	#|			module's help topic.
+	#|
+	#|		- _introText: A string of introductory text to display when
+	#|			the user accesses the command module's help topic.
+	#|
 	#|		- _helpModuleClass: The help module class to use for this
 	#|			command module's help module.
 	#|
@@ -2246,10 +2347,19 @@ class CommandModule:
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+		# --------------------------------------------------------------
+		# NOTE: Subclasses can (and in many cases, should) override the
+		# 	default values for these class data members as appropriate.
+
+	_name = None	# Type str.  A symbolic name for this command module.
+		# If this ends up being generated automatically, it should be
+		# done in such a way that it's unique for each command module.
+
 	_desc = "(unnamed command module)"
 		# A short description of this command module.
 
-	_name = None	# Type str.  A symbolic name for this command module.
+	_longDesc = "(no description set)"	
+		# A longer description of this command module.
 
 	_isActive = False
 		# The command module is initially inactive until explicitly activated.
@@ -2258,8 +2368,28 @@ class CommandModule:
 		# The command bin class to use for this command module.
 
 	_commands = None	# Type Commands.  The command bin for this module.
-		# This is initialized to None, and should be set to a Commands 
-		# instance by the instance initializer
+		# This is initialized to None, and should be set to a suitable
+		# Commands instance by the instance initializer
+
+		#-----------------------------------
+		# Help-related private data members:
+
+	_topicName = None	# Type str.  A unique symbolic name for the command
+		# module's help topic.  This will end up being copied from the
+		# command module's name if it's not explicitly set.  (But this is
+		# not recommended if the command module's name was automatically
+		# generated.)
+
+	_topicDesc = None
+		# Type str.  A short description string for the command module's
+		# help topic.  This will end up being copied from the command
+		# module's description if it's not explicitly set.
+
+	_introText = None
+		# Type str.  A string of introductory text to display when the user
+		# accesses the command module's help topic.  This will end up being
+		# copied from the command module's long description if it's not
+		# explicitly set.
 	
 	_helpModule = None	# Type CommandsHelpModule.  The help module for this
 		# command module.  This is initialized to None, and should be set
@@ -2280,17 +2410,38 @@ class CommandModule:
 
 	def __init__(newCommandModule, 
 
+					name		:str=None,	
+						# A unique symbolic name for this command module.
+
 					desc		:str=None,	
 						# A short description string for this command module.
 
-					name		:str=None,	
-						# A unique symbolic name for this command module.
+					longDesc	:str=None,
+						# A longer description string for this command module.
 
 					isActive	:bool=None,	
 						# True if this command module is active, False otherwise.
 
 					cbClass		=None,					# :ClassVar[CommandsBin_]=None,	
 						# The command bin class to use for this command module.
+
+				# Help-related parameters:
+				# ------------------------
+
+					topicName	:str=None,
+						# A unique symbolic name for this command module's help topic.
+						# (Will be copied from the command module's name if not set.)
+
+					topicDesc	:str=None,
+						# A short-ish description string for this command 
+						# module's help topic. (Will be copied from the command
+						# module's description if not otherwise set.)
+
+					introText	:str=None,
+						# A string of introductory text to display when the user
+						# accesses the command module's help topic.  (Will be
+						# copied from the command module's long description if
+						# not otherwise set.)
 
 					hmClass		=None				# :ClassVar[CmdMod_HelpModule]=None	
 						# The help module class to use for this command module's help module.
@@ -2307,6 +2458,24 @@ class CommandModule:
 
 		cm = newCommandModule	# For convenience.
 
+			#-------------------------------------------------------------------
+			# If no symbolic name was provided, try to get one from the
+			# class data member.  If that doesn't work, pick a new unique
+			# symbolic name.  Store the symbolic name for this module as
+			# a private instance data member.
+
+		if name is None:
+			if cm.hasattr('_name'):
+				name = cm._name
+			else:
+				# Generate a unique symbolic name for this command module.
+				name = "cmdMod_" + str(seqno())
+					# seqno() is in the utils module.
+					# It returns a unique integer each time it's called.
+
+		cm._name = name	# Store the symbolic name for this module.
+
+			#-------------------------------------------------------------------
 			# If no description string was provided, try to get one from
 			# the class data member.  If that doesn't work, use the default
 			# description string.  Store the description string for this
@@ -2320,21 +2489,19 @@ class CommandModule:
 
 		cm._desc = desc	# Store the description string for this module.
 
+			#-------------------------------------------------------------------
+			# If no long description string was provided, try to get one
+			# from the class data member.  If that doesn't work, use the
+			# default long description string.  Store the long description
+			# string for this module as a private instance data member.
 
-			# If no symbolic name was provided, try to get one from the
-			# class data member.  If that doesn't work, use the default
-			# symbolic name.  Store the symbolic name for this module as
-			# a private instance data member.
-
-		if name is None:
-			if cm.hasattr('_name'):
-				name = cm._name
+		if longDesc is None:
+			if cm.hasattr('_longDesc'):
+				longDesc = cm._longDesc
 			else:
-				name = "(unnamed command module)"
+				longDesc = "(no description set)"
 
-		cm._name = name	# Store the symbolic name for this module.
-
-
+			#-------------------------------------------------------------------
 			# If no active state was provided, try to get one from the
 			# class data member.  If that doesn't work, use the default
 			# active state.  Store the active state for this module as
@@ -2348,7 +2515,7 @@ class CommandModule:
 
 		cm._isActive = isActive	# Store the active state for this module.
 
-
+			#-------------------------------------------------------------------
 			# If no command bin class was provided, try to get one from the
 			# class data member.  If that doesn't work, use the default
 			# command bin class.  Store the command bin class for this
@@ -2362,11 +2529,55 @@ class CommandModule:
 
 		cm._commandBinClass = cbClass
 
+			#-------------------------------------------------------------------
+			# If no help topic name was provided, try to get one from the
+			# class data member.  If that doesn't work, or the ._topicName
+			# class data member is None, use the command module's name.
 
+		if topicName is None:
+			if cm.hasattr('_topicName'):
+				topicName = cm._topicName
+			else:
+				topicName = None
+
+		if topicName is None:
+			topicName = name
+
+			#-------------------------------------------------------------------
+			# If no help topic description string was provided, try to get
+			# one from the class data member.  If that doesn't work, or the
+			# ._topicDesc class data member is None, use the command module's
+			# description string.
+
+		if topicDesc is None:
+			if cm.hasattr('_topicDesc'):
+				topicDesc = cm._topicDesc
+			else:
+				topicDesc = None
+
+		if topicDesc is None:
+			topicDesc = desc
+
+			#-------------------------------------------------------------------
+			# If no help module introductory text was provided, try to get
+			# one from the class data member.  If that doesn't work, or the
+			# ._introText class data member is None, use the command module's
+			# long description string.
+
+		if introText is None:
+			if cm.hasattr('_introText'):
+				introText = cm._introText
+			else:
+				introText = None
+
+		if introText is None:
+			introText = longDesc
+
+			#-------------------------------------------------------------------
 			# If no help module class was provided, try to get one from the
 			# class data member.  If that doesn't work, use the default
-			# help module class.  Store the help module class for this
-			# module as a private instance data member.
+			# help module class for command modules.  Store the help module 
+			# class for this module as a private instance data member.
 
 		if hmClass is None:
 			if cm.hasattr('_helpModuleClass'):
@@ -2376,7 +2587,8 @@ class CommandModule:
 
 		cm._helpModuleClass = hmClass
 
-		#-----------------------------------------------------------------------
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# Now that we've finished figuring out all our initialization parame-
 		# ters, we can go ahead and create our command bin.
 
@@ -2405,9 +2617,45 @@ class CommandModule:
 
 		#-----------------------------------------------------------------------
 		# Now that we've finished populating our command bin, we can go ahead
-		# and create our help module.	
+		# and create our help module.
 
-		cm._helpModule = hmClass(desc=f"help module for command module {cm._desc}")
+			# First, let's go ahead and create a list of help items for
+			# all of the commands in this command module's command bin.
+
+		helpItems = []
+		for cmd in cm._commands:
+			helpItems.append(cmd.helpItem)
+
+			# Create a new help module (of the specified type) for this command module.
+
+		cm._helpModule = hmClass(	# Call constructor for help module class.
+
+			name = name + "_help",	# Symbolic name for this help module.
+
+			desc = f"help module for command module [{cm._desc}]",
+				# Short description string for this help module,
+				# which may be used in debugging output.
+
+			topicName = topicName,
+				# The name of the help topic for this command module.
+
+			topicDesc = topicDesc,
+				# The description string for the help topic for this
+				# command module.
+
+			introText = introText,
+				# The introductory text for this command module's help
+				# topic.
+
+			helpItems = helpItems,
+				# A list of help items for this command module's help
+				# topic.
+
+			parentModule = The_CmdIface_HelpModule,
+				# The parent help module for a command module's help
+				# topic is by default the help module for the command 
+				# interface. (We might generalize this later.)
+		)
 
 
 	#__/ End CommandModule instance initializer.

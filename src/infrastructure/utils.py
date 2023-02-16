@@ -30,12 +30,63 @@
 #|
 #|              WatchBox - A watchable storage location.
 #|
+#|          This module also contains the following miscellaneous functions:
+#|
+#|              count() - Count the number of items in an iterable.
+#|
+#|              seqno() - Generate a unique sequence number.
+#|
+#|*****************************************************************************|
+#|  Slightly more detailed description of the contents of this module:         |
+#|
 #|          count()                                             [function]     |
 #|                                                                             |
 #|              Counts (inefficiently) the number of items enumerated          |
 #|              by an iterable.                                                |
 #|                                                                             |
-#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+#|          get_hostname()                                      [function]     |
+#|                                                                             |
+#|              Get the name of the host (computer) this server is             |
+#|                                                                             |
+#|          get_my_ip()                                         [function]     |
+#|                                                                             |
+#|              Gets the IP address of the default interface of the            |
+#|              host (computer) this server application is running on.         |
+#|                                                                             |
+#|          bind()                                              [function]     |
+#|                                                                             |
+#|              Given an object instance and a class method (or any            |
+#|              function), binds the instance as the first argument            |
+#|              of the method (the one whose formal name is usually            |
+#|              something like "self", "this", or "inst"), and returns         |
+#|              the newly-created lambda, which can then serve as an           |
+#|              instance method.  For an example of usage, see the             |
+#|              HireCurThread() function in worklist.py.                       |
+#|                                                                             |
+#|          become()                                            [function]     |
+#|                                                                             |
+#|              Reassign the given object to a new class.                      |
+#|                                                                             |
+#|          MutableClass                                        [class]        |
+#|                                                                             |
+#|              An instance of class MutableClass can be changed to            |
+#|              be a direct instance of any other subclass of class            |
+#|              MutableClass using the .become() method.                       |
+#|                                                                             |
+#|          unsplit()                                           [function]     |
+#|                                                                             |
+#|              Concatenate a list of strings with a given delimiter           |
+#|              in between.                                                    |
+#|                                                                             |
+#|          WatchBox                                            [class]        |
+#|                                                                             |
+#|              A watchable storage location.                                  |
+#|                                                                             |
+#|          seqno()                                             [function]     |
+#|                                                                             |
+#|              Generate a unique sequence number.                             |
+#|                                                                             |
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
     # Imports from standard python modules.
 
@@ -43,7 +94,7 @@ import threading    # RLock
 from socket import gethostname, gethostbyname
     # these are used in get_hostname(), get_my_ip()
 
-import infrastructure.flag     # Flag
+from infrastructure import flag     # Flag module.
 
     # Public names we export from this module to other modules that do
     # "from utils import *"
@@ -51,7 +102,9 @@ import infrastructure.flag     # Flag
 __all__ = ['get_hostname', 'get_my_ip',         # Networking functions.
            'bind', 'become', 'MutableClass',    # Class manipulation.
            'countLines', 'unsplit', 			# String manipulation.
-		   'WatchBox' ]                         # Watchable storage box.
+		   'WatchBox',                          # Watchable storage box.
+           'count', 'seqno'                     # Miscellaneous functions.
+        ]                   
 
         #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         #|  count()                                 [module public function]
@@ -74,6 +127,34 @@ def count(iterable:Iterable) -> int:
         for item in iterable:
             count += 1
     return count
+
+
+        #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        #|  seqno()                                [module public function]
+        #|
+        #|      Generate a unique sequence number.  This is a thread-safe
+        #|      function.
+        #|
+        #|      Note that this function is not reentrant, so it should not
+        #|      be called from within a function that is already holding
+        #|      the lock.
+        #|
+        #|      Note that this function is not thread-safe if the lock is
+        #|      not held when it is called.
+        #|
+        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+seqno_lock = threading.RLock()  # Lock for seqno().
+_seqno_count = 0           # Sequence number counter [module private global].
+
+def seqno():
+    global _seqno_count
+
+    seqno_lock.acquire()    # Lock the counter.
+    _seqno_count += 1       # Increment the counter.
+    seqno_lock.release()    # Unlock the counter.
+
+    return _seqno_count     # Return the new value of the counter.
 
 
     #|=====================================================================

@@ -33,6 +33,8 @@ from	typing		import	List
 from	infrastructure.decorators	import	singleton, classproperty
 		# A simple decorator for singleton classes.
 
+from	infrastructure.utils		import	seqno
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Dummy class declarations (for use in type hints only).
 
@@ -178,7 +180,8 @@ class HelpModule(HelpModule_):
 	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	def __init__(newHelpModule:HelpModule, 
-					name		:str = None,	# The name of this module.
+					name		:str = None,	# The symbolic name of this module.
+					desc 		:str = None,	# A short description of the module. (For debugging; unused.)
 					topicName	:str = None,	# The name of the module's topic.
 					topicDesc	:str = None,	# A short description of the topic.
 					introText	:str = None,	# The introductory text for this module.
@@ -212,42 +215,42 @@ class HelpModule(HelpModule_):
 			subcommand name used to access the module via the /help command."""
 
 
-		module = newHelpModule		# This new help module being initialized.
+		hm = newHelpModule		# This new help module being initialized.
 
 
 		# For arguments that are not provided, check to see if they are
 		# defined as existing class or instance attributes, and if so, use 
 		# those values instead.
 
-		if name is None and hasattr(module, 'name'):
-			name = module.name
+		if name is None and hasattr(hm, 'name'):
+			name = hm.name
 
-		if topicName is None and hasattr(module, 'topicName'):
-			topicName = module.topicName
+		if topicName is None and hasattr(hm, 'topicName'):
+			topicName = hm.topicName
 		
-		if topicDesc is None and hasattr(module, 'topicDesc'):
-			topicDesc = module.topicDesc
+		if topicDesc is None and hasattr(hm, 'topicDesc'):
+			topicDesc = hm.topicDesc
 		
-		if introText is None and hasattr(module, 'introText'):
-			introText = module.introText
+		if introText is None and hasattr(hm, 'introText'):
+			introText = hm.introText
 		
-		if helpItems is None and hasattr(module, 'helpItems'):
-			helpItems = module.helpItems
+		if helpItems is None and hasattr(hm, 'helpItems'):
+			helpItems = hm.helpItems
 		
-		if subModules is None and hasattr(module, 'subModules'):
-			subModules = module.subModules
+		if subModules is None and hasattr(hm, 'subModules'):
+			subModules = hm.subModules
 
-		if parentModule is None and hasattr(module, 'parentModule'):
-			parentModule = module.parentModule
+		if parentModule is None and hasattr(hm, 'parentModule'):
+			parentModule = hm.parentModule
 
-		if temporary is None and hasattr(module, 'temporary'):
-			temporary = module.temporary
+		if temporary is None and hasattr(hm, 'temporary'):
+			temporary = hm.temporary
 
 
 		# Initialize any remaining uninitialized arguments to placeholder values.
 
 		if name is None:
-			name = "(unnamed help module)"
+			name = "helpMod_" + str(seqno())
 
 		if topicName is None:
 			topicName = "(unspecified topic)"
@@ -278,19 +281,19 @@ class HelpModule(HelpModule_):
 
 		# Store the values obtained above as instance attributes.
 
-		module.name 		= name
-		module.topicName 	= topicName
-		module.topicDesc 	= topicDesc
-		module.introText 	= introText
-		module.helpItems 	= helpItems
-		module.subModules 	= subModules
-		module.parentModule = parentModule
+		hm.name 		= name
+		hm.topicName 	= topicName
+		hm.topicDesc 	= topicDesc
+		hm.introText 	= introText
+		hm.helpItems 	= helpItems
+		hm.subModules 	= subModules
+		hm.parentModule = parentModule
 
 
 		# Call the .genHelpText() method to generate the help text for this
 		# module and store it in the 'helpScreenText' attribute.
 
-		module.genHelpText()
+		hm.genHelpText()
 
 
 		# Go ahead and automatically add this module to the parent module's 
@@ -298,7 +301,7 @@ class HelpModule(HelpModule_):
 		# the parent module is not TheNullHelpModule().
 
 		if temporary is False and parentModule is not TheNullHelpModule():
-			parentModule.addSubModule(module)
+			parentModule.addSubModule(hm)
 
 
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
