@@ -115,7 +115,7 @@ API wrapper.
     $ pip3 install openai
     $ pip3 install backoff
     $ export OPENAI_API_KEY=<YourAPIKeyGoesHere>
-    $ python3 src/test/glados-test.py
+    $ python3 src/glados-test.py
 
 This prompts GPT-3 with the first line from the nursery rhyme "Mary
 Had a Little Lamb," and, if all goes well, you will see GPT-3
