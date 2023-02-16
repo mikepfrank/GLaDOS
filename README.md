@@ -145,7 +145,7 @@ generated output something like the following:
 
 ### Server Test
 
-See the [`Test Script`][server-test] section above.  This test runs the main server
+[`Test Script`][#server-test] section above.  This test runs the main server
 application of the GladOS system.  As of this writing, the system is
 still under development, but some basic infrastructure is in place.
 Some output is displayed on the console.  Detailed debug-level
