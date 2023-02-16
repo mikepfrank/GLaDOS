@@ -95,7 +95,7 @@ The bot server is a command-line application with console output; we
 recommend running it under `tmux` so that it will keep running if you
 close your terminal window. You can return to it later with `tmux a`.
 
-### [Server Test Script]:#server-test ([`test-server.sh`](test-server.sh "test-server.sh file"))
+### <a name="server-test">Server Test Script</a> ([`test-server.sh`](test-server.sh "test-server.sh file"))
 
 This executable shell script launches the main server application of
 GladOS, as a foreground process.  It assumes `/bin/bash` points to
