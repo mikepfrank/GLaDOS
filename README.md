@@ -78,7 +78,7 @@ This is the very README file that you are reading now, in GitHub's
 Markdown format (see
 [guides.github.com/features/mastering-markdown](https://guides.github.com/features/mastering-markdown/)).
 
-## <a name="telegram-server">Telegram Bot Server Script</a> ([`runbot.sh`](runbot.sh "runbot.sh file"))
+### <a name="telegram-server">Telegram Bot Server Script</a> ([`runbot.sh`](runbot.sh "runbot.sh file"))
 
 This executable shell script `runbot.sh` launches the Python program 
 [`src/telegram-bot.py`](src/telegram-bot.py "src/telegram-bot.py file"), 
