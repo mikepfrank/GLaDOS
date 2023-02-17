@@ -145,7 +145,7 @@ generated output something like the following:
 
 ### Server Test
 
-See the <a href="#glados-server">GladOS Server Test Script</a> section 
+See the [GladOS Server Test Script](#glados-server) section 
 above.  This test runs the main server application of the GladOS system.  
 As of this writing, the system is still under development, but some basic 
 infrastructure is in place.  Some output is displayed on the console.  
@@ -165,10 +165,10 @@ as the central server.
 
 ### Telegram Bot
 
-See the <a href="#telegram-server">Telegram Bot Server Script</a> 
-section above.  This runs the [Telegram bot server](#telegram-server).  You can customize
-it by changing the [source code](src/telegram-bot.py) and the [GladOS 
-config file]().
+See the [Telegram Bot Server Script](#telegram-server)
+section above.  This runs the Telegram bot server.  You can customize
+it by changing the [source code](src/telegram-bot.py) and the [AI 
+config file](ai-data/ai-config.hjson).
 
 ## Subdirectories
 
