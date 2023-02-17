@@ -143,7 +143,7 @@ generated output something like the following:
        'model': 'davinci:2020-05-03',
        'object': 'text_completion'}
 
-### Server Test
+### GladOS Test
 
 See the [GladOS Server Test Script](#glados-server) section 
 above.  This test runs the main server application of the GladOS system.  
@@ -163,7 +163,7 @@ other programs are not yet implemented; for now, the AI mind and the
 (single) operator terminal functionality run within the same program
 as the central server.
 
-### Telegram Bot
+### Telegram Bot Server
 
 See the [Telegram Bot Server Script](#telegram-server)
 section above.  This runs the Telegram bot server.  You can customize
