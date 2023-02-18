@@ -2501,6 +2501,9 @@ class CommandModule:
 			else:
 				longDesc = "(no description set)"
 
+		cm._longDesc = longDesc	
+			# Store the long description string for this module.
+
 			#-------------------------------------------------------------------
 			# If no active state was provided, try to get one from the
 			# class data member.  If that doesn't work, use the default
@@ -2543,6 +2546,8 @@ class CommandModule:
 		if topicName is None:
 			topicName = name
 
+		cm._topicName = topicName
+
 			#-------------------------------------------------------------------
 			# If no help topic description string was provided, try to get
 			# one from the class data member.  If that doesn't work, or the
@@ -2558,6 +2563,8 @@ class CommandModule:
 		if topicDesc is None:
 			topicDesc = desc
 
+		cm._topicDesc = topicDesc
+
 			#-------------------------------------------------------------------
 			# If no help module introductory text was provided, try to get
 			# one from the class data member.  If that doesn't work, or the
@@ -2572,6 +2579,13 @@ class CommandModule:
 
 		if introText is None:
 			introText = longDesc
+
+		cm._introText = introText
+
+		# Call subclass's .buildIntroText() method to build up the actual intro
+		# text string to use for this command module's help module.  This allows
+		# the subclass to customize the intro text string if it wants to.
+		cm.buildIntroText()
 
 			#-------------------------------------------------------------------
 			# If no help module class was provided, try to get one from the

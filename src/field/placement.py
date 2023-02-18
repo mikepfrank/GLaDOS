@@ -161,13 +161,14 @@ class Placement(Enum):
 				PINNED_TO_TOP - The element is pinned to the top of 
 					the receptive field (below elements previously 
 					pinned to the top).  Examples of elements pinned 
-					to the top:  Info window.
+					to the top:  Clock window, Info window.
 				
 				MOVE_TO_BOTTOM - The element is moved to the bottom of
 					the receptive field, just above all of the elements
 					pinned to the bottom.  Examples of elements moved
 					to the bottom:  The current active application 
-					window.  After moving it there, it is anchored.
+					window, in some cases.  After moving it there, it 
+					is anchored.
 				
 				MOVE_TO_TOP - The element is moved to the top of the 
 					receptive field, just below all of the elements 
@@ -190,7 +191,7 @@ class Placement(Enum):
 					new SLIDE_TO_BOTTOM.  This is the usual mode for 
 					adding new elements: All previously added elements are 
 					displaced upwards.  After being slid, the element is
-					converted to floating.
+					not anchored but is converted to floating.
 			
 				SLIDE_TO_TOP - Similar to SLIDE_TO_BOTTOM, but for the top.
 				

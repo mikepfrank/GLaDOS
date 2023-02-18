@@ -109,11 +109,36 @@ class AppCommandModule(CommandModule):
 					
 		"""Instance initializer for app command modules."""
 
+		acm = newAppCmdModule	# For convenience.
+
+		#|----------------------------------------------------------------------
+		#|	Set up some fields appropriately for a generic application command 
+		#|	module.
+
+		# Store the value of the appName argument name giving the name of the 
+		# app this command module is for.
+		acm._appName = appName	# The capitalized name of the app, like 'Goals'.
+
+		# Set the name of this command module (for debugging).
+		acm._name = f"{appName}AppCmdModule"
+
+		# Set the default help topic name for this command module.
+		acm._topicName = appName  
+			# The capitalized name of the app, like 'Goals'.
+
+		# Set the help topic description for this command module.
+		acm._topicDesc = f"Commands for the {appName} application."
+
+		# Generate default intro text for this application's help screen.
+		acm._introText = f"Welcome to the {appName} application."
+			# This should be overridden or added to with more
+			# specific content by the app's command module's 
+			# subclass constructor.
+
 		# First do generic initialization for all command modules.
 		super().__init__(desc = f"{appName} app's command module")
 		
-		newAppCmdModule._appName = appName
-		newAppCmdModule._application = application
+		acm._application = application
 
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -136,6 +161,13 @@ class AppCommandModule(CommandModule):
 
 		return helpText
 
+	def initIntroText(thisAppCmdModule:AppCommandModule, introText:str) -> None:
+
+		"""Initializes the intro text for this app's command module."""
+
+		self = thisAppCmdModule		# For convenience.
+
+		self._introText = introText
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class AppLaunchCommand(Command):
