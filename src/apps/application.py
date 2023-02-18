@@ -389,13 +389,18 @@ class Application_:
 	# is now constructed in the getHelpIntro() method, which may be overridden by
 	# the Application_ subclass for each application.  However, subclasses may
 	# also choose to provide their default help message by just defining a class
-	# variable named "helpIntro" (as shown below).
+	# variable named "helpIntro" (as shown below). If provided, this will
+	# override the default help intro message construction in getHelpIntro().
 
 	# # This default help intro message is just a placeholder.  It should be
 	# # overridden by the Application_ subclass for each application.
 	# helpIntro = \
 	# 	"This application's introductory help text has not yet been defined. " \
 	# 	"Please contact the application's developer for more information."
+
+	appSpecificIntroText = ""	# No application-specific intro text by default.
+		# Subclasses may override this to provide application-specific intro text
+		# that will be included in the app's help intro message.
 
 	# The class to be used for creating the application's main command module.
 	# This should generally be overridden by the application's subclass.
@@ -594,7 +599,7 @@ class Application_:
 	#|	Public instance methods.
 	#|	========================
 	#|
-	#|	Note that some of these methods may or should be extended or 
+	#|	Note that some of these methods may (or should be) extended or 
 	#|	overridden in subclasses.
 	#|
 	#|		.activateCommandModule() [EXTENSIBLE] - Activate the 
@@ -605,6 +610,10 @@ class Application_:
 	#|		.createCommandModule() - Create the application's command module.
 	#|
 	#|		.createHelpModule() - Create the application's help module.
+	#|
+	#|		.customizeHelpIntro() [OVERRIDE] - Customize the intro text for the
+	#|			application's help module. This is called by the default
+	#|			getHelpIntro() method.
 	#|
 	#|		.foreground() [EXTENSIBLE] - Bring the application to the foreground.
 	#|
@@ -726,6 +735,24 @@ class Application_:
 	#__/ End createHelpModule().
 
 
+	def customizeHelpIntro(thisApp, intro:str) -> str:
+
+		"""This virtual method should be overridden in application-specific
+			subclasses.	 Given the default help intro string, it should 
+			return a version that's been customized for the specific
+			applications, for example by adding a description of the
+			application's function."""
+
+		app = thisApp	# For convenience.
+
+		# If the app has an app-specific intro text, add it to the default 
+		# intro text.
+		if hasattr(app, 'appSpecificIntroText') and app.appSpecificIntroText:
+			intro += " " + app.appSpecificIntroText
+
+		return intro
+	
+
 	def foreground(thisApp):
 
 		"""
@@ -773,18 +800,29 @@ class Application_:
 
 		app = thisApp	# For convenience.
 
-		# Default placeholder intro text if none is provided by the app.
-		helpIntro = f"""This is the main help screen for {app.name}, " \
-			"which is a GLaDOS application.  Its introductory help text has " \
-			"not yet been defined."""
+		# The following is commented out because, we can do better.
+		# helpIntro = f"""This is the main help screen for {app.name}, " \
+		# 	"which is a GladOS application.  Its introductory help text has " \
+		# 	"not yet been defined."""
+
+		## Default placeholder intro text if none is provided by the app.
+		helpIntro = f"Welcome to the {app.name} application!"
+			# This was suggested by DaVinci v3, and I think it's a good idea.
+
+		# The following method should be defined by application subclasses.
+		# It should customize the intro text for the app's help screen, say 
+		# by adding application-specific details to the default intro text.
+		helpIntro = app.customizeHelpIntro(helpIntro)			
 
 		# Next, check for a '.helpIntro' (instance or class) attribute, 
-		# and use that as the intro text instead, if it exists.
+		# and use that as the intro text instead, if it exists. If defined,
+		# this overrides the default intro text constructed above.
 		if hasattr(app, 'helpIntro'):
 			helpIntro = app.helpIntro
 
 		# Next, look for an 'intro-text' attribute in the app's configuration 
 		# dictionary, and use that as the intro text instead, if it exists.
+		# Note this overrides the other intro texts constructed above.
 		if 'intro-text' in app._conf:
 			helpIntro = app._conf['intro-text']
 
