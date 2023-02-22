@@ -629,9 +629,9 @@ class Application_:
 	#|
 	#|		.launch() [EXTEND] - Launch the application.
 	#|
-	#|		.start() [EXTEND] - Start the application running.
-	#|
 	#|		.openWins() [EXTENSIBLE] - Open the application's windows.
+	#|
+	#|		.start() [EXTEND] - Start the application running.
 	#|
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv

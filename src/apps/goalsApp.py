@@ -50,7 +50,9 @@ from	commands.commandInterface	import	(
 				TheCommandInterface		# Singleton for the command interface.
 			)
 
-from	helpsys.helpSystem			import	HelpModule	# We'll subclass this.
+#from	helpsys.helpSystem			import	HelpModule	# We'll subclass this.
+
+from	.appHelp					import	AppHelpModule
 
 from	.appCommands				import	AppCommandModule
 			# Base class from which we derive CommandModule subclasses for 
@@ -482,6 +484,7 @@ class	The_GoalsMove_Subcommand(Goals_Subcommand_):
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 @singleton
 class	The_Goals_Command(Command):
 
@@ -562,12 +565,16 @@ class The_Goals_CmdModule(AppCommandModule):
 		The_Goals_Command(cmdModule=goalsCmdMod)
 			# Note: This is actually a separate command from the '/Goals'
 			# app-launch command, which is automatically installed by the
-			# application system when the Goals app is initialized.
+			# application system when the Goals app is initialized. This
+			# doesn't create an ambiguity, however, because the two 
+			# commands have different formats. The app-launch command
+			# is just '/Goals', whereas the command that takes arguments
+			# is '/goal <subcommand> <args>'.
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
-class The_Goals_HelpModule(HelpModule):
+class The_Goals_HelpModule(AppHelpModule):
 
 	"""This singleton class implements the help module for the Goals
 		app. It provides an overview of the app, and documents its

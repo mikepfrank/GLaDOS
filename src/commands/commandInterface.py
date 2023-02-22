@@ -307,6 +307,26 @@ from	mind.aiActions		import	CommandByAI_
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Miscellaneous regexes.	  [public module-level global constants]
+			#|
+			#|		These are used in the parsing of command lines.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+global WS_FMT	# Standard format string (regex) for whitespace.
+global ID_FMT	# Standard format string (regex) for identifiers.
+global PI_FMT	# Standard format string (regex) for positive integers.
+
+WS_FMT = r'\s+'		# Whitespace is one or more whitespace characters.
+
+ID_FMT = r"([A-Za-z_][\w-]*)"	# Standard identifier format.
+	# An identifier is a letter or underscore, followed by zero or more
+	# letters, digits, underscores, or hyphens. Capture it in a group.
+
+PI_FMT = r"([1-9][0-9]*)"	# Standard positive integer format.
+	# A digit 1-9, then optional additional digits. Capture it.
+	
+
 	#|--------------------------------------------------------------------------
 	#|	_GENERIC_STD_CMD_REGEX			 [private module-level global constants]
 	#|	_genericStdCmdPat

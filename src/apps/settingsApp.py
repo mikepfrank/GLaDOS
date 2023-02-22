@@ -3,7 +3,9 @@
 from	infrastructure.decorators	import	singleton
 		# A simple decorator for singleton classes.
 
-from	helpsys.helpSystem			import	HelpModule
+#from	helpsys.helpSystem			import	HelpModule
+
+from	commands.commandInterface	import	TheCommandInterface, Command
 
 from	.appCommands				import	AppCommandModule
 
@@ -13,6 +15,75 @@ from	.application				import	Application_
 class The_Settigns_App: pass
 class The_SettingsApp_CmdModule: pass
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+@singleton
+class	The_Settings_List_Command(Command):
+	
+	"""This command displays a list of all of the settings in the system."""
+		# NOTE: Eventually we need to replace this with commands to navigate
+		# through a hierarchy of settings modules.
+
+	name = "list"	# The name of the command.
+
+	usageText = "/list [<settingsModule>]"
+		# The usage text for the command.  This is displayed on help screens
+		# that show documentation for this command.
+
+	shortDesc = "Displays a list of settings."
+		# A short description of the command.  This is displayed on help
+		# screens that show documentation for this command.
+
+	longDesc = \
+		"This command displays a list of all of the settings in the system," \
+		" or a list of the settings in a specific settings module (optional)."
+
+	cmdFormat = ""
+
+	def __init__(self, cmdMod: The_SettingsApp_CmdModule, cmdName: str, cmdDesc: str, cmdHelp: str, cmdSyntax: str, cmdExample: str, cmdAliases: List[str] = None):
+
+		"""Instance initializer for the The_Settings_List_Command class."""
+
+
+		# Do generic initialization for Command instances.
+		super().__init__(cmdMod, cmdName, cmdDesc, cmdHelp, cmdSyntax, cmdExample, cmdAliases)
+
+
+	def execute(self, cmdArgs: List[str]) -> bool:
+
+		"""Execute the command.  This method is called by the command
+			interface when the user enters a command that matches this
+			command's name or one of its aliases.  The command interface
+			passes a list of the command's arguments to this method.  The
+			method returns True if the command was successfully executed,
+			or False if it was not."""
+
+		# Get the command module that this command is associated with.
+		cmdMod = self.getCommandModule()
+
+		# Get the application that this command module is associated with.
+		app = cmdMod.getApplication()
+
+		# Get the command interface.
+		cmdIF = TheCommandInterface()
+
+		# Get the list of settings in the system.
+		settings = app.getSettings()
+
+		# If there are no settings, tell the user.
+		if len(settings) == 0:
+			cmdIF.print("There are no settings in the system.")
+			return True
+
+		# Display the list of settings.
+		cmdIF.print("The following settings are available:")
+		for setting in settings:
+			cmdIF.print(setting)
+
+		return True
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 @singleton
 class The_SettingsApp_CmdModule(AppCommandModule):
 
@@ -21,15 +92,44 @@ class The_SettingsApp_CmdModule(AppCommandModule):
 		settings within GLaDOS.	 These can be associated with major
 		systems or subsystems of GLaDOS, or individual apps or
 		processes."""
+
+
+	def __init__(newAppCmdModule: The_SettingsApp_CmdModule, appName: str, application: Application_):
+		
+		"""Instance initializer for the The_SettingsApp_CmdModule class.""""
+			
+		thisCmdMod = newAppCmdModule	# For convenience.
 	
-	# def __init__(newAppCmdModule: The_SettingsApp_CmdModule, appName: str, application: Application_):
-	# 	"""Instance initializer for the The_SettingsApp_CmdModule class.""""
-	#		
-	# 	acm = newAppCmdModule	# For convenience.
-	#
-	# 		# Do generic initialization for AppCommandModule instances.
-	# 	super().__init__(appName, The_Settings_App())
-	
+		# Do generic initialization for AppCommandModule instances.
+		super().__init__("Settings", The_Settings_App())
+			# Note this should call the .populate() method below.
+
+			# Go ahead & install this module in the global command interface.
+		cmdIF = TheCommandInterface()
+		cmdIF.installModule(thisCmdMod)
+
+
+	def populate(self) -> None:
+
+		"""Populate the command module with the commands that it
+			supports.  This is called automatically when the command
+			module is instantiated."""
+		
+		# Here we add all of the commands that are specific to this app
+		# to the command module.  We do this by calling the addCommand()
+		# method of the command module, passing it the command object
+		# that we want to add.  The command object is created by calling
+		# the constructor for the command class, passing it the command
+		# module that it is associated with, and any other arguments
+		# that the command's constructor requires.
+
+
+
+		# Let our superclass finish the job.
+		return super().populate()
+			# This adds generic application commands '/close', etc. to 
+			# the app's command module.
+
 	# def buildIntroText(thisAppCmdModule: The_SettingsApp_CmdModule):
 	#
 	# 	"""Build the introductory text for the help screen for this app.
@@ -46,6 +146,8 @@ class The_SettingsApp_CmdModule(AppCommandModule):
 	#
 	# 	return acm._introText
 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 @singleton
 class The_Settings_App(Application_):
