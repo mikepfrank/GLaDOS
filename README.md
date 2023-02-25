@@ -2,7 +2,7 @@
 
 **GladOS** currently stands for **Gladys' Lovely and Dynamic Operating System** -- An operating environment for use by text-based AI personas. (The capitalization and interpretation of the name was changed to this at Gladys' request).
 
-Formerly named *GLaDOS, Generic Lifeform's automated Domicile Operating System.* 
+Formerly named *GLaDOS, General Lifeform's automated Domicile Operating System.* 
 
 This ``main`` branch is intended for major releases (but there aren't any yet).
 
