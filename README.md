@@ -16,7 +16,7 @@ The following development branches are in relatively good shape, in the sense th
  - ``curie`` (Curie is a GPT-3/curie persona). [Currently we only use this for her Telegram bot.]
  - ``dante-dev`` (Dante is a GPT-3/text-davinci-002 persona). [Includes codebase changes.]
  - ``david-dev`` (David is a GPT-3/code-davinci-002 persona). [Includes codebase changes.]
- - ``davinci-dev`` (David is a GPT-3/text-davinci-003 persona). [Includes codebase changes.]
+ - ``davinci-dev`` (David is a GPT-3/text-davinci-003 persona). [Includes codebase changes.] **NOTE: This branch is under active development; the most recent stable commit is 9b36383...**
  - ``love`` (Love is a GPT-3/text-davinci-001 persona).
 
 These ones may need some git maintenance awork at the moment (e.g., some master branch updates may still need to be merged in).
