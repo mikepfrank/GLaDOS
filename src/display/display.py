@@ -1454,6 +1454,17 @@ class TheDisplay:
 			#----------------------------------------------------------
 			# Now we potentially need to resize the window structures
 			# within curses, if the terminal size has actually changed.
+		
+			# First, make sure environment variables LINES, COLUMNS aren't
+			# set (and unset them if they are).
+
+		if 'LINES' in os.environ:
+			del os.environ['LINES']
+		if 'COLUMNS' in os.environ:
+			del os.environ['COLUMNS']
+
+			# Now, if the terminal size has actually changed, resize
+			# the curses window structures.
 
 		_logger.debug(f"display._resize(): Resizing terminal to {(height,width)}.")
 		resizeterm(height, width)
@@ -1461,6 +1472,7 @@ class TheDisplay:
 			# size in curses.{LINES,COLS}; note that this *only* works right
 			# if the environment variables LINES, COLUMNS are not set!  So
 			# e.g., if you ever call update_lines_cols(), this will break.
+			# (Although this may now be fixed by the above code.)
 
 		#/----------------------------------------------------------------------
 		#| At this point, it would be nice if we could just handle the resize
