@@ -1233,7 +1233,9 @@ class	TheAIPersonaConfig:
 
 		if 'stop-sequences' in apiConf:
 			theAIConfig.stopSequences = stopSeqs = apiConf['stop-sequences']
-			_logger.normal(f"    [Config/AI]     AI config:    stop-sequences = {stopSeqs}.")
+			# NOTE: In the following line, we want to escape control characters before printing
+			# so we use repr() instead of str().
+			_logger.normal(f"    [Config/AI]     AI config:    stop-sequences = {repr(stopSeqs)}.")
 		else:
 			theAIConfig.stopSequences = None	# No default value provided in config file.
 
