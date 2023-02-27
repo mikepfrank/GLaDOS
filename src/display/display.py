@@ -111,7 +111,10 @@ __all__ = [		# List of all public names exported from this module.
 
 from threading 	import RLock		# Reentrant locks for concurrency control.  Used in theDisplay.__init__().
 from time		import sleep		# Causes thread to give up control for a period.  Used in theDisplay.do1iteration().
-from os			import path 		# Manipulate filesystem path strings.  Used in logger setup.
+from os			import (
+		environ,	# Get environment variables.  Used in theDisplay.__init__().
+		path 		# Manipulate filesystem path strings.  Used in logger setup.
+	)
 
 
 		#|======================================================================
@@ -1458,10 +1461,10 @@ class TheDisplay:
 			# First, make sure environment variables LINES, COLUMNS aren't
 			# set (and unset them if they are).
 
-		if 'LINES' in os.environ:
-			del os.environ['LINES']
-		if 'COLUMNS' in os.environ:
-			del os.environ['COLUMNS']
+		if 'LINES' in environ:
+			del environ['LINES']
+		if 'COLUMNS' in environ:
+			del environ['COLUMNS']
 
 			# Now, if the terminal size has actually changed, resize
 			# the curses window structures.
