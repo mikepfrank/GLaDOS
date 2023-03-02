@@ -170,7 +170,7 @@ _appDict = {
 
         'systemName':   'GLaDOS',               # The Telegram bot application uses some GLaDOS-specific features.
         'appName':      'TelegramBot',          # However, it's conceptually a separate application from the GLaDOS system.
-        'topFile':      'gladys-telegram-bot'   # Top-level file of this application is gladys-telegram-bot.py.
+        'topFile':      'telegram-bot'   # Top-level file of this application is gladys-telegram-bot.py.
 
     }
 }
