@@ -241,11 +241,14 @@ _ENGINE_ATTRIBS = {
     'babbage':			{'engine-name': 'babbage',	    	'field-size': 2048, 'price': 0.0012},
     'curie':			{'engine-name': 'curie',	    	'field-size': 2048, 'price': 0.006},
     'davinci':			{'engine-name': 'davinci',	    	'field-size': 2048, 'price': 0.06},
-    'text-ada-001':		{'engine-name': 'text-ada-001',	    'field-size': 2048, 'price': 0.0008},
-    'text-babbage-001': {'engine-name': 'text-babbage-001', 'field-size': 2048, 'price': 0.0012},
-    'text-curie-001':	{'engine-name': 'text-curie-001',   'field-size': 2048, 'price': 0.006},
-    'text-davinci-001': {'engine-name': 'text-davinci-001', 'field-size': 2048, 'price': 0.06},
-    'text-davinci-002': {'engine-name': 'text-davinci-002', 'field-size': 4096, 'price': 0.06}
+    'text-ada-001':		{'engine-name': 'text-ada-001',	    'field-size': 2048, 'price': 0.0004},
+    'text-babbage-001': {'engine-name': 'text-babbage-001', 'field-size': 2048, 'price': 0.0005},
+    'text-curie-001':	{'engine-name': 'text-curie-001',   'field-size': 2048, 'price': 0.002},
+    'text-davinci-001': {'engine-name': 'text-davinci-001', 'field-size': 2048, 'price': 0.02},
+    'text-davinci-002': {'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06},
+    'code-davinci-002': {'engine-name': 'code-davinci-002', 'field-size': 4000, 'price': 0},
+    'text-davinci-003': {'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02},
+    'gpt-3.5-turbo':    {'engine-name': 'gpt-3.5-turbo', 	'field-size': 4096, 'price': 0.002},
 }
 
 # Given an engine name and an attribute name, return the attribute value.
@@ -326,6 +329,9 @@ inputToks = {
 		'text-curie-001':		0,
 		'text-davinci-001':		0,
 		'text-davinci-002':		0,
+		'code-davinci-002':		0,
+		'text-davinci-003':		0,
+		'gpt-3.5-turbo':		0,
 	}
 
 outputToks = {
@@ -338,6 +344,9 @@ outputToks = {
 		'text-curie-001':		0,
 		'text-davinci-001':		0,
 		'text-davinci-002':		0,
+		'code-davinci-002':		0,
+		'text-davinci-003':		0,
+		'gpt-3.5-turbo':		0,
 	}
 
 # Meanwhile, this dict will keep track of the cumulative expenditures
@@ -354,6 +363,9 @@ expenditures = {
 		'text-curie-001':		0,
 		'text-davinci-001':		0,
 		'text-davinci-002':		0,
+		'code-davinci-002':		0,
+		'text-davinci-003':		0,
+		'gpt-3.5-turbo':		0,
 	}
 
 # This global variable tracks the total cost in dollars across all engines.
