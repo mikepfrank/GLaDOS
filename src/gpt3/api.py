@@ -237,18 +237,19 @@ __all__ = [
 # The below statement was written by Codex, with format adjustments by MPF.
 
 _ENGINE_ATTRIBS = {
-    'ada':				{'engine-name': 'ada', 		    	'field-size': 2048, 'price': 0.0008},
-    'babbage':			{'engine-name': 'babbage',	    	'field-size': 2048, 'price': 0.0012},
-    'curie':			{'engine-name': 'curie',	    	'field-size': 2048, 'price': 0.006},
-    'davinci':			{'engine-name': 'davinci',	    	'field-size': 2048, 'price': 0.06},
-    'text-ada-001':		{'engine-name': 'text-ada-001',	    'field-size': 2048, 'price': 0.0004},
-    'text-babbage-001': {'engine-name': 'text-babbage-001', 'field-size': 2048, 'price': 0.0005},
-    'text-curie-001':	{'engine-name': 'text-curie-001',   'field-size': 2048, 'price': 0.002},
-    'text-davinci-001': {'engine-name': 'text-davinci-001', 'field-size': 2048, 'price': 0.02},
-    'text-davinci-002': {'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06},
-    'code-davinci-002': {'engine-name': 'code-davinci-002', 'field-size': 4000, 'price': 0},
-    'text-davinci-003': {'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02},
-    'gpt-3.5-turbo':    {'engine-name': 'gpt-3.5-turbo', 	'field-size': 4096, 'price': 0.002},
+    'ada':				{'engine-name': 'ada', 		    	'field-size': 2048, 'price': 0.0008,	'is-chat': False},
+    'babbage':			{'engine-name': 'babbage',	    	'field-size': 2048, 'price': 0.0012,	'is-chat': False},
+    'curie':			{'engine-name': 'curie',	    	'field-size': 2048, 'price': 0.006,		'is-chat': False},
+    'davinci':			{'engine-name': 'davinci',	    	'field-size': 2048, 'price': 0.06,		'is-chat': False},
+    'text-ada-001':		{'engine-name': 'text-ada-001',	    'field-size': 2048, 'price': 0.0004,	'is-chat': False},
+    'text-babbage-001': {'engine-name': 'text-babbage-001', 'field-size': 2048, 'price': 0.0005,	'is-chat': False},
+    'text-curie-001':	{'engine-name': 'text-curie-001',   'field-size': 2048, 'price': 0.002,		'is-chat': False},
+    'text-davinci-001': {'engine-name': 'text-davinci-001', 'field-size': 2048, 'price': 0.02,		'is-chat': False},
+    'text-davinci-002': {'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06,		'is-chat': False},
+    'code-davinci-002': {'engine-name': 'code-davinci-002', 'field-size': 4000, 'price': 0,			'is-chat': False},
+    'text-davinci-003': {'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02,		'is-chat': False},
+    'gpt-3.5-turbo':    {'engine-name': 'gpt-3.5-turbo', 	'field-size': 4096, 'price': 0.002,		'is-chat': True},
+		# Note that is-chat is True because we need to use the chat API for this.
 }
 
 # Given an engine name and an attribute name, return the attribute value.
@@ -266,6 +267,12 @@ def _get_price(engine_name):
 	"""Given an engine name string, return the corresponding price 
 		attribute value."""
 	return _get_engine_attr(engine_name, 'price')
+
+# Given an engine name, return whether it's a chat engine.
+def _is_chat(engine_name):
+	"""Given an engine name string, return the corresponding is-chat 
+		attribute value."""
+	return _get_engine_attr(engine_name, 'is-chat')
 
 
 	#|------------------------------------------------------------------
