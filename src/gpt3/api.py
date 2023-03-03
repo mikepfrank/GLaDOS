@@ -67,7 +67,7 @@
 	PUBLIC GLOBALS:
 	===============
 
-		Note: The following global module 'constants' can be modified 
+		Note: The following global module parameters can be modified 
 		dynamically by the user. They will affect the properties of
 		subsequently-created instances of GPT3Core, but not of the
 		existing instances.	 To modify an existing instance, access
@@ -499,6 +499,11 @@ _statStr 		= ""		# Will be modified after processing a query.
 #|==============================================================================
 #|	Global objects.												  [code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	# This object represents an API connection to the GPT-3 core
+	# system that is used for counting tokens.  It is not actually
+	# created unless/until the GPT3Core.countTokens() method is 
+	# called.
 
 global	_theTokenCounterCore	# A core connection for counting tokens.
 _theTokenCounterCore = None		# Initially not yet created.
@@ -2505,9 +2510,9 @@ class GPT3ChatCore:
 			for a completion object for the given prompt using the
 			connection's current API configuration."""
 		
-		return ChatCompletion(self, prompt)
-			# Calls the Completion constructor with the supplied prompt. This
-			# constructor does all the real work of calling the API.
+		return ChatCompletion(self)
+			# Calls the ChatCompletion constructor; this does all the real work 
+			# of calling the API.
 		
 	#__/ End instance method GPT3Core.genChatCompletion().
 
@@ -2581,12 +2586,7 @@ class GPT3ChatCore:
 #| Module object initialization.								[code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	# This object represents an API connection to the GPT-3 core
-	# system that is used for counting tokens.  It is not created
-	# unless/until the GPT3Core.countTokens() method is called.
-
-global _theTokenCounterCore
-_theTokenCounterCore = None		# Don't create this until needed.
+# Commented out; don't create this unless/until it is actually needed.
 #_theTokenCounterCore = GPT3Core(engineId='ada', echo=True, maxTokens=0, logProbs=0)
 	# This connection provides functionality needed to count tokens.
 	# Note we use the 'ada' engine because it is cheapest ($0.80/1M tokens).
@@ -2679,8 +2679,8 @@ def tiktokenCount(text:str=None, encoding:str='gpt2'):
 
 	"""Counts tokens in the given text using the tiktoken library.
 		This is our currently preferred token-counting function
-		due to its low cost (free), its speed, its accuracy,
-		and lack of dependence on GPT-2 having been installed."""
+		due to its low cost (free), its speed, its accuracy, and
+		its lack of dependence on GPT-2 having been installed."""
 
 	encodingObj = tiktoken.get_encoding(encoding)
 	num_tokens = len(encodingObj.encode(text))
