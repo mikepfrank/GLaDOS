@@ -9,13 +9,13 @@
 	IN PACKAGE:		gpt3
 	FULL PATH:		$GIT_ROOT/GLaDOS/src/gpt3/api.py
 	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
-	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
-	APP NAME:		GLaDOS.server (GLaDOS server application)
-	SW COMPONENT:	GLaDOS.gpt3 (GLaDOS GPT-3 interface component)
+	SYSTEM NAME:	GladOS (Gladys' Lovely and Dynamic Operating System)
+	APP NAME:		GLaDOS.server (GladOS server application)
+	SW COMPONENT:	GLaDOS.gpt3 (GladOS GPT-3 interface component)
 
 
 	MODULE DESCRIPTION:
-	-----------------
+	===================
 
 		This module implements a convenience wrapper around OpenAI's API
 		for accessing their GPT-3 language models.	The main feature that
@@ -25,18 +25,47 @@
 
 
 	PUBLIC CLASSES:
+	===============
+
+	For the regular completions API, the following classes are defined:
 
 		GPT3APIConfig - Keeps track of a set of API parameter settings.
 			These can also be modified dynamically.
-
+		
 		GPT3Core - A connection to the core GPT-3 system that maintains
 			its own persistent API parameters.
-			
+
 		Completion - For objects representing results returned by the 
 			core API.
 
 
+	For the chat completions endpoint, the following classes are defined:
+
+		GPT3ChatAPIConfig - Keeps track of a set of API parameter settings
+			for the chat API.  These can also be modified dynamically.
+
+		GPT3ChatCore - A connection to the chat GPT-3 system that maintains
+			its own persistent API parameters, including a persistent list
+			of in-context chat messages.
+		
+		ChatMessages - This object maintains a list of chat messages that 
+			can be used as context for a chat API call.  It also provides
+			methods for adding new messages to the list and counting the
+			number of tokens in the message list.
+		
+		ChatCompletion - For objects representing results returned by the
+			chat API.
+
+
+	Exception classes:
+
+		PromptTooLargeException - Exception raised when a prompt is too
+			large for the API to handle. The caller may want to respond
+			by reducing the number of tokens in the prompt and retrying.
+
+
 	PUBLIC GLOBALS:
+	===============
 
 		Note: The following global module 'constants' can be modified 
 		dynamically by the user. They will affect the properties of
@@ -49,14 +78,33 @@
 			DEF_TEMP	- Default temperature (default is 0.5).
 			DEF_STOP	- Stop string or strings (3 newlines).
 
+		The following constants are for use with the chat API:
+
+			CHAT_ROLE_SYSTEM	- Role of the system in a chat.
+			CHAT_ROLE_USER		- Role of the user in a chat.
+			CHAT_ROLE_AI		- Role of the AI in a chat.
+
 
 	PUBLIC FUNCTIONS:
+	=================
 	
-			countTokens()	- Counts tokens in a string using the
-								API.  Note that this operation is
-								expensive.	For most applications
-								you should use the method in the
-								tokenizer.tokenizer module instead.
+			countTokens()	- Counts tokens in a string using the API.  Note 
+				that this operation is expensive since it calls the subscription-
+				based REST service from OpenAI.	For most applications, you should
+				use one of the below two functions instead. [DEPRECATED]
+			
+			local_countTokens() - Counts tokens in a string using the local
+				tokenizer.  This is much faster than the above function, but
+				requires GPT-2 to be installed locally.  It is also not as
+				accurate as the below function in all cases, since it does 
+				not use the correct tokenizer encoding for all GPT-3 models.
+				[DEPRECATED]
+			
+			tiktokenCount() - Counts tokens in a string using the local
+				tiktoken library.  This is much faster than the above functions,
+				and allows specifying the tokenizer encoding to use.  It is
+				highly recommended that you use this function instead of the
+				above two functions.
 
 	EXAMPLES:
 
@@ -110,15 +158,22 @@
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 from	os			import	path	# Manipulate filesystem path strings.
-from	pprint		import	pprint, pformat		# Pretty-print complex objects.
+
+from	pprint		import	pformat	# Pretty-print complex objects.
+	# We were also importing pprint.pprint, but that code is commented out now.
+
 import	json	# We use this to save/restore the API usage statistics.
+
+import	datetime	# We use this to tag new messages with the current time.
 
 		#|======================================================================
 		#|	1.2. Imports of modules to support GPT-3.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 import openai		# OpenAI's Python bindings for their REST API to GPT-3.
+import tiktoken		# A fast standalone tokenizer module for GPT-3.
 import backoff		# Utility module for exponential backoff on failures.
+
 
 		#|======================================================================
 		#|	1.3. Imports of custom application modules. [module code subsection]
@@ -155,9 +210,11 @@ _sw_component = sysName + '.' + _component
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 from tokenizer.tokenizer import countTokens as local_countTokens
-	# Method to count tokens without an API call.
+	# Method to count tokens without a remote API call.
 
 from config.configuration import TheAIPersonaConfig
+	# This allows us to access configuration information for the specific
+	# AI persona that we are using.
 
 
 #|==============================================================================
@@ -165,8 +222,8 @@ from config.configuration import TheAIPersonaConfig
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
-	#|--------------------------------------------------------------------------
-	#|	__all__										[special module attribute]
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|	__all__			[special module attribute / global constant structure]
 	#|
 	#|		These are the names that will be imported if you do 
 	#|		'from gpt3.api import *'.  This in effect declares what
@@ -177,84 +234,117 @@ from config.configuration import TheAIPersonaConfig
 global __all__
 __all__ = [
 
+			# Module public global parameters. (May be modified by user.)
+
+		'DEF_ENGINE',		# Parameter: Default GPT-3 engine name ('davinci').
+		'DEF_TOKENS',		# Parameter: Default number of tokens to return (100).
+		'DEF_TEMP',			# Parameter: Default temperature value (normally 0.75).
+		'DEF_STOP',			# Parameter: Default stop string ("\n\n\n") or list of strings.
+
 			# Module public global constants.
-		'DEF_ENGINE',		# Default GPT-3 engine name ('davinci').
-		'DEF_TOKENS',		# Default number of tokens to return (42).
-		'DEF_TEMP',			# Default temperature value (normally 0.75).
-		'DEF_STOP',			# Default stop string or list of strings.
+
+		'CHAT_ROLE_SYSTEM',	# Constant: Role name for the system in a chat session.
+		'CHAT_ROLE_USER',	# Constant: Role name for the user in a chat session.
+		'CHAT_ROLE_AI',		# Constant: Role name for the AI in a chat session.
 		
-			# Module public classes.
+			# Module public classes for the regular GPT-3 completions API.
+
 		'GPT3APIConfig',	# Class: A collection of API parameter settings.
-		'Completion',		# Class: An object for a result returned by the API.
 		'GPT3Core',			# Class: Instance of the API that remembers its config.
+		'Completion',		# Class: An object for a result returned by the API.
+
+			# Module public classes for the GPT-3 chat API.
+
+		'GPT3ChatAPIConfig',	# Class: A collection of chat API parameter settings.
+		'ChatMessages',			# Class: Maintains a list of chat messages.
+		'GPT3ChatCore',			# Class: Instance of the chat API that remembers its config & messages.
+		'ChatCompletion',		# Class: An object for a result returned by the chat API.
+		
 			# Exception classes.
+
 		'PromptTooLargeException',	# Exception: Prompt is too long to fit in GPT-3's receptive field.
 		
 			# Module public functions.
-		'countTokens'		# Function to count tokens in a string. (Costs!)
-	
+
+		'countTokens'			# Function: Counts tokens in a string. (Costs!)
+			# NOTE: This function is deprecated; use the local_countTokens()
+			# or preferably the tiktokenCount() function instead.
+		
+		'local_countTokens',	# Function: Counts tokens in a string. (No cost.)
+			# NOTE: This function is deprecated since it creates a dependency on
+			# GPT-2 having been installed; use the tiktokenCount() function instead.
+
+		'tiktokenCount',		# Function: Counts tokens in a string. (No cost, fast.)
+
 	]
 
 
-	#|--------------------------------------------------------------------------
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#|  _ENGINE_ATTRIBS				[module global private constant structure]
 	#|
 	#|	    This is a dictionary mapping GPT-3 engine names to their 
-	#|		associated attributes.  So far, we only care about the
+	#|		associated attributes.  So far, we mainly care about the
 	#|		'field-size' attribute, which is the number of tokens in
 	#|		the GPT-3 receptive field, and the 'price' attribute,
 	#|		which is the cost (per 1,000 tokens) to use the engine.
+	#|		A few other attributes are also documented below.
 	#|
 	#|		Later on, we may add more attributes to this structure,
 	#|		and use the individual sub-dictionaries to represent the
 	#|		engine we are currently working with.
 	#|
+	#|	Attributes:
+	#|	-----------
+	#|		'engine-name'	- The name of the engine.
+	#|		'field-size'	- The number of tokens in the GPT-3 receptive field.
+	#|		'price'			- The cost (per 1,000 tokens) to use the engine.
+	#|		'is-chat'		- True if the engine is a chat engine.
+	#|		'encoding'		- The token encoding used by the engine.
+	#|			These are defined by the tiktoken library, and are:
+	#|				'gpt2'	- Used by most GPT-3 engines.
+	#|				'p50k_base'	- Used by the code models and GPT-3.5 engines.
+	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	#	NOTE: Current Model Pricing Per 1 million tokens (as of 12/24/'20):
-	#	-------------------------------------------------------------------
-	#		Ada:		$ 0.80	(1.3B params?)					$0.61/Bparam/Mtoken
-	#		Babbage:	$ 1.20	(2.7B params? - or maybe 6.7B)	$0.44/Bparam/Mtoken
-	#		Curie:		$ 6.00	(13B params?)					$0.46/Bparam/Mtoken
-	#		DaVinci:	$60.00	(175B params?)					$0.34/Bparam/Mtoken
-
-# Initialize a dictionary of dictionaries called '_ENGINE_ATTRIBS', keyed by the engine
-# name, whose entries are dictionaries of attribute-value pairs, which respectively
-# contain the data from corresponding rows of this table:
-#
-#    engine-name        field-size    price	(per 1,000 tokens)
-#    ----               ----------    -----
-#    ada                2048          0.0008	# = $0.80 / 1M tokens
-#    babbage            2048          0.0012	# = $1.20 / 1M tokens
-#    curie              2048          0.006		# = $6.00 / 1M tokens
-#    davinci            2048          0.06		# = $60.00 / 1M tokens
-#    text-ada-001       2048          0.0008
-#    text-babbage-001   2048          0.0012
-#    text-curie-001     2048          0.006
-#    text-davinci-001   2048          0.06
-#    text-davinci-002   4096          0.06
-
-# The below statement was written by Codex, with format adjustments by MPF.
-
 _ENGINE_ATTRIBS = {
-    'ada':				{'engine-name': 'ada', 		    	'field-size': 2048, 'price': 0.0008,	'is-chat': False},
-    'babbage':			{'engine-name': 'babbage',	    	'field-size': 2048, 'price': 0.0012,	'is-chat': False},
-    'curie':			{'engine-name': 'curie',	    	'field-size': 2048, 'price': 0.006,		'is-chat': False},
-    'davinci':			{'engine-name': 'davinci',	    	'field-size': 2048, 'price': 0.06,		'is-chat': False},
-    'text-ada-001':		{'engine-name': 'text-ada-001',	    'field-size': 2048, 'price': 0.0004,	'is-chat': False},
-    'text-babbage-001': {'engine-name': 'text-babbage-001', 'field-size': 2048, 'price': 0.0005,	'is-chat': False},
-    'text-curie-001':	{'engine-name': 'text-curie-001',   'field-size': 2048, 'price': 0.002,		'is-chat': False},
-    'text-davinci-001': {'engine-name': 'text-davinci-001', 'field-size': 2048, 'price': 0.02,		'is-chat': False},
-    'text-davinci-002': {'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06,		'is-chat': False},
-    'code-davinci-002': {'engine-name': 'code-davinci-002', 'field-size': 4000, 'price': 0,			'is-chat': False},
-    'text-davinci-003': {'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02,		'is-chat': False},
-    'gpt-3.5-turbo':    {'engine-name': 'gpt-3.5-turbo', 	'field-size': 4096, 'price': 0.002,		'is-chat': True},
-		# Note that is-chat is True because we need to use the chat API for this.
+
+		# OG GPT-3 models.
+
+    'ada':				{'engine-name': 'ada', 		    	'field-size': 2048, 'price': 0.0008,	'is-chat': False,	'encoding': 'gpt2'},
+    'babbage':			{'engine-name': 'babbage',	    	'field-size': 2048, 'price': 0.0012,	'is-chat': False,	'encoding': 'gpt2'},
+    'curie':			{'engine-name': 'curie',	    	'field-size': 2048, 'price': 0.006,		'is-chat': False,	'encoding': 'gpt2'},
+    'davinci':			{'engine-name': 'davinci',	    	'field-size': 2048, 'price': 0.06,		'is-chat': False,	'encoding': 'gpt2'},
+    
+		# Early InstructGPT models.
+
+    'text-ada-001':		{'engine-name': 'text-ada-001',	    'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
+    'text-babbage-001': {'engine-name': 'text-babbage-001', 'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
+    'text-curie-001':	{'engine-name': 'text-curie-001',   'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
+    'text-davinci-001': {'engine-name': 'text-davinci-001', 'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
+
+		# GPT-3.5 models.
+
+    'text-davinci-002': {'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06,		'is-chat': False,	'encoding': 'p50k_base'},
+    'code-davinci-002': {'engine-name': 'code-davinci-002', 'field-size': 4000, 'price': 0,			'is-chat': False,	'encoding': 'p50k_base'},
+    'text-davinci-003': {'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02,		'is-chat': False,	'encoding': 'p50k_base'},
+    
+		# ChatGPT models.
+
+	'gpt-3.5-turbo-0301':   {'engine-name': 'gpt-3.5-turbo-0301', 	'field-size': 4096, 'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
+    'gpt-3.5-turbo':    	{'engine-name': 'gpt-3.5-turbo', 		'field-size': 4096, 'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
+    
+
 }
+
+# Given an engine name, return the entire engine attribute dictionary.
+def _get_engine_attribs(engine_name):
+	"""Given an engine name string, return the corresponding engine 
+		attribute dictionary."""
+	return _ENGINE_ATTRIBS[engine_name]
 
 # Given an engine name and an attribute name, return the attribute value.
 def _get_engine_attr(engine_name, attr_name):
-	return _ENGINE_ATTRIBS[engine_name][attr_name]
+	return _get_engine_attribs(engine_name)[attr_name]
 
 # Given an engine name, return the field-size attribute value.
 def _get_field_size(engine_name):
@@ -274,8 +364,14 @@ def _is_chat(engine_name):
 		attribute value."""
 	return _get_engine_attr(engine_name, 'is-chat')
 
+# Given an engine name, return the encoding attribute value.
+def _get_encoding(engine_name):
+	"""Given an engine name string, return the corresponding encoding 
+		attribute value."""
+	return _get_engine_attr(engine_name, 'encoding')
 
-	#|------------------------------------------------------------------
+
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#|	These constants provide default values for GPT-3's parameters.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -283,9 +379,12 @@ global		DEF_ENGINE				# Default GPT-3 engine name.
 DEF_ENGINE	= 'davinci'				# This is the original largest (175B-parameter) model. Origin of Gladys.
 #DEF_ENGINE	= 'text-davinci-002'	# New "best" (4000-token field) model.
 
-global		DEF_TOKENS	# Default number of tokens to return.
+global		DEF_CHAT_ENGINE			# Default engine when using chat interface.
+DEF_CHAT_ENGINE	= 'gpt-3.5-turbo'	# OpenAI updates this model periodically.
+
+global		DEF_TOKENS	# Default minimum space (in tokens) provided for the return.
 #DEF_TOKENS	= 42		# Of course.
-DEF_TOKENS  = 100
+DEF_TOKENS  = 100		# Gladys requested this.
 
 global		DEF_TEMP	# Default temperature value.
 #DEF_TEMP	= 0.5		# Is this reasonable?
@@ -303,6 +402,18 @@ _STATS_FILENAME = 'api-stats.json'
 
 global 		_aiPath		# Path to the AI's data directory.
 _aiPath 	= None		# Not yet initialized.
+
+
+	# Constants for the chat interface.
+
+global				CHAT_ROLE_SYSTEM
+CHAT_ROLE_SYSTEM	= 'system'
+
+global				CHAT_ROLE_USER
+CHAT_ROLE_USER		= 'user'
+
+global				CHAT_ROLE_AI
+CHAT_ROLE_AI		= 'assistant'
 
 
 #|==============================================================================
@@ -413,7 +524,7 @@ _lock = threading.Lock()
 #|	Module public classes.										[code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	#|---------------------------------------------------------------------------
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#|
 	#|	gpt3.api.GPT3APIConfig							   [module public class]
 	#|
@@ -636,23 +747,189 @@ class GPT3APIConfig:
 			namestr = f" \"{self.name}\""
 		
 		return f"""
-GPT3 Configuration{namestr}:
-	engine_id		  = {self.engineId}
-	max_tokens		  = {self.maxTokens}
-	temperature		  = {self.temperature}
-	top_p			  = {self.topP}
-	n				  = {self.nCompletions}
-	stream			  = {self.stream}
-	logprobs		  = {self.logProbs}
-	echo			  = {self.echo}
-	stop			  = {repr(self.stop)}
-	presence_penalty  = {self.presencePenalty}
-	frequency_penalty = {self.frequencyPenalty}
-	best_of			  = {self.bestOf}"""[1:]	# [1:] removes the leading newline.
+			GPT3 Configuration{namestr}:
+				engine_id		  = {self.engineId}
+				max_tokens		  = {self.maxTokens}
+				temperature		  = {self.temperature}
+				top_p			  = {self.topP}
+				n				  = {self.nCompletions}
+				stream			  = {self.stream}
+				logprobs		  = {self.logProbs}
+				echo			  = {self.echo}
+				stop			  = {repr(self.stop)}
+				presence_penalty  = {self.presencePenalty}
+				frequency_penalty = {self.frequencyPenalty}
+				best_of			  = {self.bestOf}"""[1:]	# [1:] removes the leading newline.
+		# Note: .stop is printed using repr() in order to show the 
+		# escape codes for any special characters.
+	
+	#__/ End string conversion method for class GPT3APIConfig.
+
+#__/ End class GPT3APIConfig.
+
+class GPT3ChatAPIConfig(GPT3APIConfig): pass
+class GPT3ChatAPIConfig(GPT3APIConfig):
+	"""This class extends the normal GPT-3 API configuration class to add
+		parameters needed for the chat completions endpoint."""
+
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|	Instance public data members for class GPT3APIConfig. (See API docs.)
+	#|
+	#|	API parameters inherited from GPT3APIConfig:
+	#|	--------------------------------------------
+	#|		.engineId			[string]			'model' parameter
+	#|		.maxTokens			[integer]			'max_tokens' parameter
+	#|		.temperature		[number]			'temperature' parameter
+	#|		.topP				[number]			'top_p' parameter
+	#|		.nCompletions		[integer]			'n' parameter
+	#|		.stream				[boolean]			'stream' parameter
+	#|		.stop				[string or array]	'stop' parameter
+	#|		.presencePenalty	[number]			'presence_penalty' parameter
+	#|		.frequencyPenalty	[number]			'frequency_penalty' parameter
+	#|
+	#|	API parameters added by chat interface:
+	#|	----------------------------------------
+	#|		.messages			[array]				'messages' parameter
+	#|		.logitBias			[dictionary]		'logit_bias' parameter
+	#|		.user				[string]			'user' parameter
+	#|
+	#|	NOTE: Instead of setting up .messages and .user in the GPT3ChatAPIConfig,
+	#|	applications may wish to pass them in individual calls to appropriate
+	#|	GPT3ChatCore methods.
+	#|
+	#|
+	#|	Other attributes:
+	#|		.name [string] - Human-readable name for this configuration.
+	#|
+	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	Initializer for class GPT3APIChatConfig.   [special instance method]
+		#|
+		#|	Arguments:	(Selected ones from our parent class, plus:)
+		#|
+		#|		.messages											[list]
+		#|
+		#|			List of message objects to be passed to the API.
+		#|			(This is normally not set at configuration time,
+		#|			however.)
+		#|
+		#|		.logitBias											[dictionary]
+		#|
+		#|			Map from token IDs to biases from -100 to 100;
+		#|			affects generation probabilities.
+		#|
+		#|		.user												[string]
+		#|
+		#|			A unique ID representing the end-user of the
+		#|			application.  Used by OpenAI for enforcement.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	def __init__(newGPT3ChatAPIConf:GPT3ChatAPIConfig, 
+					engineId:str=DEF_CHAT_ENGINE,	maxTokens:int=DEF_TOKENS, 
+					temperature:float=DEF_TEMP, 	topP:float=None, 
+					nCompletions:int=1,				stream:bool=False,
+					stop=DEF_STOP,					presPen:float=0, 
+					freqPen:float=0,				messages:list=None,
+					logitBias:dict=None,			user:str=None,
+					name=None):
+			# NOTE: logProbs, echo, and bestOf args from parent class are
+			# not supported in this subclass.
+
+		chatConf = newGPT3ChatAPIConf	# For convenience.
+
+		# Our parent class's initializer can take care of initialization
+		# for everything but the new arguments: messages, logitBias, and user.
+
+		super().__init__(engineId=engineId, maxTokens=maxTokens,
+		   temperature=temperature, topP=topP, nCompletions=nCompletions,
+		   stream=stream, stop=stop, presPen=presPen, freqPen=freqPen,
+		   name=name)
+		
+		# Save our special chat-related arguments.
+
+		chatConf.messages	= messages
+		chatConf.logitBias	= logitBias
+		chatConf.user		= user
+
+	#__/ End GPT3ChatAPIConfig instance initializer.
+
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	.modify(params)								[public instance method]
+		#|
+		#|		Modify the specified parameters of the chat configuration 
+		#|		to the given values.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+	def modify(thisGPT3ChatAPIConf:GPT3ChatAPIConfig, 
+				engineId:str=None,		maxTokens:int=None, 
+				temperature:float=None, topP:float=None, 
+				nCompletions:int=None,	stream:bool=None,	
+				stop=None,				presPen:float=None, 
+				freqPen:float=None,		messages:list=None,
+				logitBias:dict=None,	user:str=None):
+
+		"""Modify one or more parameter values in the chat configuration."""
+		
+		chatConf = thisGPT3ChatAPIConf	# For convenience.
+
+		# Let our parent class handle most of the changes.
+
+		super().modify(engineId=engineId, maxTokens=maxTokens,
+			temperature=temperature, topP=topP, nCompletions=nCompletions,
+			stream=stream, stop=stop, presPen=presPen, freqPen=freqPen)
+
+		# Now we handle changes for our special chat-related arguments.
+
+		if messages		!= None:	chatConf.messages		= messages
+		if logitBias	!= None:	chatConf.logitBias		= logitBias
+		if user			!= None:	chatConf.user			= user
+
+	#__/ End instance method GPT3APIConfig.modify().
+
+	
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	String converter.						   [special instance method]
+		#|
+		#|		Generates a human-readable string representation of this
+		#|		chat API configuration.	This shows all the parameter values.
+		#|		
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	def __str__(thisGPT3ChatConf:GPT3ChatAPIConfig):
+	
+		"""A human-readable string description of the parameter values."""
+		
+		chatConf = thisGPT3ChatConf		# For convenience.
+
+		if chatConf.name == None:
+			namestr = ""
+		else:
+			namestr = f" \"{chatConf.name}\""
+		
+		return f"""
+			GPT3 Configuration{namestr}:
+				engine_id		  = {chatConf.engineId}
+				max_tokens		  = {chatConf.maxTokens}
+				temperature		  = {chatConf.temperature}
+				top_p			  = {chatConf.topP}
+				n				  = {chatConf.nCompletions}
+				stream			  = {chatConf.stream}
+				stop			  = {repr(chatConf.stop)}
+				presence_penalty  = {chatConf.presencePenalty}
+				frequency_penalty = {chatConf.frequencyPenalty}
+				messages		  = {chatConf.messages}
+				logitBias		  =	{chatConf.logitBias}
+				user			  = {chatConf.user}"""[1:]	# [1:] removes the leading newline.
 		# Note: .stop is printed using repr() in order to show the 
 		# escape codes for any special characters.
 
-#__/ End class GPT3APIConfig.
+	#__/ End string conversion method for class GPT3ChatAPIConfig.
+
+#__/ End class GPT3ChatAPIConfig.
 
 
 class PromptTooLargeException(Exception):
@@ -683,7 +960,7 @@ class PromptTooLargeException(Exception):
 class GPT3Core:
 	pass
 	
-#|------------------------------------------------------------------------------
+#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #|	gpt3.api.Completion									[module public class]
 #|
 #|		This class is a wrapper for the completion data structure 
@@ -693,35 +970,35 @@ class GPT3Core:
 #|
 #|	Usage:
 #|
-#|		compl = Completion(prompt, core)
+#|		compl = Completion(prompt, core)			   [polymorphic constructor]
 #|
 #|			Creates a completion of the given prompt string using 
 #|			the given GPT3Core instance.
 #|
-#|		compl = Completion(complStruct)
+#|		compl = Completion(complStruct)				   [polymorphic constructor]
 #|
 #|			Creates a Completion object wrapping the given 
 #|			completion structure, previously generated.
 #|
-#|		text = compl.text
+#|		text = compl.text					[read-only instance public property]
 #|
 #|			Returns the text of the completion as a single string.
 #|
-#|		nTok = compl.nTokens
+#|		nTok = compl.nTokens				[read-only instance public property]
 #|
 #|			Returns the total number of tokens in the completion.
 #|			(Note that this property only works if the core had
 #|			'logprobs=0' at the time that the completion was 
 #|			generated.)
 #|
-#|		promptLen = compl.promptLen
+#|		promptLen = compl.promptLen			[read-only instance public property]
 #|
 #|			Returns the length of the prompt in tokens. Note that 
 #|			this property only works if the core had 'echo=True' 
 #|			and 'logprobs=0' set at the time that the completion 
 #|			was generated.
 #|		
-#|		complLen = compl.resultLen
+#|		complLen = compl.resultLen			[read-only instance public property]
 #|
 #|			Returns the length of the result (not including the 
 #|			prompt) in tokens. Note that this property only works
@@ -730,12 +1007,13 @@ class GPT3Core:
 #|
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+class Completion: pass
 class Completion:
 
 	"""An instance of this class represents a result returned from the
 		GPT-3 API's completion creation call."""
 
-	#/--------------------------------------------------------------------------
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#|	Public data members.							   [class documentation]
 	#|
 	#|		.prompt [string]
@@ -753,9 +1031,9 @@ class Completion:
 	#|			The raw completion data structure returned by 
 	#|			the core API.
 	#|
-	#\--------------------------------------------------------------------------
+	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	#|--------------------------------------------------------------------------
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#| Instance initializer.						[special instance method]
 	#|		
 	#|		This takes a general argument list, and parses it to extract
@@ -859,8 +1137,8 @@ class Completion:
 		return self.text
 	
 
-		#|----------------------------------------------------------------------
-		#| .text									[public instance property]
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| completion.text							[public instance property]
 		#|
 		#|		Returns the text of this completion, as a single string.
 		#|
@@ -874,7 +1152,8 @@ class Completion:
 	def text(self):
 		"""Returns the text of this completion, as a single string."""
 		return ''.join(self.complStruct['choices'][0]['text'])
-	
+
+
 	# Return the value of the 'finish_reason' field of the completion.
 	@property
 	def finishReason(self):
@@ -889,7 +1168,8 @@ class Completion:
 		"""
 		return self.complStruct['choices'][0]['finish_reason']
 
-		#|----------------------------------------------------------------------
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| .nTokens									[public instance property]
 		#|
 		#|		Returns the total number of tokens making up this 
@@ -916,7 +1196,7 @@ class Completion:
 	#__/ End of class gpt3.api.Completion's .nTokens property.
 
 
-		#|----------------------------------------------------------------------
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| .promptLen								[public instance property]
 		#|
 		#|		Returns the length of the prompt string, in tokens.
@@ -979,8 +1259,8 @@ class Completion:
 	#__/ End of class gpt3.api.Completion's .textPosToTokIndex method.
 
 
-		#|----------------------------------------------------------------------
-		#| ._createComplStruct(apiArgs)				   [private instance method]
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| completion._createComplStruct(apiArgs)	   [private instance method]
 		#|
 		#|		This internal method is what actually calls the core API
 		#|		to retrieve the raw completion data structure.	We use the
@@ -996,18 +1276,20 @@ class Completion:
 		# This decorator performs automatic exponential backoff on REST failures.
 	@backoff.on_exception(backoff.expo,
 						  (openai.error.APIError))
-						  
-	def _createComplStruct(self, apiArgs, minQueryToks:int=DEF_TOKENS):
-			# By default, don't accept shortening the space for the response to less than 42 tokens.
+
+	def _createComplStruct(thisCompletion:Completion, apiArgs, minResultSpaceRequested:int=DEF_TOKENS):
+			# By default, don't accept shortening the space for the response to less than 100 tokens.
 	
 		"""Private instance method to retrieve a completion from the
 			core API, with automatic exponential backoff and retry."""
-			
-		if minQueryToks is None:		# Just in case caller explicitly sets this to None,
-			minQueryToks = DEF_TOKENS	# revert back to the default of 42 tokens.
+		
+		compl = thisCompletion	# Just to make the code below more readable.
+
+		if minResultSpaceRequested is None:		# Just in case caller explicitly sets this to None,
+			minResultSpaceRequested = DEF_TOKENS	# revert back to the default of 100 tokens.
 
 		# If the core is not set, we can't do anything.
-		if self.core == None:
+		if compl.core == None:
 			_logger.error("ERROR: completion._createComplStruct(): Core not available.")
 			return None
 			
@@ -1023,12 +1305,12 @@ class Completion:
 
 			# This measures the length of the prompt in tokens, and updates
 			# the global record of API usage statistics accordingly.
-			self._accountForInput(apiArgs)
+			compl._accountForInput(apiArgs)
 				# Note: The global variable _inputLength is updated by this method.
 
 			# Retrieve the engine's receptive field size; this is the maximum number
 			# of tokens that can be accommodated in the query + response together.
-			fieldSize = _get_field_size(self.core.conf.engineId)
+			fieldSize = _get_field_size(compl.core.conf.engineId)
 
 			# For some reason, the engines that supposedly can only handle
 			# 2,048 tokens in their query + response together actually are
@@ -1047,16 +1329,16 @@ class Completion:
 			if _inputLength + apiArgs['max_tokens'] > fieldSize:
 
 					# See how much space there is right now for our query result.
-				querySpace = fieldSize - _inputLength
+				availSpace = fieldSize - _inputLength
 
 					# If there isn't enough space left even for our minimum result,
 					# then we need to raise an exception, because whoever prepared
 					# our prompt made it too large for this engine.
 
-				if querySpace < minQueryToks:
+				if availSpace < minResultSpaceRequested:
 
 						# Calculate the effective maximum prompt length, in tokens.
-					effMax = fieldSize - minQueryToks
+					effMax = fieldSize - minResultSpaceRequested
 
 					_logger.warn(f"[GPT-3 API] Prompt length of {_inputLength} exceeds"
 								 f" our effective maximum of {effMax}. Requesting field shrink.")
@@ -1077,7 +1359,7 @@ class Completion:
 
 			# This measures the length of the response in tokens, and updates
 			# the global record of API usage statistics accordingly.			
-			self._accountForOutput(apiArgs['engine'], complStruct)
+			compl._accountForOutput(apiArgs['engine'], complStruct)
 
 			# This updates the cost data and the human-readable table of API
 			# usage statistics, and saves the updated data to the _statsFile.
@@ -1090,7 +1372,8 @@ class Completion:
 	#__/ End of class gpt3.api.Completion's ._createComplStruct method.
 
 
-	# Make these regular functions?
+	# Make these regular functions? 
+	# 	-- No, because they're different for the chat API.
 	
 	def _accountForInput(self, apiArgs):
 
@@ -1149,51 +1432,657 @@ class Completion:
 #__/ End class Completion.
 
 
-	#|--------------------------------------------------------------------------
-	#|	
-	#|	gpt3.api.GPT3Core								  [module public class]
+#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#|	gpt3.api.ChatMessages								[module public class]
+#|
+#|		This class is a simple wrapper for the 'messages' list that gets
+#|		passed to the chat API.  Maybe we'll add more functionality to it
+#|		later.
+#|
+#|	Public interface to class ChatMessages:
+#|	=======================================
+#|
+#|
+#|		chatMsgs = ChatMessages()							 [class constructor]
+#|
+#|			Create a new ChatMessages object.  Initially empty.
+#|
+#|
+#|		chatMsgs.messageList			 	[read-only instance public property]
+#|
+#|			Return the underlying list of individual message dicts.
+#|
+#|
+#|		chatMsgs.totalTokens				[read-only instance public property]
+#|
+#|			Return the total number of tokens in all messages.
+#|
+#|
+#|		chatMsgs.addMessage(role, content)				[instance public method]
+#|
+#|			Add a new message with the given role and content to the
+#|			end of the message list.  The <role> must be one of the
+#|			following global constants (defined earlier):
+#|
+#|				CHAT_ROLE_SYSTEM	- Represents the system as a whole.
+#|
+#|				CHAT_ROLE_USER		- Represents messages from a human user.
+#|
+#|				CHAT_ROLE_AI		- Represents messages from the AI.
+#|
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+class ChatMessages: pass
+class ChatMessages:
+
+	"""An instance of this class represents a list of messages for use
+		with the chat API."""
+	
+	def __init__(self, msgList=None):
+
+		"""Create a new ChatMessages object.  Initially empty unless
+			<msgList> is specified, in which case it must be a list of
+			message dicts, each of which must have the following fields:
+			
+				role		- One of the global constants CHAT_ROLE_SYSTEM,
+							  CHAT_ROLE_USER, or CHAT_ROLE_AI.
+							
+				content		- The text of the message."""
+		
+		if msgList is None:
+			msgList = []
+
+		self._messages = msgList		# The underlying list of message dicts.
+
+	#__/ End of class gpt3.api.ChatMessages's constructor.
+
+	def messageList(self):
+
+		"""Return the underlying list of message dicts."""
+		
+		return self._messages
+	
+
+	def totalTokens(self):
+		
+		"""Return the total number of tokens in all messages. Note that
+			we include the tokens in the 'role' and 'content' fields of
+			each message dict, as well as an estimate of the tokens in
+			whatever behind-the-scenes formatting the API backend uses 
+			to represent the messages before passing them to the 
+			underlying language model."""
+		
+		_estimatedFormattingTokens = 2
+			# This is the number of extra tokens that we're guessing the 
+			# API uses to format the role and content of each message.  
+			# It's not documented anywhere, but we're guessing that it's
+			# probably ~2 tokens per message, to delimit the 2 fields.
+
+		return sum([(tiktokenCount(msg['role']) + 
+	      			 tiktokenCount(msg['content']) + 
+					 _estimatedFormattingTokens) \
+					for msg in self._messages])
+
+	#__/ End method ChatMessages.totalTokens().
+
+
+	def addMessage(self, role, content):
+
+		"""Add a new message with the given role and content to the
+			end of the message list.  The <role> must be one of:
+			
+				CHAT_ROLE_SYSTEM	- Represents the system as a whole.
+
+				CHAT_ROLE_USER		- Represents messages from a human user.
+
+				CHAT_ROLE_AI		- Represents messages from the AI."""
+
+		if role not in [self.CHAT_ROLE_SYSTEM, self.CHAT_ROLE_USER, self.CHAT_ROLE_AI]:
+			raise ValueError(f"Invalid role '{role}' for chat message.")
+
+		self._messages.append({'role': role, 'content': content})
+
+
+#__/ End class ChatMessages.
+
+
+#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#|	gpt3.api.ChatCompletion								[module public class]
+#|
+#|		This class is a wrapper for the completion data structure 
+#|		returned by the underlying GPT-3 chat API.  The constructor 
+#|		calls the API to create this structure.  Various properties 
+#|		allow easy access to information contained in the structure.
+#|
+#|
+#|	Public interface to class ChatCompletion:
+#|	=========================================
+#|
+#|
+#|		chatCompl = ChatCompletion(chatCore)		   [polymorphic constructor]
+#|
+#|			Creates a chat completion object based on the current
+#|			messages for the given GPT3ChatCore connection.
+#|
+#|
+#|		chatCompl = ChatCompletion(chatComplStruct)	   [polymorphic constructor]
+#|
+#|			Creates a ChatCompletion object wrapping the given 
+#|			completion structure, previously generated.
+#|
+#|
+#|		msg = chatCompl.message					   [read-only instance property]
+#|
+#|			Returns the message that was generated by the chat API.
+#|			This is a dict with the following keys:
+#|
+#|				role		- The role of the message (one of the
+#|						  		CHAT_ROLE_* constants defined above).
+#|
+#|				content		- The text of the message.
+#|
+#|
+#|		text = chatCompl.text				   	   [read-only instance property]
+#|
+#|			Returns just the text of the completion as a single
+#|			string.
+#|
+#|
+#|		nToks = chatCompl.nTokens			   	   [read-only instance property]
+#|
+#|			Returns the total number of tokens in the completion,
+#|			including the prompt.
+#|
+#|
+#|		promptLen = compl.promptLen		   	   	   [read-only instance property]
+#|
+#|			Returns the length of the prompt in tokens.
+#|		
+#|
+#|		complLen = compl.resultLen	   	   	   	   [read-only instance property]
+#|
+#|			Returns the length of the result message content text
+#|			(i.e., not including the prompt) in tokens.
+#|
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+class ChatCompletion: pass
+class ChatCompletion(Completion):
+	# NOTE: We are subclassing this class from Completion mainly just so that
+	# we can inherit miscellaneous methods that are unchanged.  However, we need
+	# to be careful to override any methods that really do need to be overridden.
+	#
+	# The following is a list of methods we are inheriting from Completion and
+	# that we are NOT overriding here, and why not:
+	#
+	#		.__str__()		- This just retrieves our .text property.
+	#
+	#		.finishReason 	- This part of the completion structure is not
+	#						  any different for chat completions.
+	#
+	# And the following methods from Completion are simply not relevant for chat
+	# completions, so we don't need to override them:
+	#
+	
+
+
+	"""An instance of this class represents a completion object returned
+		by the GPT-3 chat API.  It wraps the underlying completion structure
+		provided by the API."""
+	
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|	Public data members.							   [class documentation]
 	#|
-	#|		This class abstracts a connection to the core GPT-3 system.	 
-	#|		An instance of this class remembers its API configuration 
-	#|		options.
+	#|		.prompt [string]
 	#|
-	#|	Public interface:
+	#|			The prompt string from which this completion was
+	#|			generated, if available. (Otherwise None.)
 	#|
-	#|		.conf									[instance property]
+	#|		.core [GPT3Core]
 	#|
-	#|			Current API configuration of this core connection.
+	#|			The connection to the core API that was used to 
+	#|			generate this completion, if available.
 	#|
-	#|		.adjustConf(params)						[instance method]
+	#|		.complStruct [dict]
 	#|
-	#|			Modify one or more API parameters of the connection.
+	#|			The raw completion data structure returned by 
+	#|			the core API.
 	#|
-	#|		.genCompletion(prompt)					[instance method]
-	#|
-	#|			Generate a completion object from the given prompt.
-	#|
-	#|		.genString(prompt)						[instance method]
-	#|
-	#|			Generate a single out string from the given prompt.
+	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#| Instance initializer.						[special instance method]
 	#|		
-	#|	Special methods:
+	#|		This takes a general argument list, and parses it to extract
+	#|		the text of a prompt and the GPT3ChatCore object that is 
+	#|		provided.  Then are then used to call the underlying chat API 
+	#|		to create the actual completion data structure.  (Alternatively, 
+	#|		if a structure is already provided, we just remember it.)
 	#|
-	#|		.__init__(*args, **kwargs)	- Instance initializer.
+	#|	Usage:
+	#|
+	#|		compl = ChatCompletion(core)
+	#|
+	#|			Creates a completion of the given prompt string using 
+	#|			the given GPT3ChatCore instance.
+	#|
+	#|		compl = ChatCompletion(chatComplStruct)
+	#|
+	#|			Creates a completion object wrapping the given 
+	#|			chat completion structure, previously generated.
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	def __init__(newChatCompletion:ChatCompletion, *args, **kwargs):
+		
+		"""Instance initializer for class ChatCompletion."""
+		
+		chatCompl = newChatCompletion	# For convenience.
+
+			# These are things we are going to try to find in our arguments,
+			# or generate ourselves.
+		
+		chatCore		= None		# The core chat engine connection that should be used to generate this completion.
+		chatComplStruct	= None		# A raw chat completion data structure returned by the chat core API.
+		
+			# Scan our positional arguments looking for strings, chat-core objects,
+			# or pre-existing chat completion structures.
+		
+		for arg in args:
+		
+				# If there's a GPT3ChatCore instance, remember it.
+
+			if isinstance(arg,GPT3ChatCore):
+				chatCore = arg
+		
+				# If there's a dict, assume it's a completion object.
+		
+			if isinstance(arg,dict):
+				chatComplStruct = arg
+			
+		#__/ End for arg in args.
+
+			# Also check any keyword arguments to see if a core, 
+			# and/or struct are there.	If they are, we'll just override
+			# any that were already extracted from positional arguments.
+
+		if 'core' in kwargs:
+			chatCore = kwargs['core']
+			
+		if 'struct' in kwargs:
+			chatComplStruct = kwargs['struct']
+		
+			# Remember the core that we found, for later use.
+		
+		chatCompl.chatCore = chatCore
+		
+			# If we have no completion struct yet, we have to create it by 
+			# calling the actual API.  Use an internal instance method for 
+			# this purpose.
+		
+		if chatComplStruct == None and chatCore != None:	  
+		
+				# First generate the argument list for passing to the API.
+			apiArgs = chatCore.genArgs()
+			
+				# This actually calls the API, with any needed retries.
+			chatComplStruct = chatCompl._createComplStruct(apiArgs)
+		
+		#__/ End if we will generate the completion structure.
+		
+		chatCompl.chatComplStruct = chatComplStruct		# Remember the completion structure.
+	
+	#__/ End of class gpt3.api.Completion's instance initializer.
+
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| chatCompletion.text						  [public instance property]
+		#|
+		#|		Returns the text of this chat completion, as a single 
+		#|		string.
+		#|
+		#|		At present, if there are multiple completions present
+		#|		in the completion structure, this only returns the text
+		#|		of the first one.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+	@property
+	def text(thisChatCompletion:ChatCompletion):
+		
+		"""Returns the text of this chat completion, as a single string."""
+
+		# Note the following code differs from the code in the Completion class.
+		return thisChatCompletion.chatComplStruct \
+				['choices'][0]['message']['content']
+
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| chatCompletion.nTokens					  [public instance property]
+		#|
+		#|		Returns the total number of tokens making up this 
+		#|		completion.	 The chat API makes this very easy.
+		#|		NOTE: This includes BOTH the prompt and the result.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		
+	@property	
+	def nTokens(thisChatCompletion:ChatCompletion):
+	
+		"""Returns the total number of tokens in this completion.
+			Note this includes BOTH the prompt and the result."""
+	
+		return thisChatCompletion.chatComplStruct \
+				['usage']['total_tokens']
+
+	#__/ End of class gpt3.api.ChatCompletion's .nTokens property.
+
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| chatCompletion.promptLen					  [public instance property]
+		#|
+		#|		Returns the length of the completion's prompt string, in 
+		#|		tokens.  The chat API makes this very easy.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	@property
+	def promptLen(thisChatCompletion:ChatCompletion):
+	
+		"""Returns the length of the prompt in tokens."""
+		
+		return thisChatCompletion.chatComplStruct \
+				['usage']['prompt_tokens']
+	
+	#__/ End of class gpt3.api.ChatCompletion's .promptLen property.
+
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| chatCompletion.resultLen					  [public instance property]
+		#|
+		#|		Returns the length of the completion's result string, in 
+		#|		tokens.  The chat API makes this very easy.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	@property
+	def resultLen(thisChatCompletion:ChatCompletion):
+	
+		"""Returns the length of the result in tokens."""
+		
+		return thisChatCompletion.chatComplStruct \
+				['usage']['completion_tokens']
+	
+	#__/ End of class gpt3.api.ChatCompletion's .promptLen property.
+
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| chatCompletion.textPosToTokIndex()			[public instance method]
+		#|
+		#|		Given a position in the completion text, returns the index
+		#|		of the token that is at that position.
+		#|
+		#|		We need to override the version of this method that is 
+		#|		defined in the Completion class, because in the chat API
+		#|		the 'logprobs' field is not present, so instead we have to
+		#|		use the tiktoken library to do the conversion.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	def textPosToTokIndex(thisChatCompletion:ChatCompletion, pos:int):
+	
+		"""Given a position in the completion text, returns the index 
+			of the token that is at that position."""
+		
+		chatCompl = thisChatCompletion	# For convenience.
+
+			# First, let's retrieve our engine name.
+		engineName = chatCompl.chatCore.chatConf.engineId
+			# (Should we make this easier to access?)
+
+			# Now let's get the name of the encoding used by this engine.
+		encodingName = _get_encoding(engineName)
+
+			# Now we can ask the tiktoken library to give us the corresponding
+			# encoding object.
+		encoding = tiktoken.get_encoding(encodingName)
+
+			# Now we can use the encoding object to convert the text to a list
+			# of tokens.
+		tokens = encoding.encode(chatCompl.text)
+
+			# Next, we'll construct a list of the offsets of each token.
+		text_offsets = [0]
+		for tok in tokens:
+				# First, decode the token to a string, so we can measure its length
+				# in characters.
+			tok = encoding.decode([tok])[0]
+
+				# Now append the offset of the next token to the list of offsets.
+			text_offsets.append(text_offsets[-1] + len(tok))
+
+		#text_offsets = self.complStruct['choices'][0]['logprobs']['text_offset']
+		# ^^^ This is what we would have done instead if the 'logprobs' field were present.
+
+			# We could make this more efficient by doing a binary
+			# search, but it's probably overkill at the moment.
+		
+		for tok_index in range(0, len(text_offsets)):
+			if text_offsets[tok_index] > pos:
+				return tok_index-1
+				
+		return len(text_offsets)-1
+			# If we get here, we're at the end of the text.
+			# Return the last token index.
+	
+	#__/ End of class gpt3.api.ChatCompletion's .textPosToTokIndex method.
+
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| chatCompletion._createComplStruct(apiArgs)	[private instance method]
+		#|
+		#|		This internal method is what actually calls the core chat API
+		#|		to retrieve the raw completion data structure.	We use the
+		#|		backoff package (pypi.org/project/backoff) to handle retries
+		#|		in case of REST failures.
+		#|
+		#|	Arguments:
+		#|
+		#|		apiArgs [dict] - API arguments as a single dict structure.
+		#|
+		#|		minResultSpaceRequested [int] (OPTIONAL) - Requested space for the
+		#|			completion result.  Note that if the prompt is longer
+		#|			than this, the actual result space will be less than
+		#|			this value.  If no value is provided, the default of
+		#|			100 tokens will be used.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		# This decorator performs automatic exponential backoff on REST failures.
+	@backoff.on_exception(backoff.expo,
+						  (openai.error.APIError))
+						  
+	def _createComplStruct(thisChatCompletion:ChatCompletion, apiArgs, 
+				minResultSpaceRequested:int=DEF_TOKENS):
+			# By default, we'll throw an exception if the estimated result space
+			# is less than 100 tokens.  This can be overridden by the caller
+			# by explicitly setting the minResultSpaceRequested argument to a
+			# different value.
+
+		"""Private instance method to retrieve a chat completion from the core
+			chat API, with automatic exponential backoff and retry."""
+		
+		chatCompl = thisChatCompletion	# For convenience.
+
+		if minResultSpaceRequested is None:		# Just in case caller explicitly sets this to None,
+			minResultSpaceRequested = DEF_TOKENS	# revert back to the default of 100 tokens.
+
+		# If the core is not set, we can't do anything.
+		if chatCompl.chatCore == None:
+			_logger.error("ERROR: chatCompletion._createComplStruct(): Chat core not available.")
+			return None
+			
+		# The below code needs to be wrapped in the module's mutex lock, because
+		# it manipulates the global record of API usage statistics, and this is
+		# not thread-safe unless we make it atomic by grabbing the lock.
+
+		with _lock:
+
+			# If the usage statistics file hasn't been loaded already, do it now.
+			if not _statsLoaded:
+				loadStats()
+
+			# This measures the length of the prompt in tokens, and updates
+			# the global record of API usage statistics accordingly.
+			chatCompl._accountForInput(apiArgs)
+				# Note: The global variable _inputLength is updated by this method.
+
+			# Retrieve the engine's receptive field size; this is the maximum number
+			# of tokens that can be accommodated in the query + response together.
+			fieldSize = _get_field_size(chatCompl.chatCore.chatConf.engineId)
+
+			# For some reason, the engines that supposedly can only handle
+			# 2,048 tokens in their query + response together actually are
+			# able to handle 2,049 tokens. So, we'll adjust the value of
+			# fieldSize in that case.
+			if fieldSize == 2048:
+				fieldSize = 2049
+
+			# NOTE: Still need to research whether the engines that supposedly
+			# can only handle 4,000 tokens can similarly handle 4,001 tokens,
+			# if whether the engines that supposedly can only handle 4,096
+			# tokens can similarly handle 4,097 tokens.
+
+			# Check to make sure that input+result length is not greater than
+			# the size of the receptive field; if so, then we need to request 
+			# a smaller result (but not too small).
+
+			if _inputLength + apiArgs['max_tokens'] > fieldSize:
+
+					# See how much space there is right now for our query result.
+				availSpace = fieldSize - _inputLength
+
+					# If there isn't enough space left even for our minimum result,
+					# then we need to raise an exception, because whoever prepared
+					# our prompt made it too large for this engine.
+
+				if availSpace < minResultSpaceRequested:
+
+						# Calculate the effective maximum prompt length, in tokens.
+					effMax = fieldSize - minResultSpaceRequested
+
+					_logger.warn(f"[GPT-3 API] Prompt length of {_inputLength} exceeds"
+								 f" our effective maximum of {effMax}. Requesting field shrink.")
+
+					e = PromptTooLargeException(_inputLength, effMax)
+					raise e		# Complain to our caller hierarchy.
+
+					# If we get here, we have enough space for our minimum result length,
+					# so we can shrink the maximum result length accordingly.
+				origMax = apiArgs['max_tokens']	# Save the original value.
+				apiArgs['max_tokens'] = maxTok = fieldSize - _inputLength
+
+				_logger.warn(f"[GPT-3 API] Trimmed max_tokens from {origMax} to {maxTok}.")
+
+			# If we get here, we know we have enough space for our query + result,
+			# so we can proceed with the request to the actual underlying API.
+			complStruct = openai.ChatCompletion.create(**apiArgs)
+
+			# This measures the length of the response in tokens, and updates
+			# the global record of API usage statistics accordingly.			
+			chatCompl._accountForOutput(apiArgs['engine'], complStruct)
+
+			# This updates the cost data and the human-readable table of API
+			# usage statistics, and saves the updated data to the _statsFile.
+			saveStats()
+
+		return complStruct		# Return the low-level completion data structure.
+			# Note, this is the actual data structure that the completion object 
+			# uses to populate itself.
+			
+	#__/ End of class gpt3.api.ChatCompletion's ._createComplStruct method.
+
+
+	def _accountForInput(thisChatCompl:ChatCompletion, apiArgs):
+
+		"""This method measures the number of tokens in the input messages, and
+			updates the global record of input tokens processed by the API."""
+		
+		chatCompl = thisChatCompl	# For convenience.
+
+			# NOTE: It's dangerous to make _inputLength a global variable,
+			# because it's possible that multiple threads will interleave
+			# their processing of different queries. To be safe, DO NOT 
+			# CALL THIS METHOD unless you have the module's mutex _lock 
+			# acquired.
+
+		global _inputLength
+
+		engine = apiArgs['engine']
+		messages = ChatMessages(apiArgs['messages'])
+
+			# This function counts the number of tokens in the prompt
+			# without having to do an API call (since calls cost $$).
+		nToks = messages.totalTokens()
+
+		_inputLength = nToks
+
+		_logger.debug(f"Counted {nToks} tokens in input text [{messages}]")
+
+			# Update the global record of API usage statistics.
+		inputToks[engine] = inputToks[engine] + nToks
+	
+	#__/ End of class gpt3.api.Completion's ._accountForInput method.
+
+
+#__/ End class ChatCompletion.
+
+
+#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#|	
+#|	gpt3.api.GPT3Core								  [module public class]
+#|
+#|		This class abstracts a connection to the core GPT-3 system.	 
+#|		An instance of this class remembers its API configuration 
+#|		options.
+#|
+#|	Public interface:
+#|
+#|		.conf									[instance property]
+#|
+#|			Current API configuration of this core connection.
+#|
+#|		.adjustConf(params)						[instance method]
+#|
+#|			Modify one or more API parameters of the connection.
+#|
+#|		.genCompletion(prompt)					[instance method]
+#|
+#|			Generate a completion object from the given prompt.
+#|
+#|		.genString(prompt)						[instance method]
+#|
+#|			Generate a single out string from the given prompt.
+#|		
+#|	Special methods:
+#|
+#|		.__init__(*args, **kwargs)	- Instance initializer.
+#|
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 class GPT3Core:
 
 	"""An instance of this class represents a connection to the core GPT-3 
 		API that remembers its parameter settings."""
 
-	#|--------------------------------------------------------------------------
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#|	Instance private data members for class GPT3Core.
 	#|
 	#|		._configuration	[GPT3APIConfig]		- Current API configuration.
 	#|
-	#|--------------------------------------------------------------------------
+	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-		#|----------------------------------------------------------------------
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| Initializer for class GPT3Core.
 		#|
 		#|	USAGE:
@@ -1229,15 +2118,15 @@ class GPT3Core:
 		_logger.info("Creating new GPT3Core connection with configuration:\n" + str(config))
 
 		inst._configuration = config		# Remember our configuration.
-	
+
 	#__/ End GPT3Core instance initializer.
 
 
-		#|----------------------------------------------------------------------
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	.conf									[instance public property]
 		#|
 		#|		Returns the API configuration object (instance of class
-		#|		GPT3AIConfig) that is associated with this connection to
+		#|		GPT3APIConfig) that is associated with this connection to
 		#|		the core GPT-3 system.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -1248,7 +2137,7 @@ class GPT3Core:
 		return self._configuration
 
 
-		#|----------------------------------------------------------------------
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	.adjustConf(params)						[instance public method]
 		#|
 		#|		Adjusts the API parameter values of this connection to 
@@ -1341,6 +2230,353 @@ class GPT3Core:
 #__/ End class GPT3Core.
 
 
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|	
+	#|	gpt3.api.GPT3ChatCore							  [module public class]
+	#|
+	#|		This class abstracts a connection to the core GPT-3 system, in
+	#|		the case of chat-based engines.	 An instance of this class 
+	#|		remembers its API configuration options, and the current list
+	#|		of messages.  We provide methods to manage the message list.
+	#|
+	#|	Public interface:
+	#|	=================
+	#|
+	#|
+	#|		.chatConf										[instance property]
+	#|
+	#|			Current API configuration of this chat core connection.
+	#|
+	#|
+	#|		.adjustConf(params)								[instance method]
+	#|
+	#|			Modify one or more API parameters of the connection.
+	#|
+	#|
+	#|		.messages										[instance property]
+	#|
+	#|			The current list of messages being maintained for this
+	#|			connection.
+	#|
+	#|
+	#|		.addMessage(role, content)						[instance method]
+	#|
+	#|			Add a new message with role ID <role> and message
+	#|			content <content> to the end of the current list of
+	#|			messages.
+	#|
+	#|
+	#|		.genChatCompletion()							[instance method]
+	#|
+	#|			Generate a completion object from the current messages.
+	#|
+	#|
+	#|		.genMessage()									[instance method]	
+	#|
+	#|			Generate a new message dict from the current messages.
+	#|			Uses .genChatCompletion() internally.
+	#|
+	#|
+	#|		.genString()									[instance method]
+	#|
+	#|			Generate a single out string from the current messages.
+	#|			Uses .genMessage() internally.
+	#|
+	#|		
+	#|	Special methods:
+	#|	----------------
+	#|
+	#|		.__init__(*args, **kwargs)	- Instance initializer.
+	#|
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+class GPT3ChatCore: pass
+class GPT3ChatCore:
+
+	"""An instance of this class represents a connection to the core GPT-3 
+		chat API that remembers its parameter settings."""
+
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|	Instance private data members for class GPT3ChatCore:
+	#|
+	#|		._chatConfiguration	[GPT3APIChatConfig]	- Current API configuration.
+	#|
+	#|		._messages			[ChatMessages]		- Current list of messages.	
+	#|
+	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Initializer for class GPT3ChatCore.
+		#|
+		#|	USAGE:
+		#|
+		#|		core = GPT3ChatCore()							
+		#|
+		#|			Creates and returns a new instance of class GPT3ChatCore 
+		#|			using the default parameter values.
+		#|
+		#|		core = GPT3ChatCore([config=]chatConfig)
+		#|
+		#|			Creates and returns a new GPT3ChatCore instance using the
+		#|			given GPT3ChatAPIConfig object.
+		#|
+		#|		core = GPT3ChatCore(*args, **kwarms)			
+		#|
+		#|			Creates and returns a new GPT3ChatCore instance, passing
+		#|			the given arguments through to the GPT3ChatAPIConfig()
+		#|			constructor. Note this is the same as:
+		#|
+		#|				core = GPT3ChatCore(GPT3ChatAPIConfig(*args, **kwargs))
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	def __init__(newGPT3ChatCore:GPT3ChatCore, *args, **kwargs):
+
+		chatCore = newGPT3ChatCore	# For convenience.
+
+			# If keyword arg 'chatConf=' is present, use that as the chatConf.
+		
+		if 'chatConf' in kwargs:
+			chatConf = kwargs['chatConf']
+		else:
+			chatConf = None
+
+			# Otherwise, if the first argument is a GPT3ChatAPIConfig, use that as the config.
+	
+		if chatConf == None and len(args) > 0:
+			if args[0] != None and isinstance(args[0],GPT3ChatAPIConfig):
+				chatConf = args[0]
+
+			# If no chatConf was provided, then create one from the arguments.
+			# (In future, this should be changed to otherwise modify the provided
+			# chatConf based on the remaining arguments.)
+
+		if chatConf == None:
+			chatConf = GPT3ChatAPIConfig(*args, **kwargs)
+
+		_logger.info("Creating new GPT3ChatCore connection with configuration:\n" + str(chatConf))
+
+		chatCore._chatConfiguration = chatConf		# Remember our configuration.
+	
+			# Create our ChatMessages object to manage the list of messages.
+
+		# First, see if the user provided a list of messages to start with as part of
+		# the configuration.  If so, use that list.  Otherwise, specify no messages.
+
+		msgList = None	# Default to no messages.
+		if chatConf.messages != None:
+			msgList = chatConf.messages
+
+		chatCore.messages = ChatMessages(msgList)		# Create our message list.
+			# Note:  We use the property setter here to ensure the list is a ChatMessages 
+			# object and perform other necessary bookkeeping.
+
+	#__/ End GPT3Core instance initializer.
+
+
+	# Property to retrieve the current list of messages.
+	@property
+	def messages(self): return self._messages
+
+	# Setter for the current list of messages.
+	@messages.setter
+	def messages(self, newMessages:ChatMessages):
+		
+		"""Set the current list of messages."""
+		
+		# Do some error checking.
+		if newMessages == None:
+			raise ValueError("Cannot set messages to None.")
+		if not isinstance(newMessages,ChatMessages):
+			raise ValueError("Cannot set messages to a non-ChatMessages object.")
+		
+		self._messages = newMessages
+
+			# Here, we need to also update the chatConf object to reflect the new
+			# list of messages.  This is because the chatConf object is what is
+			# used to generate the JSON request to the API, and the API requires
+			# that the list of messages be included in the request.
+		
+		self._update_chatconf_msgs()
+
+	#__/ End gpt3ChatCore.messages instance property setter.
+
+	def _update_chatconf_msgs(self):
+		"""Update the chatConf object to reflect the current list of messages."""
+		self._chatConfiguration.messages = self.messages.messageList
+			# Note this is a raw list of messages, not a ChatMessages object.
+
+	def addMessage(self, newMessage:dict):
+		"""Add the given message to our list of messages."""
+		self.messages.addMessage(newMessage)
+		self._update_chatconf_msgs()			# Also update the chatConf object.
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	.chatConf									[instance public property]
+		#|
+		#|		Returns the API configuration object (instance of class
+		#|		GPT3ChatAPIConfig) that is associated with this connection 
+		#|		to the core GPT-3 system.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	@property
+	def chatConf(self):
+		"""Get our current API configuration."""
+		return self._chatConfiguration
+
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	.adjustConf(params)						[instance public method]
+		#|
+		#|		Adjusts the API parameter values of this connection to 
+		#|		the core GPT-3 chat system as specified by the argument 
+		#|		list.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	def adjustConf(self, *args, **kwargs):
+		"""Adjust the chat API configuration as specified."""
+		self.chatConf.modify(*args, **kwargs)
+
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	.genArgs()								[instance public method]
+		#|
+		#|		Generate the argument list for calling the core chat API.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	def genArgs(thisChatCore:GPT3ChatCore):
+   
+		chatCore = thisChatCore		# For convenience.
+
+		kwargs = dict() 	# Initially empty dict for building up argument list.
+		
+		chatConf = chatCore.chatConf	# Get our current chat configuration.
+
+		kwargs['engine'] = chatConf.engineId	# This API arg. is required. Can't skip it.
+				
+		# Note here we have to match the exact keyword argument names supported by OpenAI's API.
+
+		if chatConf.maxTokens			!= None:	kwargs['max_tokens']		= chatConf.maxTokens
+		if chatConf.temperature			!= None:	kwargs['temperature']		= chatConf.temperature
+		if chatConf.topP				!= None:	kwargs['top_p']				= chatConf.topP
+		if chatConf.nCompletions		!= None:	kwargs['n']					= chatConf.nCompletions
+		if chatConf.stream				!= None:	kwargs['stream']			= chatConf.stream
+		if chatConf.stop				!= None:	kwargs['stop']				= chatConf.stop
+		if chatConf.presencePenalty		!= None:	kwargs['presence_penalty']	= chatConf.presencePenalty
+		if chatConf.frequencyPenalty	!= None:	kwargs['frequency_penalty'] = chatConf.frequencyPenalty
+		if chatConf.messages			!= None:	kwargs['messages']			= chatConf.messages
+		if chatConf.logitBias			!= None:	kwargs['logit-bias']		= chatConf.logitBias
+		if chatConf.user				!= None:	kwargs['user']				= chatConf.user
+		
+		if chatConf.temperature != None and chatConf.topP != None:
+			# Do some better error handling here. Warning and/or exception.
+			_logger.warn(f"WARNING: temp={chatConf.temperature}, topP={chatConf.topP}: Setting both temperature and top_p is not recommended.")
+
+		return kwargs
+
+	#__/ End GPT3ChatCore.genArgs() instance method.
+
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	.genChatCompletion()						[instance public method]
+		#|
+		#|		This method returns the raw completion of the current 
+		#|		messages, using the core's present API configuration.	 
+		#|		We do graceful backoff and retry in case of REST call 
+		#|		failures.
+		#|
+		#|		To do: Provide the option to do a temporary modification of
+		#|		one or more API parameters in the argument list.
+		#|
+		#|		NOTE: This method does not update the messages object!  It
+		#|		only returns the completion object.  The caller is
+		#|		responsible for updating the messages object if and when
+		#|		they wish to do so.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	def genChatCompletion(self):
+	
+		"""With automatic exponential backoff, query the server
+			for a completion object for the given prompt using the
+			connection's current API configuration."""
+		
+		return ChatCompletion(self, prompt)
+			# Calls the Completion constructor with the supplied prompt. This
+			# constructor does all the real work of calling the API.
+		
+	#__/ End instance method GPT3Core.genChatCompletion().
+
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	.genMessage()							[instance public method]
+		#|
+		#|		This method returns a new message based on the current 
+		#|		messages, using the chat core's present API configuration.
+		#|		The message is returned as a dictionary with the following
+		#|		attributes:
+		#|
+		#|			'role':			This is always 'assistant'.
+		#|			'content':		<text of the new message>
+		#|			'created_at':	<timestamp of the new message>
+		#|
+		#|		Note this calls .genChatCompletion() internally.
+		#|
+		#|		To do: Provide the option to do a temporary modification of
+		#|		one or more API parameters in the argument list.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	def genMessage(self):
+		"""Generate a new message based on the current messages."""
+		resultCompletion = self.genCompletion()
+		newMessage = resultCompletion.message
+		_logger.debug("[GPT-3/API] Server returned new message: [" + newMessage + ']')
+
+			# The newMessage object returned from the completion object is 
+			# already a dict with role and content, so just add the timestamp.
+
+		newMessage['created_at'] = datetime.datetime.now().isoformat()
+		return newMessage
+		
+	#__/ End instance method GPT3Core.genMessage().
+
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	.genString()							[instance public method]
+		#|
+		#|		This method returns a completion of the current messages,
+		#|		as a single string.	 Uses .genMessage() internally.
+		#|
+		#|		To do: Provide the option to do a temporary modification of
+		#|		one or more API parameters in the argument list.
+		#|
+		#|		NOTE: This method does not update the messages object!  It
+		#|		only returns the completion content.  The caller is
+		#|		responsible for updating the messages object if and when
+		#|		they wish to do so.
+		#|
+		#|		Also note: If you want the result to be automatically
+		#|		timestamped, you should just use .genMessage() directly 
+		#|		instead.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+	def genString(self):
+		"""Generate a single completion string for the current messages."""
+
+		newMessage = self.genMessage()
+		return newMessage['content']
+
+	#__/ End instance method GPT3Core.genString().
+
+#__/ End class GPT3ChatCore.
+
+
 #|==============================================================================
 #| Module object initialization.								[code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -1349,6 +2585,7 @@ class GPT3Core:
 	# system that is used for counting tokens.  It is not created
 	# unless/until the GPT3Core.countTokens() method is called.
 
+global _theTokenCounterCore
 _theTokenCounterCore = None		# Don't create this until needed.
 #_theTokenCounterCore = GPT3Core(engineId='ada', echo=True, maxTokens=0, logProbs=0)
 	# This connection provides functionality needed to count tokens.
@@ -1410,9 +2647,11 @@ def textPath():
 	return path.join(_aiPath, 'api-stats.txt')
 
 
-# NOTE: This function is not currently used. It is here for future reference.
-# We current prefer to use the local_countTokens() function, which is imported
+# NOTE: The below function is not currently used. It is here for future reference.
+# We currently prefer to use the local_countTokens() function, which is imported
 # from the tokenizer/tokenizer.py module.
+# NOTE: The above has now been superseded, and the new new recommended token-
+# counting function is tiktokenCount() below.
 
 def countTokens(text:str=None):
 
@@ -1434,6 +2673,20 @@ def countTokens(text:str=None):
 		return inputComplObj.nTokens
 
 #__/ End module function countTokens().
+
+
+def tiktokenCount(text:str=None, encoding:str='gpt2'):
+
+	"""Counts tokens in the given text using the tiktoken library.
+		This is our currently preferred token-counting function
+		due to its low cost (free), its speed, its accuracy,
+		and lack of dependence on GPT-2 having been installed."""
+
+	encodingObj = tiktoken.get_encoding(encoding)
+	num_tokens = len(encodingObj.encode(text))
+	return num_tokens
+
+#__/ End module function tiktokenCount().
 
 
 def loadStatsIfNeeded():
