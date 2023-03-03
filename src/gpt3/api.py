@@ -106,6 +106,32 @@
 				highly recommended that you use this function instead of the
 				above two functions.
 
+			loadStatsIfNeeded() - Loads the usage statistics from the
+				filesystem, if they have not already been loaded.
+
+			stats() - Returns a human-readable table of usage statistics, as
+				a string. Example table appearance:
+
+									 	  Token Counts
+									 ~~~~~~~~~~~~~~~~~~~~~~~
+					Engine Name      Input   Output  Total    USD Cost
+					================ ======= ======= ======= =========
+								 ada       0       0       0 $  0.0000
+							 babbage       0       0       0 $  0.0000
+							   curie 7410900    6146 7417046 $ 44.5023
+							 davinci       0       0       0 $  0.0000
+						text-ada-001       0       0       0 $  0.0000
+					text-babbage-001       0       0       0 $  0.0000
+					  text-curie-001       0       0       0 $  0.0000
+					text-davinci-001       0       0       0 $  0.0000
+					text-davinci-002       0       0       0 $  0.0000
+					~~~~~~~~~~~~~~~~ ~~~~~~~ ~~~~~~~ ~~~~~~~ ~~~~~~~~~
+					TOTALS:          7410900    6146 7417046 $ 44.5023
+
+				NOTE: The table formatting algorithm used is currently very 
+				brittle, and needs significant improvement.
+
+				
 	EXAMPLES:
 
 		/----------------------------------------------------------\
@@ -117,7 +143,7 @@
 		| gpt3 = GPT3Core()										   |
 		|	# Makes a new instance w. default parameter values.	   |
 		|														   |
-		| result = gpt3.genCompletion("Mary had a little lamb, ")  |
+		| result = gpt3.genCompletion("Mary had a little lamb,")   |
 		|														   |
 		| pprint(result.complStruct)							   |
 		\----------------------------------------------------------/
@@ -128,11 +154,11 @@
 					  'index': 0,
 					  'logprobs': None,
 					  'text': '\n'
-							  'Its fleece was white as snow, \n'
-							  'And everywhere that Mary went, \n'
+							  'Its fleece was white as snow,\n'
+							  'And everywhere that Mary went,\n'
 							  'The lamb was sure to go.\n'
 							  '\n'
-							  'It followed her to school one day, \n'
+							  'It followed her to school one day,\n'
 							  'That was against the'}],
 		 'created': 1601615096,
 		 'id': 'cmpl-fTJ18hALZLAlQCvPOxFRrjQL',
@@ -140,85 +166,88 @@
 		 'object': 'text_completion'}
 
 """
+
+
+#/==============================================================================
+#|
+#|	 1. Module imports.								   	   [module code section]
+#|
+#|			Load and import names of (and/or names from) various
+#|			other python modules and pacakges for use from within
+#|			the present module.
+#|
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
-	#|==========================================================================
-	#|
-	#|	 1. Module imports.								   [module code section]
-	#|
-	#|			Load and import names of (and/or names from) various
-	#|			other python modules and pacakges for use from within
-	#|			the present module.
-	#|
+	#/==========================================================================
+	#|	1.1. Imports of standard python modules.		[module code subsection]
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-		#|======================================================================
-		#|	1.1. Imports of standard python modules.	[module code subsection]
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 from	os			import	path	# Manipulate filesystem path strings.
 
 from	pprint		import	pformat	# Pretty-print complex objects.
 	# We were also importing pprint.pprint, but that code is commented out now.
 
-import	json	# We use this to save/restore the API usage statistics.
+import	json		# We use this to save/restore the API usage statistics.
 
 import	datetime	# We use this to tag new messages with the current time.
 
-		#|======================================================================
-		#|	1.2. Imports of modules to support GPT-3.	[module code subsection]
+
+	#/==========================================================================
+	#|	1.2. Imports of modules to support GPT-3.		[module code subsection]
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+import	openai		# OpenAI's Python bindings for their REST API to GPT-3.
+import	tiktoken	# A fast standalone tokenizer module for GPT-3.
+import	backoff		# Utility module for exponential backoff on failures.
+
+
+	#/==========================================================================
+	#|	1.3. Imports of custom application modules. 	[module code subsection]
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	1.3.1.  The following modules, although custom, are generic
+		#|		utilities, not specific to the present application.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-import openai		# OpenAI's Python bindings for their REST API to GPT-3.
-import tiktoken		# A fast standalone tokenizer module for GPT-3.
-import backoff		# Utility module for exponential backoff on failures.
-
-
-		#|======================================================================
-		#|	1.3. Imports of custom application modules. [module code subsection]
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-			#|----------------------------------------------------------------
-			#|	The following modules, although custom, are generic utilities,
-			#|	not specific to the present application.
-			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# A simple decorator for singleton classes.
-from infrastructure.decorators	import	singleton
+from	infrastructure.decorators	import	singleton
 
-				#-------------------------------------------------------------
-				# The logmaster module defines our logging framework; we
-				# import specific definitions we need from it.	(This is a
-				# little cleaner stylistically than "from ... import *".)
+			#-------------------------------------------------------------------
+			#  The logmaster module defines our logging framework; we import 
+			#  specific definitions we need from it. (This is a little cleaner 
+			#  stylistically than "from ... import *".)
 
-from infrastructure.logmaster import getComponentLogger, ThreadActor, sysName
+from	infrastructure.logmaster	import getComponentLogger, sysName
 
 	# Go ahead and create or access the logger for this module.
 
 global _component, _logger		# Software component name, logger for component.
 
-_component = path.basename(path.dirname(__file__))	# Our package name.
+_component = path.basename(path.dirname(__file__))	# Use our package name.
 _logger = getComponentLogger(_component)			# Create the component logger.
 
 global _sw_component	# Full name of this software component.
 _sw_component = sysName + '.' + _component
 
 
-			#|----------------------------------------------------------------
-			#|	The following modules are specific to the present application.
-			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	1.3.2. The below modules are specific to the present application.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from tokenizer.tokenizer import countTokens as local_countTokens
+from	tokenizer.tokenizer		import	countTokens as local_countTokens
 	# Method to count tokens without a remote API call.
+	# (NOTE: This is now superseded by the tiktokenCount() function
+	# defined in this module.)
 
-from config.configuration import TheAIPersonaConfig
+from	config.configuration	import	TheAIPersonaConfig
 	# This allows us to access configuration information for the specific
 	# AI persona that we are using.
 
 
-#|==============================================================================
-#|	Global constants.											[code section]
+#/==============================================================================
+#|	2. Module-level global constants.							[code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
@@ -270,11 +299,16 @@ __all__ = [
 			# NOTE: This function is deprecated; use the local_countTokens()
 			# or preferably the tiktokenCount() function instead.
 		
+		'loadStatsIfNeeded',	# Function: Loads the GPT-3 usage statistics file 
+			# if not already loaded.
+
 		'local_countTokens',	# Function: Counts tokens in a string. (No cost.)
 			# NOTE: This function is deprecated since it creates a dependency on
 			# GPT-2 having been installed; use the tiktokenCount() function instead.
 
 		'tiktokenCount',		# Function: Counts tokens in a string. (No cost, fast.)
+
+		'stats',				# Function: Returns the GPT-3 usage statistics.
 
 	]
 
@@ -371,15 +405,26 @@ def _get_encoding(engine_name):
 	return _get_engine_attr(engine_name, 'encoding')
 
 
+# The following private constants are initialized based on the above.
+
+global			_ENGINE_NAMES		# List of engine names.
+# Retrieve this from the keys of the '_ENGINE_ATTRIBS' dictionary.
+_ENGINE_NAMES	= list(_ENGINE_ATTRIBS.keys())
+
+global 			_STATS_FILENAME		# Name of file for saving/loading API usage statistics.
+_STATS_FILENAME = 'api-stats.json'	# This file is saved in the AI's data directory.
+
+
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	#|	These constants provide default values for GPT-3's parameters.
+	#|	These 'constants' provide default values for GPT-3's
+	#|	parameters; but, note they can be overridden by the user.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 global		DEF_ENGINE				# Default GPT-3 engine name.
 DEF_ENGINE	= 'davinci'				# This is the original largest (175B-parameter) model. Origin of Gladys.
 #DEF_ENGINE	= 'text-davinci-002'	# New "best" (4000-token field) model.
 
-global		DEF_CHAT_ENGINE			# Default engine when using chat interface.
+global			DEF_CHAT_ENGINE		# Default engine when using chat interface.
 DEF_CHAT_ENGINE	= 'gpt-3.5-turbo'	# OpenAI updates this model periodically.
 
 global		DEF_TOKENS	# Default minimum space (in tokens) provided for the return.
@@ -393,18 +438,8 @@ DEF_TEMP	= 0.75		# I think this makes repeats less likely.
 global		DEF_STOP	# Default stop string (or list of up to 4).
 DEF_STOP	= "\n\n\n"	# Use 3 newlines (two blank lines) as stop.
 
-global		_ENGINE_NAMES		# List of engine names.
-# Retrieve this from the keys of the '_ENGINE_ATTRIBS' dictionary.
-_ENGINE_NAMES = list(_ENGINE_ATTRIBS.keys())
 
-global 		_STATS_FILENAME		# Name of file for saving/loading API usage statistics.
-_STATS_FILENAME = 'api-stats.json'
-
-global 		_aiPath		# Path to the AI's data directory.
-_aiPath 	= None		# Not yet initialized.
-
-
-	# Constants for the chat interface.
+	# Constants for the chat interface (values are defined by OpenAI).
 
 global				CHAT_ROLE_SYSTEM
 CHAT_ROLE_SYSTEM	= 'system'
@@ -417,14 +452,17 @@ CHAT_ROLE_AI		= 'assistant'
 
 
 #|==============================================================================
-#|	Global variables.											  [code section]
+#|	Module-level global variables.							  	[code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+global 		_aiPath		# Path to the AI's data directory.
+_aiPath 	= None		# Not yet initialized.
 
 	#--------------------------------------------------------------
 	# The following globals are used for tracking usage statistics.
 
-global 		_statFile	# File object for saving/loading API usage statistics.
-_statFile 	= None		# Not yet initialized.
+global 			_statFile	# File object for saving/loading API usage statistics.
+_statFile 		= None		# Not yet initialized.
 
 global 			_statsLoaded	# Have we attempted to load stats from the file?
 _statsLoaded 	= False			# We haven't tried to load stats from the file yet.
@@ -432,12 +470,12 @@ _statsLoaded 	= False			# We haven't tried to load stats from the file yet.
 global 			_inputLength	# Length of the input string.
 _inputLength 	= 0				# Will be modified when processing a query.
 
-global inputToks, outputToks	# These are dictionaries of token counts.
+global _inputToks, _outputToks	# These are dictionaries of token counts.
 	# (Cumulative tokens used for each engine since last reset.)
 
 # Initialize two separate dicts to hold cumulative input & output token counts.
 
-inputToks = {
+_inputToks = {
 		'ada':					0,
 		'babbage':				0,
 		'curie':				0,
@@ -452,7 +490,7 @@ inputToks = {
 		'gpt-3.5-turbo':		0,
 	}
 
-outputToks = {
+_outputToks = {
 		'ada':					0,
 		'babbage':				0,
 		'curie':				0,
@@ -470,8 +508,8 @@ outputToks = {
 # Meanwhile, this dict will keep track of the cumulative expenditures
 # in dollars for each engine.
 
-global expenditures
-expenditures = {
+global _expenditures
+_expenditures = {
 		'ada':					0,
 		'babbage':				0,
 		'curie':				0,
@@ -488,8 +526,8 @@ expenditures = {
 
 # This global variable tracks the total cost in dollars across all engines.
 
-global 			totalCost
-totalCost 		= 0				# Initialize at stats load/save time.
+global 			_totalCost
+_totalCost 		= 0				# Initialize at stats load/save time.
 
 # String containing a formatted multi-line table showing the current statistics.
 global 			_statStr		
@@ -1305,8 +1343,7 @@ class Completion:
 		with _lock:
 
 			# If the usage statistics file hasn't been loaded already, do it now.
-			if not _statsLoaded:
-				loadStats()
+			loadStatsIfNeeded()
 
 			# This measures the length of the prompt in tokens, and updates
 			# the global record of API usage statistics accordingly.
@@ -1368,7 +1405,7 @@ class Completion:
 
 			# This updates the cost data and the human-readable table of API
 			# usage statistics, and saves the updated data to the _statsFile.
-			saveStats()
+			_saveStats()
 
 		return complStruct		# Return the low-level completion data structure.
 			# Note, this is the actual data structure that the completion object 
@@ -1405,7 +1442,7 @@ class Completion:
 		_logger.debug(f"Counted {nToks} tokens in input text [{prompt}]")
 
 			# Update the global record of API usage statistics.
-		inputToks[engine] = inputToks[engine] + nToks
+		_inputToks[engine] = _inputToks[engine] + nToks
 	
 	#__/ End of class gpt3.api.Completion's ._accountForInput method.
 
@@ -1430,7 +1467,7 @@ class Completion:
 		_logger.debug(f"Counted {nToks} tokens in output text [{text}].")
 
 			# Update the global record of API usage statistics.
-		outputToks[engine] = outputToks[engine] + nToks
+		_outputToks[engine] = _outputToks[engine] + nToks
 
 	#__/ End of class gpt3.api.Completion's ._accountForOutput method.
 
@@ -1934,8 +1971,7 @@ class ChatCompletion(Completion):
 		with _lock:
 
 			# If the usage statistics file hasn't been loaded already, do it now.
-			if not _statsLoaded:
-				loadStats()
+			loadStatsIfNeeded()
 
 			# This measures the length of the prompt in tokens, and updates
 			# the global record of API usage statistics accordingly.
@@ -1999,7 +2035,7 @@ class ChatCompletion(Completion):
 
 			# This updates the cost data and the human-readable table of API
 			# usage statistics, and saves the updated data to the _statsFile.
-			saveStats()
+			_saveStats()
 
 		return complStruct		# Return the low-level completion data structure.
 			# Note, this is the actual data structure that the completion object 
@@ -2035,7 +2071,7 @@ class ChatCompletion(Completion):
 		_logger.debug(f"Counted {nToks} tokens in input text [{messages}]")
 
 			# Update the global record of API usage statistics.
-		inputToks[engine] = inputToks[engine] + nToks
+		_inputToks[engine] = _inputToks[engine] + nToks
 	
 	#__/ End of class gpt3.api.Completion's ._accountForInput method.
 
@@ -2592,11 +2628,80 @@ class GPT3ChatCore:
 	# Note we use the 'ada' engine because it is cheapest ($0.80/1M tokens).
 
 
-#|==============================================================================
-#| Module function definitions.									[code section]
+#/==============================================================================
+#|	Module function definitions.								[code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-def statsPathname():
+	#/==========================================================================
+	#|	Module public functions.								[code section]
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
+# NOTE: The below function is currently only used by some early test scripts. It 
+# is deprecated, but we are leaving it here for future reference.  We currently 
+# prefer to use the local_countTokens() function, which is imported from the 
+# tokenizer/tokenizer.py module, or the tiktokenCount() function, which is
+# defined below (the latter is the recommended function to use now).
+
+def countTokens(text:str=None):
+
+	"""Counts tokens in the given text using the online Ada model (pretty cheap)."""
+
+	if text == None or text == "":
+		return 0
+	else:
+
+		global _theTokenCounterCore
+
+		if _theTokenCounterCore is None:
+			_theTokenCounterCore = GPT3Core(engineId='ada', echo=True, maxTokens=0, logProbs=0)
+				# This connection provides functionality needed to count tokens.
+				# Note we use the 'ada' engine because it is cheapest ($0.80/1M tokens).
+
+			# Please note this is not free! It uses probably 2*text of quota.
+		inputComplObj = _theTokenCounterCore.genCompletion(text)
+		return inputComplObj.nTokens
+
+#__/ End module public function countTokens().
+
+
+def tiktokenCount(text:str=None, encoding:str='gpt2'):
+
+	"""Counts tokens in the given text using the tiktoken library.
+		This is our currently preferred token-counting function
+		due to its low cost (free), its speed, its accuracy, and
+		its lack of dependence on GPT-2 having been installed."""
+
+	encodingObj = tiktoken.get_encoding(encoding)
+	num_tokens = len(encodingObj.encode(text))
+	return num_tokens
+
+#__/ End module public function tiktokenCount().
+
+
+def loadStatsIfNeeded():
+
+	"""If the stats file hasn't been loaded from the filesystem yet,
+		this loads it."""
+
+	if not _statsLoaded:
+		_loadStats()
+
+#__/ End module public function loadStatsIfNeeded().
+
+
+def stats():
+	"""After using the API, this returns a human-readable table of usage statistics."""
+	return _statStr
+#__/ End module public function stats().
+
+
+	#/==========================================================================
+	#|	Module private functions.								[code section]
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
+def _statsPathname():
 
 	"""Constructs and returns the pathname to the api-stats.json file."""
 
@@ -2642,82 +2747,29 @@ def statsPathname():
 #__/ End module function statsPathname().
 
 
-def textPath():
+def _textPath():
 	"""Constructs and returns the pathname to the text file to store the API stats table."""
 	return path.join(_aiPath, 'api-stats.txt')
 
 
-# NOTE: The below function is not currently used. It is here for future reference.
-# We currently prefer to use the local_countTokens() function, which is imported
-# from the tokenizer/tokenizer.py module.
-# NOTE: The above has now been superseded, and the new new recommended token-
-# counting function is tiktokenCount() below.
-
-def countTokens(text:str=None):
-
-	"""Counts tokens in the given text using the online Ada model (pretty cheap)."""
-
-	if text == None or text == "":
-		return 0
-	else:
-
-		global _theTokenCounterCore
-
-		if _theTokenCounterCore is None:
-			_theTokenCounterCore = GPT3Core(engineId='ada', echo=True, maxTokens=0, logProbs=0)
-				# This connection provides functionality needed to count tokens.
-				# Note we use the 'ada' engine because it is cheapest ($0.80/1M tokens).
-
-			# Please note this is not free! It uses probably 2*text of quota.
-		inputComplObj = _theTokenCounterCore.genCompletion(text)
-		return inputComplObj.nTokens
-
-#__/ End module function countTokens().
-
-
-def tiktokenCount(text:str=None, encoding:str='gpt2'):
-
-	"""Counts tokens in the given text using the tiktoken library.
-		This is our currently preferred token-counting function
-		due to its low cost (free), its speed, its accuracy, and
-		its lack of dependence on GPT-2 having been installed."""
-
-	encodingObj = tiktoken.get_encoding(encoding)
-	num_tokens = len(encodingObj.encode(text))
-	return num_tokens
-
-#__/ End module function tiktokenCount().
-
-
-def loadStatsIfNeeded():
-
-	"""If the stats file hasn't been loaded from the filesystem yet,
-		this loads it."""
-
-	if not _statsLoaded:
-		loadStats()
-
-#__/ End module function loadStatsIfNeeded().
-
-
-def loadStats():
+def _loadStats():
 
 	"""Loads the api-stats.json file from the AI's data directory."""
 
-	global _statsLoaded, inputToks, outputToks, expenditures, totalCost
+	global _statsLoaded, _inputToks, _outputToks, _expenditures, _totalCost
 
 		# This constructs the full filesystem pathname to the stats file.
-	statsPath = statsPathname()
+	statsPath = _statsPathname()
 
 	try:
 		with open(statsPath) as inFile:
 
 			stats 			= json.load(inFile)
 
-			inputToks 		= stats['input-tokens']
-			outputToks 		= stats['output-tokens']
-			expenditures 	= stats['expenditures']
-			totalCost 		= stats['total-cost']
+			_inputToks 		= stats['input-tokens']
+			_outputToks 		= stats['output-tokens']
+			_expenditures 	= stats['expenditures']
+			_totalCost 		= stats['total-cost']
 		
 		#_logger.normal(f"Loaded API usage stats from {statsPath}: \n{pformat(stats, width=25)}")
 
@@ -2729,12 +2781,12 @@ def loadStats():
 	finally:
 		_statsLoaded = True		# Hey, we tried at least!
 
-	displayStats()
+	_displayStats()
 
 #__/ End module function loadStats().
 
 
-def statLine(line):
+def _statLine(line):
 
 	"""This quick-and-dirty utility method saves a line of
 		the API statistics table to several places."""
@@ -2753,12 +2805,7 @@ def statLine(line):
 #__/ End module function statLine().
 
 
-def stats():
-	"""After using the API this returns a human-readable table of usage statistics."""
-	return _statStr
-
-
-def displayStats():
+def _displayStats():
 
 	"""Displays usage statistics in an easily-readable format.
 		Also saves them to a file api-stats.txt."""
@@ -2767,16 +2814,16 @@ def displayStats():
 
 	_statStr = ""
 
-	with open(textPath(), 'w') as _statFile:
+	with open(_textPath(), 'w') as _statFile:
 
 		# NOTE: We may need to widen some of the columns in this table
 		#  if the contents start to overflow.
 
-		statLine("")
-		statLine("                      Token Counts")
-		statLine("                 ~~~~~~~~~~~~~~~~~~~~~~~          ")
-		statLine("Engine Name      Input   Output  Total    USD Cost")
-		statLine("================ ======= ======= ======= =========")
+		_statLine("")
+		_statLine("                 |         Token Counts          |")
+		_statLine("                 | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ |")
+		_statLine("Engine Name      |    Input |  Output |    Total |  USD Cost")
+		_statLine("================ | ======== | ======= | ======== | =========")
 		
 		# Cumulative input, output, and total token counts.
 		cumIn = cumOut = cumTot = 0
@@ -2786,17 +2833,17 @@ def displayStats():
 			
 			engStr 	= "%16s" % engine
 
-			inToks 	= inputToks[engine]
-			outToks = outputToks[engine]
+			inToks 	= _inputToks[engine]
+			outToks = _outputToks[engine]
 			total 	= inToks + outToks
 	
-			inTokStr  = "%7d" % inToks
+			inTokStr  = "%8d" % inToks
 			outTokStr = "%7d" % outToks
-			totStr 	  = "%7d" % total
+			totStr 	  = "%8d" % total
 	
-			cost = "$%8.4f" % expenditures[engine]
+			cost = "$%8.4f" % _expenditures[engine]
 	
-			statLine(f"{engStr} {inTokStr} {outTokStr} {totStr} {cost}")
+			_statLine(f"{engStr} {inTokStr} {outTokStr} {totStr} {cost}")
 	
 			cumIn  = cumIn  + inToks
 			cumOut = cumOut + outToks
@@ -2809,37 +2856,38 @@ def displayStats():
 		cumOutStr = "%7d" % cumOut
 		cumTotStr = "%7d" % cumTot
 	
-		totStr = "$%8.4f" % totalCost
+		totStr = "$%8.4f" % _totalCost
 	
-		statLine( "~~~~~~~~~~~~~~~~ ~~~~~~~ ~~~~~~~ ~~~~~~~ ~~~~~~~~~")
-		statLine(f"TOTALS:          {cumInStr} {cumOutStr} {cumTotStr} {totStr}")
-		statLine("")
+		_statLine( "================ | ======== | ======= | ======== | =========")	
+		_statLine( "~~~~~~~~~~~~~~~~ | ~~~~~~~~ | ~~~~~~~ | ~~~~~~~~ | ~~~~~~~~~")
+		_statLine(f"TOTALS:          | {cumInStr} | {cumOutStr} | {cumTotStr} | {totStr}")
+		_statLine("")
 	
 	#__/ End with statement.
 
 #__/ End module function displayStats().
 
 
-def saveStats():
+def _saveStats():
 
 	"""Saves cumulative API usage statistics to the api-stats.json file
 		in the AI's data directory."""
 
-	global expenditures, totalCost
+	global _expenditures, _totalCost
 
 		# This constructs the full filesystem pathname to the stats file.
-	statsPath = statsPathname()
+	statsPath = _statsPathname()
 
 	with open(statsPath, 'w') as outFile:
 
-		(costs, dollars) = recalcDollars()
+		(costs, dollars) = _recalcDollars()
 
-		expenditures = costs
-		totalCost = dollars
+		_expenditures = costs
+		_totalCost = dollars
 
 		stats = {
-				'input-tokens': inputToks,
-				'output-tokens': outputToks,
+				'input-tokens': _inputToks,
+				'output-tokens': _outputToks,
 				'expenditures': costs,
 				'total-cost': dollars
 			}
@@ -2854,12 +2902,12 @@ def saveStats():
 	
 	#__/ End with statement.
 
-	displayStats()
+	_displayStats()
 
 #__/ End module function saveStats().
 
 
-def recalcDollars():
+def _recalcDollars():
 
 	"""This recalculates per-engine and total dollar costs
 		from the per-engine token counts."""
@@ -2867,7 +2915,7 @@ def recalcDollars():
 	costs = dict()	# This is a dictionary mapping engine names to cumulative costs (in dollars).
 	dollars = 0		# Total cost of all API calls, in dollars.
 	for engine in _ENGINE_NAMES:
-		nToks = inputToks[engine] + outputToks[engine]	# Total number of tokens used.
+		nToks = _inputToks[engine] + _outputToks[engine]	# Total number of tokens used.
 		engCost = (nToks/1000) * _get_price(engine)		# Price is per 1000 tokens.
 		costs[engine] = engCost
 		dollars = dollars + engCost
