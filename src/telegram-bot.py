@@ -1421,9 +1421,9 @@ def process_chat_message(update, context):
         except Exception as e:
             # We've hit some other exception, so we need to log it and send a diagnostic message to the user.
             # First, we'll log this at the ERROR level.
-            _logger.error(f"Exception while getting response: {e} ({e.message})")
+            _logger.error(f"Exception while getting response: {type(e).__name__} ({e})")
             # Then, we'll send a diagnostic message to the user.
-            update.message.reply_text(f"[DIAGNOSTIC: Exception while getting response: {e} ({e.message})]")
+            update.message.reply_text(f"[DIAGNOSTIC: Exception while getting response: {type(e).__name__} ({e})]")
             return
 
     # If we get here, we've successfully gotten a response from the API.
