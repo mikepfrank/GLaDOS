@@ -503,54 +503,20 @@ _inputLength 	= 0				# Will be modified when processing a query.
 global _inputToks, _outputToks	# These are dictionaries of token counts.
 	# (Cumulative tokens used for each engine since last reset.)
 
-_inputToks = {
-		'ada':					0,
-		'babbage':				0,
-		'curie':				0,
-		'davinci':				0,
-		'text-ada-001':			0,
-		'text-babbage-001':		0,
-		'text-curie-001':		0,
-		'text-davinci-001':		0,
-		'text-davinci-002':		0,
-		'code-davinci-002':		0,
-		'text-davinci-003':		0,
-		'gpt-3.5-turbo':		0,
-	}
-
-_outputToks = {
-		'ada':					0,
-		'babbage':				0,
-		'curie':				0,
-		'davinci':				0,
-		'text-ada-001':			0,
-		'text-babbage-001':		0,
-		'text-curie-001':		0,
-		'text-davinci-001':		0,
-		'text-davinci-002':		0,
-		'code-davinci-002':		0,
-		'text-davinci-003':		0,
-		'gpt-3.5-turbo':		0,
-	}
-
 # Meanwhile, this dict will keep track of the cumulative estimated
 # expenditures in dollars for each engine.
 
 global _expenditures
-_expenditures = {
-		'ada':					0,
-		'babbage':				0,
-		'curie':				0,
-		'davinci':				0,
-		'text-ada-001':			0,
-		'text-babbage-001':		0,
-		'text-curie-001':		0,
-		'text-davinci-001':		0,
-		'text-davinci-002':		0,
-		'code-davinci-002':		0,
-		'text-davinci-003':		0,
-		'gpt-3.5-turbo':		0,
-	}
+
+# Initialize all the various stats dictionaries to all-zero values.
+
+_inputToks = {}
+_outputToks = {}
+_expenditures = {}
+for engId in _ENGINE_NAMES:
+	_inputToks[engId] = 0
+	_outputToks[engId] = 0
+	_expenditures[engId] = 0
 
 # This global variable tracks the total cost in dollars across all engines.
 
@@ -2310,7 +2276,7 @@ class GPT3Core:
 		# Generate the argument list for calling the core API.
 	def genArgs(self, prompt=None) -> dict:
    
-		kwargs = dict() 	# Initially empty dict for building up argument list.
+		kwargs = {} 	# Initially empty dict for building up argument list.
 		
 		conf = self.conf	# Get our current configuration.
 
@@ -2624,7 +2590,7 @@ class GPT3ChatCore(GPT3Core):
    
 		chatCore = thisChatCore		# For convenience.
 
-		apiargs = dict() 	# Initially empty dict for building up API argument list.
+		apiargs = {} 	# Initially empty dict for building up API argument list.
 		
 		chatConf = chatCore.chatConf	# Get our current chat configuration.
 
@@ -3105,7 +3071,7 @@ def _recalcDollars():
 	"""This recalculates per-engine and total dollar costs
 		from the per-engine token counts."""
 
-	costs = dict()	# This is a dictionary mapping engine names to cumulative costs (in dollars).
+	costs = {}		# This is a dictionary mapping engine names to cumulative costs (in dollars).
 	dollars = 0		# Total cost of all API calls, in dollars.
 	for engine in _ENGINE_NAMES:
 		nToks = _inputToks[engine] + _outputToks[engine]	# Total number of tokens used.
