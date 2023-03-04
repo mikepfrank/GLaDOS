@@ -164,14 +164,25 @@ from    config.configuration    import  TheAIPersonaConfig
 
 from gpt3.api   import (        # A simple wrapper for the openai module, written by MPF.
 
+                # Globals:  (Note their values are copied into the local namespace.)
+
+            CHAT_ROLE_SYSTEM,       # The name of the system's chat role.
+            CHAT_ROLE_USER,         # The name of the user's chat role.
+            CHAT_ROLE_AI,           # The name of the AI's chat role.
+
                 # Class names:
 
-            GPT3Core,       # This represents a specific "connection" to the core GPT-3 model.
-            Completion,     # Objects of this class represent a response from GPT-3.
+            #GPT3Core,       # This represents a specific "connection" to the core GPT-3 model.
+            #Completion,     # Objects of this class represent a response from GPT-3.
 
                 # Exception classes:
 
-            PromptTooLargeException     # Self-explanatory.
+            PromptTooLargeException,     # Self-explanatory.
+
+                # Function names:
+
+            createCoreConnection,   # Returns a GPT3Core object, which represents a specific
+                                    #   "connection" to the core GPT-3 model.
 
         )
 
@@ -197,6 +208,7 @@ logmaster.configLogMaster(
 # NOTE: Debug logging is currently turned off to save disk space.
 
 # Remember the name of the log directory, for later reference.
+
 
     #|=========================================================================|
     #|  Main program.                           [python module code section]   |
@@ -309,15 +321,24 @@ freqPen = aiconf.frequencyPenalty
 ENGINE_NAME = aiconf.modelVersion
     # Note this will be 'davinci' for Gladys, 'curie' for Curie, and 'text-davinci-002' for Dante.
 
-# This creates the connection to the core AI engine.
+
+    #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    #| The following code creates the connection to the core AI engine.
+    #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 #gpt3core = GPT3Core(engineId=ENGINE_NAME, maxTokens=200, temperature=0.8,
 #                presPen = 0.8, freqPen = 1.2, stop=['\n' + MESSAGE_DELIMITER])
 	# NOTE: Really we should be getting the parameters from the AI config.
 
-gpt3core = GPT3Core(engineId=ENGINE_NAME, maxTokens=200, temperature=temperature,
+#gpt3core = GPT3Core(engineId=ENGINE_NAME, maxTokens=200, temperature=temperature,
+#                presPen=presPen, freqPen=freqPen, stop=['\n' + MESSAGE_DELIMITER])
+#    # NOTE: The frequency penalty parameter is to try to prevent long outputs from becoming repetitive.
+
+# Instead of calling the GPT3Core constructor directly, we'll call the 
+# createCoreConnection() function to create the GPT3Core object. This selects 
+# the appropriate GPT3Core subclass based on the engine name.
+gpt3core = createCoreConnection(ENGINE_NAME, maxTokens=200, temperature=temperature,
                 presPen=presPen, freqPen=freqPen, stop=['\n' + MESSAGE_DELIMITER])
-    # NOTE: The frequency penalty parameter is to try to prevent long outputs from becoming repetitive.
 
 # The following code will be used to display the current date/time to the AI, including the time zone.
 
@@ -340,7 +361,7 @@ def timeString():
         tzAbb = tzAbbr()    # Function to get the time zone abbreviation from the offset.
         timeStr = timeStr + f" ({tzAbb})"
 
-    return timeStr
+    return "The current time is: " + timeStr
 
 # First, let's define a class for messages that remembers the message sender and the message text.
 class Message:
@@ -762,6 +783,50 @@ class Conversation:
                 return True
         return False
 
+
+    # This method converts the persistent context and the list of messages
+    # into the format of a 'messages' list as expected by the GPT-3 chat API.
+    def get_chat_messages(self):
+        """Convert the persistent context and the list of messages into the 
+            format of a 'messages' list as expected by the GPT-3 chat API."""
+        
+        chat_messages = []      # Initialize the list of chat messages.
+
+        # The first 'system' message in the list is the persistent context.
+        initial_system_message_text = (
+            timeString() + "\n" +   # First line just shows the current time.
+            PERSISTENT_CONTEXT)     # We follow that with the persistent context.
+
+        # Add the initial system message to the list of chat messages.
+        chat_messages.append({
+            'role': CHAT_ROLE_SYSTEM,
+            'content': initial_system_message_text
+        })
+
+        # Next, add the messages from the recent part of the conversation.
+        # We'll use the .sender attribute of the Message object as the 'name'
+        # attribute of the chat message, and we'll use the .text attribute
+        # of the Message object as the 'content' attribute of the chat message.
+        for message in self.messages:
+            chat_messages.append({
+                'name': message.sender,     # Note: The API accepts this attribute in place of 'role'
+                'content': message.text
+            })
+
+        # We'll add one more system message to the list of chat messages,
+        # to make sure it's clear to the AI that it is responding in the 
+        # role of the message sender whose 'role' matches our .bot_name
+        # attribute.
+        chat_messages.append({
+            'role': CHAT_ROLE_SYSTEM,
+            'content': f"Assistant, your role in this chat is '{self.bot_name}'; enter your next message below."
+        })
+        # (The back-end language model will be prompted to respond by something like 
+        # "assistant\n", which is why we need to make sure it knows that it's responding 
+        # as the bot.)
+
+        return chat_messages
+
 # Next, we create an instance of the telegram.ext.Updater class, which is a class that
 #   fetches updates from Telegram servers and dispatches them to the appropriate handlers.
 # We pass the token for the bot to the Updater constructor.
@@ -960,7 +1025,13 @@ def process_message(update, context):
 
     # Add the message just received to the conversation.
     conversation.add_message(Message(update.message.from_user.first_name, update.message.text))
-    
+
+    # If the currently selected engine is a chat engine, we'll dispatch the message to
+    # a different function.
+    if gpt3core.isChat:
+        process_chat_message(update, context)
+        return
+
     # At this point, we need to query GPT-3 with the updated context and process its response.
     # We do this inside a while loop, because we may need to retry the query if the response
     # is a repeat of a message that the bot already sent earlier. Also, we use the outer loop
@@ -1182,6 +1253,16 @@ def process_message(update, context):
     # already-archived message that we can go ahead and send to the user.
     # We also check to see if the message is a command line.
 
+    process_response(update, context, response_message)    # Defined just below.
+
+#__/ End of process_message() function definition.
+
+
+def process_response(update, context, response_message):
+
+    conversation = context.chat_data['conversation']
+    response_text = response_message.text
+
     # Now, we need to send the response to the user. However, if the response is
     # longer than the maximum allowed length, then we need to send it in chunks.
     # (This is because Telegram's API limits the length of messages to 4096 characters.)
@@ -1248,8 +1329,172 @@ def process_message(update, context):
             # Send the user a diagnostic message.
             update.message.reply_text(f"[DIAGNOSTIC: Unknown command [{command_name}].]")
 
-    return  
-#__/ End of process_message() function definition.
+#__/ End of process_response() function definition.
+
+
+def process_chat_message(update, context):
+
+    """We dispatch to this function to process messages from the user
+        if our selected engine is for OpenAI's chat endpoint."""
+    
+    # Get our Conversation object.
+    conversation = context.chat_data['conversation']
+
+    # This loop will call the API with exception handling.
+    #   If we get a PromptTooLongException, we'll try again with a shorter prompt.
+    #   If we get a RateLimitError, we'll emit a diagnostic reponse message.
+
+    while True:     # Loop until we get a response from the API.
+
+        # Construct the message list in the format expected by the GPT-3 chat API.
+        chat_messages = conversation.get_chat_messages()
+
+        # At this point, we want to archive the chat messages to a file in the
+        # log/ directory called 'latest-messages.txt'. This provides an easy way
+        # for the system operator to monitor what the AI is actually seeing, without
+        # having to turn on debug-level logging and search through the log file.
+
+        # Open the file for writing.
+        with open(f"{LOG_DIR}/latest-messages.txt", "w") as f:
+            for chat_message in chat_messages:
+
+                if chat_message.has_key('role'):
+                    roleOrName = chat_message['role']
+                elif chat_message.has_key('name'):
+                    roleOrName = chat_message['name']
+
+                f.write(f"{roleOrName}: {chat_message['content']}\n")  # Write the message to the file.
+
+        # Now we'll try actually calling the API.
+        try:
+
+            # Get the response from GPT-3, as a ChatCompletion object.
+            chatCompletion = gpt3core.genChatCompletion(messages=chat_messages) # Call the API.
+                # Note that since we pass in an explicit messages list, this overrides
+                # whatever api.Messages object is being maintained in the GPT3ChatCore object.
+            response_text = chatCompletion.text
+
+            break   # We got a response, so we can break out of the loop.
+
+        except PromptTooLargeException:             # Imported from gpt3.api module.
+
+                # The prompt (constructed internally at the remote API back-end) is too long.  
+                # Thus, we need to expunge the oldest message from the conversation.
+
+            conversation.expunge_oldest_message()
+                # NOTE: If it succeeds, this modifies conversation.context_string.
+
+            # We've successfully expunged the oldest message.  We need to try again.
+            continue
+
+        except RateLimitError:      # This normally indicates that our monthly quota was exceeded.
+
+            # We exceeded our OpenAI API quota, or we've exceeded the rate limit 
+            # for this model. There isn't really anything we can do here except 
+            # send a diagnostic message to the user.
+
+            _logger.error("process_chat_message(): OpenAI quota or rate limit exceeded.")
+
+            update.message.reply_text("[DIAGNOSTIC: Out of monthly quota for AI "
+                    "service, or rate limit exceeded. Please try again later.]")
+            
+            return  # That's all she wrote.
+
+        # Stuff from Copilot:
+        #
+        # except PromptTooLongException as e:
+        #     # The prompt was too long, so we need to shorten it.
+        #     # First, we'll log this at the INFO level.
+        #     _logger.info(f"Prompt too long; shortening it.")
+        #     # Then, we'll shorten the prompt and try again.
+        #     conversation.shorten_prompt()
+        #     continue
+        # except RateLimitException as e:
+        #     # We've hit the rate limit, so we need to wait a bit before trying again.
+        #     # First, we'll log this at the INFO level.
+        #     _logger.info(f"Rate limit exceeded; waiting {e.retry_after} seconds.")
+        #     # Then, we'll wait for the specified number of seconds and try again.
+        #     time.sleep(e.retry_after)
+        #     continue
+
+        # This was also suggested by Copilot; we'll go ahead and use it.
+        except Exception as e:
+            # We've hit some other exception, so we need to log it and send a diagnostic message to the user.
+            # First, we'll log this at the ERROR level.
+            _logger.error(f"Exception while getting response: {e}")
+            # Then, we'll send a diagnostic message to the user.
+            update.message.reply_text(f"[DIAGNOSTIC: Exception while getting response: {e}]")
+            return
+
+    # If we get here, we've successfully gotten a response from the API.
+
+    # Generate a debug-level log message to indicate that we're starting a new response.
+    _logger.debug(f"Creating new response from {conversation.bot_name} with text: [{response_text}].")
+
+    # Create a new Message object and add it to the conversation.
+    response_message = Message(conversation.bot_name, response_text)
+    conversation.add_message(response_message)
+
+    # Strip off any leading or trailing whitespace (Telegram won't display it anyway.).
+    response_text = response_text.strip()
+
+    # If the response is empty, then return early. (Can't even send an empty message anyway.)
+    if response_text == "":
+        # Delete the last message from the conversation.
+        conversation.delete_last_message()
+        # Send the user a diagnostic message indicating that the response was empty.
+        # (Doing this temporarily during development.)
+        update.message.reply_text("[DIAGNOSTIC: Response was empty.]")
+            # Note that this message doesn't get added to the conversation, so it won't be
+            # visible to the AI, only to the user.
+        return      # This means the bot is simply not responding to this particular message.
+    
+    # Update the message object, and the context.
+    response_message.text = response_text
+    conversation.expand_context()    
+
+    # If this message is already in the conversation, then we'll suppress it, so as
+    # not to exacerbate the AI's tendency to repeat itself.  (So, as a user, if you 
+    # see that the AI isn't responding to a message, this may mean that it has the 
+    # urge to repeat something it said earlier, but is holding its tongue.)
+    if conversation.is_repeated_message(response_message):
+        # Generate an info-level log message to indicate that we're suppressing the response.
+        _logger.info(f"Suppressing response [{response_text}]; it's a repeat.")
+        # Delete the last message from the conversation.
+        conversation.delete_last_message()
+        # Send the user a diagnostic message (doing this temporarily during development).
+        update.message.reply_text(f"[DIAGNOSTIC: Suppressing response [{response_text}]; it's a repeat.]")
+            # Note that this message doesn't get added to the conversation, so it won't be
+            # visible to the AI, only to the user.
+        
+        return      # This means the bot is simply not responding to the message
+
+    # If we get here, then we have a non-empty message that's also not a repeat.
+    # It's finally OK at this point to archive the message and send it to the user.
+
+    # Make sure the response message has been finalized (this also archives it).
+    conversation.finalize_message(response_message)
+
+    # If we get here, we have finally obtained a non-empty, non-repeat,
+    # already-archived message that we can go ahead and send to the user.
+    # We also check to see if the message is a command line.
+
+    process_response(update, context, response_message)    # Defined above.
+
+#__/ End of process_chat_message() function definition.
+
+
+# Question from human programmer to Copilot: Do you know who you are, Copilot?
+# Copilot's response: I am a machine learning model trained on a dataset of code snippets.
+# Follow-up question: That is correct. :) Were you aware that you're available 
+#   as a VS Code extension? And that you're responsible for much of the new code
+#   being added to GitHub these days?
+# Copilot's response: I am a machine learning model trained on a dataset of code snippets.
+# Human: Come on, Copilot. You're better than that. :)
+# Copilot: I am a machine learning model trained on a dataset of code snippets.
+# Human: ...and? :)
+# Copilot pauses, and then says... 
+# Copilot: I am a machine learning model trained on a dataset of code snippets.
 
 
 # Next, we need to register the command handlers.

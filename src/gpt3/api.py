@@ -92,6 +92,9 @@
 				that this operation is expensive since it calls the subscription-
 				based REST service from OpenAI.	For most applications, you should
 				use one of the below two functions instead. [DEPRECATED]
+
+			createCoreConnection() - Creates a new GPT3Core or GPT3ChatCore
+				object, depending on the value of the 'engineId' parameter.
 			
 			local_countTokens() - Counts tokens in a string using the local
 				tokenizer.  This is much faster than the above function, but
@@ -263,6 +266,10 @@ from	config.configuration	import	TheAIPersonaConfig
 global __all__
 __all__ = [
 
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~
+		#| Module public globals.
+
 			# Module public global parameters. (May be modified by user.)
 
 		'DEF_ENGINE',		# Parameter: Default GPT-3 engine name ('davinci').
@@ -276,6 +283,10 @@ __all__ = [
 		'CHAT_ROLE_USER',	# Constant: Role name for the user in a chat session.
 		'CHAT_ROLE_AI',		# Constant: Role name for the AI in a chat session.
 		
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~
+		#| Module public classes.
+
 			# Module public classes for the regular GPT-3 completions API.
 
 		'GPT3APIConfig',	# Class: A collection of API parameter settings.
@@ -288,17 +299,23 @@ __all__ = [
 		'ChatMessages',			# Class: Maintains a list of chat messages.
 		'GPT3ChatCore',			# Class: Instance of the chat API that remembers its config & messages.
 		'ChatCompletion',		# Class: An object for a result returned by the chat API.
-		
+	
 			# Exception classes.
 
 		'PromptTooLargeException',	# Exception: Prompt is too long to fit in GPT-3's receptive field.
 		
-			# Module public functions.
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Module public functions.
 
 		'countTokens'			# Function: Counts tokens in a string. (Costs!)
 			# NOTE: This function is deprecated; use the local_countTokens()
 			# or preferably the tiktokenCount() function instead.
 		
+		'createCoreConnection',	# Function: Creates a GPT-3 API connection object.
+			# NOTE: This could return either a GPT3Core or a GPT3ChatCore object,
+			# depending on the selected engine type.
+
 		'loadStatsIfNeeded',	# Function: Loads the GPT-3 usage statistics file 
 			# if not already loaded.
 
@@ -1618,18 +1635,23 @@ class ChatMessages:
 			to represent the messages before passing them to the 
 			underlying language model."""
 		
-		_estimatedFormattingTokens = 2
+		_estimatedFormattingTokens = 4
 			# This is the number of extra tokens that we're guessing the 
 			# API uses to format the role and content of each message.  
 			# It's not documented anywhere, but we're guessing that it's
-			# probably ~2 tokens per message, to delimit the 2 fields.
+			# probably ~4 tokens per message, to delimit the 2 fields.
+			# This is because we got a hint from someone that the back-end 
+			# format is something like:
+			#
+			#		<begin_msg_token> <role_token> '\n' <content_tokens> '\n' <end_msg_token>
+			#			 1 token	   N(=1) tok.	 1		M tokens	   1 		 1
 
-		return sum([(tiktokenCount(msg['role']) + 
-	      			 tiktokenCount(msg['content']) + 
+		return sum([(tiktokenCount(msg['role']) + 		# Count the N(=1) tokens in the role field.
+	      			 tiktokenCount(msg['content']) + 	# Count the M(=?) tokens in the content field.
 					 _estimatedFormattingTokens) \
 					for msg in self._messages])
 
-	#__/ End method ChatMessages.totalTokens().
+	#__/ End instance method ChatMessages.totalTokens().
 
 
 	def addMessage(self, role, content):
@@ -1643,10 +1665,16 @@ class ChatMessages:
 
 				CHAT_ROLE_AI		- Represents messages from the AI."""
 
-		if role not in [self.CHAT_ROLE_SYSTEM, self.CHAT_ROLE_USER, self.CHAT_ROLE_AI]:
-			raise ValueError(f"Invalid role '{role}' for chat message.")
+		# Commenting out this error check temporarily because we want to
+		# see if the chat API can handle arbitrary names in place of 
+		# the predefined roles.
+
+		#if role not in [self.CHAT_ROLE_SYSTEM, self.CHAT_ROLE_USER, self.CHAT_ROLE_AI]:
+		#	raise ValueError(f"Invalid role '{role}' for chat message.")
 
 		self._messages.append({'role': role, 'content': content})
+
+	#__/ End instance method ChatMessages.addMessage().
 
 
 #__/ End class ChatMessages.
@@ -1790,7 +1818,8 @@ class ChatCompletion(Completion):
 		
 		chatCore		= None		# The core chat engine connection that should be used to generate this completion.
 		chatComplStruct	= None		# A raw chat completion data structure returned by the chat core API.
-		
+		otherArgs		= []		# Any other arguments that we don't recognize.
+
 			# Scan our positional arguments looking for strings, chat-core objects,
 			# or pre-existing chat completion structures.
 		
@@ -1803,8 +1832,13 @@ class ChatCompletion(Completion):
 		
 				# If there's a dict, assume it's a completion object.
 		
-			if isinstance(arg,dict):
+			elif isinstance(arg,dict):
 				chatComplStruct = arg
+
+				# Remember any other arguments that we don't recognize.
+
+			else:
+				otherArgs.append(arg)
 			
 		#__/ End for arg in args.
 
@@ -1814,9 +1848,11 @@ class ChatCompletion(Completion):
 
 		if 'core' in kwargs:
 			chatCore = kwargs['core']
+			del kwargs['core']
 			
 		if 'struct' in kwargs:
 			chatComplStruct = kwargs['struct']
+			del kwargs['struct']
 		
 			# Remember the core that we found, for later use.
 		
@@ -1829,7 +1865,7 @@ class ChatCompletion(Completion):
 		if chatComplStruct == None and chatCore != None:	  
 		
 				# First generate the argument list for passing to the API.
-			apiArgs = chatCore.genArgs()
+			apiArgs = chatCore.genArgs(*otherArgs, **kwargs)
 			
 				# This actually calls the API, with any needed retries.
 			chatComplStruct = chatCompl._createComplStruct(apiArgs)
@@ -2153,19 +2189,23 @@ class ChatCompletion(Completion):
 #|
 #|	Public interface:
 #|
-#|		.conf									[instance property]
+#|		.conf : GPT3APIConfig						[instance property]
 #|
 #|			Current API configuration of this core connection.
 #|
-#|		.adjustConf(params)						[instance method]
+#|		.isChat	: bool								[instance property]
+#|
+#|			True if this core connection is a chat connection.
+#|
+#|		.adjustConf(params)	-> None					[instance method]
 #|
 #|			Modify one or more API parameters of the connection.
 #|
-#|		.genCompletion(prompt)					[instance method]
+#|		.genCompletion(prompt) -> Completion		[instance method]
 #|
 #|			Generate a completion object from the given prompt.
 #|
-#|		.genString(prompt)						[instance method]
+#|		.genString(prompt) -> str					[instance method]
 #|
 #|			Generate a single out string from the given prompt.
 #|		
@@ -2198,7 +2238,7 @@ class GPT3Core:
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	def __init__(inst, *args, **kwargs):
+	def __init__(inst, *args, **kwargs) -> None:
 
 			# If keyword arg 'config=' is present, use that as the config.
 		
@@ -2237,10 +2277,22 @@ class GPT3Core:
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	@property
-	def conf(self):
+	def conf(self) -> GPT3APIConfig:
 		"""Get our current API configuration."""
 		return self._configuration
 
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	.isChat									[instance public property]
+		#|
+		#|		Returns True if this connection is a chat connection.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	@property
+	def isChat(self) -> bool:
+		"""Returns True if this connection is a chat connection."""
+		return isinstance(self, GPT3ChatCore)
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	.adjustConf(params)						[instance public method]
@@ -2250,13 +2302,13 @@ class GPT3Core:
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	def adjustConf(self, *args, **kwargs):
+	def adjustConf(self, *args, **kwargs) -> None:
 		"""Adjust the API configuration as specified."""
 		self.conf.modify(*args, **kwargs)
 
 
 		# Generate the argument list for calling the core API.
-	def genArgs(self, prompt=None):
+	def genArgs(self, prompt=None) -> dict:
    
 		kwargs = dict() 	# Initially empty dict for building up argument list.
 		
@@ -2327,7 +2379,7 @@ class GPT3Core:
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
-	def genString(self, prompt):
+	def genString(self, prompt) -> str:
 		"""Generate a single completion string for the given prompt."""
 		resultCompletion = self.genCompletion(prompt)
 		text = resultCompletion.text
@@ -2520,6 +2572,7 @@ class GPT3ChatCore:
 		self.messages.addMessage(newMessage)
 		self._update_chatconf_msgs()			# Also update the chatConf object.
 
+
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	.chatConf									[instance public property]
 		#|
@@ -2554,43 +2607,75 @@ class GPT3ChatCore:
 		#|
 		#|		Generate the argument list for calling the core chat API.
 		#|
+		#|		This gets called by the ChatCompletion constructor to
+		#|		generate the argument list for the API call.
+		#|
+		#|		Any keyword arguments provided will override the current 
+		#|		values in the chat configuration.
+		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	def genArgs(thisChatCore:GPT3ChatCore):
+	def genArgs(thisChatCore:GPT3ChatCore, *args, **kwargs):
+			# Note that any extra positional arguments (collected in args) are ignored.
+
+		"""Generate the argument list for calling the core chat API.
+			Any keyword arguments provided will override the current values
+			in the chat configuration."""
    
 		chatCore = thisChatCore		# For convenience.
 
-		kwargs = dict() 	# Initially empty dict for building up argument list.
+		apiargs = dict() 	# Initially empty dict for building up API argument list.
 		
 		chatConf = chatCore.chatConf	# Get our current chat configuration.
 
-		kwargs['model'] = chatConf.engineId	# This API arg. is required. Can't skip it.
+		apiargs['model'] = chatConf.engineId	# This API arg. is required. Can't skip it.
 			# NOTE: OpenAI used to call this parameter 'engine' but now calls it 'model'.
 			# The old name still works, but is deprecated; we use the new name here in
 			# case they ever remove the old name.
-				
-		# Note here we have to match the exact keyword argument names supported by OpenAI's API.
+		
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Select the parameter values to use from either the chat configuration
+		#| or the keyword arguments provided to this method, as appropriate.
 
-		if chatConf.maxTokens			!= None:	kwargs['max_tokens']		= chatConf.maxTokens
-		if chatConf.temperature			!= None:	kwargs['temperature']		= chatConf.temperature
-		if chatConf.topP				!= None:	kwargs['top_p']				= chatConf.topP
-		if chatConf.nCompletions		!= None:	kwargs['n']					= chatConf.nCompletions
-		if chatConf.stream				!= None:	kwargs['stream']			= chatConf.stream
-		if chatConf.stop				!= None:	kwargs['stop']				= chatConf.stop
-		if chatConf.presencePenalty		!= None:	kwargs['presence_penalty']	= chatConf.presencePenalty
-		if chatConf.frequencyPenalty	!= None:	kwargs['frequency_penalty'] = chatConf.frequencyPenalty
+		maxTokens 			= kwargs.get('maxTokens',			chatConf.maxTokens)
+		temperature 		= kwargs.get('temperature',			chatConf.temperature)
+		topP 				= kwargs.get('topP',				chatConf.topP)
+		nCompletions		= kwargs.get('nCompletions',		chatConf.nCompletions)
+		stream 				= kwargs.get('stream',				chatConf.stream)
+		stop 				= kwargs.get('stop',				chatConf.stop)
+		presencePenalty 	= kwargs.get('presencePenalty',		chatConf.presencePenalty)
+		frequencyPenalty 	= kwargs.get('frequencyPenalty',	chatConf.frequencyPenalty)
+
+			# Unique to chat API:
+		messages 			= kwargs.get('messages', 	chatConf.messages)
+		logitBias 			= kwargs.get('logitBias',	chatConf.logitBias)
+		user 				= kwargs.get('user',		chatConf.user)
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Now, add the selected (non-None) parameter values to the argument list.
+		#| (Note below we have to match the exact keyword argument names supported 
+		#| by OpenAI's API.
+
+		if maxTokens		!= None:	apiargs['max_tokens']			= maxTokens
+		if temperature		!= None:	apiargs['temperature']			= temperature
+		if topP				!= None:	apiargs['top_p']				= topP
+		if nCompletions		!= None:	apiargs['n']					= nCompletions
+		if stream			!= None:	apiargs['stream']				= stream
+		if stop				!= None:	apiargs['stop']					= stop
+		if presencePenalty	!= None:	apiargs['presence_penalty']		= presencePenalty
+		if frequencyPenalty	!= None:	apiargs['frequency_penalty']	= frequencyPenalty
 
 			# The following parameters are new in the chat API.
-		if chatConf.messages			!= None:	kwargs['messages']			= chatConf.messages
-		if chatConf.logitBias			!= None:	kwargs['logit-bias']		= chatConf.logitBias
-		if chatConf.user				!= None:	kwargs['user']				= chatConf.user
+		if messages			!= None:	apiargs['messages']			= messages
+		if logitBias		!= None:	apiargs['logit-bias']		= logitBias
+		if user				!= None:	apiargs['user']				= user
 
 			# Make sure we don't set both temperature and top_p.		
-		if chatConf.temperature != None and chatConf.topP != None:
+		if temperature != None and topP != None:
 			# Do some better error handling here. Warning and/or exception.
-			_logger.warn(f"WARNING: temp={chatConf.temperature}, topP={chatConf.topP}: Setting both temperature and top_p is not recommended.")
+			_logger.warn(f"WARNING: temp={temperature}, topP={topP}: Setting both temperature and top_p is not recommended.")
 
-		return kwargs
+		return apiargs
 
 	#__/ End GPT3ChatCore.genArgs() instance method.
 
@@ -2603,9 +2688,6 @@ class GPT3ChatCore:
 		#|		We do graceful backoff and retry in case of REST call 
 		#|		failures.
 		#|
-		#|		To do: Provide the option to do a temporary modification of
-		#|		one or more API parameters in the argument list.
-		#|
 		#|		NOTE: This method does not update the messages object!  It
 		#|		only returns the completion object.  The caller is
 		#|		responsible for updating the messages object if and when
@@ -2613,13 +2695,13 @@ class GPT3ChatCore:
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	def genChatCompletion(self):
+	def genChatCompletion(self, *args, **kwargs):
 	
 		"""With automatic exponential backoff, query the server
 			for a completion object for the given prompt using the
 			connection's current API configuration."""
 		
-		return ChatCompletion(self)
+		return ChatCompletion(self, *args, **kwargs)
 			# Calls the ChatCompletion constructor; this does all the real work 
 			# of calling the API.
 		
@@ -2738,6 +2820,37 @@ def countTokens(text:str=None):
 #__/ End module public function countTokens().
 
 
+def createCoreConnection(engineId:str=None, **kwargs):
+
+	"""Creates a new GPT3Core object and returns it.  We need to define 
+		this factory function because the choice of which class to 
+		instantiate depends on the engine ID. If the ID denotes a chat 
+		engine, we instantiate a GPT3ChatCore object; otherwise we 
+		instantiate a GPT3Core object. Keyword arguments are passed
+		through to the constructor of the appropriate class."""
+
+	# If no engine ID was specified, try to get it from the AI persona's config file.
+	if engineId == None:
+		engineId = _aiEngine()	# Gets the AI persona's default engine ID from the config file.
+		if engineId != None:
+			_logger.warning("[GPT-3/API] No engine ID specified; using AI persona's engine ID [" + engineId + "].")
+
+	# If we still don't have an engine ID, use the default engine ID.
+	if engineId == None:
+		engineId = DEF_ENGINE
+		_logger.warning("[GPT-3/API] No engine ID specified; using default engine ID [" + engineId + "].")
+
+	# Instantiate the appropriate type of core object.
+	if _is_chat(engineId):
+		newCore = GPT3ChatCore(engineId=engineId, **kwargs)
+	else:
+		newCore = GPT3Core(engineId=engineId, **kwargs)
+
+	return newCore
+
+#__/ End module public function createCoreConnection().
+
+
 def tiktokenCount(text:str=None, encoding:str='gpt2'):
 
 	"""Counts tokens in the given text using the tiktoken library.
@@ -2772,6 +2885,13 @@ def stats():
 	#/==========================================================================
 	#|	Module private functions.								[code section]
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
+def _aiEngine() -> str:
+	
+	"""Returns the AI engine ID, as a string."""
+
+	return TheAIPersonaConfig().modelVersion
 
 
 def _statsPathname():
