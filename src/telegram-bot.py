@@ -810,6 +810,7 @@ def start(update, context):         # Context, in this context, is the Telegram 
 
     return
 
+
 # Below is the help string for the bot. (Displayed when '/help' is typed in the chat.)
 HELP_STRING = f"""
 {BOT_NAME} bot powered by GPT-3/{ENGINE_NAME}.
@@ -819,6 +820,7 @@ Available commands:
     /remember <text> - Add <text> to AI's persistent memory.
     /forget <text> - Remove <text> from AI's persistent memory.
     /reset - Clear the AI's short-term conversational memory."""
+
 
 # Now, let's define a function to handle the /help command.
 def help(update, context):
@@ -833,15 +835,18 @@ def help(update, context):
 #        f"\t/forget <text> - Remove <text> from AI's persistent memory.\n" +
 #        f"\t/reset - Clear the AI's short-term conversational memory.\n")
 
+
 # Now, let's define a function to handle the /echo command.
 def echo(update, context):
     """Echo the user's message."""
     update.message.reply_text(update.message.text)
 
+
 # Now, let's define a function to handle the /greet command.
 def greet(update, context):
     """Greet the user."""
     update.message.reply_text("Hello! I'm glad you're here. I'm glad you're here.\n")
+
 
 # Now, let's define a function to handle the /reset command.
 def reset(update, context):
@@ -872,6 +877,7 @@ def reset(update, context):
     # Also record the initial message in our conversation data structure.
     conversation.add_message(Message(conversation.bot_name, reset_message))
 
+
 # Now, let's define a function to handle the /remember command.
 def remember(update, context):
 
@@ -895,6 +901,7 @@ def remember(update, context):
     update.message.reply_text(f"[DIAGNOSTIC: Added [{text.strip()}] to persistent memory.]\n")
 
 #__/ End definition of /remember command handler.
+
 
 # Now, let's define a function to handle the /forget command.
 def forget(update, context):
