@@ -1358,9 +1358,9 @@ def process_chat_message(update, context):
         with open(f"{LOG_DIR}/latest-messages.txt", "w") as f:
             for chat_message in chat_messages:
 
-                if chat_message.has_key('role'):
+                if 'role' in chat_message:
                     roleOrName = chat_message['role']
-                elif chat_message.has_key('name'):
+                elif 'name' in chat_message:
                     roleOrName = chat_message['name']
 
                 f.write(f"{roleOrName}: {chat_message['content']}\n")  # Write the message to the file.
