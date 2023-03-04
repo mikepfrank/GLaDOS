@@ -3036,7 +3036,7 @@ def _displayStats():
 	
 			cost = "$%8.4f" % _expenditures[engine]
 	
-			_statLine(f"{engStr} {inTokStr} {outTokStr} {totStr} {cost}")
+			_statLine(f"{engStr} | {inTokStr} | {outTokStr} | {totStr} | {cost}")
 	
 			cumIn  = cumIn  + inToks
 			cumOut = cumOut + outToks
