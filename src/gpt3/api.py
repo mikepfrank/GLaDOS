@@ -307,6 +307,7 @@ __all__ = [
 			# GPT-2 having been installed; use the tiktokenCount() function instead.
 
 		'tiktokenCount',		# Function: Counts tokens in a string. (No cost, fast.)
+			# NOTE: This is the recommended token-counting function.
 
 		'stats',				# Function: Returns the GPT-3 usage statistics.
 
@@ -342,33 +343,37 @@ __all__ = [
 
 _ENGINE_ATTRIBS = {
 
-		# OG GPT-3 models.
+		# OG GPT-3 models; data through Oct. 2019.
 
-    'ada':				{'engine-name': 'ada', 		    	'field-size': 2048, 'price': 0.0008,	'is-chat': False,	'encoding': 'gpt2'},
-    'babbage':			{'engine-name': 'babbage',	    	'field-size': 2048, 'price': 0.0012,	'is-chat': False,	'encoding': 'gpt2'},
-    'curie':			{'engine-name': 'curie',	    	'field-size': 2048, 'price': 0.006,		'is-chat': False,	'encoding': 'gpt2'},
-    'davinci':			{'engine-name': 'davinci',	    	'field-size': 2048, 'price': 0.06,		'is-chat': False,	'encoding': 'gpt2'},
+    'ada':				{'engine-name': 'ada', 		    	'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
+    'babbage':			{'engine-name': 'babbage',	    	'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
+    'curie':			{'engine-name': 'curie',	    	'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
+    'davinci':			{'engine-name': 'davinci',	    	'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
     
-		# Early InstructGPT models.
+		# Early InstructGPT models. (RLHF trained; data through Oct. 2019.)
 
     'text-ada-001':		{'engine-name': 'text-ada-001',	    'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
     'text-babbage-001': {'engine-name': 'text-babbage-001', 'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
     'text-curie-001':	{'engine-name': 'text-curie-001',   'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
     'text-davinci-001': {'engine-name': 'text-davinci-001', 'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
 
-		# GPT-3.5 models.
+		# GPT-3.5 models. (Increased context length; data through June 2021.)
 
     'text-davinci-002': {'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06,		'is-chat': False,	'encoding': 'p50k_base'},
     'code-davinci-002': {'engine-name': 'code-davinci-002', 'field-size': 4000, 'price': 0,			'is-chat': False,	'encoding': 'p50k_base'},
     'text-davinci-003': {'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02,		'is-chat': False,	'encoding': 'p50k_base'},
     
-		# ChatGPT models.
+		# ChatGPT models. (These use the chat API. Data through Sep. 2021.)
 
 	'gpt-3.5-turbo-0301':   {'engine-name': 'gpt-3.5-turbo-0301', 	'field-size': 4096, 'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
     'gpt-3.5-turbo':    	{'engine-name': 'gpt-3.5-turbo', 		'field-size': 4096, 'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
     
+} # End _ENGINE_ATTRIBS constant module global data structure.
 
-}
+
+		#----------------------------------------------------------------------
+		#  The following are private convenience functions for retrieving
+		#  information from the _ENGINE_ATTRIBS data structure.
 
 # Given an engine name, return the entire engine attribute dictionary.
 def _get_engine_attribs(engine_name):
@@ -405,7 +410,7 @@ def _get_encoding(engine_name):
 	return _get_engine_attr(engine_name, 'encoding')
 
 
-# The following private constants are initialized based on the above.
+	# The following private constants are initialized based on the above.
 
 global			_ENGINE_NAMES		# List of engine names.
 # Retrieve this from the keys of the '_ENGINE_ATTRIBS' dictionary.
@@ -413,6 +418,8 @@ _ENGINE_NAMES	= list(_ENGINE_ATTRIBS.keys())
 
 global 			_STATS_FILENAME		# Name of file for saving/loading API usage statistics.
 _STATS_FILENAME = 'api-stats.json'	# This file is saved in the AI's data directory.
+	# Note this is just hardcoded for now; eventually we may want to
+	# make this configurable through the AI's configuration file.
 
 
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -420,23 +427,25 @@ _STATS_FILENAME = 'api-stats.json'	# This file is saved in the AI's data directo
 	#|	parameters; but, note they can be overridden by the user.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global		DEF_ENGINE				# Default GPT-3 engine name.
-DEF_ENGINE	= 'davinci'				# This is the original largest (175B-parameter) model. Origin of Gladys.
-#DEF_ENGINE	= 'text-davinci-002'	# New "best" (4000-token field) model.
+global				DEF_ENGINE				# Default GPT-3 engine name.
+#DEF_ENGINE			= 'davinci'				# This is the original largest (175B-parameter) model. Origin of Gladys.
+DEF_ENGINE			= 'text-davinci-003'	# This is currently the recommended model for text generation.
 
-global			DEF_CHAT_ENGINE		# Default engine when using chat interface.
-DEF_CHAT_ENGINE	= 'gpt-3.5-turbo'	# OpenAI updates this model periodically.
+global				DEF_CHAT_ENGINE		# Default engine when using the chat interface.
+DEF_CHAT_ENGINE		= 'gpt-3.5-turbo'	# OpenAI updates this model periodically.
 
-global		DEF_TOKENS	# Default minimum space (in tokens) provided for the return.
-#DEF_TOKENS	= 42		# Of course.
-DEF_TOKENS  = 100		# Gladys requested this.
+global			DEF_TOKENS	# Default minimum space (in tokens) provided for the return.
+#DEF_TOKENS		= 42		# Of course.
+DEF_TOKENS  	= 100		# Gladys requested this.
 
-global		DEF_TEMP	# Default temperature value.
-#DEF_TEMP	= 0.5		# Is this reasonable?
-DEF_TEMP	= 0.75		# I think this makes repeats less likely.
+global			DEF_TEMP	# Default temperature value.
+#DEF_TEMP		= 0.5		# Is this reasonable?
+#DEF_TEMP		= 0.75		# I think this makes repeats less likely.
+DEF_TEMP		= 0.8		# Current default value, for a bit more creativity.
 
-global		DEF_STOP	# Default stop string (or list of up to 4).
-DEF_STOP	= "\n\n\n"	# Use 3 newlines (two blank lines) as stop.
+global			DEF_STOP	# Default stop string (or list of up to 4).
+DEF_STOP		= "\n\n\n"	# Use 3 newlines (two blank lines) as stop.
+	# Note this is anyway the default stop string used by the OpenAI API.
 
 
 	# Constants for the chat interface (values are defined by OpenAI).
@@ -458,6 +467,7 @@ CHAT_ROLE_AI		= 'assistant'
 global 		_aiPath		# Path to the AI's data directory.
 _aiPath 	= None		# Not yet initialized.
 
+
 	#--------------------------------------------------------------
 	# The following globals are used for tracking usage statistics.
 
@@ -470,10 +480,11 @@ _statsLoaded 	= False			# We haven't tried to load stats from the file yet.
 global 			_inputLength	# Length of the input string.
 _inputLength 	= 0				# Will be modified when processing a query.
 
-global _inputToks, _outputToks	# These are dictionaries of token counts.
-	# (Cumulative tokens used for each engine since last reset.)
 
 # Initialize two separate dicts to hold cumulative input & output token counts.
+
+global _inputToks, _outputToks	# These are dictionaries of token counts.
+	# (Cumulative tokens used for each engine since last reset.)
 
 _inputToks = {
 		'ada':					0,
@@ -505,8 +516,8 @@ _outputToks = {
 		'gpt-3.5-turbo':		0,
 	}
 
-# Meanwhile, this dict will keep track of the cumulative expenditures
-# in dollars for each engine.
+# Meanwhile, this dict will keep track of the cumulative estimated
+# expenditures in dollars for each engine.
 
 global _expenditures
 _expenditures = {
@@ -535,63 +546,69 @@ _statStr 		= ""		# Will be modified after processing a query.
 
 
 #|==============================================================================
-#|	Global objects.												  [code section]
+#|	Module-level global objects.								  [code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# This object represents an API connection to the GPT-3 core
 	# system that is used for counting tokens.  It is not actually
 	# created unless/until the GPT3Core.countTokens() method is 
-	# called.
+	# called. Note that method is currently deprecated.
 
 global	_theTokenCounterCore	# A core connection for counting tokens.
 _theTokenCounterCore = None		# Initially not yet created.
 
-# IMPLEMENTATION NOTE: Since this API wrapper module may be used by multiple
-# threads, we need to protect the global variables & objects above with a mutex.
-# We can do this easily by using the 'threading' module's 'Lock' class.
-# The 'Lock' class is a mutex that can be acquired and released.
+	# IMPLEMENTATION NOTE: Since this API wrapper module may be used by multiple
+	# threads, we need to protect the global variables & objects above with a 
+	# mutex. We can do this easily by using the 'threading' module's 'Lock' 
+	# class. A 'Lock' instance is a mutex that can be acquired and released.
 
 import threading
 global _lock
 _lock = threading.Lock()
 
-# NOTE: Any manipulation of the global variables above (in a way that needs 
-# to be effectively atomic) must be protected with the '_lock' mutex. This 
-# can be done via the 'with' statement:
-#
-#		with _lock:
-#			...
+	# NOTE: Any manipulation of the global variables in the previous section 
+	# (in a way that needs to be effectively atomic) must be protected with 
+	# the above '_lock' mutex. This can be done via the 'with' statement:
+	#
+	#		with _lock:
+	#			...
 
 
 #|==============================================================================
 #|	Module public classes.										[code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	#|
 	#|	gpt3.api.GPT3APIConfig							   [module public class]
 	#|
 	#|		This class provides an abstraction for a 'configuration' of
 	#|		GPT-3 API parameter values.	 These can be modified dynamically
 	#|		at runtime (i.e., in between different API calls).
 	#|
+	#|
 	#|	Public interface:
+	#|	=================
 	#|
 	#|		conf = GPT3AIConfig(params)					  [instance constructor]
 	#|
 	#|			Create a new configuration object with specified parameters.
 	#|			Others not provided revert to defaults.
 	#|
+	#|
 	#|		conf.modify(params)								   [instance method]
 	#|
 	#|			Modify the specified parameters of the configuration.
+	#|
 	#|
 	#|		str(inst)								   [special instance method]
 	#|
 	#|			Converts the configuration to a human-readable string
 	#|			representation.
 	#|
+	#|
 	#|	Special methods:
+	#|	----------------
 	#|
 	#|		__init__	- Instance initializer.
 	#|		__str__		- Display as a human-readable string.
@@ -603,10 +620,11 @@ class GPT3APIConfig:
 	"""This class gathers together a set of parameter values for passing to the
 		'completions' and/or 'completions/browser_stream' API calls."""
 
-	#/--------------------------------------------------------------------------
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#|	Instance public data members for class GPT3APIConfig. (See API docs.)
 	#|
-	#|	API parameters:
+	#|	API parameters:		(See initializer header below for details.)
+	#|
 	#|		.engineId			 [string]
 	#|		.maxTokens			 [intger]
 	#|		.temperature		 [number]
@@ -620,15 +638,17 @@ class GPT3APIConfig:
 	#|		.frequencyPenalty	 [number]
 	#|		.bestOf				 [integer]
 	#|
-	#|	Other attributes:
+	#|	Other instance parameters:
+	#|
 	#|		.name [string] - Human-readable name for this configuration.
 	#|
-	#\--------------------------------------------------------------------------
+	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-		#|----------------------------------------------------------------------
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	Initializer for class GPT3APIConfig.	   [special instance method]
 		#|
 		#|	Arguments:
+		#|	==========
 		#|		
 		#|		engineId											[string]
 		#|
@@ -637,38 +657,43 @@ class GPT3APIConfig:
 		#|			babbage-beta, content-filter-alpha-c4, curie, 
 		#|			curie-beta, davinci, davinci-beta.	Earlier names
 		#|			alphabetically are smaller models.	The default value
-		#|			is davinci.
+		#|			is currently text-davinci-003 (unless changed by user).
 		#|
 		#|		maxTokens											[integer]
 		#|
 		#|			The maximum number of tokens to return in the response.
-		#|			Defaults to 42.
+		#|			Defaults to 100 (unless changed by user).
 		#|
 		#|		temperature											[number]
 		#|
 		#|			A floating-point number between 0 and 1 that roughly
 		#|			indicates the degree of randomness in the response.
-		#|			Default value: 0.5.
+		#|			Default value: 0.8 (unless changed by user).
 		#|
 		#|		topP												[number]
 		#|
 		#|			A floating point number between 0 and 1 that restricts
 		#|			answers to the top percentage of probability mass.
 		#|			Do not use this and temperature in the same query.
-		#|			Default value: None.
-		#|			[NOTE: This parameter is yet supported by this module.]
+		#|			Default value: None (unless changed by user).
+		#|
+		#|			NOTE: topP is yet supported by this module.
 		#|
 		#|		nCompletions										[integer]
 		#|
 		#|			How many completions to return.	 Default value is 1.
 		#|
+		#|			NOTE: nCompletions values other than 1 are not 
+		#|			currently supported by this module.
+		#|
 		#|		stream												[boolean]
 		#|
 		#|			If true, then the result will be streamed back incre-
 		#|			mentally as a sequence of server-sent events.
-		#|			Default: False.
-		#|			[NOTE: This parameter is yet supported by this module.
-		#|			 Anyway, it is only useful for very large responses.]
+		#|			Default value: False (unless changed by user).
+		#|
+		#|			NOTE: stream=true is yet supported by this module.
+		#|			Anyway, it is only useful for very large responses.
 		#|
 		#|		logProbs											[integer]
 		#|
@@ -706,6 +731,8 @@ class GPT3APIConfig:
 		#|			server-side; the best nCompletions ones of those 
 		#|			are returned.  Default: Not set (i.e., don't do).
 		#|
+		#|			NOTE: Setting bestOf>1 increases generation cost.
+		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	def __init__(inst, 
@@ -719,7 +746,9 @@ class GPT3APIConfig:
 
 		"""Initialize a GPT-3 API configuration, reverting to
 			default values for any un-supplied parameters."""
-					
+		
+			# Save the values of the supplied configuration parameters.
+
 		inst.engineId			= engineId
 		inst.maxTokens			= maxTokens
 		inst.temperature		= temperature
@@ -733,16 +762,20 @@ class GPT3APIConfig:
 		inst.frequencyPenalty	= freqPen
 		inst.bestOf				= bestOf
 		
-		inst.name				= name
+		inst.name				= name		# Optional name for this config.
+			# Note: The name is not used by the GPT-3 API, but it is
+			# useful for the user to be able to identify a configuration
+			# by name, rather than by its object ID.
 	
 	#__/ End instance initializer for class GPT3APIConfig,
 	
 	
-		#|----------------------------------------------------------------------
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	.modify(params)								[public instance method]
 		#|
 		#|		Modify the specified parameters of the configuration to
-		#|		the given values.
+		#|		the given values. Any parameters not specified are left
+		#|		unchanged.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
@@ -772,7 +805,7 @@ class GPT3APIConfig:
 	#__/ End instance method GPT3APIConfig.modify().
 
 	
-		#|----------------------------------------------------------------------
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	String converter.						   [special instance method]
 		#|
 		#|		Generates a human-readable string representation of this
@@ -803,12 +836,23 @@ class GPT3APIConfig:
 				presence_penalty  = {self.presencePenalty}
 				frequency_penalty = {self.frequencyPenalty}
 				best_of			  = {self.bestOf}"""[1:]	# [1:] removes the leading newline.
-		# Note: .stop is printed using repr() in order to show the 
-		# escape codes for any special characters.
+		# NOTE: .stop is printed using repr() in order to show the 
+		# 	escape codes for any special characters.
 	
 	#__/ End string conversion method for class GPT3APIConfig.
 
 #__/ End class GPT3APIConfig.
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	Subclass GPT3ChatAPIConfig.				   	   [module public class]
+		#|
+		#|		This class extends the normal GPT-3 API configuration class
+		#|		to add parameters needed for the chat completions endpoint.
+		#|
+		#|		See the API documentation for details on the parameters:
+		#|		https://platform.openai.com/docs/api-reference/chat
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 class GPT3ChatAPIConfig(GPT3APIConfig): pass
 class GPT3ChatAPIConfig(GPT3APIConfig):
@@ -842,6 +886,7 @@ class GPT3ChatAPIConfig(GPT3APIConfig):
 	#|
 	#|
 	#|	Other attributes:
+	#|	-----------------
 	#|		.name [string] - Human-readable name for this configuration.
 	#|
 	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -849,12 +894,16 @@ class GPT3ChatAPIConfig(GPT3APIConfig):
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	Initializer for class GPT3APIChatConfig.   [special instance method]
 		#|
+		#|		Note that this implementation extends the initializer for
+		#|		GPT3APIConfig, so that we can inherit its parameter settings
+		#|		as needed.
+		#|
 		#|	Arguments:	(Selected ones from our parent class, plus:)
 		#|
 		#|		.messages											[list]
 		#|
 		#|			List of message objects to be passed to the API.
-		#|			(This is normally not set at configuration time,
+		#|			(This might not be set yet at configuration time,
 		#|			however.)
 		#|
 		#|		.logitBias											[dictionary]
@@ -882,8 +931,21 @@ class GPT3ChatAPIConfig(GPT3APIConfig):
 
 		chatConf = newGPT3ChatAPIConf	# For convenience.
 
-		# Our parent class's initializer can take care of initialization
-		# for everything but the new arguments: messages, logitBias, and user.
+		# First, let's make sure that the engineId we were given is the
+		# ID of an engine that supports the chat API; otherwise, it doesn't
+		# make sense to create a GPT3ChatAPIConfig instance for it, and we
+		# should report an error and throw an exception.
+
+		if not _is_chat(engineId):
+
+			_logger.error(f"GPT3ChatAPIConfig.__init__():  The engine ID '{engineId}' "
+				"is not the ID of an engine that supports the chat API.")
+		
+			raise ValueError(f"Invalid engine ID '{engineId}' for chat API.")
+		
+
+		# Our parent class's initializer can take care of initialization for
+		# everything but the 3 new arguments: messages, logitBias, and user.
 
 		super().__init__(engineId=engineId, maxTokens=maxTokens,
 		   temperature=temperature, topP=topP, nCompletions=nCompletions,
@@ -903,7 +965,9 @@ class GPT3ChatAPIConfig(GPT3APIConfig):
 		#|	.modify(params)								[public instance method]
 		#|
 		#|		Modify the specified parameters of the chat configuration 
-		#|		to the given values.
+		#|		to the given values.  Note that this implementation extends
+		#|		the .modify() method of GPT3APIConfig, so that we can inherit
+		#|		its parameter settings as needed.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
@@ -954,7 +1018,7 @@ class GPT3ChatAPIConfig(GPT3APIConfig):
 			namestr = f" \"{chatConf.name}\""
 		
 		return f"""
-			GPT3 Configuration{namestr}:
+			GPT3 Chat Configuration{namestr}:
 				engine_id		  = {chatConf.engineId}
 				max_tokens		  = {chatConf.maxTokens}
 				temperature		  = {chatConf.temperature}
@@ -967,7 +1031,7 @@ class GPT3ChatAPIConfig(GPT3APIConfig):
 				messages		  = {chatConf.messages}
 				logitBias		  =	{chatConf.logitBias}
 				user			  = {chatConf.user}"""[1:]	# [1:] removes the leading newline.
-		# Note: .stop is printed using repr() in order to show the 
+		# NOTE: .stop is printed using repr() in order to show the 
 		# escape codes for any special characters.
 
 	#__/ End string conversion method for class GPT3ChatAPIConfig.
@@ -2198,7 +2262,10 @@ class GPT3Core:
 		
 		conf = self.conf	# Get our current configuration.
 
-		kwargs['engine'] = conf.engineId	# This API arg. is required. Can't skip it.
+		kwargs['model'] = conf.engineId		# This API arg. is required. Can't skip it.
+			# NOTE: OpenAI used to call this parameter 'engine' but now calls it 'model'.
+			# The old name still works, but is deprecated; we use the new name here in
+			# case they ever remove the old name.
 				
 		# Note here we have to match the exact keyword argument names supported by OpenAI's API.
 
@@ -2497,7 +2564,10 @@ class GPT3ChatCore:
 		
 		chatConf = chatCore.chatConf	# Get our current chat configuration.
 
-		kwargs['engine'] = chatConf.engineId	# This API arg. is required. Can't skip it.
+		kwargs['model'] = chatConf.engineId	# This API arg. is required. Can't skip it.
+			# NOTE: OpenAI used to call this parameter 'engine' but now calls it 'model'.
+			# The old name still works, but is deprecated; we use the new name here in
+			# case they ever remove the old name.
 				
 		# Note here we have to match the exact keyword argument names supported by OpenAI's API.
 
@@ -2509,10 +2579,13 @@ class GPT3ChatCore:
 		if chatConf.stop				!= None:	kwargs['stop']				= chatConf.stop
 		if chatConf.presencePenalty		!= None:	kwargs['presence_penalty']	= chatConf.presencePenalty
 		if chatConf.frequencyPenalty	!= None:	kwargs['frequency_penalty'] = chatConf.frequencyPenalty
+
+			# The following parameters are new in the chat API.
 		if chatConf.messages			!= None:	kwargs['messages']			= chatConf.messages
 		if chatConf.logitBias			!= None:	kwargs['logit-bias']		= chatConf.logitBias
 		if chatConf.user				!= None:	kwargs['user']				= chatConf.user
-		
+
+			# Make sure we don't set both temperature and top_p.		
 		if chatConf.temperature != None and chatConf.topP != None:
 			# Do some better error handling here. Warning and/or exception.
 			_logger.warn(f"WARNING: temp={chatConf.temperature}, topP={chatConf.topP}: Setting both temperature and top_p is not recommended.")
