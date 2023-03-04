@@ -2452,7 +2452,7 @@ class GPT3Core:
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 class GPT3ChatCore: pass
-class GPT3ChatCore:
+class GPT3ChatCore(GPT3Core):
 
 	"""An instance of this class represents a connection to the core GPT-3 
 		chat API that remembers its parameter settings."""
