@@ -367,7 +367,7 @@ def timeString():
         tzAbb = tzAbbr()    # Function to get the time zone abbreviation from the offset.
         timeStr = timeStr + f" ({tzAbb})"
 
-    return "The current time is: " + timeStr
+    return timeStr
 
 # First, let's define a class for messages that remembers the message sender and the message text.
 class Message:
