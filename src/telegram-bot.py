@@ -1361,7 +1361,8 @@ def process_chat_message(update, context):
 
                 if 'role' in chat_message:
                     roleOrName = chat_message['role']
-                elif 'name' in chat_message:
+                # Note 'name' overrides 'role' if both are present.
+                if 'name' in chat_message:
                     roleOrName = chat_message['name']
 
                 f.write(f"{roleOrName}: {chat_message['content']}\n")  # Write the message to the file.
