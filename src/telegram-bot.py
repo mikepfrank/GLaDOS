@@ -854,14 +854,17 @@ class Conversation:
                 # The above wording was agreed upon by me & Turbo (model 'gpt-3.5-turbo').
 
             # Trying this now:
-            'content': f"Please now generate {self.bot_name}'s response, in the format:\n" \
-                "%%%%%%\n" \
-                "Commentary as assistant:\n"
-                "{assistant_commentary}\n"
-                "%%%%%%\n" \
-                f"{self.bot_name}'s response:\n"
-                "{persona_response}\n"
-                "%%%%%%\n"
+            #'content': f"Please now generate {self.bot_name}'s response, in the format:\n" \
+            #    r"%%%\n" \
+            #    "Commentary as assistant:\n"
+            #    "{assistant_commentary}\n"
+            #    r"%%%\n" \
+            #    f"{self.bot_name}'s response:\n"
+            #    "{persona_response}\n"
+            #    r"%%%\n"
+
+            'content': f"Respond as {self.bot_name}.\n"
+
         })
         # (The back-end language model will be prompted to respond by something like 
         # "assistant\n", which is why we need to make sure it knows that it's responding 
