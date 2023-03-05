@@ -91,6 +91,9 @@ import  os
 import  regex as re     
     # We use the regex library for unescaping saved conversation data.
 
+from curses import ascii
+	# The only thing we use from this is ascii.RS (record separator character)
+
     # NOTE: Copilot also wanted to import the following libraries, but we 
     #   aren't directly using them yet:
     #       sys, time, logging, random, pickle, json, datetime, pytz, subprocess
