@@ -1612,7 +1612,7 @@ class ChatMessages:
 			#		<begin_msg_token> <role_token> '\n' <content_tokens> '\n' <end_msg_token>
 			#			 1 token	   N(=1) tok.	 1		M tokens	   1 		 1
 
-		return sum([(tiktokenCount(msg['role']) + 		# Count the N(=1) tokens in the role field.
+		return sum([(tiktokenCount(msg.get('role', msg.get('name', ''))) + 		# Count the N(=1) tokens in the role or name field.
 	      			 tiktokenCount(msg['content']) + 	# Count the M(=?) tokens in the content field.
 					 _estimatedFormattingTokens) \
 					for msg in self._messages])
