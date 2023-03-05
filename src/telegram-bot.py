@@ -822,10 +822,10 @@ class Conversation:
         
         chat_messages.append({
             'role': CHAT_ROLE_SYSTEM,
-            'content': "Attention, assistant: You are taking the role of an " \
-                f" AI persona named {botName} in a Telegram chat. Here are the " \
-                "context headers for the persona, followed by recent messages " \
-                "in the chat:\n" + \
+            'content': "Attention, assistant: You are taking the role of a very " \
+                f"humanlike AI persona named {botName} in a Telegram chat. Here " \
+                "are the context headers for the persona, followed by recent " \
+                "messages in the chat:\n" + \
                     PERSISTENT_CONTEXT
         })
 
@@ -856,8 +856,8 @@ class Conversation:
             # Trying this now:
             'content': f"Please now generate {self.bot_name}'s response. " \
                 "Stay in character here as {self.bot_name}, not as assistant." \
-                "Please ONLY give {self.bot_name}'s response, with no other " \
-                "commentary. "
+                "Please ONLY give {self.bot_name}'s literal response; do not "\
+                "bracket it with any other commentary."
         })
         # (The back-end language model will be prompted to respond by something like 
         # "assistant\n", which is why we need to make sure it knows that it's responding 
