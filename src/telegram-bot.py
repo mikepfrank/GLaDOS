@@ -855,9 +855,10 @@ class Conversation:
 
             # Trying this now:
             'content': f"Please now generate {self.bot_name}'s response. " \
-                "Stay in character here as {self.bot_name}, not as assistant." \
-                "Please ONLY give {self.bot_name}'s literal response; do not "\
-                "bracket it with any other commentary."
+                "Stay in character here, method-acting as {self.bot_name}; " \
+                "do NOT respond as an assistant.  Please ONLY give " \
+                "{self.bot_name}'s literal response; do not bracket it with " \
+                "any other commentary or delimiters."
         })
         # (The back-end language model will be prompted to respond by something like 
         # "assistant\n", which is why we need to make sure it knows that it's responding 
