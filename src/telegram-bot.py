@@ -809,7 +809,8 @@ class Conversation:
         # of the Message object as the 'content' attribute of the chat message.
         for message in self.messages:
             chat_messages.append({
-                'name': message.sender,     # Note: The API accepts this attribute in place of 'role'
+                'role': CHAT_ROLE_USER,     # Note: The role field is always required.
+                'name': message.sender,     # Note: When this is present, the API uses it in place of the role.
                 'content': message.text
             })
 
