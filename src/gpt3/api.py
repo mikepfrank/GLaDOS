@@ -1477,7 +1477,7 @@ class Completion:
 
 		global _inputLength
 
-		engine = apiArgs['engine']
+		engine = apiArgs['model']	# The engine ID. (Note we're using OpenAI's new name for this parameter.)
 		prompt = apiArgs['prompt']
 
 			# This function counts the number of tokens in the prompt
@@ -2125,7 +2125,8 @@ class ChatCompletion(Completion):
 
 		global _inputLength
 
-		engine = apiArgs['engine']
+		engine = apiArgs['model']	# Get the engine ID. 
+			# (Note we're using OpenAI's new name for this parameter, 'model'.)
 		messages = ChatMessages(apiArgs['messages'])
 
 			# This function counts the number of tokens in the prompt
