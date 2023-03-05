@@ -854,11 +854,14 @@ class Conversation:
                 # The above wording was agreed upon by me & Turbo (model 'gpt-3.5-turbo').
 
             # Trying this now:
-            'content': f"Please now generate {self.bot_name}'s response. " \
-                "Stay in character here, method-acting as {self.bot_name}; " \
-                "do NOT respond as an assistant.  Please ONLY give " \
-                f"{self.bot_name}'s literal response; do not bracket it with " \
-                "any other commentary or delimiters."
+            'content': f"Please now generate {self.bot_name}'s response, in the format:\n" \
+                "%%%%%%\n" \
+                "Commentary as assistant:\n"
+                "{assistant_commentary}\n"
+                "%%%%%%\n" \
+                f"{self.bot_name}'s response:\n"
+                "{persona_response}\n"
+                "%%%%%%\n"
         })
         # (The back-end language model will be prompted to respond by something like 
         # "assistant\n", which is why we need to make sure it knows that it's responding 
