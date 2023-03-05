@@ -807,15 +807,26 @@ class Conversation:
         
         chat_messages = []      # Initialize the list of chat messages.
 
-        # The first 'system' message in the list is the persistent context.
-        initial_system_message_text = (
-            timeString() + "\n" +   # First line just shows the current time.
-            PERSISTENT_CONTEXT)     # We follow that with the persistent context.
+        ## The first 'system' message in the list is the persistent context.
+        #initial_system_message_text = (
+        #    timeString() + "\n" +   # First line just shows the current time.
+        #    PERSISTENT_CONTEXT)     # We follow that with the persistent context.
 
-        # Add the initial system message to the list of chat messages.
+        botName = self.bot_name
+
+        # Add the initial system messages to the list of chat messages.
         chat_messages.append({
             'role': CHAT_ROLE_SYSTEM,
-            'content': initial_system_message_text
+            'content': "The current time is: " + timeString() + "."
+        })
+        
+        chat_messages.append({
+            'role': CHAT_ROLE_SYSTEM,
+            'content': "Attention, assistant: You are taking the role of an " \
+                " AI persona named {botName} in a Telegram chat. Here are the " \
+                "context headers for the persona, followed by recent messages " \
+                "in the chat:\n" + \
+                    PERSISTENT_CONTEXT
         })
 
         # Next, add the messages from the recent part of the conversation.
@@ -838,9 +849,13 @@ class Conversation:
 
             #'content': f"Assistant, your role in this chat is '{self.bot_name}'; enter your next message below.",
                 # This was my initial wording, but it seemed to cause some confusion.
-                
-            'content': f"{self.bot_name}, please enter your response below at the 'assistant' prompt:"
+
+            #'content': f"{self.bot_name}, please enter your response below at the 'assistant' prompt:"
                 # The above wording was agreed upon by me & Turbo (model 'gpt-3.5-turbo').
+
+            # Trying this now:
+            'content': f"assistant, please now generate {self.bot_name}'s response in " + \
+                "this format: \"\\n{self.bot_name}:" + "{response}" + "\\n. Stay in character as {self.bot_name}, not as assistant.\n"
         })
         # (The back-end language model will be prompted to respond by something like 
         # "assistant\n", which is why we need to make sure it knows that it's responding 
