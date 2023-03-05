@@ -823,7 +823,7 @@ class Conversation:
         chat_messages.append({
             'role': CHAT_ROLE_SYSTEM,
             'content': "Attention, assistant: You are taking the role of an " \
-                " AI persona named {botName} in a Telegram chat. Here are the " \
+                f" AI persona named {botName} in a Telegram chat. Here are the " \
                 "context headers for the persona, followed by recent messages " \
                 "in the chat:\n" + \
                     PERSISTENT_CONTEXT
