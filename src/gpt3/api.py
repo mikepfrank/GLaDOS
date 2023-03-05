@@ -3012,9 +3012,9 @@ def _displayStats():
 		#__/ End loop over engine names.
 	
 		# Generate a table row for the accumulated totals.
-		cumInStr  = "%7d" % cumIn
+		cumInStr  = "%8d" % cumIn
 		cumOutStr = "%7d" % cumOut
-		cumTotStr = "%7d" % cumTot
+		cumTotStr = "%8d" % cumTot
 	
 		totStr = "$%8.4f" % _totalCost
 	
