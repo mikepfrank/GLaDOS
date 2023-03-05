@@ -1002,18 +1002,18 @@ class GPT3ChatAPIConfig(GPT3APIConfig):
 		
 		return f"""
 			GPT3 Chat Configuration{namestr}:
-				engine_id		  = {chatConf.engineId}
-				max_tokens		  = {chatConf.maxTokens}
-				temperature		  = {chatConf.temperature}
-				top_p			  = {chatConf.topP}
-				n				  = {chatConf.nCompletions}
-				stream			  = {chatConf.stream}
-				stop			  = {repr(chatConf.stop)}
+				engine_id         = {chatConf.engineId}
+				max_tokens        = {chatConf.maxTokens}
+				temperature       = {chatConf.temperature}
+				top_p             = {chatConf.topP}
+				n                 = {chatConf.nCompletions}
+				stream            = {chatConf.stream}
+				stop              = {repr(chatConf.stop)}
 				presence_penalty  = {chatConf.presencePenalty}
 				frequency_penalty = {chatConf.frequencyPenalty}
-				messages		  = {chatConf.messages}
-				logitBias		  =	{chatConf.logitBias}
-				user			  = {chatConf.user}"""[1:]	# [1:] removes the leading newline.
+				messages          = {chatConf.messages}
+				logitBias         =	{chatConf.logitBias}
+				user              = {chatConf.user}"""[1:]	# [1:] removes the leading newline.
 		# NOTE: .stop is printed using repr() in order to show the 
 		# escape codes for any special characters.
 
