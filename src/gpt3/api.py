@@ -1612,10 +1612,32 @@ class ChatMessages:
 			#		<begin_msg_token> <role_token> '\n' <content_tokens> '\n' <end_msg_token>
 			#			 1 token	   N(=1) tok.	 1		M tokens	   1 		 1
 
-		return sum([(tiktokenCount(msg.get('role', msg.get('name', ''))) + 		# Count the N(=1) tokens in the role or name field.
-	      			 tiktokenCount(msg['content']) + 	# Count the M(=?) tokens in the content field.
-					 _estimatedFormattingTokens) \
-					for msg in self._messages])
+		totalToks = 0	# Accumulates the total number of tokens in all messages.
+
+		for msg in self._messages:
+
+			msgToks = 0
+			if 'role' in msg:
+				msgToks += tiktokenCount(msg['role'])	
+					# The role field should always be 1 token long.
+			if 'name' in msg:
+				msgToks += tiktokenCount(msg.get('name','')) - 1
+					# The name field is optional, and if present, it
+					# overrides the role field.  So if the name field
+					# is present, we subtract 1 from the token count
+					# since the name field is supposed to replace the 
+					# role field & the role field is always 1 token long.
+			if 'content' in msg:
+				msgToks += tiktokenCount(msg['content'])
+
+			msgToks += _estimatedFormattingTokens
+
+			# This is too verbose for normal operation. Comment it out after testing.
+			if doDebug: _logger.debug(f"Message {msg} has {msgToks} tokens.")
+
+			totalToks += msgToks
+
+		return totalToks
 
 	#__/ End instance method ChatMessages.totalTokens().
 
