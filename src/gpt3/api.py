@@ -1617,27 +1617,14 @@ class ChatMessages:
 
 		for msg in self._messages:
 
-			msgToks = 0
-			if 'role' in msg:
-				msgToks += tiktokenCount(msg['role'])	
-					# The role field should always be 1 token long.
-			if 'name' in msg:
-				msgToks += tiktokenCount(msg.get('name','')) - 1
-					# The name field is optional, and if present, it
-					# overrides the role field.  So if the name field
-					# is present, we subtract 1 from the token count
-					# since the name field is supposed to replace the 
-					# role field & the role field is always 1 token long.
-			if 'content' in msg:
-				msgToks += tiktokenCount(msg['content'])
+			msgToks = _msg_tokens(msg)	
+				# This function counts the number of tokens in the message.
 
-			msgToks += _estimatedFormattingTokens
-
-			# This is too verbose for normal operation. Comment it out after testing.
+				# This is too verbose for normal operation. Comment it out after testing.
 			if logmaster.doDebug: _logger.debug(f"Message {msg} has {msgToks} tokens.")
 
 			totalToks += msgToks
-
+			
 		return totalToks
 
 	#__/ End instance method ChatMessages.totalTokens().
@@ -2164,6 +2151,28 @@ class ChatCompletion(Completion):
 		_inputToks[engine] = _inputToks[engine] + nToks
 	
 	#__/ End of class gpt3.api.Completion's ._accountForInput method.
+
+
+	def _accountForOutput(self, engine, complStruct):
+
+		"""This method measures the number of tokens in the chat response, and
+			updates the global record of output tokens processed by the API."""
+
+		# NOTE: We can't just use the .text property of the completion
+		# object, because we call this method from the initializer,
+		# before the completion object has been fully initialized.
+
+		result_msg = complStruct['choices'][0]['message']
+
+		nToks = _msg_tokens(result_msg)	
+			# Count the number of tokens in the result message.
+
+		_logger.debug(f"Counted {nToks} tokens in output message [{result_msg}].")
+
+			# Update the global record of API usage statistics.
+		_outputToks[engine] = _outputToks[engine] + nToks
+
+	#__/ End of class gpt3.api.Completion's ._accountForOutput method.
 
 
 #__/ End class ChatCompletion.
@@ -2927,7 +2936,7 @@ def _statsPathname():
 
 	return statsPathname
 
-#__/ End module function statsPathname().
+#__/ End module function _statsPathname().
 
 
 def _textPath():
@@ -2966,7 +2975,7 @@ def _loadStats():
 
 	_displayStats()
 
-#__/ End module function loadStats().
+#__/ End module function _loadStats().
 
 
 def _statLine(line):
@@ -2985,7 +2994,7 @@ def _statLine(line):
 		# Also accumulate it in this global string.
 	_statStr = _statStr + line + '\n'
 
-#__/ End module function statLine().
+#__/ End module function _statLine().
 
 
 def _displayStats():
@@ -3047,7 +3056,7 @@ def _displayStats():
 	
 	#__/ End with statement.
 
-#__/ End module function displayStats().
+#__/ End module function _displayStats().
 
 
 def _saveStats():
@@ -3086,7 +3095,7 @@ def _saveStats():
 
 	_displayStats()
 
-#__/ End module function saveStats().
+#__/ End module function _saveStats().
 
 
 def _recalcDollars():
@@ -3105,7 +3114,48 @@ def _recalcDollars():
 		
 	return (costs, dollars)
 
-#__/ End module function recalcDollars().
+#__/ End module function _recalcDollars().
+
+
+def _msg_tokens(msg:dict) -> int:
+	"""Return the number of tokens in the given message dict. Note that
+		we include the tokens in the 'role' and 'content' fields of
+		the message dict, as well as an estimate of the tokens in
+		whatever behind-the-scenes formatting the API backend uses 
+		to represent the messages before passing them to the 
+		underlying language model."""
+		
+	_estimatedFormattingTokens = 4
+		# This is the number of extra tokens that we're guessing the 
+		# API uses to format the role and content of each message.  
+		# It's not documented anywhere, but we're guessing that it's
+		# probably ~4 tokens per message, to delimit the 2 fields.
+		# This is because we got a hint from someone that the back-end 
+		# format is something like:
+		#
+		#		<begin_msg_token> <role_token> '\n' <content_tokens> '\n' <end_msg_token>
+		#			 1 token	   N(=1) tok.	 1		M tokens	   1 		 1
+
+	msgToks = 0
+	if 'role' in msg:
+		msgToks += tiktokenCount(msg['role'])	
+			# The role field should always be 1 token long.
+	if 'name' in msg:
+		msgToks += tiktokenCount(msg.get('name','')) - 1
+			# The name field is optional, and if present, it
+			# overrides the role field.  So if the name field
+			# is present, we subtract 1 from the token count
+			# since the name field is supposed to replace the 
+			# role field & the role field is always 1 token long.
+	if 'content' in msg:
+		msgToks += tiktokenCount(msg['content'])
+
+	msgToks += _estimatedFormattingTokens
+
+	# This is too verbose for normal operation. Comment it out after testing.
+	if logmaster.doDebug: _logger.debug(f"Message {msg} has {msgToks} tokens.")
+
+	return msgToks
 
 
 #|==============================================================================
