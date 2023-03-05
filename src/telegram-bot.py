@@ -449,6 +449,9 @@ class ConversationError(Exception):
     def __str__(self):
         return self.message
 
+global _anyMemories
+_anyMemories = False
+
 # Next, let's define a class for conversations that remembers the messages in the conversation.
 #  We'll use a list of Message objects to store the messages.
 # TO DO: Add support for archiving/restoring conversation data.
@@ -553,6 +556,8 @@ class Conversation:
                 # Read the file line by line.
                 for line in f:
 
+                    _anyMemories = True
+
                     # If we haven't already read any lines from the persistent memory file,
                     # add a separator line to the memory string.
                     if not read_lines:
@@ -593,6 +598,10 @@ class Conversation:
     def add_memory(self, new_memory:str):
 
         global PERSISTENT_DATA  # We declare this global so we can modify it.
+
+        if not _anyMemories:
+            PERSISTENT_DATA += MESSAGE_DELIMITER + \
+                " ~~~ Memories added using '/remember' command: ~~~\n"
 
         # Make sure the new memory ends in a newline.
         if new_memory[-1] != '\n':
@@ -826,7 +835,12 @@ class Conversation:
         # attribute.
         chat_messages.append({
             'role': CHAT_ROLE_SYSTEM,
-            'content': f"Assistant, your role in this chat is '{self.bot_name}'; enter your next message below."
+
+            #'content': f"Assistant, your role in this chat is '{self.bot_name}'; enter your next message below.",
+                # This was my initial wording, but it seemed to cause some confusion.
+                
+            'content': f"{self.bot_name}, please enter your response below at the 'assistant' prompt:"
+                # The above wording was agreed upon by me & Turbo (model 'gpt-3.5-turbo').
         })
         # (The back-end language model will be prompted to respond by something like 
         # "assistant\n", which is why we need to make sure it knows that it's responding 
