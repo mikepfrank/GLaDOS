@@ -229,7 +229,8 @@ logmaster.configLogMaster(
     # We'll use this to delimit the start of each new message event in the AI's receptive field.
 #MESSAGE_DELIMITER = '🤍'    # A Unicode character. Gladys selected the white heart emoji.
 # We're temporarily trying a different delimiter that's less likely to appear in message text:
-MESSAGE_DELIMITER = ascii.RS   # A control character.  (ASCII RS = 0x1E, record separator.)
+MESSAGE_DELIMITER = chr(ascii.RS)   
+    # A control character.  (ASCII RS = 0x1E, record separator.)
 
 # Define the bot's name (used in a couple of places below).
 #BOT_NAME = 'Gladys'
