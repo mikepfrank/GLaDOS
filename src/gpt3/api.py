@@ -1449,7 +1449,7 @@ class Completion:
 
 			# This measures the length of the response in tokens, and updates
 			# the global record of API usage statistics accordingly.			
-			compl._accountForOutput(apiArgs['engine'], complStruct)
+			compl._accountForOutput(apiArgs['model'], complStruct)
 
 			# This updates the cost data and the human-readable table of API
 			# usage statistics, and saves the updated data to the _statsFile.
