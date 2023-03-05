@@ -1012,7 +1012,7 @@ class GPT3ChatAPIConfig(GPT3APIConfig):
 				presence_penalty  = {chatConf.presencePenalty}
 				frequency_penalty = {chatConf.frequencyPenalty}
 				messages          = {chatConf.messages}
-				logitBias         =	{chatConf.logitBias}
+				logitBias         = {chatConf.logitBias}
 				user              = {chatConf.user}"""[1:]	# [1:] removes the leading newline.
 		# NOTE: .stop is printed using repr() in order to show the 
 		# escape codes for any special characters.
