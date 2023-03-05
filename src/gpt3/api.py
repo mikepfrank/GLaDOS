@@ -2979,10 +2979,10 @@ def _displayStats():
 		#  if the contents start to overflow.
 
 		_statLine("")
-		_statLine("                 |         Token Counts          |")
-		_statLine("                 | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ |")
-		_statLine("Engine Name      |    Input |  Output |    Total |  USD Cost")
-		_statLine("================ | ======== | ======= | ======== | =========")
+		_statLine("                   |         Token Counts          |")
+		_statLine("                   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ |")
+		_statLine("Engine Name        |    Input |  Output |    Total |  USD Cost")
+		_statLine("================== | ======== | ======= | ======== | =========")
 		
 		# Cumulative input, output, and total token counts.
 		cumIn = cumOut = cumTot = 0
@@ -2990,7 +2990,7 @@ def _displayStats():
 		# Generate a table row for each engine.
 		for engine in _ENGINE_NAMES:
 			
-			engStr 	= "%16s" % engine
+			engStr 	= "%18s" % engine
 
 			inToks 	= _inputToks[engine]
 			outToks = _outputToks[engine]
@@ -3017,9 +3017,8 @@ def _displayStats():
 	
 		totStr = "$%8.4f" % _totalCost
 	
-		_statLine( "================ | ======== | ======= | ======== | =========")	
-		_statLine( "~~~~~~~~~~~~~~~~ | ~~~~~~~~ | ~~~~~~~ | ~~~~~~~~ | ~~~~~~~~~")
-		_statLine(f"TOTALS:          | {cumInStr} | {cumOutStr} | {cumTotStr} | {totStr}")
+		_statLine( "~~~~~~~~~~~~~~~~~~ | ~~~~~~~~ | ~~~~~~~ | ~~~~~~~~ | ~~~~~~~~~")
+		_statLine(f"TOTALS:            | {cumInStr} | {cumOutStr} | {cumTotStr} | {totStr}")
 		_statLine("")
 	
 	#__/ End with statement.
