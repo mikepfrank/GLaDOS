@@ -854,8 +854,8 @@ class Conversation:
                 # The above wording was agreed upon by me & Turbo (model 'gpt-3.5-turbo').
 
             # Trying this now:
-            'content': f"assistant, please now generate {self.bot_name}'s response in " + \
-                "this format: \"\\n{self.bot_name}:" + "{response}" + "\\n. Stay in character as {self.bot_name}, not as assistant.\n"
+            'content': f"Please now generate {self.bot_name}'s response. " + \
+                "Stay in character here as {self.bot_name}, not as assistant."
         })
         # (The back-end language model will be prompted to respond by something like 
         # "assistant\n", which is why we need to make sure it knows that it's responding 
