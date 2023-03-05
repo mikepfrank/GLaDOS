@@ -222,7 +222,8 @@ from	infrastructure.decorators	import	singleton
 			#  specific definitions we need from it. (This is a little cleaner 
 			#  stylistically than "from ... import *".)
 
-from	infrastructure.logmaster	import getComponentLogger, sysName
+from	infrastructure				import	logmaster	# For doDebug
+from	infrastructure.logmaster	import	getComponentLogger, sysName
 
 	# Go ahead and create or access the logger for this module.
 
@@ -1633,7 +1634,7 @@ class ChatMessages:
 			msgToks += _estimatedFormattingTokens
 
 			# This is too verbose for normal operation. Comment it out after testing.
-			if doDebug: _logger.debug(f"Message {msg} has {msgToks} tokens.")
+			if logmaster.doDebug: _logger.debug(f"Message {msg} has {msgToks} tokens.")
 
 			totalToks += msgToks
 
