@@ -3006,7 +3006,7 @@ def _displayStats():
 		_statLine("                   |         Token Counts          |")
 		_statLine("                   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ |")
 		_statLine("Engine Name        |    Input |  Output |    Total |  USD Cost")
-		_statLine("================== | ======== | ======= | ======== | =========")
+		_statLine("===================|==========|=========|==========|==========")
 		
 		# Cumulative input, output, and total token counts.
 		cumIn = cumOut = cumTot = 0
@@ -3041,7 +3041,7 @@ def _displayStats():
 	
 		totStr = "$%8.4f" % _totalCost
 	
-		_statLine( "~~~~~~~~~~~~~~~~~~ | ~~~~~~~~ | ~~~~~~~ | ~~~~~~~~ | ~~~~~~~~~")
+		_statLine( "~~~~~~~~~~~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~~")
 		_statLine(f"TOTALS:            | {cumInStr} | {cumOutStr} | {cumTotStr} | {totStr}")
 		_statLine("")
 	
