@@ -857,7 +857,7 @@ class Conversation:
             'content': f"Please now generate {self.bot_name}'s response. " \
                 "Stay in character here, method-acting as {self.bot_name}; " \
                 "do NOT respond as an assistant.  Please ONLY give " \
-                "{self.bot_name}'s literal response; do not bracket it with " \
+                f"{self.bot_name}'s literal response; do not bracket it with " \
                 "any other commentary or delimiters."
         })
         # (The back-end language model will be prompted to respond by something like 
