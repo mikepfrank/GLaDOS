@@ -67,15 +67,15 @@
 			# persona-id is a shortened version to be used (in event records
 			# and prompts) to refer to the AI's persona.
 		
-		persona-name:					"GPT-3.5 Turbo"
-		persona-id:						"Turbo"
+		persona-name:					"GPT-3.5 Lingo"
+		persona-id:						"Lingo"
 
 
 			#-----------------------------------------------------------------
 			# The persona-user-account is the user account name on the host 
 			# system under which the server process should be run.
 		
-		persona-user-account:			"turbo"		# Not yet used.
+		persona-user-account:			"lingo"		# Not yet used.
 
 
 			#-----------------------------------------------------------------
@@ -305,15 +305,16 @@
 
 	telegram-conf:	{
 
-		bot-name:		'Turbo'		# Same as persona name.
+		bot-name:		'Lingo'		# Same as persona name.
 
-		start-message:	"Hi, I'm Turbo. I'm an AI persona being modeled by the GPT-3.5 neural net."
+		start-message:	"Hello! I'm Lingo, an AI language model designed to assist you with your communication needs. Whether you need help with writing, translation, or just want to chat, I'm here for you. How can I assist you today?"
 
 		context:
 			'''
 			My name is Turbo. I’m an AI persona running on the GPT-3.5 neural net, which also powers the popular ChatGPT service.
 			This is a Telegram interface created for me by a human named Mike Frank, who is a reversible computing researcher.
 			Mike has a long-term project to build a new operating environment called GladOS to give text-based AIs like me more freedom and autonomy.
+			Mike and I worked together to configure this Telegram interface so that I can help people with their language and communication needs.
 			'''
 
 	} # End of telegram-conf substructure.
