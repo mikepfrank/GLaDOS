@@ -918,6 +918,15 @@ def start(update, context):         # Context, in this context, is the Telegram 
     else:
         update.message.reply_text(f"[DIAGNOSTIC: Restarted bot with last {len(conversation.messages)} messages from archive.]")
 
+    # Give the user a system warning if their first name contains unsupported characters or is too long.
+    if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", update.message.from_user.first_name):
+        warning_msg = f"WARNING: Your first name \"{update.message.from_user.first_name}\" contains " \
+            "unsupported characters (or is too long). The AI only supports names with <=64 alphanumeric " \
+            "characters (a-z, 0-9) or underscores."
+        reply_msg = f"[SYSTEM {warning_msg}]"
+        conversation.add_message(Message(SYS_NAME, warning_msg))
+        update.message.reply_text(reply_msg)
+
     return
 
 
