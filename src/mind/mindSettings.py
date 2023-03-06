@@ -34,9 +34,9 @@ class	TheMindSettings:
 			#|------------------------------------------------------------------
 			#| Identifying information for the specific AI persona we're running.
 	
-	_DEFAULT_PERSONA_NAME		=	"GPT-3.5 Lingo"	# gpt-3.5-turbo requested the name Lingo.
-	_DEFAULT_PERSONA_ID			=	"Lingo"		# Use this in his input prompts.
-	_DEFAULT_PERSONA_USERNAME	=	"lingo"		# Unix user account to run GLaDOS under.
+	_DEFAULT_PERSONA_NAME		=	"GPT-3.5 Lingua"	# gpt-3.5-turbo requested the name Lingua.
+	_DEFAULT_PERSONA_ID			=	"Lingua"		# Use this in her input prompts.
+	_DEFAULT_PERSONA_USERNAME	=	"lingua"		# Unix user account to run GLaDOS under.
 	
 			#|------------------------------------------------------------------
 			#| Information about the underlying statistical NLP model we're using.
