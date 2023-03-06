@@ -920,6 +920,7 @@ def start(update, context):         # Context, in this context, is the Telegram 
 
     # Give the user a system warning if their first name contains unsupported characters or is too long.
     if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", update.message.from_user.first_name):
+        _logger.warning(f"User {update.message.from_user.first_name} has an unsupported name.")
         warning_msg = f"WARNING: Your first name \"{update.message.from_user.first_name}\" contains " \
             "unsupported characters (or is too long). The AI only supports names with <=64 alphanumeric " \
             "characters (a-z, 0-9) or underscores."
