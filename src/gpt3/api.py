@@ -3153,7 +3153,7 @@ def _msg_tokens(msg:dict) -> int:
 	msgToks += _estimatedFormattingTokens
 
 	# This is too verbose for normal operation. Comment it out after testing.
-	if logmaster.doDebug: _logger.debug(f"Message {msg} has {msgToks} tokens.")
+	#if logmaster.doDebug: _logger.debug(f"Message {msg} has {msgToks} tokens.")
 
 	return msgToks
 
