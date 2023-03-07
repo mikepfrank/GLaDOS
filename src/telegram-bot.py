@@ -167,21 +167,27 @@ from    config.configuration    import  TheAIPersonaConfig
 
 from gpt3.api   import (        # A simple wrapper for the openai module, written by MPF.
 
+                #----------
                 # Globals:  (Note their values are copied into the local namespace.)
 
             CHAT_ROLE_SYSTEM,       # The name of the system's chat role.
             CHAT_ROLE_USER,         # The name of the user's chat role.
-            CHAT_ROLE_AI,           # The name of the AI's chat role.
+            #CHAT_ROLE_AI,           # The name of the AI's chat role. (Not yet used.)
 
+                #--------------
                 # Class names:
 
             #GPT3Core,       # This represents a specific "connection" to the core GPT-3 model.
             #Completion,     # Objects of this class represent a response from GPT-3.
+            ChatMessages,   
+                # Class for working with lists of chat messages for the chat API.
 
+                #--------------------
                 # Exception classes:
 
             PromptTooLargeException,     # Self-explanatory.
 
+                #-----------------
                 # Function names:
 
             createCoreConnection,   # Returns a GPT3Core object, which represents a specific
@@ -229,7 +235,7 @@ logmaster.configLogMaster(
     # We'll use this to delimit the start of each new message event in the AI's receptive field.
 #MESSAGE_DELIMITER = '🤍'    # A Unicode character. Gladys selected the white heart emoji.
 # We're temporarily trying a different delimiter that's less likely to appear in message text:
-MESSAGE_DELIMITER = chr(ascii.RS)   
+MESSAGE_DELIMITER = chr(ascii.RS)   # (Gladys agreed to try this.)
     # A control character.  (ASCII RS = 0x1E, record separator.)
 
 # Define the bot's name (used in a couple of places below).
@@ -332,19 +338,74 @@ ENGINE_NAME = aiconf.modelVersion
     #| The following code creates the connection to the core AI engine.
     #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-#gpt3core = GPT3Core(engineId=ENGINE_NAME, maxTokens=200, temperature=0.8,
-#                presPen = 0.8, freqPen = 1.2, stop=['\n' + MESSAGE_DELIMITER])
-	# NOTE: Really we should be getting the parameters from the AI config.
+global maxRetToks, minReplyWinToks
 
-#gpt3core = GPT3Core(engineId=ENGINE_NAME, maxTokens=200, temperature=temperature,
-#                presPen=presPen, freqPen=freqPen, stop=['\n' + MESSAGE_DELIMITER])
-#    # NOTE: The frequency penalty parameter is to try to prevent long outputs from becoming repetitive.
+maxRetToks       = TheAIPersonaConfig().maxReturnedTokens
+    # This gets the AI's persona's configured preference for the *maximum*
+    # number of tokens the back-end language model may return in a response.
+
+minReplyWinToks  = TheAIPersonaConfig().minReplyWinToks
+    # This gets the AI's persona's configured preference for the *minimum*
+    # number of tokens worth of space it should be given for its reply.
+
+# Configure the stop sequence appropriate for this application.
+stop_seq = ['\n' + MESSAGE_DELIMITER]
+    # NOTE: The stop parameter is used to tell the API to stop generating 
+    # tokens when it encounters the specified string(s). We set it to stop 
+    # when it encounters the message delimiter string at the start of a new 
+    # line, which is used (in the pre-chat GPT-3 API) to separate messages 
+    # in the conversation. This will prevent the AI from generating a 
+    # response that includes the message delimiter string, which could then 
+    # be followed by a hallucinated response from another user to the AI's 
+    # own response, which would be very confusing. 
+    # 
+    # However, a more sophisticated way to handle this would be to use no 
+    # stop sequence, and instead specifically check the output for the 
+    # prompt sequence
+    # 
+    #       '\n' <MESSAGE_DELIMITER> <USER_OR_AI_NAME> '>',
+    #  
+    # and if the AI predicts another message from itself, then we could go 
+    # ahead and process it as a separate Telegram message, so that the AI 
+    # is then generating a string of several output messages in a row 
+    # without needing additional prompting.  Whereas, if/when the AI tries 
+    # to predict a message from another user, then we could terminate its 
+    # output at that point and just ignore the rest.
+    #
+    # Another important remark is that in the new GPT-3 chat API, all this 
+    # is somewhat mooted, because prior messages in the conversation are 
+    # automatically included in the context for the AI's response with 
+    # suitable delimiters and new messages are cut off automatically, so 
+    # there is no need really to include our special delimiters in the stop 
+    # sequence, except to prevent the AI from hallucinating header block 
+    # subsections, which also use the same delimiter string.
+
+# Commented out the below because this logic is not really needed, due to 
+# the last couple of lines above.  But I'm leaving it here for now in case
+# we decide to prevent header-block hallucinations differently in the future. 
+
+# # Temporary hack here that breaks encapsulation a bit to allow us to set the
+# # stop sequence for the core connection object appropriately. Need to think
+# # about what would be a more elegant way to do this.
+# import api
+# if api._is_chat[ENGINE_NAME]:   # Is this engine using the new chat API?
+#     stop_seq = None     # Stops are handled automatically in the chat API.
+# else:
+#     stop_seq = ['\n' + MESSAGE_DELIMITER]
 
 # Instead of calling the GPT3Core constructor directly, we'll call the 
-# createCoreConnection() function to create the GPT3Core object. This selects 
-# the appropriate GPT3Core subclass based on the engine name.
-gpt3core = createCoreConnection(ENGINE_NAME, maxTokens=200, temperature=temperature,
-                presPen=presPen, freqPen=freqPen, stop=['\n' + MESSAGE_DELIMITER])
+# gpt3.api.createCoreConnection() function to create the GPT3Core object. 
+# This selects the appropriate GPT3Core subclass to instantiate based on 
+# the selected engine name. We also go ahead and configure important API 
+# parameters here.
+
+gpt3core = createCoreConnection(ENGINE_NAME, maxTokens=maxRetToks, 
+    temperature=temperature, presPen=presPen, freqPen=freqPen, 
+    stop=stop_seq)
+
+# NOTE: The presence penalty and frequency penalty parameters are here 
+# to try to prevent long outputs from becoming repetitive.
+
 
 # The following code will be used to display the current date/time to the AI, including the time zone.
 
@@ -802,24 +863,23 @@ class Conversation:
     # This method converts the persistent context and the list of messages
     # into the format of a 'messages' list as expected by the GPT-3 chat API.
     def get_chat_messages(self):
+
         """Convert the persistent context and the list of messages into the 
             format of a 'messages' list as expected by the GPT-3 chat API."""
         
         chat_messages = []      # Initialize the list of chat messages.
 
-        ## The first 'system' message in the list is the persistent context.
-        #initial_system_message_text = (
-        #    timeString() + "\n" +   # First line just shows the current time.
-        #    PERSISTENT_CONTEXT)     # We follow that with the persistent context.
-
         botName = self.bot_name
 
-        # Add the initial system messages to the list of chat messages.
+        # The first message will be a system message showing the current time.
         chat_messages.append({
             'role': CHAT_ROLE_SYSTEM,
             'content': "The current time is: " + timeString() + "."
         })
         
+        # The next message will show the persistent context header block.
+        # Note this header includes several subsections, delimited by
+        # record separators (ASCII code 30) and section headings.
         chat_messages.append({
             'role': CHAT_ROLE_SYSTEM,
             'content': "Attention, assistant: You are taking the role of a very " \
@@ -1081,18 +1141,32 @@ def process_message(update, context):
     # Add the message just received to the conversation.
     conversation.add_message(Message(update.message.from_user.first_name, update.message.text))
 
-    # If the currently selected engine is a chat engine, we'll dispatch the message to
-    # a different function.
+    # If the currently selected engine is a chat engine, we'll dispatch the rest
+    # of the message processing to a different function that's specialized to use 
+    # OpenAI's new chat API.
     if gpt3core.isChat:
         process_chat_message(update, context)
         return
 
-    # At this point, we need to query GPT-3 with the updated context and process its response.
-    # We do this inside a while loop, because we may need to retry the query if the response
-    # is a repeat of a message that the bot already sent earlier. Also, we use the outer loop
-    # to allow the AI to generate longer outputs by accumulating results from multiple queries.
-    # (However, we need to be careful in this process not to exceed the available space in the
-    # AI's receptive field.)
+    #/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    #|  At this point, we know that we're using a standard GPT-3 engine, and we 
+    #|  need to query the API with the updated context and process its response.
+    #|  We do this inside a while loop, because we may need to retry the query 
+    #|  if the response is empty or is a repeat of a message that the bot 
+    #|  already sent earlier. Also, we use the loop to allow the AI to generate 
+    #|  longer outputs by accumulating results from multiple queries. (However, 
+    #|  we need to be careful in this process not to exceed the available space
+    #|  the AI's receptive field.)
+    #|
+    #|  NOTE: At present, the below algorithm to allow the AI to extend its 
+    #|  response and generate longer outputs includes no limit on the length
+    #|  of the generated message until the point where it's the only message
+    #|  remaining on the receptive field. This may not be desirable, since the
+    #|  AI will lose all prior context in the conversation if it generates a
+    #|  sufficiently long message. Thus, we may want to add a limit on the 
+    #|  length of the generated message at some point in the future.
+    #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 
     # We'll need to keep track of whether we're extending an existing response or starting a new one.
     extending_response = False
@@ -1160,7 +1234,7 @@ def process_message(update, context):
         
             except RateLimitError:      # This normally indicates that our monthly quota was exceeded.
 
-                # We exceeded our OpenAI API quota. There isn't really anything we can
+                # We exceeded our OpenAI API quota or rate limit. There isn't really anything we can
                 # do here except send a diagnostic message to the user.
 
                 _logger.error("process_message(): OpenAI quota or rate limit exceeded.")
@@ -1424,10 +1498,76 @@ def process_chat_message(update, context):
         # Now we'll try actually calling the API.
         try:
 
+            # Calculate what value of the maxLength parameter to use; this 
+            # controls the size of the response window, i.e., the maximum
+            # length of the reponse returned by the core, in tokens. This
+            # is set to the available space in the context window, but 
+            # capped by the aiConf.maxReturnedTokens parameter (from the
+            # api-conf/max-returned-tokens element in glados-config.hjson
+            # or ai-config.hjson) and no less than the aiConf.minReplyWinToks
+            # parameter (from the mind-conf/min-replywin-toks element in
+            # ai-config.hjson).
+
+            # Figure out how much space is left in the context window currently.
+            # We'll do this by subtracting the length of the chat messages from 
+            # the context window size.
+
+            # Get the context window size from the gpt3core object.
+            contextWinSizeToks = gpt3core.fieldSize
+
+            # Get the length of the chat messages in tokens.
+            msgsSizeToks = ChatMessages(chat_messages).totalTokens
+
+            # Calculate the available space in the context window.
+            availSpaceToks = contextWinSizeToks - msgsSizeToks
+                # Note this is an estimate of the available space, because
+                # the actual space available may be less than this if the
+                # chat messages at the back end contain any additional 
+                # formatting tokens or extra undocumented fields.
+
+            # Remember: maxRetToks, minReplyWinToks were already
+            # retrieved from the aiConf object and stored in globals
+            # early in this module.
+
+            # Calculate the actual maximum length of the returned reponse
+            # in tokens, given all of our constraints above.
+            maxTokens = max(minReplyWinToks, min(maxRetToks, availSpaceToks))
+                # Explanation: maxTokens is the amount of space that will
+                # be made available to the AI core for its response. This
+                # should not be less than the AI's requested minimum reply
+                # window size, and should it not be more than either the
+                # maximum number of tokens that the AI is allowed to return, 
+                # or the amount of space that is actually available right now 
+                # in the AI's context window.
+
             # Get the response from GPT-3, as a ChatCompletion object.
-            chatCompletion = gpt3core.genChatCompletion(messages=chat_messages) # Call the API.
-                # Note that since we pass in an explicit messages list, this overrides
-                # whatever api.Messages object is being maintained in the GPT3ChatCore object.
+            chatCompletion = gpt3core.genChatCompletion(    # Call the API.
+                
+                maxTokens=maxTokens,    # Max. number of tokens to return.
+                    # We went to a lot of trouble to set this up properly above!
+
+                messages=chat_messages,     # Current message list for chat API.
+                    # Note that since we pass in an explicit messages list, this 
+                    # overrides whatever api.Messages object is being maintained 
+                    # in the GPT3ChatCore object.
+
+                minRepWin=minReplyWinToks   # Min. reply window size in tokens.
+                    # This parameter gets passed through to the ChatCompletion()
+                    # initializer and thence to ChatCompletion._createComplStruct(),
+                    # which does the actual work of retrieving the raw completion
+                    # structure from the OpenAI API. Note that this parameter is 
+                    # necessary because our computed maxTokens value may be greater
+                    # than the actual available space in the context window (either
+                    # because our estimate was wrong, or because we simply 
+                    # requested a minimum space larger than is available). In the 
+                    # latter case, getChatCompletion() should notice this & throw a 
+                    # PromptTooLargeException, which we'll catch below. If our 
+                    # estimate was wrong, then the actual reply window size could be
+                    # less than the minimum requested size, but as long as our 
+                    # estimates were pretty close, the difference will be small, and 
+                    # the AI should still be able to generate a reasonable response.
+
+            )
             response_text = chatCompletion.text
 
             break   # We got a response, so we can break out of the loop.
@@ -1440,10 +1580,10 @@ def process_chat_message(update, context):
             conversation.expunge_oldest_message()
                 # NOTE: If it succeeds, this modifies conversation.context_string.
 
-            # We've successfully expunged the oldest message.  We need to try again.
-            continue
+            # We've successfully expunged the oldest message.
+            continue    # Loop back and try again.
 
-        except RateLimitError:      # This normally indicates that our monthly quota was exceeded.
+        except RateLimitError:  # This also may indicate that our monthly quota was exceeded.
 
             # We exceeded our OpenAI API quota, or we've exceeded the rate limit 
             # for this model. There isn't really anything we can do here except 
