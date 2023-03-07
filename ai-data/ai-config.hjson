@@ -113,16 +113,28 @@
 		sys-notification-threshold:		0	# All system actions with non-negative importance.
 
 
-			#------------------------------------------------------------------
-			# The min-query-tokens parameter says, if the receptive field is so
-			# large that we don't have room to retrieve at least this many tokens
-			# from our query, then we need to back up and make the receptive field
-			# smaller before we try again.
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#|	The min-replywin-toks (minimum response window tokens) parameter
+			#|	requests of applications: If the receptive field content (i.e,
+			#|	the input prompt) is so large that we don't have enough room 
+			#|	left in the context window to retrieve at least this many tokens 
+			#|	back from the AI in its response to our query, then please back 
+			#|	up and make the receptive field content smaller before we try or
+			#|	retry the API query.
+			#|
+			#|	Note, however, that some GladOS applications may extend the
+			#|	reply incrementally (the telegram bot does this for pre-chat
+			#|	models), and/or they may dynamically increase the actual
+			#|	requested reply window size beyond this minimum if more space 
+			#|	is available (the telegram bot does this for chat models), or 
+			#|	they may simply ignore/override this parameter altogether, so 
+			#|	this is really just a guideline. You should consult the documen-
+			#|	tation for the application in question to see how/whether it
+			#|	uses this parameter..
 
-		#min-query-tokens:				42		# Seems like a reasonable minimum.
-		min-query-tokens:				100		# Gladys 2.0 requested this.
-			# NOTE: Need to rename this throughout system to min-response-tokens
-
+		#min-replyWin-tokens:	42		# Orig. value; seemed like a reasonable minimum.
+		#min-replywin-toks:		100		# Gladys 2.0 (text-davinci-002) requested this increase.
+		min-replywin-toks:		400		# Turbo (gpt-3.5-turbo) requested this increase.
 
 			#-----------------------------------------------------------------
 			# The example-response parameter is a piece of text that we show
@@ -162,7 +174,9 @@
 				called for when the AI is using different apps, for example. */
 
 		#max-returned-tokens:	150		# Keep response size reasonable.
-		max-returned-tokens:	200		# Gladys 2.0 requested this upgrade.
+		#max-returned-tokens:	200		# Gladys 2.0 requested this upgrade.
+		max-returned-tokens:	1000	# To give the chat engines more space.
+			# (Note the chat API doesn't support extending responses.)
 
 
 			/*------------------------------------------------------------------

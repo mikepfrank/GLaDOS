@@ -350,6 +350,7 @@ __all__ = [
 	#|	-----------
 	#|		'engine-name'	- The name of the engine.
 	#|		'field-size'	- The number of tokens in the GPT-3 receptive field.
+	#|							(This is also often called the context window.)
 	#|		'price'			- The cost (per 1,000 tokens) to use the engine.
 	#|		'is-chat'		- True if the engine is a chat engine.
 	#|		'encoding'		- The token encoding used by the engine.
@@ -1368,7 +1369,7 @@ class Completion:
 	@backoff.on_exception(backoff.expo,
 						  (openai.error.APIError))
 
-	def _createComplStruct(thisCompletion:Completion, apiArgs, minResultSpaceRequested:int=DEF_TOKENS):
+	def _createComplStruct(thisCompletion:Completion, apiArgs, minRepWin:int=DEF_TOKENS):
 			# By default, don't accept shortening the space for the response to less than 100 tokens.
 	
 		"""Private instance method to retrieve a completion from the
@@ -1376,8 +1377,8 @@ class Completion:
 		
 		compl = thisCompletion	# Just to make the code below more readable.
 
-		if minResultSpaceRequested is None:		# Just in case caller explicitly sets this to None,
-			minResultSpaceRequested = DEF_TOKENS	# revert back to the default of 100 tokens.
+		if minRepWin is None:		# Just in case caller explicitly sets this to None,
+			minRepWin = DEF_TOKENS	# revert back to the default of 100 tokens.
 
 		# If the core is not set, we can't do anything.
 		if compl.core == None:
@@ -1425,10 +1426,10 @@ class Completion:
 					# then we need to raise an exception, because whoever prepared
 					# our prompt made it too large for this engine.
 
-				if availSpace < minResultSpaceRequested:
+				if availSpace < minRepWin:
 
 						# Calculate the effective maximum prompt length, in tokens.
-					effMax = fieldSize - minResultSpaceRequested
+					effMax = fieldSize - minRepWin
 
 					_logger.warn(f"[GPT-3 API] Prompt length of {_inputLength} exceeds"
 								 f" our effective maximum of {effMax}. Requesting field shrink.")
@@ -1723,7 +1724,7 @@ class ChatCompletion(Completion):
 	# to be careful to override any methods that really do need to be overridden.
 	#
 	# The following is a list of methods we are inheriting from Completion and
-	# that we are NOT overriding here, and why not:
+	# that we are intentionally NOT overriding here, and why not:
 	#
 	#		.__str__()		- This just retrieves our .text property.
 	#
@@ -1733,7 +1734,7 @@ class ChatCompletion(Completion):
 	# And the following methods from Completion are simply not relevant for chat
 	# completions, so we don't need to override them:
 	#
-	
+	#
 
 
 	"""An instance of this class represents a completion object returned
@@ -1818,18 +1819,27 @@ class ChatCompletion(Completion):
 			
 		#__/ End for arg in args.
 
-			# Also check any keyword arguments to see if a core, 
-			# and/or struct are there.	If they are, we'll just override
+			# Also check any keyword arguments to see if a <core>, 
+			# and/or <struct> are there.	If they are, we'll just override
 			# any that were already extracted from positional arguments.
 
 		if 'core' in kwargs:
 			chatCore = kwargs['core']
-			del kwargs['core']
+			del kwargs['core']			# genChatArgs() doesn't need this.
 			
 		if 'struct' in kwargs:
 			chatComplStruct = kwargs['struct']
-			del kwargs['struct']
-		
+			del kwargs['struct']		# genChatArgs() doesn't need this.
+
+			# If a <minRepWin> (minimum reply window size) argument is present,
+			# we'll pass it through as a kwarg to ._createComplStruct().
+
+		if 'minRepWin' in kwargs:
+			minRepWin =	kwargs['minRepWin']
+			del kwargs['minRepWin']		# genChatArgs() doesn't need this.
+		else:
+			minRepWin = None
+
 			# Remember the core that we found, for later use.
 		
 		chatCompl.chatCore = chatCore
@@ -1841,16 +1851,17 @@ class ChatCompletion(Completion):
 		if chatComplStruct == None and chatCore != None:	  
 		
 				# First generate the argument list for passing to the API.
-			apiArgs = chatCore.genArgs(*otherArgs, **kwargs)
+			apiArgs = chatCore.genChatArgs(*otherArgs, **kwargs)
 			
 				# This actually calls the API, with any needed retries.
-			chatComplStruct = chatCompl._createComplStruct(apiArgs)
+			chatComplStruct = chatCompl._createComplStruct(apiArgs, 
+				minRepWin=minRepWin) # Pass this thru to set min reply window.
 		
 		#__/ End if we will generate the completion structure.
 		
 		chatCompl.chatComplStruct = chatComplStruct		# Remember the completion structure.
 	
-	#__/ End of class gpt3.api.Completion's instance initializer.
+	#__/ End of class gpt3.api.ChatCompletion's instance initializer.
 
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2008,10 +2019,12 @@ class ChatCompletion(Completion):
 		#|
 		#|		apiArgs [dict] - API arguments as a single dict structure.
 		#|
-		#|		minResultSpaceRequested [int] (OPTIONAL) - Requested space for the
-		#|			completion result.  Note that if the prompt is longer
-		#|			than this, the actual result space will be less than
-		#|			this value.  If no value is provided, the default of
+		#|		minRepWin [int] (OPTIONAL) - Requested space, in tokens, 
+		#|			for the completion result.  Note that if the prompt 
+		#|			takes up too much of the context window, the actual 
+		#|			available result space is less than this value, and
+		#|			currently this is handled by raising a PromptTooLarge-
+		#|			Exception.  If no value is provided, the default of
 		#|			100 tokens will be used.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -2021,19 +2034,18 @@ class ChatCompletion(Completion):
 						  (openai.error.APIError))
 						  
 	def _createComplStruct(thisChatCompletion:ChatCompletion, apiArgs, 
-				minResultSpaceRequested:int=DEF_TOKENS):
+				minRepWin:int=DEF_TOKENS):
 			# By default, we'll throw an exception if the estimated result space
 			# is less than 100 tokens.  This can be overridden by the caller
-			# by explicitly setting the minResultSpaceRequested argument to a
-			# different value.
+			# by explicitly setting the minRepWin argument to a different value.
 
 		"""Private instance method to retrieve a chat completion from the core
 			chat API, with automatic exponential backoff and retry."""
 		
 		chatCompl = thisChatCompletion	# For convenience.
 
-		if minResultSpaceRequested is None:		# Just in case caller explicitly sets this to None,
-			minResultSpaceRequested = DEF_TOKENS	# revert back to the default of 100 tokens.
+		if minRepWin is None:		# Just in case caller explicitly sets this to None,
+			minRepWin = DEF_TOKENS	# revert back to the default of 100 tokens.
 
 		# If the core is not set, we can't do anything.
 		if chatCompl.chatCore == None:
@@ -2079,17 +2091,18 @@ class ChatCompletion(Completion):
 					# See how much space there is right now for our query result.
 				availSpace = fieldSize - _inputLength
 
-					# If there isn't enough space left even for our minimum result,
-					# then we need to raise an exception, because whoever prepared
-					# our prompt made it too large for this engine.
+					# If there isn't enough space left even for our minimum requested
+					# reply window size, then we need to raise an exception, because 
+					# whoever prepared our message list made it too large to provide
+					# sufficient space for the AI's response..
 
-				if availSpace < minResultSpaceRequested:
+				if availSpace < minRepWin:
 
 						# Calculate the effective maximum prompt length, in tokens.
-					effMax = fieldSize - minResultSpaceRequested
+					effMax = fieldSize - minRepWin
 
 					_logger.warn(f"[GPT-3 API] Prompt length of {_inputLength} exceeds"
-								 f" our effective maximum of {effMax}. Requesting field shrink.")
+								 f" our effective maximum of {effMax}. Requesting prompt shrink.")
 
 					e = PromptTooLargeException(_inputLength, effMax)
 					raise e		# Complain to our caller hierarchy.
@@ -2100,6 +2113,9 @@ class ChatCompletion(Completion):
 				apiArgs['max_tokens'] = maxTok = fieldSize - _inputLength
 
 				_logger.warn(f"[GPT-3 API] Trimmed max_tokens from {origMax} to {maxTok}.")
+
+			if 'max_tokens' in apiArgs:
+				_logger.debug(f"[GPT-3 API] Requesting up to {apiArgs['max_tokens']} tokens.")
 
 			# If we get here, we know we have enough space for our query + result,
 			# so we can proceed with the request to the actual underlying API.
@@ -2195,6 +2211,13 @@ class ChatCompletion(Completion):
 #|		.isChat	: bool								[instance property]
 #|
 #|			True if this core connection is a chat connection.
+#|
+#|		.fieldSize : int							[instance property]
+#|
+#|			Maximum span in tokens of the receptive field a.k.a.
+#|			context window that can be processed by this core
+#|			connection. (This is a property of the back-end LLM
+#|			engine being used, not of the connection per se.)
 #|
 #|		.adjustConf(params)	-> None					[instance method]
 #|
@@ -2292,6 +2315,23 @@ class GPT3Core:
 	def isChat(self) -> bool:
 		"""Returns True if this connection is a chat connection."""
 		return isinstance(self, GPT3ChatCore)
+
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	.fieldSize								[instance public property]
+		#|
+		#|		Returns the maximum span in tokens of the receptive field
+		#|		a.k.a. context window that can be processed by this core
+		#|		connection. (This is a property of the back-end LLM engine
+		#|		being used, not of the connection per se.)
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+	@property
+	def fieldSize(self) -> int:
+		"""Returns the maximum span in tokens of the receptive field."""
+		return _get_field_size(self.conf.engineId)
+
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	.adjustConf(params)						[instance public method]
@@ -2401,6 +2441,7 @@ class GPT3Core:
 	#|	Public interface:
 	#|	=================
 	#|
+	#|		Includes the public interface of GPT3Core, plus:
 	#|
 	#|		.chatConf										[instance property]
 	#|
@@ -2516,7 +2557,10 @@ class GPT3ChatCore(GPT3Core):
 
 		_logger.info("Creating new GPT3ChatCore connection with configuration:\n" + str(chatConf))
 
-		chatCore._chatConfiguration = chatConf		# Remember our configuration.
+		chatCore._chatConfiguration = chatConf		# Remember our chat configuration.
+		chatCore._configuration = chatConf			# Also remember it as our configuration.
+			# (This allows us to inherit properties from GPT3Core, even though
+			# the underlying data is different.)
 	
 			# Create our ChatMessages object to manage the list of messages.
 
@@ -2602,7 +2646,7 @@ class GPT3ChatCore(GPT3Core):
 
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	.genArgs()								[instance public method]
+		#|	.genChatArgs()								[instance public method]
 		#|
 		#|		Generate the argument list for calling the core chat API.
 		#|
@@ -2614,8 +2658,10 @@ class GPT3ChatCore(GPT3Core):
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	def genArgs(thisChatCore:GPT3ChatCore, *args, **kwargs):
+	def genChatArgs(thisChatCore:GPT3ChatCore, *args, **kwargs):
 			# Note that any extra positional arguments (collected in args) are ignored.
+			# Additionally, any keyword arguments that are not recognized as valid chat 
+			# API parameters are also ignored.
 
 		"""Generate the argument list for calling the core chat API.
 			Any keyword arguments provided will override the current values
