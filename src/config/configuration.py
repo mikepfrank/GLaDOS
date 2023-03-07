@@ -883,7 +883,7 @@ class	TheAIPersonaConfig:
 				
 				.modelVersion [string]	- AI model version (e.g., 'davinci').
 				
-				.minQueryTokens [int]	- Minimum number of tokens worth of
+				.minReplyWinToks [int]	- Minimum number of tokens worth of
 											space to reserve for the AI's 
 											response to a single query.
 											(Default value is 42.)
@@ -1151,14 +1151,15 @@ class	TheAIPersonaConfig:
 			theAIConfig.sysNotifyThresh = 0
 
 			#--------------------------------------------------
-			# Extract the min-query-tokens parameter.
+			# Extract the min-replywin-toks parameter.
 
-		if 'min-query-tokens' in mindConf:
-			theAIConfig.minQueryTokens = minQueryTokens = mindConf['min-query-tokens']
+		if 'min-replywin-toks' in mindConf:
+			theAIConfig.minReplyWinToks = minReplyWinToks = mindConf['min-replywin-toks']
 			_logger.normal("    [Config/AI]     AI config:     The minimum size of "
-						   f"the response region is {minQueryTokens}.")
+						   f"the response region is {minReplyWinToks}.")
 		else:
-			theAIConfig.minQueryTokens = 42		# Default
+			theAIConfig.minReplyWinToks = 42		# Default
+
 
 			#--------------------------------------------------
 			# Extract the example-response parameter.
@@ -1175,7 +1176,7 @@ class	TheAIPersonaConfig:
 				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
 			#------------------------------------
-			# Extract the mind-conf record.
+			# Extract the api-conf record.
 		
 		if 'api-conf' in conf:
 			theAIConfig.apiConf = apiConf = conf['api-conf']
@@ -1193,69 +1194,116 @@ class	TheAIPersonaConfig:
 			theAIConfig.maxReturnedTokens = maxRetTok = apiConf['max-returned-tokens']
 			_logger.normal(f"    [Config/AI]     AI config:    max-returned-token = {maxRetTok}.")
 		else:
-			theAIConfig.maxReturnedTokens = None # No default value provided in config file.
+			theAIConfig.maxReturnedTokens = None
+				# No default value is being provided at AI configuration time.
 
 		if 'temperature' in apiConf:
 			theAIConfig.temperature = temper = apiConf['temperature']
 			_logger.normal(f"    [Config/AI]     AI config:    temperature = {temper}.")
 		else:
-			theAIConfig.temperature = None	# No default value provided in config file.
+			theAIConfig.temperature = None
+				# No default value is being provided at AI configuration time.
 
 		if 'top-p' in apiConf:
 			theAIConfig.topP = topP = apiConf['top-p']
 			_logger.normal(f"    [Config/AI]     AI config:    top-p = {topP}.")
 		else:
-			theAIConfig.topP = None	# No default value provided in config file.
+			theAIConfig.topP = None
+				# No default value is being provided at AI configuration time.
 
 		if 'n-completions' in apiConf:
 			theAIConfig.nCompletions = nCompl = apiConf['n-completions']
 			_logger.normal(f"    [Config/AI]     AI config:    n-completions = {nCompl}.")
-		else:
-			theAIConfig.nCompletions = None	# No default value provided in config file.
+		else:	# No default value was provided in config file.
+			theAIConfig.nCompletions = None
+				# No default value is being provided at AI configuration time.
 
 		if 'do-stream' in apiConf:
 			theAIConfig.doStream = doStr = apiConf['do-stream']
 			_logger.normal(f"    [Config/AI]     AI config:    do-stream = {doStr}.")
-		else:
-			theAIConfig.doStream = None	# No default value provided in config file.
+		else:	# No default value was provided in config file.
+			theAIConfig.doStream = None
+				# No default value is being provided at AI configuration time.
 
 		if 'log-probs' in apiConf:
 			theAIConfig.logProbs = logProbs = apiConf['log-probs']
 			_logger.normal(f"    [Config/AI]     AI config:    log-probs = {logProbs}.")
-		else:
-			theAIConfig.logProbs = None	# No default value provided in config file.
+		else:	# No default value was provided in config file.
+			theAIConfig.logProbs = None
+				# No default value is being provided at AI configuration time.
 
 		if 'do-echo' in apiConf:
 			theAIConfig.doEcho = doEcho = apiConf['do-echo']
 			_logger.normal(f"    [Config/AI]     AI config:    do-echo = {doEcho}.")
-		else:
-			theAIConfig.doEcho = None	# No default value provided in config file.
+		else:	# No default value was provided in config file.
+			theAIConfig.doEcho = None
+				# No default value is being provided at AI configuration time.
 
 		if 'stop-sequences' in apiConf:
 			theAIConfig.stopSequences = stopSeqs = apiConf['stop-sequences']
 			# NOTE: In the following line, we want to escape control characters before printing
 			# so we use repr() instead of str().
 			_logger.normal(f"    [Config/AI]     AI config:    stop-sequences = {repr(stopSeqs)}.")
-		else:
-			theAIConfig.stopSequences = None	# No default value provided in config file.
+		else:	# No default value was provided in config file.
+			theAIConfig.stopSequences = None
+				# No default value is being provided at AI configuration time.
 
 		if 'presence-penalty' in apiConf:
 			theAIConfig.presencePenalty = presPen = apiConf['presence-penalty']
 			_logger.normal(f"    [Config/AI]     AI config:    presence-penalty = {presPen}.")
-		else:
-			theAIConfig.presencePenalty = None	# No default value provided in config file.
+		else:	# No default value was provided in config file.
+			theAIConfig.presencePenalty = None
+				# No default value is being provided at AI configuration time.
 
 		if 'frequency-penalty' in apiConf:
 			theAIConfig.frequencyPenalty = freqPen = apiConf['frequency-penalty']
 			_logger.normal(f"    [Config/AI]     AI config:    frequency-penalty = {freqPen}.")
-		else:
-			theAIConfig.frequencyPenalty = None	# No default value provided in config file.
+		else:	# No default value was provided in config file.
+			theAIConfig.frequencyPenalty = None
+				# No default value is being provided at AI configuration time.
 
 		if 'best-of' in apiConf:
 			theAIConfig.bestOf = bestOf = apiConf['best-of']
 			_logger.normal(f"    [Config/AI]     AI config:    best-of = {bestOf}.")
-		else:
-			theAIConfig.bestOf = None	# No default value provided in config file.
+		else:	# No default value was provided in config file.
+			theAIConfig.bestOf = None
+				# No default value is being provided at AI configuration time.
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| NOTE: Configuration of the following parameters (for the chat API) is 
+		#| not currently supported in this module, but may be added in the future.
+		#|
+		#|		.messages								[list of dictionaries]
+		#|
+		#|			A list of messages to send to the AI.  Each message is a
+		#|			dictionary with the following fields:
+		#|
+		#|				.role											[string]
+		#|
+		#|					The role of the message sender.  Must be one of
+		#|					'system', 'user', or 'assistant'.
+		#|
+		#|				.name (optional)								[string]
+		#|
+		#|					The name of the message sender.  (If provided, it
+		#|					overrides .role in the back-end infrastructure.)
+		#|
+		#|				.content										[string]
+		#|
+		#|					The message content.
+		#|
+		#|
+		#|		.logitBias											[dictionary]
+		#|
+		#|			Map from token IDs to biases from -100 to 100;
+		#|			affects generation probabilities.
+		#|
+		#|		.user													[string]
+		#|
+		#|			A unique ID representing the end-user of the
+		#|			application.  Used by OpenAI for enforcement.
+		#|
+		#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 				#|======================================
