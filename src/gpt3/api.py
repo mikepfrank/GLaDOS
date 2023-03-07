@@ -2091,9 +2091,10 @@ class ChatCompletion(Completion):
 					# See how much space there is right now for our query result.
 				availSpace = fieldSize - _inputLength
 
-					# If there isn't enough space left even for our minimum result,
-					# then we need to raise an exception, because whoever prepared
-					# our prompt made it too large for this engine.
+					# If there isn't enough space left even for our minimum requested
+					# reply window size, then we need to raise an exception, because 
+					# whoever prepared our message list made it too large to provide
+					# sufficient space for the AI's response..
 
 				if availSpace < minRepWin:
 
@@ -2101,7 +2102,7 @@ class ChatCompletion(Completion):
 					effMax = fieldSize - minRepWin
 
 					_logger.warn(f"[GPT-3 API] Prompt length of {_inputLength} exceeds"
-								 f" our effective maximum of {effMax}. Requesting field shrink.")
+								 f" our effective maximum of {effMax}. Requesting prompt shrink.")
 
 					e = PromptTooLargeException(_inputLength, effMax)
 					raise e		# Complain to our caller hierarchy.
@@ -2112,6 +2113,9 @@ class ChatCompletion(Completion):
 				apiArgs['max_tokens'] = maxTok = fieldSize - _inputLength
 
 				_logger.warn(f"[GPT-3 API] Trimmed max_tokens from {origMax} to {maxTok}.")
+
+			if 'max_tokens' in apiArgs:
+				_logger.debug(f"[GPT-3 API] Requesting up to {apiArgs['max_tokens']} tokens.")
 
 			# If we get here, we know we have enough space for our query + result,
 			# so we can proceed with the request to the actual underlying API.
