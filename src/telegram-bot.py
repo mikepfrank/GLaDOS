@@ -320,6 +320,9 @@ AI_PROMPT = f'\n{MESSAGE_DELIMITER} {BOT_NAME}>'
 # within which we'll exclude messages in that region from being repeated by the AI.
 NOREPEAT_WINDOW_SIZE = 10
 
+#conf = TheConfiguration()      
+# # Commented out b/c we don't need any general GladOS parameters yet for this application.
+
 # Initialize & retrieve the AI persona configuration object.
 aiconf = TheAIPersonaConfig()
 
