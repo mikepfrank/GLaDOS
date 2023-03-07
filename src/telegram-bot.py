@@ -1540,6 +1540,8 @@ def process_chat_message(update, context):
                 # or the amount of space that is actually available right now 
                 # in the AI's context window.
 
+            _logger.debug(f"process_chat_message(): maxTokens = {maxTokens}, minReplyWinToks = {minReplyWinToks}, maxRetToks = {maxRetToks}, availSpaceToks = {availSpaceToks}")
+
             # Get the response from GPT-3, as a ChatCompletion object.
             chatCompletion = gpt3core.genChatCompletion(    # Call the API.
                 
