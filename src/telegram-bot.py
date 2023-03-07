@@ -1516,7 +1516,7 @@ def process_chat_message(update, context):
             contextWinSizeToks = gpt3core.fieldSize
 
             # Get the length of the chat messages in tokens.
-            msgsSizeToks = ChatMessages(chat_messages).totalTokens
+            msgsSizeToks = ChatMessages(chat_messages).totalTokens()
 
             # Calculate the available space in the context window.
             availSpaceToks = contextWinSizeToks - msgsSizeToks
