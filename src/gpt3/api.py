@@ -1622,7 +1622,7 @@ class ChatMessages:
 				# This function counts the number of tokens in the message.
 
 				# This is too verbose for normal operation. Comment it out after testing.
-			if logmaster.doDebug: _logger.debug(f"Message {msg} has {msgToks} tokens.")
+			#if logmaster.doDebug: _logger.debug(f"Message {msg} has {msgToks} tokens.")
 
 			totalToks += msgToks
 			
