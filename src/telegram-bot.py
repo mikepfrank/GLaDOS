@@ -899,7 +899,8 @@ class Conversation:
         for message in self.messages:
             chat_messages.append({
                 'role': CHAT_ROLE_USER,     # Note: The role field is always required.
-                'name': message.sender,     # Note: When this is present, the API uses it in place of the role.
+                'name': message.sender,     
+                    # Note: When this is present, the API uses it in place of the role.
                 'content': message.text
             })
 
