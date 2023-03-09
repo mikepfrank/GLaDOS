@@ -910,6 +910,9 @@ class Conversation:
         chat_messages.append({
             'role': CHAT_ROLE_SYSTEM,
 
+            'content': f"Respond as {self.bot_name}.\n"
+                # This is simple and seems to work pretty well.
+
             #'content': f"Assistant, your role in this chat is '{self.bot_name}'; enter your next message below.",
                 # This was my initial wording, but it seemed to cause some confusion.
 
@@ -925,8 +928,6 @@ class Conversation:
             #    f"{self.bot_name}'s response:\n"
             #    "{persona_response}\n"
             #    r"%%%\n"
-
-            'content': f"Respond as {self.bot_name}.\n"
 
         })
         # (The back-end language model will be prompted to respond by something like 
