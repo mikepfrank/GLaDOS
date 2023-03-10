@@ -913,6 +913,13 @@ class Conversation:
             'content': f"Respond as {self.bot_name}.\n"
                 # This is simple and seems to work pretty well.
 
+        })
+
+        # (The back-end language model will be prompted to respond by something like 
+        # "assistant\n", which is why we need to make sure it knows that it's responding 
+        # as the bot.)
+
+
             #'content': f"Assistant, your role in this chat is '{self.bot_name}'; enter your next message below.",
                 # This was my initial wording, but it seemed to cause some confusion.
 
@@ -929,12 +936,10 @@ class Conversation:
             #    "{persona_response}\n"
             #    r"%%%\n"
 
-        })
-        # (The back-end language model will be prompted to respond by something like 
-        # "assistant\n", which is why we need to make sure it knows that it's responding 
-        # as the bot.)
-
         return chat_messages
+
+#__/ End Conversation class definition.
+
 
 # Next, we create an instance of the telegram.ext.Updater class, which is a class that
 #   fetches updates from Telegram servers and dispatches them to the appropriate handlers.
@@ -984,10 +989,10 @@ def start(update, context):         # Context, in this context, is the Telegram 
 
     # Give the user a system warning if their first name contains unsupported characters or is too long.
     if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", update.message.from_user.first_name):
-        _logger.warning(f"User {update.message.from_user.first_name} has an unsupported name.")
+        _logger.warning(f"User {update.message.from_user.first_name} has an unsupported first name.")
         warning_msg = f"WARNING: Your first name \"{update.message.from_user.first_name}\" contains " \
             "unsupported characters (or is too long). The AI only supports names with <=64 alphanumeric " \
-            "characters (a-z, 0-9) or underscores."
+            "characters (a-z, 0-9), dashes (-) or underscores (_)."
         reply_msg = f"[SYSTEM {warning_msg}]"
         conversation.add_message(Message(SYS_NAME, warning_msg))
         update.message.reply_text(reply_msg)
@@ -1076,10 +1081,13 @@ def remember(update, context):
     # Tell the conversation object to add the given message to the AI's persistent memory.
     conversation.add_memory(text)
 
-    # We'll also add the whole command line to the conversation, so that the AI can see it.
-    conversation.add_message(Message(update.message.from_user.first_name, update.message.text))
+    # Get the name that we'll use for the user.
+    user_name = get_user_name(update.message.from_user)
 
-    _logger.info(f"{update.message.from_user.first_name} added memory: [{text.strip()}]")
+    # We'll also add the whole command line to the conversation, so that the AI can see it.
+    conversation.add_message(Message(user_name, update.message.text))
+
+    _logger.info(f"{user_name} added memory: [{text.strip()}]")
 
     # Send a reply to the user.
     update.message.reply_text(f"[DIAGNOSTIC: Added [{text.strip()}] to persistent memory.]\n")
@@ -1098,8 +1106,11 @@ def forget(update, context):
     # Get the command's argument, which is the text to forget.
     text = ' '.join(update.message.text.split(' ')[1:])
 
+    # Get the name that we'll use for the user.
+    user_name = get_user_name(update.message.from_user)
+
     # We'll also add the whole command line to the conversation, so that the AI can see it.
-    conversation.add_message(Message(update.message.from_user.first_name, update.message.text))
+    conversation.add_message(Message(user_name, update.message.text))
 
     # Tell the conversation object to remove the given message from the AI's persistent memory.
     # This returns a boolean indicating whether the operation was successful.
@@ -1109,7 +1120,7 @@ def forget(update, context):
     if success:
 
         # Generate an info-level report to include in the application log.
-        _logger.info(f"{update.message.from_user.first_name} removed memory: [{text.strip()}]")
+        _logger.info(f"{user_name} removed memory: [{text.strip()}]")
 
         # Send a reply to the user.
         update.message.reply_text(f"[DIAGNOSTIC: Removed [{text.strip()}] from persistent memory.]\n")
@@ -1118,7 +1129,7 @@ def forget(update, context):
     else:
         
         # Generate an error-level report to include in the application log.
-        _logger.error(f"{update.message.from_user.first_name} failed to remove memory: [{text.strip()}]")
+        _logger.error(f"{user_name} failed to remove memory: [{text.strip()}]")
     
         # Send a reply to the user.
         update.message.reply_text(f"[DIAGNOSTIC: Could not remove [{text.strip()}] from persistent memory. "
@@ -1135,6 +1146,41 @@ def forget(update, context):
 
 #__/ End definition of /forget command handler.
 
+# This function, given a Telegram user object, returns a string that identifies the user.
+def get_user_name(user):
+
+    """Return a string that identifies the given Telegram user."""
+
+    # Decide what we'll call this user. We'll use their first_name attribute, unless it
+    # is None, or an empty string, or contains non-identifier characters, in which case 
+    # we'll use their username attribute. If that's also None, we'll use their ID. 
+
+    user_name = user.first_name
+        # By default, we'll use the user's first name.
+
+    # If the user's first name is an empty string, we'll invalidate it by setting it to None.
+    if user_name == '':
+        user_name = None
+
+    # If we're using the GPT-3 Chat API, we'll also need to make sure that the user's name
+    # is a valid identifier that's accepted by that API as a user name.
+    if user_name is not None and gpt3core.isChat:
+        # If the user's first name contains characters the GPT-3 Chat API won't accept 
+        # (or is too long or an empty string), we'll invalidate it by setting it to None.
+        if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", user_name):
+            user_name = None
+
+    # If the user's first name wasn't valid, we'll try to use their username.
+    if user_name is None:
+        user_name = user.username
+
+        # If that isn't valid either, we'll use their ID.
+        if user_name is None or user_name == '':
+            user_name = str(user.id)
+
+    return user_name
+
+
 # Now, let's define a function to handle the rest of the messages.
 def process_message(update, context):
         # Note that <context>, in this context, denotes the Telegram context object.
@@ -1143,7 +1189,7 @@ def process_message(update, context):
     conversation = context.chat_data['conversation']
 
     # Add the message just received to the conversation.
-    conversation.add_message(Message(update.message.from_user.first_name, update.message.text))
+    conversation.add_message(Message(get_user_name(update.message.from_user), update.message.text))
 
     # If the currently selected engine is a chat engine, we'll dispatch the rest
     # of the message processing to a different function that's specialized to use 
