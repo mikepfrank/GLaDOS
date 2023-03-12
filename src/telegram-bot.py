@@ -605,6 +605,7 @@ class Conversation:
 			# Update the conversation's context string.
 			self.expand_context()
 
+
 	# This method reads the AI's persistent memories from the persistent memory file, if it exists.
 	def read_memory(self):
 
@@ -916,7 +917,8 @@ class Conversation:
 		for message in self.messages:
 			chat_messages.append({
 				'role': CHAT_ROLE_USER,		# Note: The role field is always required.
-				'name': message.sender,		# Note: When this is present, the API uses it in place of the role.
+				'name': message.sender,		
+					# Note: When this is present, the API uses it in place of the role.
 				'content': message.text
 			})
 
@@ -929,7 +931,6 @@ class Conversation:
 
 			'content': f"Respond as {self.bot_name}.\n"
 				# This is simple and seems to work pretty well.
-
 		})
 
 		# (The back-end language model will be prompted to respond by something like 
@@ -979,6 +980,9 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 	"""Start the conversation."""
 
 	chat_id = update.message.chat.id
+
+	# Make sure the thread component is set to this application (for logging).
+	logmaster.setComponent(_appName)
 
 	# Assume we're in a thread associated with a conversation.
 	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
