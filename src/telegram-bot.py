@@ -960,8 +960,8 @@ def start(update, context):         # Context, in this context, is the Telegram 
 
     chat_id = update.message.chat.id
 
-	# Make sure the thread component is set to this application (for logging).
-	logmaster.setComponent(_appName)
+    # Make sure the thread component is set to this application (for logging).
+    logmaster.setComponent(_appName)
 
     # Assume we're in a thread associated with a conversation.
     # Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
