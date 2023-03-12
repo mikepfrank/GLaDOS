@@ -1067,6 +1067,14 @@ def reset(update, context):
 	#START_MESSAGE = globals()['START_MESSAGE']
 
 	chat_id = update.message.chat.id
+
+	# Make sure the thread component is set to this application (for logging).
+	logmaster.setComponent(_appName)
+
+	# Assume we're in a thread associated with a conversation.
+	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
+	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
+
 	conversation = context.chat_data['conversation']
 
 	# Print diagnostic information.
@@ -1094,6 +1102,15 @@ def reset(update, context):
 def remember(update, context):
 
 	"""Add the given message as a new memory."""
+
+	chat_id = update.message.chat.id
+
+	# Make sure the thread component is set to this application (for logging).
+	logmaster.setComponent(_appName)
+
+	# Assume we're in a thread associated with a conversation.
+	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
+	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Retrieve the Conversation object from the Telegram context.
 	conversation = context.chat_data['conversation']
@@ -1123,6 +1140,15 @@ def forget(update, context):
 	
 	"""Remove the given message from the AI's persistent memory."""
 	
+	chat_id = update.message.chat.id
+
+	# Make sure the thread component is set to this application (for logging).
+	logmaster.setComponent(_appName)
+
+	# Assume we're in a thread associated with a conversation.
+	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
+	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
+
 	# Retrieve the Conversation object from the Telegram context.
 	conversation = context.chat_data['conversation']
 
@@ -1209,7 +1235,16 @@ def get_user_name(user):
 def process_message(update, context):
 		# Note that <context>, in this context, denotes the Telegram context object.
 	"""Process a message."""
-	#chat_id = update.message.chat.id
+
+	chat_id = update.message.chat.id
+
+	# Make sure the thread component is set to this application (for logging).
+	logmaster.setComponent(_appName)
+
+	# Assume we're in a thread associated with a conversation.
+	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
+	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
+
 	conversation = context.chat_data['conversation']
 
 	# Add the message just received to the conversation.
