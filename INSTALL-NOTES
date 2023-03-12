@@ -27,5 +27,5 @@ to have previously been installed:
 
 
 ALSO NOTE: You have to install a GPT-2 directory tree (except model weights) to use the tokenizer; see instructions in src/tokenizer/README.md
-
+    ^-- Except we are in the process of migrating away from this to use tiktoken.
 
