@@ -433,6 +433,7 @@ def timeString():
 
 	return timeStr
 
+
 # First, let's define a class for messages that remembers the message sender and the message text.
 class Message:
 	"""Instances of this class store the message sender and the message text
@@ -500,10 +501,15 @@ class Message:
 
 		# Return the message object.
 		return Message(sender, text)	# Q: Is the class name in scope here? A: Yes.
+	
+	#__/ End of message.deserialize() instance method definition.
 
 	# Don't know if we'll need this yet.
 	def __repr__(self):
 		return f"{self.sender}> {self.text}"
+	
+#__/ End of Message class definition.
+
 
 # Exception class to represent an error in the conversation.
 class ConversationError(Exception):
@@ -512,6 +518,7 @@ class ConversationError(Exception):
 		self.message = message
 	def __str__(self):
 		return self.message
+
 
 global _anyMemories
 _anyMemories = False
@@ -555,6 +562,9 @@ class Conversation:
 		# Also open the persistent memory file for appending.
 		self.memory_file = open(self.mem_filename, 'a')
 
+	#__/ End of conversation instance initializer.
+
+
 	# This method adds the messages in the conversation to the context string.
 	def expand_context(self):
 
@@ -569,6 +579,7 @@ class Conversation:
 		self.context_string += PERSISTENT_CONTEXT + '\n'.join([str(m) for m in self.messages])
 			# Join the messages into a single string, with a newline between each.
 			# Add the persistent context to the beginning of the string.
+
 
 	# This method reads recent messages from the conversation archive file, if it exists.
 	def read_archive(self):
@@ -593,6 +604,7 @@ class Conversation:
 
 			# Update the conversation's context string.
 			self.expand_context()
+
 
 	# This method reads the AI's persistent memories from the persistent memory file, if it exists.
 	def read_memory(self):
@@ -783,6 +795,7 @@ class Conversation:
 		self.messages.pop(0)
 		self.expand_context()	# Update the context string.
 
+
 	def add_message(self, message, finalize=True):
 		"""Add a message to the conversation."""
 		self.messages.append(message)
@@ -795,6 +808,7 @@ class Conversation:
 		# append the message to the conversation archive file.
 		if finalize:
 			self.finalize_message(message)
+
 
 	# Extend a (non-finalized) message by appending some extra text onto the end of it.
 	# NOTE: This should only be called on the last message in the conversation.
@@ -810,6 +824,7 @@ class Conversation:
 
 		# We also need to update the context string.
 		self.context_string += extra_text
+
 
 	# This method deletes the last message the end of the conversation.
 	# (This is normally only done if the message is empty, since Telegram
@@ -827,16 +842,19 @@ class Conversation:
 		# We also need to update the context string.
 		self.expand_context()	# Update the context string.
 
+
 	def finalize_message(self, message):
 		"""Finalize a message in the conversation (should be the last message)."""
 		if not message.archived:
 			self.archive_message(message)
+
 
 	def archive_message(self, message):
 		"""Add a message to the conversation, and archive it."""
 		self.archive_file.write(message.serialize())
 		self.archive_file.flush()
 		message.archived = True
+
 
 	# The following method clears the entire conversational memory.
 	# However, it does not erase the archive file or clear the 
@@ -899,7 +917,8 @@ class Conversation:
 		for message in self.messages:
 			chat_messages.append({
 				'role': CHAT_ROLE_USER,		# Note: The role field is always required.
-				'name': message.sender,		# Note: When this is present, the API uses it in place of the role.
+				'name': message.sender,		
+					# Note: When this is present, the API uses it in place of the role.
 				'content': message.text
 			})
 
@@ -912,7 +931,6 @@ class Conversation:
 
 			'content': f"Respond as {self.bot_name}.\n"
 				# This is simple and seems to work pretty well.
-
 		})
 
 		# (The back-end language model will be prompted to respond by something like 
@@ -937,6 +955,8 @@ class Conversation:
 			#	 r"%%%\n"
 
 		return chat_messages
+	
+	#__/ End conversation.get_chat_messages() instance method definition.
 
 #__/ End Conversation class definition.
 
@@ -1001,6 +1021,8 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 		update.message.reply_text(reply_msg)
 
 	return
+
+#__/ End start() function definition.
 
 
 # Below is the help string for the bot. (Displayed when '/help' is typed in the chat.)
@@ -1076,6 +1098,8 @@ def reset(update, context):
 
 	# Also record the initial message in our conversation data structure.
 	conversation.add_message(Message(conversation.bot_name, reset_message))
+
+#__/ End definition of reset() function.
 
 
 # Now, let's define a function to handle the /remember command.
@@ -1174,6 +1198,7 @@ def forget(update, context):
 	#		 update.message.reply_text(f"\t{memory}\n")
 
 #__/ End definition of /forget command handler.
+
 
 # This function, given a Telegram user object, returns a string that identifies the user.
 def get_user_name(user):
