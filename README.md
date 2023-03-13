@@ -12,7 +12,7 @@ There are also development branches for various experimental AI personas; some o
 
 The following development branches are in relatively good shape, in the sense that, they are relatively clean branches off of master. However, they may or may not be in a working state at any given moment. It's best to check the branch log to get an idea of the current status.
 
- - ``gladys`` -- The original GPT-3/davinci persona. [Generally this one should be kept in sync with master.]
+ - ``gladys`` -- The original GPT-3/davinci:2020-05-03 persona. [Generally this one should be kept in sync with master.] **NOTE: OpenAI has been updating the "davinci" model, it no longer refers to the original davinci.**
  - ``curie`` -- Curie is a GPT-3/curie persona. [Currently we only use this for her Telegram bot.]
  - ``love`` -- Love is a GPT-3/text-davinci-001 persona; not currently in use.
  - ``dante-dev`` -- Dante is a GPT-3/text-davinci-002 persona. [Includes codebase changes.]
