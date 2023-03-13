@@ -189,10 +189,12 @@ logmaster.configLogMaster(
         component   = _appName,     # Name of the system component being logged.
         role        = 'bot',        # Sets the main thread's role string to 'bot'.
         consdebug   = False,        # Turn off full debug logging on the console.
-        #consinfo    = True,         # Turn on info-level logging on the console.
-        consinfo    = False,        # Turn off info-level logging on the console.
-        #logdebug    = True          # Turn on full debug logging in the log file.
-        logdebug    = False         # Turn off full debug logging in the log file.
+
+        consinfo    = True,         # Turn on info-level logging on the console.
+        #consinfo    = False,        # Turn off info-level logging on the console.
+
+        logdebug    = True          # Turn on full debug logging in the log file.
+        #logdebug    = False         # Turn off full debug logging in the log file.
     )
 # NOTE: Debug logging is currently turned off to save disk space.
 
