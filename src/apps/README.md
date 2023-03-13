@@ -22,12 +22,13 @@ roughly in the intended order of implementation.
 	1/17/'21.
 
 3. **Goals** - This is a simple tool to allow the A.I. to view and
-	edit its list of high-level goals. **[Not yet implemented.]**
+	edit its list of high-level goals.  The implementation of this 
+	app was completed on 2/14/'22.
 	
 4. **Help** - The "Help" tool simply displays some basic information 
 	about how to use GLaDOS (for the A.I.'s benefit).  (Subcommands
 	also exist to provide more detailed help information.)
-	**[Not yet implemented.]**
+	**[Not fully implemented.]**
 	
 5. **Apps** - The "Apps" tool simply displays the list of all of the 
 	available apps and allows the A.I. to select one to launch. (This

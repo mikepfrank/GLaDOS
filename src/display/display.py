@@ -111,7 +111,10 @@ __all__ = [		# List of all public names exported from this module.
 
 from threading 	import RLock		# Reentrant locks for concurrency control.  Used in theDisplay.__init__().
 from time		import sleep		# Causes thread to give up control for a period.  Used in theDisplay.do1iteration().
-from os			import path 		# Manipulate filesystem path strings.  Used in logger setup.
+from os			import (
+		environ,	# Get environment variables.  Used in theDisplay.__init__().
+		path 		# Manipulate filesystem path strings.  Used in logger setup.
+	)
 
 
 		#|======================================================================
@@ -1454,6 +1457,17 @@ class TheDisplay:
 			#----------------------------------------------------------
 			# Now we potentially need to resize the window structures
 			# within curses, if the terminal size has actually changed.
+		
+			# First, make sure environment variables LINES, COLUMNS aren't
+			# set (and unset them if they are).
+
+		if 'LINES' in environ:
+			del environ['LINES']
+		if 'COLUMNS' in environ:
+			del environ['COLUMNS']
+
+			# Now, if the terminal size has actually changed, resize
+			# the curses window structures.
 
 		_logger.debug(f"display._resize(): Resizing terminal to {(height,width)}.")
 		resizeterm(height, width)
@@ -1461,6 +1475,7 @@ class TheDisplay:
 			# size in curses.{LINES,COLS}; note that this *only* works right
 			# if the environment variables LINES, COLUMNS are not set!  So
 			# e.g., if you ever call update_lines_cols(), this will break.
+			# (Although this may now be fixed by the above code.)
 
 		#/----------------------------------------------------------------------
 		#| At this point, it would be nice if we could just handle the resize
