@@ -1032,9 +1032,9 @@ def process_message(update, context):
                 # We exceeded our OpenAI API quota. There isn't really anything we can
                 # do here except send a diagnostic message to the user.
 
-                _logger.error("process_message(): OpenAI quota exceeded.")
+                _logger.error("process_message(): OpenAI quota or rate limit exceeded.")
 
-                update.message.reply_text("[DIAGNOSTIC: Out of monthly quota for AI service.]")
+                update.message.reply_text("[DIAGNOSTIC: Out of monthly quota for AI service, or rate limit exceeded. Please try again later.]")
                 
                 return  # That's all she wrote.
 
