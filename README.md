@@ -76,7 +76,7 @@ the Python 3 version of pip.
 
 Currently this just has a single default rule which runs the test-server.sh script.
 
-### Models JSON file ([`models.json`](models.json "models.json file")
+### Models JSON file ([`models.json`](models.json "models.json file"))
 
 This file just is here for the developer's convenience; it simply shows the output of the command
 
