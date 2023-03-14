@@ -72,6 +72,19 @@ the repo) are to `pip install` several packages: `openai`, `backoff`,
 `hjson`, and `python-dateutil`.  Please make sure that you are using
 the Python 3 version of pip.
 
+### Makefile ([`makefile`](makefile "makefile"))
+
+Currently this just has a single default rule which runs the test-server.sh script.
+
+### Models JSON file ([`models.json`](models.json "models.json file")
+
+This file just is here for the developer's convenience; it simply shows the output of the command
+
+    curl https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY" > models.json
+
+at the time that this file was last updated. (Assuming that the user's OpenAI API key is in the
+`OPENAI_API_KEY` environment variable.)
+
 ### Top-Level README File (`README.md`)
 
 This is the very README file that you are reading now, in GitHub's
