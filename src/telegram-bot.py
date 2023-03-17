@@ -1033,8 +1033,17 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 
 
 # Below is the help string for the bot. (Displayed when '/help' is typed in the chat.)
+
+# First calculate the model family, which is mentioned in the help string. 
+# This is "GPT-3" unless the engine name starts with "gpt-4", in which case 
+# it's "GPT-4".
+if ENGINE_NAME.startswith("gpt-4"):
+	MODEL_FAMILY = "GPT-4"
+else:
+	MODEL_FAMILY = "GPT-3"
+
 HELP_STRING = f"""
-{BOT_NAME} bot powered by GPT-3/{ENGINE_NAME}.
+{BOT_NAME} bot powered by {MODEL_FAMILY}/{ENGINE_NAME}.
 Available commands:
 	/start - Start a new conversation.
 	/help - Show this help message.
