@@ -364,10 +364,11 @@ _ENGINE_ATTRIBS = {
 
 		# OG GPT-3 models; data through Oct. 2019.
 
-    'ada':				{'engine-name': 'ada', 		    	'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
-    'babbage':			{'engine-name': 'babbage',	    	'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
-    'curie':			{'engine-name': 'curie',	    	'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
-    'davinci':			{'engine-name': 'davinci',	    	'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
+    'ada':					{'engine-name': 'ada', 		    		'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
+    'babbage':				{'engine-name': 'babbage',	    		'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
+    'curie':				{'engine-name': 'curie',	    		'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
+    'davinci':				{'engine-name': 'davinci',	    		'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
+    'davinci:2020-05-03':	{'engine-name': 'davinci:2020-05-03',	'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
     
 		# Early InstructGPT models. (RLHF trained; data through Oct. 2019.)
 
