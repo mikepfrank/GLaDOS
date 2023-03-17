@@ -428,6 +428,17 @@ def _get_price(engine_name):
 		attribute value."""
 	return _get_engine_attr(engine_name, 'price')
 
+# Given an engine name, return the prompt-price attribute value,
+# or None if the engine doesn't have a prompt-price attribute.
+def _get_prompt_price(engine_name):
+	"""Given an engine name string, return the corresponding prompt-price 
+		attribute value, or None if the engine doesn't have a prompt-price 
+		attribute."""
+	try:
+		return _get_engine_attr(engine_name, 'prompt-price')
+	except KeyError:
+		return None
+
 # Given an engine name, return whether it's a chat engine.
 def _is_chat(engine_name):
 	"""Given an engine name string, return the corresponding is-chat 
@@ -3181,8 +3192,22 @@ def _recalcDollars():
 	costs = {}		# This is a dictionary mapping engine names to cumulative costs (in dollars).
 	dollars = 0		# Total cost of all API calls, in dollars.
 	for engine in _ENGINE_NAMES:
-		nToks = _inputToks[engine] + _outputToks[engine]	# Total number of tokens used.
-		engCost = (nToks/1000) * _get_price(engine)		# Price is per 1000 tokens.
+
+		inToks = _inputToks[engine]		# Tokens in the input text (prompt).
+		outToks = _outputToks[engine]	# Tokens in the output text (response).
+		nToks = inToks + outToks		# Total number of tokens used.
+
+			# If the engine has a prompt-price attribute, then price the input
+			# tokens at that price. Otherwise, price them at the default price.
+			# Note: all prices are per 1000 tokens.
+			
+		promptPrice = _get_prompt_price(engine)
+		if promptPrice:				
+			engCost = (inToks/1000) * promptPrice
+			engCost += (outToks/1000) * _get_price(engine)
+		else:
+			engCost = (nToks/1000) * _get_price(engine)
+
 		costs[engine] = engCost
 		dollars = dollars + engCost
 	#__/ End loop over engine names.
