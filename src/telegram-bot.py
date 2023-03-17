@@ -5,7 +5,11 @@
 #|	  FILENAME:		telegram-bot.py				   [Python 3 program source]   |
 #|	  =========																   |
 #|																			   |
-#|	  SUMMARY:	 This is a Telegram bot that uses GPT-3 to generate text.	   |
+#|	  SUMMARY:	 This is a Telegram bot that uses GPT-3 (or GPT-4) to          |
+#|                  generate text. (Note that, throughout this file,           |
+#|                  whenever we say GPT-3, we mean any models in the           |
+#|                  whole GPT-3 line of models, including GPT-4.)              |
+#|                                                                             |
 #|																			   |
 #|	  DESCRIPTION:															   |
 #|	  ~~~~~~~~~~~~															   |
@@ -402,7 +406,7 @@ stop_seq = ['\n' + MESSAGE_DELIMITER]
 # the selected engine name. We also go ahead and configure important API 
 # parameters here.
 
-gpt3core = createCoreConnection(ENGINE_NAME, maxTokens=maxRetToks, 
+gptCore = createCoreConnection(ENGINE_NAME, maxTokens=maxRetToks, 
 	temperature=temperature, presPen=presPen, freqPen=freqPen, 
 	stop=stop_seq)
 
@@ -1035,12 +1039,13 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 # Below is the help string for the bot. (Displayed when '/help' is typed in the chat.)
 
 # First calculate the model family, which is mentioned in the help string. 
-# This is "GPT-3" unless the engine name starts with "gpt-4", in which case 
-# it's "GPT-4".
-if ENGINE_NAME.startswith("gpt-4"):
-	MODEL_FAMILY = "GPT-4"
-else:
-	MODEL_FAMILY = "GPT-3"
+# We'll get it from the core object's .modelFamily property.
+MODEL_FAMILY = gptCore.modelFamily
+
+# Note the below would have been the original way to get the model family,
+# but this method is now obsolete, since the core objects know their own 
+# model family.
+#MODEL_FAMILY = TheAIPersonaConfig().modelFamily
 
 HELP_STRING = f"""
 {BOT_NAME} bot powered by {MODEL_FAMILY}/{ENGINE_NAME}.
@@ -1234,7 +1239,7 @@ def get_user_name(user):
 
 	# If we're using the GPT-3 Chat API, we'll also need to make sure that the user's name
 	# is a valid identifier that's accepted by that API as a user name.
-	if user_name is not None and gpt3core.isChat:
+	if user_name is not None and gptCore.isChat:
 		# If the user's first name contains characters the GPT-3 Chat API won't accept 
 		# (or is too long or an empty string), we'll invalidate it by setting it to None.
 		if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", user_name):
@@ -1273,7 +1278,7 @@ def process_message(update, context):
 	# If the currently selected engine is a chat engine, we'll dispatch the rest
 	# of the message processing to a different function that's specialized to use 
 	# OpenAI's new chat API.
-	if gpt3core.isChat:
+	if gptCore.isChat:
 		process_chat_message(update, context)
 		return
 
@@ -1336,7 +1341,7 @@ def process_message(update, context):
 
 			try:
 				# Get the response from GPT-3, as a Completion object.
-				completion = gpt3core.genCompletion(context_string)
+				completion = gptCore.genCompletion(context_string)
 				response_text = completion.text
 				break
 
@@ -1641,8 +1646,8 @@ def process_chat_message(update, context):
 			# We'll do this by subtracting the length of the chat messages from 
 			# the context window size.
 
-			# Get the context window size from the gpt3core object.
-			contextWinSizeToks = gpt3core.fieldSize
+			# Get the context window size from the gptCore object.
+			contextWinSizeToks = gptCore.fieldSize
 
 			# Get the length of the chat messages in tokens.
 			msgsSizeToks = ChatMessages(chat_messages).totalTokens()
@@ -1672,7 +1677,7 @@ def process_chat_message(update, context):
 			_logger.debug(f"process_chat_message(): maxTokens = {maxTokens}, minReplyWinToks = {minReplyWinToks}, maxRetToks = {maxRetToks}, availSpaceToks = {availSpaceToks}")
 
 			# Get the response from GPT-3, as a ChatCompletion object.
-			chatCompletion = gpt3core.genChatCompletion(	# Call the API.
+			chatCompletion = gptCore.genChatCompletion(	# Call the API.
 				
 				maxTokens=maxTokens,	# Max. number of tokens to return.
 					# We went to a lot of trouble to set this up properly above!
