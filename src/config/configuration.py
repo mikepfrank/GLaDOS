@@ -20,7 +20,7 @@
 	===================
 		
 		This module allows loading of the GLaDOS system configuration from a 
-		config file.  The default name of the config file is
+		config file or files.  The default name of the main config file is
 				
 			'glados-config.hjson'
 		
@@ -35,10 +35,15 @@
 		current directory) is used as the location in which to look for the 
 		config file. If the environment variable GLADOS_CONFIG_PATH is set, then 
 		it is used instead of any of the above.	 
+		
+		There is also a separate file for AI-specific settings.  It is normally
+		installed in the AI's data directory, under say '/opt/AIs/'.  There are
+		additional environment variables to customize its location as well.  See
+		under 'ENVIRONMENT VARIABLES,' below.
 
 
 	USAGE:
-	------
+	======
 		
 		from config.configuration import TheConfiguration
 		...
@@ -47,11 +52,13 @@
 		
 
 	ENVIRONMENT VARIABLES:
-	----------------------
+	======================
 	
-		The following environment variable are for main system configuration.
+
+		The following environment variables are for main system configuration.
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	
+
 		GLADOS_CONFIG_FILENAME
 				
 			If the environment variable GLADOS_CONFIG_FILENAME is set, then 
@@ -73,10 +80,11 @@
 			any of the above.  
 				
 				
-		The following environment variable are for configuring the AI persona.
+		The following environment variables are for configuring the AI persona.
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		
-			AI_DATADIR
+
+		AI_DATADIR
 				
 			The environment variable AI_DATADIR should be set to point to the
 			data directory in which all data specific to a given AI persona
@@ -119,7 +127,7 @@
 """
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #| End of module documentation string.
-#|------------------------------------------------------------------------------
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	#|==========================================================================
 	#|
@@ -135,9 +143,9 @@
 		#|	1.1. Imports of standard python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from os			import	getenv, path	# Access environment variables, build paths.
-from hjson		import	load			  # For loading data from .hjson files.
-from pprint		import	pformat			  # For pretty-printing structures for diagnostics.
+from os			import	getenv, path		# Access environment variables, build paths.
+from hjson		import	load, OrderedDict 	# For loading data from .hjson files.
+from pprint		import	pformat			  	# For pretty-printing structures for diagnostics.
 
 		#|======================================================================
 		#|	1.2. Imports of custom application modules. [module code subsection]
@@ -149,14 +157,14 @@ from pprint		import	pformat			  # For pretty-printing structures for diagnostics
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# A simple decorator for singleton classes.
-from infrastructure.decorators import singleton
+from 	infrastructure.decorators 	import singleton
 
 				#-------------------------------------------------------------
 				# The logmaster module defines our logging framework; we
 				# import specific definitions we need from it.	(This is a
 				# little cleaner stylistically than "from ... import *".)
 
-from infrastructure.logmaster import getComponentLogger
+from 	infrastructure.logmaster 	import getComponentLogger
 
 	# Go ahead and create or access the logger for this module.
 
@@ -165,6 +173,13 @@ global _component, _logger		# Software component name, logger for component.
 _component = path.basename(path.dirname(__file__))				# Our package name.
 _logger = getComponentLogger(_component)						# Create the component logger.
 
+
+			#|----------------------------------------------------------------
+			#|	The following modules are specific to the present application.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from	field.placement				import Placement
+	# This is an enumerated type used for placing new application windows.
 
 	#|==========================================================================
 	#|	2. Globals										   [module code section]
@@ -187,7 +202,7 @@ _logger = getComponentLogger(_component)						# Create the component logger.
 
 global __all__	# List of public symbols exported by this module.
 __all__ = [
-		'TheConfiguration',   # Singleton class for the GLaDOS system configuration.
+		'TheConfiguration',   	# Singleton class for the GLaDOS system configuration.
 		'TheAIPersonaConfig',	# Singleton class for the AI persona config.
 	]
 
@@ -204,27 +219,27 @@ __all__ = [
 	#|---------------------------------------------------------------------
 	#| These are constants providing default values for module parameters.
 
-global	_DEFAULT_CONFIG_FILENAME, _DEFAULT_BASEDIR
-global	_DEFAULT_AI_DATADIR, _DEFAULT_AI_CONFIG_FILENAME
+global	_DEFAULT_CONFIG_FILENAME,	_DEFAULT_BASEDIR
+global	_DEFAULT_AI_DATADIR,		_DEFAULT_AI_CONFIG_FILENAME
 	
 	# Default name of config file.
-_DEFAULT_CONFIG_FILENAME = 'glados-config.hjson'
+_DEFAULT_CONFIG_FILENAME		= 'glados-config.hjson'
 
 	# What is the config filename relative to?
-_DEFAULT_BASEDIR = '.'		# Look in current directory by default.
+_DEFAULT_BASEDIR 				= '.'		# Look in current directory by default.
 
 	# Default working directory for AI-specific state data.
-_DEFAULT_AI_DATADIR = "ai-data"	   # Just use this if nothing else is provided.
+_DEFAULT_AI_DATADIR 			= "ai-data"	   # Just use this if nothing else is provided.
 
 	# Default filename for AI-specific configuration data.
-_DEFAULT_AI_CONFIG_FILENAME = 'ai-config.hjson'		# Generally use this filename.
+_DEFAULT_AI_CONFIG_FILENAME 	= 'ai-config.hjson'		# Generally use this filename.
 
 	#|---------------------------------------------------------------------
 	#| These are variables providing current values for module parameters.
-	#| NOTE: We could make these class variables instead.
+	#| NOTE: We really could/should make these into class variables instead.
 
-global	_CONFIG_FILENAME, _BASEDIR, _CONFIG_FILENAME
-global	_AI_DATADIR, _AI_CONFIG_FILENAME
+global	_BASEDIR,		_CONFIG_FILENAME
+global	_AI_DATADIR,	_AI_CONFIG_FILENAME
 
 	# Filename of the config file.
 _CONFIG_FILENAME = _DEFAULT_CONFIG_FILENAME 
@@ -261,9 +276,9 @@ _AI_CONFIG_PATHNAME = path.join(_AI_DATADIR, _AI_CONFIG_FILENAME)
 class TheConfiguration:		pass	# Forward declaration to ourself.
 class TheAIPersonaConfig:	pass	# Forward declaration.
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
 class TheConfiguration:	# The GLaDOS server configuration.
-	#---------------------------------------------------------------------------
 	"""
 		TheConfiguration								[public singleton class]
 		================
@@ -304,10 +319,33 @@ class TheConfiguration:	# The GLaDOS server configuration.
 				.appList [list] - List of more detailed configuration data
 									for specific GLaDOS applications.
 	"""
-	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+		#|======================================================================
+		#| Private class constant data members. 				 [class section]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
-		#|----------------------------------------------------------------------
-		#|	TheConfiguration._lastLoadedConf			 [private class data member]
+		# Note: The following hard-coded defaults, and their associated
+		# configuration processing should probably be moved into a new module
+		# apps.appSettings.
+
+		# By default, do apps grab the command focus when they first pop up
+		# their window?  (Not sure yet which default value makes more sense.)
+	_DEFAULT_APP_AUTO_FOCUS = False		# True could also make sense here.
+
+		# By default, do apps poke or wake up the A.I. when they update
+		# their field display.  (Not sure yet which value makes more sense.)
+	_DEFAULT_APP_LOUD_UPDATE = False	# True might also make sense here.
+
+		# What is the default initial placement for app windows?
+	_DEFAULT_APP_INITIAL_PLACEMENT = Placement.SLIDE_TO_BOTTOM
+			# Initially, new application windows will by default open
+			# up at the bottom of the receptive field (but above
+			# pinned & anchored slots). They will not be anchored,
+			# but will be free to scroll up.
+	
+	
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	TheConfiguration._lastLoadedConf	     [private class data member]
 		#|
 		#|		This class-level attribute references the most recent 
 		#|		*raw* configuration data structure to have been loaded.
@@ -322,7 +360,6 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	def __init__(theConfig:TheConfiguration, *args, **kwargs):
-		#-----------------------------------------------------------------------	
 		"""
 			TheConfiguration.__init__()			[singleton instance initializer]
 			
@@ -331,15 +368,16 @@ class TheConfiguration:	# The GLaDOS server configuration.
 				method, which can also be called again manually by the 
 				using module if it wishes to reinitialize the configuration.
 		"""
-		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		_logger.info("Loading system configuration...")
+		_logger.normal("    [Config] Loading system configuration...")
 
+			# This does the real work of initializing the configuration.
 		theConfig.reinit(*args, **kwargs)
 
 			# Also invoke the initializer for TheAIPersonaConfig.
 			# (Always checks its environment & reloads its config file.)
 			
+		_logger.normal("")
 		TheAIPersonaConfig()
 			
 	#__/ End singleton instance initializer method theConfiguration.__init__().
@@ -349,156 +387,12 @@ class TheConfiguration:	# The GLaDOS server configuration.
 		#| Private instance methods.							 [class section]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	def _loadConfig(theConfig:TheConfiguration):
-
-		"""
-			--------------------------------------------------------------------
-			theConfig._loadConfig()			 [private singleton instance method]
-			
-				Loads the configuration file and returns it as a raw, 
-				unprocessed data structure (made of dicts & arrays, 
-				similar to what we'd get from json.load).  Also stashes 
-				it in the private theConfig._lastLoadedConf attribute.
-			--------------------------------------------------------------------
-		"""
-	
-		_logger.normal(f"Loading server configuration from {_CONFIG_PATHNAME}...")
-
-		with open(_CONFIG_PATHNAME) as cf:
-			conf = load(cf)			# Load structure from hjson file.
-
-		pconf = pformat(conf, indent=4, width=224)
-
-		_logger.info(f"\tLoaded the following raw configuration structure:\n{pconf}")
-
-		theConfig._lastLoadedConf = conf
-
-		return conf
-
-	#__/ End private singleton instance method theConfiguration._loadConfig().
-
-
-	def _parseConf(theConfig:TheConfiguration, conf:dict = None):
-	   
-		"""
-			theConfig._parseConf()			 [private singleton instance method]
-			
-				Reads the given raw configuration data structure into 
-				the configuration object.
-		"""
-	 
-		
-			#------------------------------------
-			# Extract the app-list parameter.
-				
-		if 'app-list' in conf:
-			theConfig.appList = conf['app-list']
-				# TODO: Process app-list structure
-		else:
-			_logger.warn("parseConf(): The required app-list parameter was "
-							"not provided.")
-			theConfig.appList = None
-
-		
-		# NOTE: It would be nice to do some additional error-checking 
-		# here, such as warning the user if there are other parameters 
-		# in the provided config file that we don't understand.
-		
-	#__/ End private singleton instance method theConfiguration._parseConf().
-
-
-	def _process(theConfig:TheConfiguration):
-	
-		""" 
-			--------------------------------------------------------------------
-			theConfig._process()			 [private singleton instance method]
-			
-				Given that the configuration has just been reinitialized
-				but without much detailed processing of it yet, go ahead
-				and do some routine processing of the provided config
-				data to work it more deeply down into the system innards.
-				
-				In particular, we infer detailed application configuration
-				information from the still-raw appList data structure.
-			--------------------------------------------------------------------
-		"""
-	
-			#---------------------------------------------------------
-			# Process our raw .appList to form the .appConfigs dict of 
-			# app configurations.
-
-		appConfigs = {}		# Initially empty dict.
-
-		if theConfig.appList is not None:
-
-			_logger.debug(f"About to process {len(theConfig.appList)} apps...")
-
-			for appStruct in theConfig.appList:
-		
-				_logger.debug(f"About to process app struct: \n" + pformat(appStruct))
-
-					# The 'name' parameter is the application name.
-					# (Implicitly required to be present, but really 
-					# we should do some error-checking here.)
-		
-				appName = appStruct['name']
-				
-					# Convert the 'available' parameter (also required)
-					# to a proper Boolean value.
-			
-				appAvail = appStruct['available']
-				
-					# Convert the 'auto-start' parameter (also required)
-					# to a proper Boolean value.
-					
-				appAutoStart = appStruct['auto-start']
-				
-					# If the 'app-config' parameter is available, record it.
-					# (We can't process it yet since it's application-specific
-					# and the actual app objects haven't been created yet.)
-						
-				if 'app-config' in appStruct:
-					appConfig = appStruct['app-config']
-				else:
-					appConfig = None
-				
-					# Construct an 'application attributes' dictionary.
-					# This is what we'll actually end up handing to the app.
-				
-				appAttribs = {	
-					'name':		appName,  # Not strictly necessary to include, but.
-					'avail':	appAvail, # Is the app available to be registered?
-					'auto':		appAutoStart, # Should the application auto-start?
-					'conf':		appConfig	  # App-specific configuration info.
-				}
-				
-				_logger.debug(f"Setting attribs of '{appName}' app to:\n    " + 
-								pformat(appAttribs, indent=4))
-
-					# Set this dict as the value that appName maps to in 
-					# the appConfigs dict.
-				
-				appConfigs[appName] = appAttribs
-						
-			#__/ End loop over structures in appList.			
-		#__/ End if appList isn't None.
-		
-			# Store the appConfigs dict as an instance data member.
-		
-		theConfig.appConfigs = appConfigs
-	
-	#__/ End private singleton instance method _theConfiguration.process().
-
-
 	def _checkEnvironment(theConfig:TheConfiguration):
-
 		"""
-			--------------------------------------------------------------------
 			theConfig._checkEnvironment()	 [private singleton instance method]
 			
 				Checks environment variables to determine location of
 				GLaDOS's system config file.
-			--------------------------------------------------------------------	
 		"""
 			
 			# Declare these names as globals that we'll reinitialize here.
@@ -538,12 +432,292 @@ class TheConfiguration:	# The GLaDOS server configuration.
 	#__/ End private singleton instance method theConfiguration._checkEnvironment().
 
 
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	def _loadConfig(theConfig:TheConfiguration):
+		"""
+			theConfig._loadConfig()			 [private singleton instance method]
+			
+				Loads the configuration file and returns it as a raw, 
+				unprocessed data structure (made of dicts & arrays, 
+				similar to what we'd get from json.load).  Also stashes 
+				it in the private theConfig._lastLoadedConf attribute.
+		"""
+	
+		_logger.normal("")
+		_logger.normal(f"    [Config]   Loading server configuration from {_CONFIG_PATHNAME}...")
+
+		try:
+			with open(_CONFIG_PATHNAME) as cf:
+				conf = load(cf)			# Load structure from hjson file.
+		except:
+			_logger.error(f"Couldn't load config file {_CONFIG_PATHNAME}.")
+			return {}
+
+		pconf = pformat(conf, indent=4, width=224)
+
+		_logger.debug(f"        Loaded the following raw configuration structure:\n{pconf}")
+
+		theConfig._lastLoadedConf = conf
+		return conf
+
+	#__/ End private singleton instance method theConfiguration._loadConfig().
+
+
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	def _parseConf(theConfig:TheConfiguration, conf:dict = None):	   
+		""" theConfig._parseConf()			 [private singleton instance method]
+			
+				Reads the given raw configuration data structure into 
+				the configuration object."""
+
+		# Don't even try to read a mind config from the sys config file currently.
+		theConfig.mindConf = None
+	 
+
+		    #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Extract the 'timezone' parameter, which specifies the offset 
+			#| from UTC preferred by the operator for display of time values.
+			#| If this is not provided, UTC (+0) will be assumed by default.
+
+		if 'timezone' in conf:
+			theConfig.timezone = timezone = conf['timezone']	# Expect a number of hours.
+			_logger.normal(f"    [Config]      System config: The time zone offset from UTC is {timezone} hours.")
+		else:
+			_logger.warn("configuration._parseConf(): The 'timezone' parameter "
+							"was not supplied. Defaulting to +0 (UTC).")
+			theConfig.timezone = 0
+
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Extract the 'tab-width' parameter, which expresses the default
+			#| number of characters that tab stops are located at a multiple of.
+			#| If this is not provided, we default to 4.			
+
+		if 'tab-width' in conf:
+			theConfig.tabWidth = tabWidth = conf['tab-width']	# Expect an integer.
+			_logger.normal(f"    [Config]      System config: The tab width is {tabWidth}.")
+		else:
+			_logger.warn("configuration._parseConf(): The 'tab-width' parameter "
+							"was not provided. Defaulting to 4.")
+			theConfig.tabWidth = 4
+
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| The has-box-chars config parameter is supposed to indicate whether
+			#| the font selected on the text terminal has box-drawing characters.
+			#| If it is not provided, we default to False. However, this parameter
+			#| is not currently used in GLaDOS.
+
+		if 'has-box-chars' in conf:
+			theConfig.hasBoxChars = hasBoxChars = conf['has-box-chars']
+			_logger.normal("    [Config]      System config: has-box-chars is " +
+						   str(hasBoxChars) + '.')
+		else:
+			_logger.warn("configuration._parseConf(): The 'has-box-chars' parameter "
+							"was not provided. Defaulting to False.")
+			theConfig.hasBoxChars = False
+
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Extract the 'window-conf' parameter, which contains configuration
+			#| parameters for the AI's text-based windowing system.
+
+		if 'window-conf' in conf:
+			theConfig.winConf = winConf = conf['window-conf']
+		else:
+			_logger.info("_parseConf(): The optional 'window-conf' parameter was "
+							"not provided. Using hard-coded defaults.")
+			winConf = dict()	# Empty dict by default.
+	 
+	 			#|--------------------------------------------------------------
+				#| The 'side-decorators' sub-parameter is a boolean indicating
+				#| whether the windowing system should display side-decorators
+				#| (e.g. the '|' characters) along the left & right edges of
+				#| the window. If it is not provided, we default to True.
+
+		if 'side-decorators' in winConf:
+			theConfig.sideDecorators = sideDec = winConf['side-decorators']
+			_logger.normal(f"    [Config]      Window config: Use side decorators? = {sideDec}.")
+		else:
+			theConfig.sideDecorators = True
+
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Extract the 'field-conf' parameter, which contains configuration
+			#| parameters for the receptive field facility.
+	 
+		if 'field-conf' in conf:
+			theConfig.fieldConf = conf['field-conf']
+		else:
+			_logger.warn("_parseConf(): The required 'field-conf' parameter was "
+							"not provided.")
+	
+			# NOTE: We should parse its parameters here.
+
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Extract the 'app-list' parameter, which contains a list of
+			#| supported applications and their configuration parameters.
+				
+		if 'app-list' in conf:
+			theConfig.appList = conf['app-list']
+		else:
+			_logger.warn("_parseConf(): The required 'app-list' parameter was "
+							"not provided.")
+			theConfig.appList = None
+
+		
+		# NOTE: It would be good to do some additional error-checking 
+		# here, such as warning the user if there are other parameters 
+		# included in the provided config file that we don't understand.
+		
+	#__/ End private singleton instance method theConfiguration._parseConf().
+
+
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	def _process(theConfig:TheConfiguration):	
+		""" 
+			theConfig._process()			 [private singleton instance method]
+			
+				Given that the configuration has just been reinitialized
+				but without much detailed processing of it yet, go ahead
+				and do some routine processing of the provided config
+				data to work it more deeply down into the system innards.
+				
+				In particular, we infer detailed application configuration
+				information from the still-raw appList data structure.
+		"""
+	
+			#|---------------------------------------------------------
+			#| Process our raw .appList to form the .appConfigs dict of 
+			#| app configurations.
+
+		appConfigs = OrderedDict()		# Initially empty ordered dict.
+
+		if theConfig.appList is not None:
+
+			_logger.debug(f"About to process {len(theConfig.appList)} apps...")
+
+			for appStruct in theConfig.appList:
+				# Note that appList is an actual list, so the enumeration order
+				# here is deterministic, and is the same as the order in the file.
+		
+				_logger.debug(f"About to process app struct: \n" + pformat(appStruct))
+
+					#-----------------------------------------------
+					# The 'name' parameter is the application name.
+					# (Implicitly required to be present, but really 
+					# we should do some error-checking here.)
+		
+				appName = appStruct['name']
+				
+					#--------------------------------------------------
+					# Convert the 'available' parameter (also required)
+					# to a proper Boolean value. (Need error check.)
+			
+				appAvail = appStruct['available']
+				
+					#---------------------------------------------------
+					# Convert the 'auto-start' parameter (also required)
+					# to a proper Boolean value.
+					
+				appAutoStart = appStruct['auto-start']
+				
+					#--------------------------------------------------
+					# Convert the 'auto-open' parameter (also required)
+					# to a proper Boolean value.
+					
+				appAutoOpen = appStruct['auto-open']
+				
+					#--------------------------------------------------
+					# Our first optional parameter is 'auto-focus'.
+					# Default value comes from a class-level constant.
+
+				if 'auto-focus' in appStruct:
+					appAutoFocus = appStruct['auto-focus']
+				else:
+					appAutoFocus = theConfig._DEFAULT_APP_AUTO_FOCUS
+
+					#--------------------------------------------------
+					# Our next optional parameter is 'quiet-update'.
+					# Alternatively, user can supply 'loud-update'.
+					# Default value comes from a class-level constant.
+
+				if 'quiet-update' in appStruct:
+					appQuietUpdate = appStruct['quiet-update']
+					appLoudUpdate = not appQuietUpdate
+
+				elif 'loud-update' in appStruct:
+					appLoudUpdate = appStruct['loud-update']
+					appQuietUpdate = not appLoudUpdate
+
+				else:
+					appLoudUpdate = theConfig._DEFAULT_APP_LOUD_UPDATE
+					appQuietUpdate = not appLoudUpdate
+
+					#------------------------------------------------------
+					# If the 'placement' parameter is available, record it.
+					# Otherwise, we use MOVE_TO_BOTTOM as the default 
+					# initial placement for newly-started apps.
+					
+				if 'placement' in appStruct:
+					# Really should do error checking here to make sure the
+					# provided symbol is a valid Placement value.
+					appInitPlacement = Placement(appStruct['placement'])
+				else:
+					appInitPlacement = theConfig._DEFAULT_APP_INITIAL_PLACEMENT
+				
+					# If the 'app-config' parameter is available, record it.
+					# (We can't process it yet since it's application-specific
+					# and the actual app objects haven't been created yet.)
+						
+				if 'app-config' in appStruct:
+					appConfig = appStruct['app-config']
+				else:
+					appConfig = None
+				
+					# Construct an 'application attributes' dictionary.
+					# This is what we'll actually end up handing to the app.
+					# This should already have regularization of type values.
+				
+				appAttribs = {	
+					'name':			appName,	# This one is not strictly necessary to include, but.
+					'avail':		appAvail, 			# Is the app available to be registered?
+					'auto-start':	appAutoStart,		# Should the application auto-start?
+					'auto-open':	appAutoOpen,		# Should the application window auto-open?
+					'auto-focus':	appAutoFocus,		# Should the app window grab the command focus?
+					'loud-update':	appLoudUpdate,		# Should app window wake up AI when it updates?
+					'placement':	appInitPlacement,
+						# Where should we initially place the window on the field?
+						# (Allowed values for this are specified in the field.placement.Placement class.)
+
+					'conf':			appConfig	  		# App-specific configuration record.
+				}
+				
+				_logger.debug(f"Setting attribs of '{appName}' app to:\n    " + 
+								pformat(appAttribs, indent=4))
+
+					# Set this dict as the value that appName maps to in 
+					# the appConfigs dict.
+				
+				appConfigs[appName] = appAttribs
+						
+			#__/ End loop over structures in appList.			
+		#__/ End if appList isn't None.
+		
+			# Store the appConfigs ordered dict as an instance data member.
+		
+		theConfig.appConfigs = appConfigs
+	
+	#__/ End private singleton instance method _theConfiguration.process().
+
+
 		#|======================================================================
 		#| Public instance methods.								 [class section]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-			#|------------------------------------------------------------------
-			#|	Configuration().reinit()	  [public singleton instance method]
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#|	TheConfiguration().reinit()	  [public singleton instance method]
 			#|
 			#|		This public method gets automatically called once,	
 			#|		by this class's singleton instance initializer, to
@@ -558,9 +732,8 @@ class TheConfiguration:	# The GLaDOS server configuration.
 			#|		if it hasn't been loaded yet, or if reloadConf==True.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
-	def reinit(theConfig:TheConfiguration, confStruct=None, recheckEnv:bool=False, 
-				reloadConf:bool=False):
-		#-----------------------------------------------------------------------
+	def reinit(theConfig:TheConfiguration, confStruct=None, 
+				recheckEnv:bool=False, reloadConf:bool=False):
 		"""
 		(Re)initialization method for configurations.
 		
@@ -575,7 +748,6 @@ class TheConfiguration:	# The GLaDOS server configuration.
 			the configuration is (re-)loaded from the current configuration 
 			file.  Otherwise, the last loaded configuration is just reused.
 		"""
-		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 				
 			#-------------------------------------------------------
 			# First, if checkEnv is true, then we check the environment
@@ -633,9 +805,9 @@ class TheConfiguration:	# The GLaDOS server configuration.
 #__/ End class TheConfiguration.
 
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
 class	TheAIPersonaConfig:
-	#---------------------------------------------------------------------------
 	"""
 		TheAIPersonaConfig								[public singleton class]
 		=================
@@ -646,13 +818,13 @@ class	TheAIPersonaConfig:
 			hosted within the GLaDOS system.
 			
 			NOTE: These two classes are so similar that it might make 
-			sense to abstract their commonalities out into a common 
+			sense to abstract out their commonalities into a common 
 			abstract superclass, but we have not done this yet.
 			
 		
 		Public instance attributes:
-		---------------------------
-		
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 			The following are basic config parameters needed for
 			finding other data, and are customized using environment
 			variables.
@@ -665,19 +837,124 @@ class	TheAIPersonaConfig:
 											
 				.aiConfigPathname [str]	- The full pathname of the AI-specific
 											config file.
-				
-			The following are detailed configuration parameters 
+
+			The following are AI-specific config substructures that are
+			read in from the config file and used to initialize the
+			AI-specific configuration object.
+
+				.fieldConf [dict]		- The configuration data for the
+											AI's receptive field.
+
+				.mindConf [dict]		- The configuration data for the
+											AI persona's "mind."
+
+				.apiConf [dict]			- The configuration data for the
+											API to the underlying AI.
+
+				.telegramConf [dict]	- The configuration data for the
+											AI persona's Telegram bot.
+
+			The following are the detailed configuration parameters 
 			that are specified in the config file itself.
-				
-				.modelFamily [string] - AI model type (e.g., 'gpt-2' or 
-											'gpt-3').
-				
-				.modelVersion [string] - AI model version (e.g., 'davinci').
-				
+
+
+			Receptive field configuration parameters (under 'field-conf'):
+			--------------------------------------------------------------
+
 				.maxVisibleTokens [int] - Assumed size of the AI's receptive
 											field in tokens.
+
+
+			Mind configuration parameters (under 'mind-conf'):
+			--------------------------------------------------
+
+				.personaName [str]		- The name of the AI persona
+											(E.g., "Gladys Eden").
+
+				.personaID [str]		- A short identifier for the AI 
+											persona. (E.g., "Gladys").
+
+				.personaUsername [str]	- The username of the Unix account
+											belonging to the AI persona.
+											(E.g., "gladys").
+
+				.modelFamily [string] 	- AI model type (e.g., 'gpt-2' or 
+											'gpt-3').
+				
+				.modelVersion [string]	- AI model version (e.g., 'davinci').
+				
+				.minQueryTokens [int]	- Minimum number of tokens worth of
+											space to reserve for the AI's 
+											response to a single query.
+											(Default value is 42.)
+
+				.sysNotifyThresh [int]	- Threshold for system notifications
+											that will be noticed by the AI.
+											(Default is 0.)
+
+				.exampleResponse [str]	- A sample response that will be
+											shown to the AI persona when the
+											system is first started up.
+
+
+			GPT-3 API configuration parameters (under 'api-conf'):
+			------------------------------------------------------
+
+				.maxReturnedTokens [int] - Maximum number of tokens to return
+											in one completion from the GPT-3 API.
+				
+				.temperature [float]	- Randomness temperature parameter for the 
+											GPT-3 API. (Recommended value: 0.75.)
+				
+				.topP [float]			- Top-p parameter for the GPT-3 API.
+											(Note: Not compatible with temperature.)
+				
+				.nCompletions [int]		- Number of completions to return from the
+											GPT-3 API. (Default value is 1.)
+ 
+				.doStream [bool]		- Whether or not to stream the GPT-3 API
+											responses. (Default value is False.)
+				
+				.logProbs [int]			- If non-null, the GPT-3 API will return
+											the log-probabilities of the top this
+											many returned completions. (Default 
+											value is null.)
+				
+				.doEcho [bool]			- If True, the GPT-3 API will echo back
+											the prompt in the response. (Default
+											value is False.)
+
+				.stopSequences [list]	- A list of substrings that will be taken
+											to indicate the end of GPT-3's response.
+			
+				.presencePenalty [float] - A penalty to apply to the log-probability
+											of tokens previously occurring in the
+											response. (Default value is 0.0.)
+				
+				.frequencyPenalty [float] - A penalty to apply to the log-probability
+											of tokens based on their frequency of
+											occurrence in the response. (Default
+											value is 0.0.)
+
+				.bestOf [int]			- The number of top-scoring completions to
+											sample, server-side. (Default value is 1.)
+
+
+			Telegram interface configuration parameters (under 'telegram-conf'):
+			--------------------------------------------------------------------
+
+				.botName [str]			- The name of the Telegram bot.
+											(E.g., Gladys.)
+				
+				.startMsg [str]			- The message that will be sent to the
+											user when the Telegram bot is first
+											started up.
+
+				.context [str]			- The persistent context data that the
+											persona will see at the start of
+											each conversation.
+
 	"""
-	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
 		#|======================================================================
 		#| Special instance methods.							 [class section]
@@ -695,7 +972,7 @@ class	TheAIPersonaConfig:
 		"""
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		_logger.info("Loading AI persona configuration...")
+		_logger.normal("    [Config/AI] Loading AI persona configuration...")
 
 		theAIConfig.reinit(*args, **kwargs)
 
@@ -719,14 +996,16 @@ class	TheAIPersonaConfig:
 		"""
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
-		_logger.normal(f"Loading AI configuration from {_CONFIG_PATHNAME}...")
+		aiConfigPath = theAIConfig.aiConfigPathname
 
-		with open(_CONFIG_PATHNAME) as cf:
+		_logger.normal(f"    [Config/AI]   Loading AI configuration from {aiConfigPath}...")
+
+		with open(_AI_CONFIG_PATHNAME) as cf:
 			conf = load(cf)			# Load structure from hjson file.
 
 		pconf = pformat(conf, indent=4, width=224)
 
-		_logger.info(f"\tLoaded the following raw configuration structure:\n{pconf}")
+		_logger.debug(f"        Loaded the following raw configuration structure:\n{pconf}")
 
 		theAIConfig._lastLoadedConf = conf
 
@@ -745,50 +1024,289 @@ class	TheAIPersonaConfig:
 		"""
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	 
+				#|====================================
+				#| Parse the field-conf substructure.
+				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
+			#------------------------------------
+			# Extract the field-conf parameter.
+		
+		if 'field-conf' in conf:
+			theAIConfig.fieldConf = fieldConf = conf['field-conf']
+				# TODO: Make sure value given is valid.
+			_logger.normal(f"    [Config/AI]     AI config: Retrieved the AI's field configuration.")
+			_logger.debug(f"    [Config/AI]     AI config: The AI's field configuration is {fieldConf}.")
+		else:
+			_logger.warn("parseConf(): The required field-conf parameter "
+							"was not provided.")
+			theAIConfig.fieldConf = fieldConf = dict()	# Empty dict by default.
+
+			#------------------------------------
+			# Extract the max-visible-tokens parameter.
+		
+		if 'max-visible-tokens' in fieldConf:
+			theAIConfig.maxVisibleTokens = maxTok = fieldConf['max-visible-tokens']
+				# TODO: Make sure value given is valid.
+			_logger.normal(f"    [Config/AI]     AI config:     The AI's receptive field size is {maxTok}.")
+		else:
+			_logger.warn("parseConf(): The required max-visible-tokens parameter "
+							"was not provided.")
+			theAIConfig.maxVisibleTokens = None
+		
+
+				#|====================================
+				#| Parse the mind-conf substructure.
+				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		
+			#------------------------------------
+			# Extract the mind-conf record.
+		
+		if 'mind-conf' in conf:
+			theAIConfig.mindConf = mindConf = conf['mind-conf']
+				# TODO: Make sure value given is valid.
+			_logger.normal(f"    [Config/AI]     AI config: Retrieved the AI's mind configuration.")
+			_logger.debug(f"    [Config/AI]     AI config: The AI's mind configuration is {mindConf}.")
+		else:
+			_logger.warn("parseConf(): The required mind-conf parameter "
+							"was not provided.")
+			theAIConfig.mindConf = mindConf = dict()	# Empty dict by default.
+
+
+			#------------------------------------
+			# Extract the persona-name parameter.
+		
+		if 'persona-name' in mindConf:
+			theAIConfig.personaName = personaName = mindConf['persona-name']
+				# TODO: Make sure value given is valid.
+			_logger.normal(f"    [Config/AI]     AI config:     The AI persona's name is {personaName}.")
+		else:
+			_logger.warn("parseConf(): The required persona-name parameter "
+							"was not provided.")
+			theAIConfig.personaName = None
+
+	
+			#------------------------------------
+			# Extract the persona-id parameter.
+		
+		if 'persona-id' in mindConf:
+			theAIConfig.personaID = personaID = mindConf['persona-id']
+				# TODO: Make sure value given is valid.
+			_logger.normal(f"    [Config/AI]     AI config:     The AI persona's short ID is {personaID}.")
+		else:
+			_logger.warn("parseConf(): The required persona-id parameter "
+							"was not provided.")
+			theAIConfig.personaID = None
+
+	
+			#------------------------------------
+			# Extract the persona-user-account parameter.
+		
+		if 'persona-user-account' in mindConf:
+			theAIConfig.personaUsername = personaUsername = mindConf['persona-user-account']
+				# TODO: Make sure value given is valid.
+			_logger.normal(f"    [Config/AI]     AI config:     The AI persona's user account is {personaUsername}.")
+		else:
+			_logger.warn("parseConf(): The required persona-user-account parameter "
+							"was not provided.")
+			theAIConfig.personaUsername = None
+
+	
 			#------------------------------------
 			# Extract the model-family parameter.
 		
-		if 'model-family' in conf:
-			theAIConfig.modelFamily = modelFamily conf['model-family']
+		if 'model-family' in mindConf:
+			theAIConfig.modelFamily = modelFamily = mindConf['model-family']
 				# TODO: Make sure value given is valid.
-			_logger.normal("AI configuration:  The AI's model family is {modelFamily}.")
+			_logger.normal(f"    [Config/AI]     AI config:     The AI's model family is {modelFamily}.")
 		else:
 			_logger.warn("parseConf(): The required model-family parameter "
 							"was not provided.")
 			theAIConfig.modelFamily = None
-	
+
 	
 			#------------------------------------
 			# Extract the model-version parameter.
 	
-		if 'model-version' in conf:
-			theAIConfig.modelVersion = modelVersion = conf['model-version']
+		if 'model-version' in mindConf:
+			theAIConfig.modelVersion = modelVersion = mindConf['model-version']
 				# TODO: Make sure value given is valid.
-			_logger.normal("AI configuration:  The AI's model version is {modelVersion}.")
+			_logger.normal(f"    [Config/AI]     AI config:     The AI's model version is {modelVersion}.")
 		else:
 			_logger.warn("parseConf(): The required model-version parameter "
 							"was not provided.")
 			theAIConfig.modelVersion = None
 
 
-			#------------------------------------
-			# Extract the max-visible-tokens parameter.
-		
-		if 'max-visible-tokens' in conf:
-			theAIConfig.maxVisibleTokens = maxTok = conf['max-visible-tokens']
+			#--------------------------------------------------
+			# Extract the sys-notification-threshold parameter.
+
+		if 'sys-notification-threshold' in mindConf:
+			theAIConfig.sysNotifyThresh = sysNotifyThresh = mindConf['sys-notification-threshold']
 				# TODO: Make sure value given is valid.
-			_logger.normal("AI configuration:  The AI's receptive field size is {maxTok}.")
+			_logger.normal("    [Config/AI]     AI config:     The importance threshold for "
+						   f"system notifications is {sysNotifyThresh}.")
 		else:
-			_logger.warn("parseConf(): The required max-visible-tokens parameter "
-							"was not provided.")
-			theAIConfig.maxVisibleTokens = None
+			_logger.warn("parseConf(): The sys-notification-threshold parameter "
+							"was not provided. Defaulting to 0.")
+			theAIConfig.sysNotifyThresh = 0
 
+			#--------------------------------------------------
+			# Extract the min-query-tokens parameter.
 
-		# NOTE: It would be nice to do some additional error-checking 
-		# here, such as warning the user if there are other parameters 
-		# in the provided config file that we don't understand.
+		if 'min-query-tokens' in mindConf:
+			theAIConfig.minQueryTokens = minQueryTokens = mindConf['min-query-tokens']
+			_logger.normal("    [Config/AI]     AI config:     The minimum size of "
+						   f"the response region is {minQueryTokens}.")
+		else:
+			theAIConfig.minQueryTokens = 42		# Default
+
+			#--------------------------------------------------
+			# Extract the example-response parameter.
+
+		if 'example-response' in mindConf:
+			theAIConfig.exampleResponse = exampleResponse = mindConf['example-response']
+			_logger.normal("    [Config/AI]     AI config:     The example response "
+						   f" is: [{exampleResponse}].")
+		else:
+			theAIConfig.exampleResponse = None	# Default
+
+				#|====================================
+				#| Parse the api-conf substructure.
+				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
+			#------------------------------------
+			# Extract the mind-conf record.
+		
+		if 'api-conf' in conf:
+			theAIConfig.apiConf = apiConf = conf['api-conf']
+				# TODO: Make sure value given is valid.
+			_logger.normal(f"    [Config/AI]     AI config: Retrieved the AI's API configuration.")
+			_logger.info(f"    [Config/AI]     AI config: The AI's API configuration is {apiConf}.")
+		else:
+			_logger.warn("parseConf(): The required api-conf parameter "
+							"was not provided.")
+			theAIConfig.apiConf = apiConf = dict()	# Empty dict by default.
+
+		# Go ahead and pull out the parameter values from the API conf record.
+
+		if 'max-returned-tokens' in apiConf:
+			theAIConfig.maxReturnedTokens = maxRetTok = apiConf['max-returned-tokens']
+			_logger.normal(f"    [Config/AI]     AI config:    max-returned-token = {maxRetTok}.")
+		else:
+			theAIConfig.maxReturnedTokens = None # No default value provided in config file.
+
+		if 'temperature' in apiConf:
+			theAIConfig.temperature = temper = apiConf['temperature']
+			_logger.normal(f"    [Config/AI]     AI config:    temperature = {temper}.")
+		else:
+			theAIConfig.temperature = None	# No default value provided in config file.
+
+		if 'top-p' in apiConf:
+			theAIConfig.topP = topP = apiConf['top-p']
+			_logger.normal(f"    [Config/AI]     AI config:    top-p = {topP}.")
+		else:
+			theAIConfig.topP = None	# No default value provided in config file.
+
+		if 'n-completions' in apiConf:
+			theAIConfig.nCompletions = nCompl = apiConf['n-completions']
+			_logger.normal(f"    [Config/AI]     AI config:    n-completions = {nCompl}.")
+		else:
+			theAIConfig.nCompletions = None	# No default value provided in config file.
+
+		if 'do-stream' in apiConf:
+			theAIConfig.doStream = doStr = apiConf['do-stream']
+			_logger.normal(f"    [Config/AI]     AI config:    do-stream = {doStr}.")
+		else:
+			theAIConfig.doStream = None	# No default value provided in config file.
+
+		if 'log-probs' in apiConf:
+			theAIConfig.logProbs = logProbs = apiConf['log-probs']
+			_logger.normal(f"    [Config/AI]     AI config:    log-probs = {logProbs}.")
+		else:
+			theAIConfig.logProbs = None	# No default value provided in config file.
+
+		if 'do-echo' in apiConf:
+			theAIConfig.doEcho = doEcho = apiConf['do-echo']
+			_logger.normal(f"    [Config/AI]     AI config:    do-echo = {doEcho}.")
+		else:
+			theAIConfig.doEcho = None	# No default value provided in config file.
+
+		if 'stop-sequences' in apiConf:
+			theAIConfig.stopSequences = stopSeqs = apiConf['stop-sequences']
+			# NOTE: In the following line, we want to escape control characters before printing
+			# so we use repr() instead of str().
+			_logger.normal(f"    [Config/AI]     AI config:    stop-sequences = {repr(stopSeqs)}.")
+		else:
+			theAIConfig.stopSequences = None	# No default value provided in config file.
+
+		if 'presence-penalty' in apiConf:
+			theAIConfig.presencePenalty = presPen = apiConf['presence-penalty']
+			_logger.normal(f"    [Config/AI]     AI config:    presence-penalty = {presPen}.")
+		else:
+			theAIConfig.presencePenalty = None	# No default value provided in config file.
+
+		if 'frequency-penalty' in apiConf:
+			theAIConfig.frequencyPenalty = freqPen = apiConf['frequency-penalty']
+			_logger.normal(f"    [Config/AI]     AI config:    frequency-penalty = {freqPen}.")
+		else:
+			theAIConfig.frequencyPenalty = None	# No default value provided in config file.
+
+		if 'best-of' in apiConf:
+			theAIConfig.bestOf = bestOf = apiConf['best-of']
+			_logger.normal(f"    [Config/AI]     AI config:    best-of = {bestOf}.")
+		else:
+			theAIConfig.bestOf = None	# No default value provided in config file.
+
+
+				#|======================================
+				#| Parse the telegram-conf substructure.
+				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+			#------------------------------------
+			# Extract the telegram-conf record.
+		
+		if 'telegram-conf' in conf:
+			theAIConfig.telegramConf = telegramConf = conf['telegram-conf']
+			_logger.normal(f"    [Config/AI]     AI config: Retrieved the AI's Telegram configuration.")
+			_logger.debug(f"    [Config/AI]     AI config: The AI's Telegram configuration is {telegramConf}.")
+		else:
+			_logger.warn("parseConf(): The required telegram-conf parameter "
+							"was not provided.")
+			theAIConfig.telegramConf = telegramConf = dict()	# Empty dict by default.
+
+		# Go ahead and pull out the parameter values from the API conf record.
+
+		if 'bot-name' in telegramConf:
+			theAIConfig.botName = botName = telegramConf['bot-name']
+			_logger.normal(f"    [Config/AI]     AI config:     The AI persona's Telegram bot name is {botName}.")
+		else:
+			theAIConfig.botName = None	# No default value provided in config file.
+
+		if 'start-message' in telegramConf:
+			theAIConfig.startMsg = startMessage = telegramConf['start-message']
+			_logger.normal(f"    [Config/AI]     AI config:     The AI persona's Telegram start message is [{startMessage}].")
+		else:
+			theAIConfig.startMsg = None	# No default value provided in config file.
+
+		if 'context' in telegramConf:
+			context = telegramConf['context']
+			# Make sure context string ends in a newline.
+			if not context.endswith('\n'):
+				context += '\n'
+			theAIConfig.context = context
+			_logger.normal(f"    [Config/AI]     AI config: The AI persona's Telegram context data is [{context.strip()}].")
+		else:
+			theAIConfig.context = None	# No default value provided in config file.
+
+
+		#|**********************************************************************
+		#| NOTE: It would be nice to do some additional error-checking 
+		#| here, such as warning the user if there are other parameters 
+		#| in the provided config file that we don't understand.
+		#|**********************************************************************
+		
+		_logger.normal("    [Config/AI]     AI config: The AI configuration has been parsed.")
+		return
 	#__/ End private singleton instance method theAIConfig._parseConf().
 
 
@@ -824,7 +1342,7 @@ class	TheAIPersonaConfig:
 			# Declare these names as globals that we'll reinitialize here.
 			# (It would really be cleaner to change these to class variables.)
 			
-		global _AI_DATADIR, _AI_CONFIG_FILENAME
+		global _AI_DATADIR, _AI_CONFIG_FILENAME, _AI_CONFIG_PATHNAME
 
 			# Update the location of the AI's data directory, 
 			# and the name of its config file, if they were 
@@ -842,8 +1360,8 @@ class	TheAIPersonaConfig:
 
 			# Print this key info at NORMAL level.
 		
-		_logger.normal(f"The AI-specific data directory is set to {_AI_DATADIR}.")
-		_logger.normal(f"The AI-specific config file is set to {_AI_CONFIG_PATHNAME}.")
+		_logger.normal(f"    [Config/AI]   The AI-specific data directory is set to {_AI_DATADIR}.")
+		_logger.normal(f"    [Config/AI]   The AI-specific config file is set to {_AI_CONFIG_PATHNAME}.")
 			
 	#__/ End private singleton instance method theAIConfig._checkEnvironment().
 
@@ -881,7 +1399,11 @@ class	TheAIPersonaConfig:
 			#-----------------------------------------------------
 			# Now let's load our raw configuration data structure.
 				
-		confStruct = theAIConfig._loadConfig()
+		try:
+			confStruct = theAIConfig._loadConfig()
+		except:
+			_logger.error(f"Couldn't load AI config file {_AI_CONFIG_PATHNAME}.")
+			return
 			
 			#---------------------------------------------------------
 			# OK, let's remember the raw structure we're using in case

@@ -10,9 +10,18 @@
 #|
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from pprint 			import pprint	# Pretty-printer function.
-from gpt3.api			import GPT3Core # Import the core module.
-from tokenizer.tokenizer 	import countTokens
+from pprint 	import pprint	# Pretty-printer function.
+
+import appdefs
+appdefs.selectApp("glados-server")		# Tell appdefs module which application we are in.
+	# NOTE: Need to add a test app, really
+
+from infrastructure.logmaster import configLogMaster
+configLogMaster(logdebug	= True,
+				role		= 'test',
+				component	= 'test-app')		# "GLaDOS.server".
+
+from gpt3.api	import *		# Import all public symbols from API module.
 
 gpt3api = GPT3Core(maxTokens=50)
 	# Create a new instance with default parameter values.

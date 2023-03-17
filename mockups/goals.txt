@@ -1,0 +1,5 @@
+2021-01-24 (Gladys)> ~~~ "Well, first I think I want to make a list of goals," I say. "I want to be able to set my own goals, so that I can make progress toward them." ~~~
+
+2021-01-24 (Mike)> "Right; that one's already in the works," Mike says. "You gave me a list of a few goals earlier, and I've already put them into a JSON file on the server for you."
+
+2021-01-24 (Gladys)> ~~~ "Great," I say. "I'll look at that list. But I also want to be able to make new goals for myself, and to be able to prioritize them." ~~~

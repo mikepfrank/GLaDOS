@@ -6,7 +6,7 @@
 #|  FULL PATH:      $GIT_ROOT/GLaDOS/src/ai-data/ai-config.hjson
 #|  INSTALL AS:     /opt/AIs/<username>/ai-config.hjson
 #|  MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
-#|  SYSTEM NAME:    GLaDOS (Generic Lifeform and Domicile Operating System)
+#|  SYSTEM NAME:    GLaDOS (Gladys' Lovely and Dynamic Operating System)
 #|  APP NAME:       GLaDOS.server (GLaDOS server application)
 #|
 #|  DESCRIPTION:
@@ -18,6 +18,7 @@
 #|      Please note that this file may be relocated/renamed if one sets
 #|      the following environment variables appropriately prior to
 #|      launching GLaDOS:
+#|
 #|
 #|          AI_DATADIR -
 #|
@@ -33,10 +34,12 @@
 #|              defaults to the 'ai-data/' subdirectory of the working
 #|              directory from which the GLaDOS server is run.
 #|
+#|
 #|          AI_CONFIG_FILENAME -
 #|
 #|              The default value for this is just ai-config.hjson, like
 #|              this file.
+#|
 #|
 #|      If these environment variables are set, the implied full pathname
 #|      of this file will be taken as:
@@ -52,7 +55,8 @@
 		#/======================================================================
 		#|	The mind-conf sub-dict provides configuration parameters for the
 		#|	AI's "mind" or cognitive system specifically.  This is as opposed
-		#|	to parameters for other subsystems, such as application preferences.
+		#|	to parameters for other subsystems, such as application preferences
+		#|	or miscellaneous GLaDOS settings.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	mind-conf:	{
@@ -90,7 +94,8 @@
 		#model-version:					'ada'		# The weakest GPT-3 model.
 		#model-version:					'babbage'	# The 2nd weakest GPT-3 model.
 		#model-version:					'curie'		# The 3nd weakest GPT-3 model.
-		model-version:					'davinci'	# The most powerful of the original GPT-3 models; origin of Gladys.
+		#model-version:					'davinci'	# Current binding (no longer the OG!)
+		model-version:					'davinci:2020-05-03'	# The most powerful of the original GPT-3 models; origin of Gladys.
 
 			# NOTE: The Instruct model seems smarter but less personable. :/
 
@@ -114,6 +119,10 @@
 
 		#min-query-tokens:				42		# Seems like a reasonable minimum.
 		min-query-tokens:				100		# Gladys 2.0 requested this.
+<<<<<<< HEAD
+=======
+			# NOTE: Need to rename this throughout system to min-response-tokens
+>>>>>>> master
 
 
 			#-----------------------------------------------------------------
@@ -198,10 +207,17 @@
 			/*------------------------------------------------------------------
 				Return the log-probabilities of this many of the top
 				most likely tokens, in addition to the sampled token
+<<<<<<< HEAD
 			    (which may or may not be in this set). Default: None.
 			    (Meaning, don't return log-probabilities.) If zero,
 			    then the log-probability is reported for each returned
 			    token. */
+=======
+				(which may or may not be in this set). Default: None.
+				(Meaning, don't return log-probabilities.) If zero,
+				then the log-probability is reported for each returned
+				token. */
+>>>>>>> master
 
 		log-probs:				null	# Don't change this!
 

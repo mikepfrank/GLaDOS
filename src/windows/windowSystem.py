@@ -8,31 +8,39 @@
 
 	IN PACKAGE:		windows
 	MODULE NAME:	windows.windowSystem
+	CODE LAYER:		Layer #9 (doesn't import anything above layer #8,
+						imported/constructed only by supervisor).
+
+	IMPORTS FROM MODULES:
+		Layer #3:	config.configuration
+		Layer #0:	infrastructure.{decorators,logmaster,utils}
+
 	FULL PATH:		$GIT_ROOT/GLaDOS/src/windows/windowSystem.py
 	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
 	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
+
 	APP NAME:		GLaDOS.server (GLaDOS server application)
 	SW COMPONENT:	GLaDOS.commands (command interface component)
 
 
 	MODULE DESCRIPTION:
-	-------------------
+	===================
 
-		This module initializes the GLaDOS command interface. This is the
-		interface that allows the AI to type commands to the GLaDOS system
-		and have them be executed by the system.
-		
-		The command interface is organized into "command modules" associated
-		with specific facilities or processes within the GLaDOS system.	 New
-		command modules can be added dynamically into the interface.  In the
-		main loop of the system, when the A.I. generates a text event, it is
-		parsed to see if it matches a command template, and if so, then 
-		control is dispatched to an appropriate command handler.
+		This module implements GLaDOS' text-based windowing system.
+	
+
+	MODULE PUBLIC CLASSES:
+	======================
+
+		TheWindowSystem:
+
+			This singleton class anchors the window system. It is the
+			only class that should be instantiated by the supervisor.
 
 """
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #| End of module documentation string.
-#|------------------------------------------------------------------------------
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 	#|==========================================================================
@@ -49,54 +57,138 @@
 		#|	1.1. Imports of standard python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from collections.abc import Iterable
-from os import path
+from	collections.abc 	import Iterable
+from	os 					import path
 
 		#|======================================================================
 		#|	1.2. Imports of custom application modules. [module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-			#|----------------------------------------------------------------
-			#|	The following modules, although custom, are generic utilities,
-			#|	not specific to the present application.
-			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+			#|==================================================================
+			#|	1.2.1. Imports of custom			 [module code subsubsection]
+			#|		application modules from
+			#|		code layer #0 (lowest layer).
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		# A simple decorator for singleton classes.
-from infrastructure.decorators	import	singleton
+				#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+				#|	The following modules, although custom, are generic utili-
+				#|  ties, not specific to the present application.
+				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-				#-------------------------------------------------------------
-				# The logmaster module defines our logging framework; we
-				# import specific definitions we need from it.	(This is a
-				# little cleaner stylistically than "from ... import *".)
+from	infrastructure.decorators	import	singleton
+			# A simple decorator for singleton classes.
 
-from infrastructure.logmaster	import getComponentLogger
+from	infrastructure.utils		import overwrite
+			# overwrite() is a function to overwrite part of a string;
+			#	we use it when drawing title bars.
 
-	# Go ahead and create or access the logger for this module.
+from	text.tabify					import	tabify
+	# tabify() converts spaces to tabs; we use this in window views.
+
+					#-----------------------------------------------------------
+					# Logmaster setup.								[code idiom]
+					#
+					#	This code block (at minimum) should be included in the
+					#	layer #0 imports of any module that uses the logging
+					#	system.
+					#
+					#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+					
+	# The logmaster module defines our logging framework; we import
+	# specific definitions we need from it. (This is a little cleaner
+	# stylistically than "from ... import *".)
+
+from	infrastructure.logmaster	import getComponentLogger
+			# This function generates/retrieves a SW component's logger.
+
+	# This is the only "main body" type code that we put in the imports section.
+	# It goes ahead and creates/retrieves the logger for this module.
 
 global _component, _logger	# Software component name, logger for component.
 
 _component = path.basename(path.dirname(__file__))		# Our package name.
 _logger = getComponentLogger(_component)				# Create the component logger.
 
+					#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+					# End logmaster setup code idiom.
+					#-----------------------------------------------------------
 
 			#|----------------------------------------------------------------
 			#|	The following modules are specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from commands.commandInterface	import	CommandModule
+			#|==================================================================
+			#|	1.2.2. Imports of custom			 [module code subsubsection]
+			#|		application modules from
+			#|		code layer #1 (no imports from above layer #0):
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from 	processes.processSystem		import	SubProcess
+
+			#|==================================================================
+			#|	1.2.3. Imports of custom			 [module code subsubsection]
+			#|		application modules from
+			#|		code layer #2 (no imports from above layer #1):
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from 	text.buffer					import	TextBuffer
+	# We use text buffers for both window contents and window images.
+
+from	field.placement				import	Placement
+	# This is an enum type that we use for specifying window placement.
+
+			#|==================================================================
+			#|	1.2.4. Imports of custom			 [module code subsubsection]
+			#|		application modules from
+			#|		code layer #3 (no imports from above layer #2):
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from	config.configuration		import	TheConfiguration
+	# We need this to get configuration parameters for the window system.
+
+			#|==================================================================
+			#|	1.2.5. Imports of custom			 [module code subsubsection]
+			#|		application modules from
+			#|		code layer #5 (no imports from above layer #4):
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from	field.fieldElement			import	WindowElement
+	# This is a field element that lets us put windows onto the field.
+
+			#|==================================================================
+			#|	1.2.6. Imports of custom			 [module code subsubsection]
+			#|		application modules from
+			#|		code layer #8 (no imports from above layer #7):
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from 	commands.commandInterface	import	CommandModule
 	# We're going to extend CommandModule with various subclasses 
 	# specific to the windowing system.
 
-from processes.processSystem	import	SubProcess
+from	field.receptiveField		import	TheReceptiveField
+	# We access this singleton from window.openWin() so that we can
+	# actually place newly-opening windows onto the receptive field.
+
+
+	#|==========================================================================
+	#|
+	#|	 2. Dummy class declarations.					   [module code section]
+	#|
+	#|			Create "dummy" (empty) definitions for some class names
+	#|			so that we can use them in type hints without importing
+	#|			the modules where their real definitions reside.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# We don't need to create applications from this module, so no need
 	# to actually import the real Application_ class.
 #from apps.appSystem				import	Application_
 class Application_: pass	# Do this instead to avoid circular imports.
 
+
 	#|==========================================================================
 	#|
-	#|	 2. Globals												  [code section]
+	#|	 3. Globals												  [code section]
 	#|
 	#|		Declare and/or define various global variables and
 	#|		constants.	Note that top-level 'global' statements are
@@ -117,14 +209,15 @@ class Application_: pass	# Do this instead to avoid circular imports.
 
 global __all__	# List of public symbols exported by this module.
 __all__ = [
-		'TextBuffer',			# Class for an adjustable-sized buffer of text spooled to the window.
 		'WindowImage',			# A sort of text buffer that contains a static rendered window image.
 		'WindowCommandModule',	# A command module that contains commands for controlling a specific window.
 		'ViewPort',				# Represents the current view a window has on its underlying text buffer.
 		'Window',				# Class for a single window within the GLaDOS text window system.
 		'Windows',				# Class for a collection of text windows.
 		'WindowSnapshot',		# Class for a static, frozen record of what a given window contained at a specific point in time.
-		'TheWindowSystem',			# A singleton class for the entire window subsystem of GLaDOS.
+		'TheWindowSystem',		# A singleton class for the entire window subsystem of GLaDOS.
+		#'TextBuffer',			# Class for an adjustable-sized buffer of text spooled to the window.
+			# (This was moved to the text/buffer.py module.)
 	]
 
 
@@ -139,451 +232,16 @@ __all__ = [
 
 # Window system classes:
 #
-#		TextBuffer				- An adjustable-sized buffer of text spooled to the window.
 #		Window					- A text window within the GLaDOS window system.
 #		Windows					- A collection of text windows.
 #		WindowSnapshot			- A static image of a text window at a given point in time.
+#		WindowImage				- A sort of text buffer that contains a static rendered window image.
+#		WindowCommandModule		- A command module that contains commands for controlling a specific window.
+#		ViewPort				- Represents the current view a window has on its underlying text buffer.
 #		TheWindowSystem			- The entire window subsystem in a given GLaDOS system instance.
-
-
-# We should probably move this to its own package because it isn't really
-# specific to the window system per se.  For example, it can also be used
-# by the receptive field, the writing app, or other packages.
-
-class TextBuffer:		# A text buffer.
-
-	"""
-		TextBuffer										   [module public class]
-		
-			This is a class for text buffers used in the window system.
-			Conceptually, a text buffer is a (usually bounded-length)
-			linear sequence of individual lines or rows of text.  A given
-			line is defined by containing no newline characters, except 
-			that (in certain configurations) there is always one at the 
-			very end of the line, except that the very last line in the 
-			buffer will generally have no newline at the end.
-			
-			Characteristics of a text buffer include:
-			
-				- A maximum length in rows, which is an integer >= 0.
-					Or, if this is None, then the length is unbounded.
-					(WARNING: This is dangerous, as the host may run
-					out of space.)
-					
-				- An iterable, indexible sequence of >= 0 actual lines of 
-					text.  If the maximum length is not None, then the
-					actual length of this sequence should be no greater 
-					than the maximum length.  If this sequence is None, 
-					this is deemed equivalent to a sequence of 0 rows.
-					
-				- A text buffer may optionally also have a maximum width,
-					which is the maximum length of any line in the buffer.
-					Lines that are longer are either wrapped to the next 
-					line or truncated, depending on buffer configuration.
-					If there is no maximum width, this can be dangerous.
-					
-			Operations on a text buffer include:
-			
-				- The buffer may be cleared (emptied of all content).
-				
-				- Text (any string) may be appended to the end of the
-					buffer.	 This creates new rows as needed.  If the
-					maximum number of rows in the buffer would have been
-					exceeded, rows are automatically removed from the 
-					start of the buffer to make room.
-	"""
-
-	#/--------------------------------------------------------------------------
-	#|	Private instance data members.					   [class documentation]
-	#|
-	#|		._maxLen [int or None]
-	#|
-	#|			This is an integer >= 0 indicating the maximum length of
-	#|			the text buffer in rows, or None to indicate that there is
-	#|			no maximum length (note that this can be dangerous).
-	#|
-	#|		._maxWid [int or None]
-	#|
-	#|			This is an integer >= 0 indicating the maximum length of
-	#|			each line of text, in characters, or None if there is no
-	#|			maximum length (note that this can be dangerous).  The
-	#|			max width does not include any final newline character.
-	#|
-	#|		._includeNewlines [bool]
-	#|
-	#|			This is a boolean value which should be True if and only if
-	#|			each line (except possibly the last) should be terminated
-	#|			with an explicit newline character ('\n').	(If this is False
-	#|			then the entire text buffer will contain no newlines.)	(Note
-	#|			that the AI's view of the buffer will generally have newlines
-	#|			added in any case, so this option doesn't make much difference.)
-	#|
-	#|		._wrapLines [bool]
-	#|
-	#|			If this is True, then overlong lines will be wrapped around
-	#|			to the next line; otherwise, they will be truncated at 
-	#|			._maxWid characters long.
-	#|
-	#|		._rows [Iterable]
-	#|
-	#|			This is an iterable, indexible sequence of lines of text,
-	#|			each of which should be a string.
-	#|
-	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-		
-	def __init__(self, maxLen:int = 100, maxWid:int = 100, includeNewlines:bool=True,
-					wrapLines:bool = True, rows:Iterable=None):
-		
-		"""textBuffer.__init__()					  [special instance method]
-		
-				Instance initializer for the TextBuffer class.	This 
-				basically just sets private instance data members
-				to the provided parameters.	 Arguments are:
-				
-					maxLen [int or None]
-					
-						Maximum buffer length in rows of text, or None 
-						if unlimited (DANGER!).	 Default value is 100.
-					
-					maxWid [int or None]
-					
-						Maximum buffer width in characters, or None if
-						unlimited (DANGER!).  Terminating newlines are 
-						not counted.  Default value is 100.
-					
-					includeNewlines [bool]
-					
-						True if the newline character at the end of each
-						line is explicit; otherwise, it is implicit.
-						Default value is True.
-					
-					wrapLines [bool]
-						
-						False if overlong lines are truncated; if True 
-						then they are wrapped around to the next line.
-						Default value is True.
-					
-					rows [Iterable]
-					
-						Initial sequence of rows contained in the buffer.
-						Each line should be a string.  The effect is the
-						same as adding the text of each row (terminated by
-						an explicit implicit newline) to the buffer.  (That 
-						is, overlong lines will be truncated or wrapped, and 
-						lines will spool off the end of the buffer if it gets 
-						overfull.)
-		"""
-					
-		self._maxLen			= maxLen
-		self._maxWid			= maxWid
-		self._includeNewlines	= includeNewlines
-		self._wrapLines			= wrapLines
-
-		self._rows = None			# Buffer is empty initially. No row data.
-		
-			# If rows are provided, add them to the buffer.
-		
-		if rows is not None:
-			for str in rows:
-				self.addLine(str)	# Make sure each added line ends with a newline.
-				
-	#__/ End TextBuffer.__init__().
-	
-	def nRows(self):
-		"""Returns the length of the buffer's current contents, in rows of text."""
-		if self._rows is None:
-			return 0 
-		return len(self._rows)
-	
-	def clear(self):
-		"""Empties the text buffer of all content."""
-		self._rows = None
-		
-	def addText(self, text:str = None):
-		"""
-			textBuffer.addText()						[public instance method]
-			
-				Appends the given text string to the end of this buffer.
-				Overlong lines are truncated or wrapped.  If the buffer
-				becomes overfull, initial rows are scrolled up and off 
-				the top of the buffer and discarded until the buffer is
-				no longer overfull.
-		"""
-		if text is None:		# Do nothing if there's no text.
-			return
-
-			# First, we'll split the given text on newlines,
-			# and then add the lines individually.	Note that this 
-			# always returns a list with at least one element.
-			
-		lines = text.split('\n')
-		
-			# For each line before the last one, we're going to add it 
-			# to the buffer using the '.addLine()' method.	This makes 
-			# sure that each line added actually ends with a newline 
-			# (these lines don't, yet) and then adds it to the buffer
-			# using the '._addRaw()' method, which doesn't add a newline
-			# unless the current line gets overlong.
-		
-		for line in lines[0:-1]:	# Could be empty if text was ''.
-			self.addLine(line)
-			
-			# The last line added is whatever was after the last newline
-			# in the text, thus, it shouldn't have a newline added, so
-			# instead we just use ._addRaw() for that one.
-		
-		self._addRaw(lines[-1])
-		
-	#__/ End method textBuf.addText().
-	
-	
-		# This method can be used to ensure that a given line of
-		# text ends with a newline (if it doesn't, then one is added).
-		# (We could just make this a module function.)
-	
-	def ensureLine(self, line:str = None):
-	
-		if line is None:
-			return None 	# No actual line, leave it alone.
-		
-			# If line doesn't already end with a newline, add one.
-		
-		if line == '' or line[-1] != '\n':
-			line = line + '\n'
-
-			# Now return the tweaked line.
-			
-		return line
-	
-	
-	def addLine(self, line:str = None):
-		"""
-			textBuffer.addLine()						[public instance method]
-			
-				The provided text string should not have any newlines,
-				except for possibly one at the end.	 This method ensures
-				the string ends in a newline (one is added if not present)
-				and then appends that string to the buffer.	 In the process,
-				the final line of the buffer could end up being truncated or
-				wrapped, and earlier lines may be scrolled up and off if the
-				buffer becomes overfull.
-		"""
-	
-		if line is None:		# If nothing, do nothing.
-			return 
-		
-			# If line doesn't already end with a newline, add one.
-		line = self.ensureLine(line)
-			
-			# Now do the raw add.			
-		self._addRaw(line)
-		
-	#__/ End method textBuf._addLine().
-	
-	
-	def _addRaw(self, rawStr:str = None):
-		"""
-			textBuffer._addRaw()						[private instance method]
-			
-				This method does the real low-level work of adding text to 
-				the buffer.	 First, if there are no rows in the buffer yet,
-				then a new row is opened to contain the required text.	Then
-				the text is appended to that row.  Then, if the row is now
-				overlong, it is truncated or wrapped.  If the buffer now 
-				contains too many rows, then rows are scrolled off the top.
-				
-				NOTE: The text string provides MAY NOT CONTAIN ANY NEWLINES 
-				prior to its final character, which can be a newline or not.
-				(If so, then a new line is added after this one.)
-		"""
-		if rawStr is None:	# If nothing provided, do nothing.
-			return
-		
-		# An important assumption here is that rawStr contains no newlines
-		# before the last character. We really should check this here.
-		
-			# At this point, we know that we at least have an empty string,
-			# so we need at least one row in the buffer to contain the string.
-			# If there are no rows yet, create one, initially with "".
-			
-		if self._rows is None or len(self._rows) == 0:
-			self._rows = ['']	# A single initially-empty row.
-			
-			# Next we need a while loop, in case we're in line-wrap mode and
-			# the text ends up spilling over multiple lines.  We'll break out 
-			# of it when we're done.
-			
-		while True:
-			
-				# OK, now we simply append the given raw string onto the end of
-				# the string in the last row of the buffer.
-			
-			self._rows[-1] = self._rows[-1] + rawStr
-		
-				# As a result of doing this, the last row of the buffer may have
-				# become overlong!	If so, then we need to either truncate it or
-				# wrap it.
-			
-			if self._maxWid is not None:	# First, make sure there *is* a max width.
-			
-				if self._effectiveStrLen(self._rows[-1]) > self._maxWid:	# Line (even ignoring any final newline) is too long.
-				
-						# If we're supposed to be doing line wrapping, then we 
-						# need to remember the part of the line we're chopping 
-						# off, so that we can wrap it around to the next line 
-						# instead.
-						
-					if self._wrapLines:
-						chopped = self._rows[-1][self._maxWid:-1]		# Save what we're chopping off.
-					
-						# Now, we just chop the line short to fit.
-					self._rows[-1] = self._rows[-1][0:self._maxWid]
-					
-						# If we're line-wrapping, then at this point, we *have*
-						# to open a new line, because there's stuff left that
-						# has to go on the next line. This is the case where
-						# we have to continue the while loop.
-						
-					if self._wrapLines:
-						self._openNewLine()
-							# And, at this point, the chopped text becomes our new raw text, and we continue.
-						rawStr = chopped
-						continue			# Goes back up to top of while loop.
-					#__/ End if wrapping.
-				#__/ End if line is too long.
-			#__/ End if there's a max line length.
-			
-			# If we get here, then either:
-			#
-			#	(1) We just truncated an overlong line;
-			#	(2) The effective line length is less than or equal to the maximum;
-			#	(3) There is no maximum line length (max buffer width).
-			#
-			# In any of these cases, we are done with line wrapping, so at this
-			# point, we simply break out of the loop.
-			
-			break	
-			
-		#__/ End line-wrapping while loop..
-		
-		# When we get here, it means that we're done with adding the text,
-		# including whatever line wrapping or truncating we needed to do.
-		
-			# If we're not in the '_includeNewlines' mode, then we need to
-			# make sure that what we just did didn't cause the last line of
-			# of the buffer to end in a newline character (which could have
-			# happened if the rawStr ended in newline).	 If it did, then
-			# we remove it.
-		
-		if not self._includeNewlines:
-			if len(self.rows[-1]) > 0 and self.rows[-1][-1] == '\n':	# Is last character newline?
-				self.rows[-1] = self.rows[-1][0:-1]		# Trim off last character.
-		
-			# At this point, we have one final task.  Namely: If the raw text
-			# string we were given to add ended with a newline, then the last
-			# thing we have to do is to actually open a new line at the end of
-			# the buffer.  Otherwise, we just stay on the line we're on.
-			
-		if len(rawStr) > 0 and rawStr[-1] == '\n':
-			self._openNewLine()
-			
-	#__/ End textBuf._addRaw().
-
-			
-	def _effectiveStrLen(self, text:str = None):
-		"""
-			textBuffer._realLength()				   [private instance method]
-			
-				Given a string which may or may not end in a newline, how
-				long is that string if we don't include the final newline
-				(if any) in the count?
-		"""
-		if text is None or text == '':
-			return 0 
-		
-		realLen = len(text)
-		
-		if text[-1] == '\n':
-			effectiveLen = realLen - 1
-		else:
-			effectiveLen = realLen
-		
-		return effectiveLen
-		
-	#__/ End method textBuf._effectiveStrLen().
-	
-	
-	def _openNewLine(self):
-		"""
-			This method adds a new line to the end of the buffer.
-			This means, make sure the last line ends in a newline
-			character (if we're doing explicit newlines), and then
-			add a new line after it that is initially empty.
-		"""
-		if self._rows is None or len(self._rows) == 0:
-			self._rows = ['']	# A single initially-empty row.
-		else:
-			if self._includeNewlines:
-				if len(self._rows[-1]) == 0 or self._rows[-1][-1] != '\n':
-					self._rows[-1] = self._rows[-1] + '\n'
-			self._rows.append('')	# Add a new row that's initially empty.
-		
-			# At this point, since we just added a new row to the buffer,
-			# we have to make sure that the buffer isn't now overfull (too
-			# many lines).	If it is, then we shorten it by removing rows 
-			# from the top until it is back in spec.
-			
-		while True:		# Infinite loop (terminated with break).
-		
-			bufLen = len(self._rows)	# How big are we?
-			
-			if bufLen <= self._maxLen:	# Is buffer length OK?
-				break	# Hey, we're all good, so bust loose.
-				
-				# Scroll the top row of the buffer off the top.
-			self._rows = self._rows[1:bufLen]
-		#__/ End while loop.
-		
-	#__/ End ._openNewLine().
-	
-	
-	def getLine(self, rowIndex):
-		"""Gets a line from the buffer. The returned line
-			will be newline-terminated."""
-	
-		if self._rows is None:
-			return None 
-		
-		bufLen = self.nRows()
-		if bufLen is 0: return None 
-		
-		return self.ensureLine(self._rows[rowIndex])
-			# Note this ensures that it will appear that the
-			# buffer contains explicit newlines, even if it doesn't.
-	
-	
-	def getTextSpan(self, startPos, endPos):
-		"""Returns, as a single string, all lines contained
-			in the buffer from row #<startPos> to row #<endPos-1>,
-			inclusive.	Each line (including the last) will be
-			terminated by a newline in the output."""
-		
-		outputStr = ""
-		
-		bufLen = self.nRows()
-		
-		if startPos < 0:
-			startPos = 0
-			
-		if endPos > bufLen:
-			endPos = bufLen
-		
-		for rowIndex in range(startPos, endPos):
-			outputStr = outputStr + self.getLine(rowIndex)
-		
-		return outputStr
-	
-#__/ End class TextBuffer.
+#
+#		TextBuffer				- An adjustable-sized buffer of text spooled to the window.
+#			(This one was moved to the text.buffer module.)
 
 class Window: pass	# Forward declaration
 
@@ -592,7 +250,7 @@ class WindowImage:
 	"""A rendered image of a text window. This is also a text buffer,
 		with decorations at the top and bottom (and maybe also the side)."""
 		
-	def __init__(self, win:Window, imgHt:int):
+	def __init__(self, win:Window, imgHt:int, imgWd:int = None):
 		
 		self._window		= win
 		self._imageHeight	= imgHt
@@ -600,16 +258,40 @@ class WindowImage:
 			# Create the text buffer to hold the window image.	Initially, 
 			# we set the buffer height to the image size, and don't set any
 			# maximum width.
-		self._textBuffer	= TextBuffer(maxLen = imgHt, maxWid = None)
+		self._textBuffer	= TextBuffer(maxLen = imgHt, maxWid = imgWd)
 		
 			# Paint the window image in our text buffer.
 		self.repaint()
 		
 	#__/ End windowImage.__init__().
 	
+	def view(self):
+		
+		"""Returns a 'view' of this window image, which simply means,
+			a single text string that renders the entire visual
+			appearance of the window image.  Here we also convert
+			spaces to tabs as appropriate."""
+
+		winView = self._textBuffer.view()
+
+			#------------------------
+			# Convert spaces to tabs.
+
+		tab_width = TheWindowSystem().tabWidth
+			# Get the present tab-width configuration of the window system.
+
+		tabbedWinView = tabify(winView, tab_width)
+			# Note this assumes the view will be displayed starting at column 0.
+		
+		return tabbedWinView + '\n'
+			# Add final newline because textbuffer doesn't by default.
+
 	def repaint(self):
+
 		"""Tell the window image to repaint itself in its text buffer."""
 		
+		_logger.debug(f"Image of '{self._window.title}' window is repainting itself.")
+
 		self._textBuffer.clear()	# First, clear our text buffer.
 		
 			# Make sure our window knows how to find us.
@@ -629,6 +311,8 @@ class WindowImage:
 		self._textBuffer.addText(text)
 		
 	def addLine(self, line:str):
+		"""Adds a line to the window image. Differs from .addText()
+			in that we ensure that there's a newline at the end."""
 		self._textBuffer.addLine(line)
 	
 #__/ End class WindowImage.
@@ -685,6 +369,11 @@ class ViewPort:
 		self._topPos = 0 if topPos is None else topPos
 		self._botPos = self._topPos + self._size
 		
+	def resize(self, size:int):
+		"""Resize the viewport to the given size."""
+		self._size = size
+		self.update()
+
 	def update(self):
 		if self._mode == 'follow-bot':
 			
@@ -706,214 +395,592 @@ class ViewPort:
 
 class Window:	# A text window within the GLaDOS window system.
 
-		_DEFAULT_WINDOW_DECORATOR_ROWS	= 2		# One line top, and one line bottom.
-		_DEFAULT_WINDOW_DECORATOR_WIDTH = 60	# Sixty columns of fixed-width text characters.
-		
-		_windowDecoratorRows	= _DEFAULT_WINDOW_DECORATOR_ROWS
-		_windowDecoratorWidth	= _DEFAULT_WINDOW_DECORATOR_WIDTH
+		#|------------------------------------------------------------------
+		#| Class constant data members 						 [class section]
+		#|
+		#|		These constants provide default values of various
+		#|		parameters for the class. Eventually these should
+		#|		maybe be settable by config parameters / settings.
 
-		# A window has:
-		#		- A title (textual label).
-		#		- An aplication it's serving.
-		#		- A text history buffer.
-		#		- A window image (another text buffer).
-		#		- A list of snapshots.
-		#		- Whether it is the currently active window.
-		#		- An associated process.
-		#		- Its state (open, minimized, or closed)
-		#		- Its current size (number of lines to view)
-		#		- Whether it is trying to stay in the receptive field
-		#		- Whether it anchors to the top or bottom of the receptive field or is floating.
-		#		- A set of past snapshots taken of it that are known to exist in the system.
-		#		- A command module for controlling this window when it is active.
-		
-		def __init__(self, title="Untitled Window", app:Application_=None, textBuf:TextBuffer=None,
-						isActive=True, process:SubProcess=None, state:str='closed',
-						viewSize=15, stayVisible:bool=False, anchor:str=None):
-		
-			if textBuf is None:
-				textBuf = TextBuffer()
+	#_DEFAULT_WINDOW_DECORATOR_ROWS	= 0		# Temporarily trying without top/bottom decorators
+	_DEFAULT_WINDOW_DECORATOR_ROWS	= 2		# By default, just one line top, and one line bottom.
+	_DEFAULT_WINDOW_DECORATOR_WIDTH = 60	# Sixty columns of fixed-width text characters.
+	_DEFAULT_WINDOW_VIEW_ROWS 		= 15	# By default, display 15 rows worth of content initially.
+	_DEFAULT_HORIZ_BORDER_CHAR		= '~'	# By default, horizontal borders are made of these.
+	_DEFAULT_LEFT_DECORATOR_STRING	= '| '	# Vertical bar and one space of interior padding.
+	_DEFAULT_RIGHT_DECORATOR_STRING = ' |'  # One space of interior padding, and a vertical bar.
 
-			if process is None:
-				process = SubProcess()
-		
-			self._title			= title
-			self._app			= app
-			self._textBuffer	= textBuf
-			self._isActive		= isActive
-			self._process		= process
-			self._state			= state
-			self._viewSize		= viewSize
-			self._stayVisible	= stayVisible
-			self._anchor		= anchor
-		
-			self._commandModule	= WindowCommandModule(self)
+		#|------------------------------------------------------------------
+		#| Class variable data members 						 [class section]
+		#|
+		#|		These class variables provide the current values of
+		#|		various parameters for the class.  These affect newly
+		#|		created instances, or properties that are the same 
+		#|		for all instances.
+	
+	_decoratorRows	= _DEFAULT_WINDOW_DECORATOR_ROWS
+	_decoratorWidth	= _DEFAULT_WINDOW_DECORATOR_WIDTH
+	_viewRows		= _DEFAULT_WINDOW_VIEW_ROWS
+		# By default, view the default number of rows (15).
+	_leftDecoratorStr  = _DEFAULT_LEFT_DECORATOR_STRING
+	_rightDecoratorStr = _DEFAULT_RIGHT_DECORATOR_STRING
 
-			self._viewPort		= ViewPort(self, self._viewSize)
-			self._viewPos		= 0		# Window is initially viewing the top of its text buffer.
+	# A window has:
+	#		- A title (textual label).
+	#		- An application it's serving.
+	#		- A text history buffer.
+	#		- A window image (another text buffer).
+	#		- A list of snapshots.
+	#		- Whether it is the currently active window.
+	#		- An associated process.
+	#		- Its state (open, minimized, or closed).
+	#		- Its current size (number of lines to view).
+	#		- Whether it is trying to stay in the receptive field.
+	#		- Whether it anchors to the top or bottom of the receptive field or is floating.
+	#		- A set of past snapshots taken of it that are known to exist in the system.
+	#		- A command module for controlling this window when it is active.
+	
+	def __init__(self, 					# The window that's being initialized.
 
-			self._image			= None	# No image initially--but now we'll make one!
-			self._image			= WindowImage(self, viewSize + self._windowDecoratorRows)
+			title="Untitled Window",
+				 # REQUIRED. Callers should *always* override this default.
 
-			self._snapshots		= set()
+			app:Application_=None,
+				 # OPTIONAL. The application controlling this window (if any).
 
-		def addText(self, text:str):
-			"""Add the given text to the window contents (at the end)."""
+			placement:Placement=None,
+				 # REQUIRED. Where this window should be placed in the
+				 # receptive field when first opened.
+				 
+			textBuf:TextBuffer=None,
+				 # OPTIONAL. Existing text buffer to use for window contents
+				 # (if None, a new one is created).
+				 
+			isActive=False,
+				 # OPTIONAL. Is this the currently active window? By default, not yet.
+				 
+			process:SubProcess=None,
+				 # OPTIONAL. Existing subprocess whose I/O will go in this window.
+				 # By default, none yet.
+				 
+			state:str='closed',
+				 # OPTIONAL. Initial state of window. Normally all windows start closed,
+				 # and are opened later. (Other states may include: 'minimized', 'maximized'.)
+
+			viewSize=None,
+				 # OPTIONAL. Initial view size within window, in rows. Default is 15.
+				 
+			stayVisible:bool=False,
+				 # OPTIONAL. Whether the window should try to stay visible
+				 # in the receptive field. (This means, if it floats to the
+				 # top of the receptive field, it sticks and gets anchored there.)
+
+			loudUpdate:bool=True,
+				 # Does the A.I. get woken up when this window changes its display
+				 # on the receptive field?  Yes by default (but see config module).
+		):
+	
+		win = self
 		
-				# First, add the text to the end of our internal buffer.
-			self._textBuffer.addText(text)
+		win._isOpen	  	= False	# New windows aren't initially open.
+
+		win._wordWrap 	= False	# No word-wrapping by default.
+		win._autoSize 	= False	# No auto-sizing by default.
+
+		win._loudUpdate = loudUpdate	# Set our loud-update attribute.
+
+		win._fieldElem	= None
+			# This is a "field element" object to contain this window. None exists initially
+
+			#---------------------------------------------------------------------
+			# Before doing anything else, we get some preferences from the window system
+			# that apply to all newly-created windows in the system.
+
+		winSys = TheWindowSystem()		# Get the sole instance of this singleton.
+
+		self._hasSideBorders = sideBorders = winSys.useSideDecorators
+			# This tells us whether to display the window with left-right borders.
+
+		# If the window has side borders, then this means that its entire image
+		# should have a fixed width that is the same as the width of its top &
+		# bottom decorators.  Otherwise, it should have no fixed width.
+		if sideBorders:
+			imageWidth = self._decoratorWidth
+		else:
+			imageWidth = None
+		self._imageWidth = imageWidth
+
+		# If the window has side borders and a fixed image width, then it should
+		# have a fixed content width that is equal to its image width minus enough
+		# space for the interior padding and borders.
+		if sideBorders and imageWidth is not None:
+			contentWidth = imageWidth - len(self._leftDecoratorStr) - len(self._rightDecoratorStr)
+		else:
+			contentWidth = None		# No limit on window content width by default.
+		self._contentWidth = contentWidth
+
+		_logger.info(f"Creating window '{title}' with image width = {imageWidth}, content width = {contentWidth}.")
+
+			#-----------------------------------------------------------
+			# A window automatically creates a text buffer to hold its 
+			# contents when it is first created, if one wasn't supplied.
+	
+		if textBuf is None:
+			textBuf = TextBuffer(maxWid = contentWidth)
+
+		if viewSize is None:
+			viewSize = self._viewRows	# This is actually a class-level data member.
+
+		self._title			= title
+			# This gets displayed in the top decorator of the window image when it is rendered.
 			
-				# Update our viewport (in case we're following the bottom of the text).
-			self._viewPort.update()
+		self._app			= app
+			# We reference this when general window commands need to
+			# talk to the window's underlying app (e.g. to terminate it).
 			
-				# Now, ask our window image to repaint itself.
-			self._image.repaint()
+		self._placement		= placement
+			# This gets used when the window is opened & placed on the field.
+			
+		self._textBuffer	= textBuf
+			# All window content will get stored here, & it will be consulted
+			# for displaying the view.
+			
+		self._isActive		= isActive		
+		self._process		= process
+		self._state			= state
+		self._viewSize		= viewSize
+		self._stayVisible	= stayVisible
+	
+		self._commandModule	= WindowCommandModule(self)
+
+		self._viewPort		= ViewPort(self, self._viewSize)
+		self._viewPos		= 0		# Window is initially viewing the top of its text buffer.
+
+			# Create the window's image.
+
+		self._image			= None	# No image initially--but we'll make one right now!
+		self.createImage()
+
+		self._snapshots		= set()
+
+	def notifyOfFocus(win):
+		"""Notify window it has been assigned the command focus. """
+		pass
+
+	@property
+	def nTextRows(win):
+
+		"""Returns the number of rows of text stored in the underlying
+			text buffer for the window content."""
 		
-		def addLine(self, line:str):
-			"""Add the given single line of text to the window contents (at the end)."""
-			
-				# First, add the line to the end of our internal buffer.
-			self._textBuffer.addLine(line)
-			
-				# Update our viewport (in case we're following the bottom of the text).
-			self._viewPort.update()
-			
-				# Now, ask our window image to repaint itself.
-			self._image.repaint()
+		return win._textBuffer.nRows()
+
+	def clearText(win):
+		"""Clears the contents of the window's underlying text buffer,
+			but does not update its image quite yet."""
+		win._textBuffer.clear()
+
+	def createImage(win):
+
+		"""Creates this window's image. Any previous image is discarded."""
+
+		viewSize = win._viewSize
+		decRows = win._decoratorRows
+		imgWidth = win._imageWidth
+
+			# Create a window image of the appropriate dimensions.
+		image = WindowImage(win, viewSize + decRows, imgWidth)
+			# Note that we make room for the top/bottom decorators.
+
+		win._image = image
+
+	def checkSize(win):
+
+		"""If we're in auto-resize mode, then, if needed, resize
+			the window to fit the current size of its content."""
+
+		if win.autoSize:
+			win.resizeToFitContent()
+
+	def resizeToFitContent(win):
 		
-		def render(self):
-			"""Render this window in its image. Assumes image is initially clear."""
-			self.renderTopDecorator()
-			self.renderContents()
-			self.renderBotDecorator()	# Render the decorator at the bottom of the window.
+		"""This method causes the window to resize itself to fit the
+			current size of its content buffer."""
+
+		curViewSize = win._viewSize		# Get current size of window's view in rows.
+
+		nContentRows = win._textBuffer.nRows()	# Get number of rows of content.
 		
-		def renderLine(self, line:str):
-			self._image.addLine(line)
+		if nContentRows != curViewSize:
+
+			# Change our view size to match the number of rows of content.
+			win._viewSize = viewSize = nContentRows
+
+			# Resize our viewport to match the new view size.
+			win._viewPort.resize(viewSize)
 		
-		def renderTopDecorator(self):
-			"""
-				The default window top decorator for non-active windows looks as follows:
+			# Re-create the window's image from scratch.
+			win.createImage()
+
+			# Re-display the window on the receptive field.
+			win.redisplay()
+
+	@property
+	def wordWrap(thisWin):
+		return thisWin._wordWrap
+
+	@wordWrap.setter
+	def wordWrap(thisWin, newValue:bool):
+		_logger.debug(f"Setting word-wrapping on window 'thisWin.title' to {newValue}")
+		thisWin._wordWrap = newValue
+			# Also relay this setting to our text buffer.
+		thisWin._textBuffer.wordWrap = newValue
+
+	@property
+	def autoSize(thisWin):
+		return thisWin._autoSize
+
+	@autoSize.setter
+	def autoSize(thisWin, newValue:bool):
+		_logger.debug(f"Setting auto-sizing on window 'thisWin.title' to {newValue}")
+
+		oldValue = thisWin.autoSize
+
+		thisWin._autoSize = newValue
+
+		# If auto-sizing is newly turned on, then go ahead and resize the window.
+		if newValue and not oldValue:
+			thisWin.resizeToFitContent()
+
+	@property
+	def title(thisWin):
+		return thisWin._title
+
+	@property
+	def placement(thisWin):
+		return thisWin._placement
+
+	@property
+	def image(thisWin):
+		"""Retrieves this window's current image object (see class WindowImage)."""
+		return thisWin._image
+
+	def view(thisWin):
+
+		"""Gets a 'view' of this window as a single text string. Note that in
+			the image.view() method, we automatically also tabify the text in
+			hopes of reducing the size in tokens of the window's rendering on the
+			AI's receptive field.  (Fingers crossed that the AI isn't too confused
+			by the tabs.)"""
+
+		image = thisWin.image	# Get this window's image structure.
+		viewTxt = image.view()	# Convert it to a single text string.
+
+		return viewTxt			# And return that.
+
+	def openWin(thisWin):
+
+		"""Tells the window to actually open itself up on the receptive field,
+			if not already open."""
+		
+		win		= thisWin
+		field	= TheReceptiveField()	# Gets the singleton instance.
+
+			# Create a field element to contain this window.
+		wElem = WindowElement(field, win)
+				# This will automatically place itself on the field.
+				# Add that will automatically update the field view.
+		thisWin._fieldElem = wElem
+		
+			# Remember that we have opened this windo.
+		win._isOpen = True
+
+			# Tell the field that this is a good time for it to
+			# notify its viewers that its contents have changed.
+			# This will then update the console's field display,
+			# and the field displays of any other connected user
+			# terminals, and will also notify the AI's mind (if
+			# running) that the field has changed, which should
+			# wake up the AI (if sleeping) and give it a chance
+			# to respond to the new field contents.
+
+		win.redisplay()
+		
+
+	def resetPlacement(thisWin:Window):
+
+		"""Reset the window's position back to its original placement."""
+
+		win = thisWin
+
+		win._fieldElem.resetPlacement()
+
+		win.redisplay()		# Redisplay the receptive field.
+
+	
+	def addText(self, text:str):
+		"""Add the given text to the window contents (at the end)."""
+	
+			# First, add the text to the end of our internal buffer.
+		self._textBuffer.addText(text)
+		
+			# Update our viewport (in case we're following the bottom of the text).
+		self._viewPort.update()
+		
+			# Now, ask our window image to repaint itself.
+		self._image.repaint()
+
+			# Also, check whether an auto-resize is needed.
+		self.checkSize()
+
+	
+	def addLine(self, line:str):
+		"""Add the given single line of text to the window contents (at the end)."""
+		
+			# First, add the line to the end of our internal buffer.
+		self._textBuffer.addLine(line)
+		
+			# Update our viewport (in case we're following the bottom of the text).
+		self._viewPort.update()
+		
+			# Now, ask our window image to repaint itself.
+		self._image.repaint()
+	
+			# Also, check whether an auto-resize is needed.
+		self.checkSize()
+	
+	def render(self):
+		"""Render this window in its image. Assumes image is initially clear."""
+		self.renderTopDecorator()
+		self.renderContents()
+		self.renderBotDecorator()	# Render the decorator at the bottom of the window.
+	
+	def renderText(self, text:str):
+		self._image.addText(text)
+
+	def renderLine(self, line:str):
+		"""Renders a line to this window's image. Differs from .renderText()
+			in that we ensure that there's a newline at the end of what's added."""
+		self._image.addLine(line)
+	
+	def renderTopDecorator(self):
+		"""
+			The default window top decorator for non-active windows looks as follows:
+		
+				/----- Window Title ---------------------------------------\
 			
-					/----- Window Title ---------------------------------------\
-				
-				where the total width of this string (in fixed-width characters) is 60 by default.
-				Alternatively, if the window is active, then the decorator looks like:
-				
-					/===== Window Title =======================================\
-				
-			"""
+			where the total width of this string (in fixed-width characters) is 60 by default.
+			Alternatively, if the window is active, then the decorator looks like:
 			
-				# First, figure out which character we're going to use for the horizontal window edge.
-			horizEdgeChar = '=' if self._isActive else '-'
+				/===== Window Title =======================================\
 			
-				# Next, generate what the top decorator string would look like
-				# if there were no title included at all.
-			topDecStr = '/' + horizEdgeChar*(self._windowDecoratorWidth - 2) + '\\'
+		"""
+		
+		defHorizEdgeChar = self._DEFAULT_HORIZ_BORDER_CHAR
+
+			# First, figure out which character we're going to use for the horizontal window edge.
+		horizEdgeChar = '=' if self._isActive else defHorizEdgeChar
+		
+			# Next, generate what the top decorator string would look like
+			# if there were no title included at all.
+		topDecStr = '/' + horizEdgeChar*(Window._decoratorWidth - 2) + '\\'
+		
+			# Now construct the title string, including padding.
+		titleStr = ' ' + self._title + ' '
+		
+			# How long is it?
+		titleStrLen = len(titleStr)
+		
+			# Where are we going to put it?
+		titleStrLoc = 6
+		
+			# OK, now paint it there (overwriting what was there initially).
+		topDecStr = topDecStr[0:titleStrLoc] + titleStr + topDecStr[titleStrLoc+titleStrLen:]
+		
+			# OK, render that line.
+		self.renderLine(topDecStr)
+		
+	#__/ End method window.renderTopDecorator().
+	
+	def renderContents(self):
+		"""
+			This tells us (this window) to render the current view of our 
+			window contents in our window image.
+		"""
+
+		_logger.debug(f"Rendering '{self.title}' window contents in window image...")
+
+		# If this window does not have side borders, then this is extremely
+		# easy: We simply add the content view as raw text to the image.
+		# However, if this window does have side borders, we have to do
+		# more work, putting together each line using appropriate side
+		# border decorators.
+
+		if self._hasSideBorders:
+
+			vp = self._viewPort
+
+			topRow = vp._topPos
+			botRow = vp._botPos
+
+			# The following is a blank "template" consisting of a blank line filled
+			# with spaces in between the side decorators.  We're overwrite part with the
+			# actual contents of each line.
+			blankLine = self._leftDecoratorStr + ' '*self._contentWidth + self._rightDecoratorStr
+			startPos = len(self._leftDecoratorStr)
+
+			for rowIndex in range(topRow, botRow):
+
+				line = self._textBuffer.getLine(rowIndex, nlTerminated=False)
+					# Gets the raw line from the buffer, without a newline.
 			
-				# Now construct the title string, including padding.
-			titleStr = ' ' + self._title + ' '
+				if line is None:	# Could happen if content buffer is empty, say.
+					line = ''
+
+					# Now fill those contents into our blank template.
+				filledLine = overwrite(blankLine, startPos, line)
+
+					# Adds this 'filled-in' line with borders to the window image.
+				self.renderLine(filledLine)
+
+		else:
+			# No side borders, we can just display the raw text in the window view.
+			self._image.addText(self.getViewText())
+		
+	def getViewText(self):
+		"""
+			This retrieves (as a single string) the portion of the window
+			contents that is presently visible within the window's current 
+			viewport on its contents.
+		"""
+		vp = self._viewPort
+		text = self._textBuffer.getTextSpan(vp._topPos, vp._botPos)
+		return text
+	
+	def renderBotDecorator(self):
+		"""
+			The default window bottom decorator for non-active windows looks as follows:
+			
+				\----------------------------------------------------------/
+			
+			If the window is active, however, we change it to:
+			
+				\=========== Window Commands: /Minimize /Close ============/
+			
+			where the commands shown are those provided in the window's command module.
+		"""
+		
+		defHorizEdgeChar = self._DEFAULT_HORIZ_BORDER_CHAR
+
+			# First, figure out which character we're going to use for the horizontal window edge.
+		horizEdgeChar = '=' if self._isActive else defHorizEdgeChar
+		
+			# Next, generate what the bottom decorator string would look like
+			# if there were no command text included at all.
+		botDecStr = '\\' + horizEdgeChar*(Window._decoratorWidth - 2) + '/'
+		
+			# If the window is active, we'll superimpose a command menu on it:
+		if self._isActive:
+		
+				# Generate a string for the command menu.
+			menuStr = ' ' + 'Window Commands: ' + self._commandModule.menuStr() + ' '
 			
 				# How long is it?
-			titleStrLen = len(titleStr)
-			
-				# Where are we going to put it?
-			titleStrLoc = 6
-			
+			menuStrLen = len(menuStr)
+		
+				# Where are we going to put it?	 Center it... (Rounding down.)
+			menuStrLoc = int((Window._decoratorWidth - menuStrLen)/2)
+		
 				# OK, now paint it there (overwriting what was there initially).
-			topDecStr = topDecStr[0:titleStrLoc] + titleStr + topDecStr[titleStrLoc+titleStrLen:]
+			botDecStr = overwrite(botDecStr, menuStrLoc, menuStr)
+			#botDecStr = botDecStr[0:menuStrLoc] + menuStr + botDecStr[menuStrLoc+menuStrLen:]
+		#__/ End if window active.
 			
-				# OK, render that line.
-			self.renderLine(topDecStr)
-			
-		#__/ End method window.renderTopDecorator().
+		self.renderText(botDecStr)
+
+	#__/ End method window.renderBotDecorator().
+
+	def redisplay(win:Window, loudly:bool=None):
+
+		"""Advises the window to re-display itself on the receptive field 
+			(if it's supposed to be visible). If loudly=False is provided,
+			then we request the receptive field to please do it quietly
+			so as not to wake up the A.I."""
+
+		_logger.debug(f"Window '{win.title}' is redisplaying itself on the field...")
+
+		# If the 'loudly' flag was not set by the caller, retrieve it from window attribs.
+		if loudly is None:
+			loudly = win._loudUpdate
+
+		# If the window has a field element, tell it its contents have changed.
+		if win._fieldElem is not None:
+			win._fieldElem.markChanged()	# Informs base that field has changed.
+
+		# If the window is currently open, then tell the field to update its view.
+		if win._isOpen:
+			TheReceptiveField().updateView(loudly=loudly)
 		
-		def renderContents(self):
-			"""
-				This tells us (this window) to render the current view of our 
-				window contents in our window image.
-			"""
-			self._image.addText(self.getViewText())
-			
-		def getViewText(self):
-			"""
-				This retrieves (as a single string) the portion of the window
-				contents that is presently visible within the window's current 
-				viewport on its contents.
-			"""
-			vp = self._viewPort
-			text = self._textBuffer.getTextSpan(vp._topPos, vp._botPos)
-			return text
-		
-		def renderBotDecorator(self):
-			"""
-				The default window bottom decorator for non-active windows looks as follows:
-				
-					\----------------------------------------------------------/
-				
-				If the window is active, however, we change it to:
-				
-					\=========== Window Commands: /Minimize /Close ============/
-				
-				where the commands shown are those provided in the window's command module.
-			"""
-			
-				# First, figure out which character we're going to use for the horizontal window edge.
-			horizEdgeChar = '=' if self._isActive else '-'
-			
-				# Next, generate what the bottom decorator string would look like
-				# if there were no command text included at all.
-			botDecStr = '\\' + horizEdgeChar*(self._windowDecoratorWidth - 2) + '/'
-			
-				# If the window is active, we'll superimpose a command menu on it:
-			if self._isActive:
-			
-					# Generate a string for the command menu.
-				menuStr = ' ' + 'Window Commands: ' + self._commandModule.menuStr() + ' '
-				
-					# How long is it?
-				menuStrLen = len(menuStr)
-			
-					# Where are we going to put it?	 Center it... (Rounding down.)
-				menuStrLoc = int((self._windowDecoratorWidth - menuStrLen)/2)
-			
-					# OK, now paint it there (overwriting what was there initially).
-				botDecStr = botDecStr[0:menuStrLoc] + menuStr + botDecStr[menuStrLoc+menuStrLen:]
-			#__/ End if window active.
-				
-		#__/ End method window.renderBotDecorator().
-		
-		def redisplay(self):
-			"""Advises the window to re-display itself on the receptive field 
-				(if it's supposed to be visible)."""
-			pass
-		
+# Class for keeping track of the set of windows presently instantiated in the system.
+# So far this class is pretty trivial. It's just a list of windows. We'll add more
+# functionality later.
+
 class Windows:
 	def Windows(self):
 		self._windowList = []
 
+
+# Class for a window snapshot. This is a static image of a window, and is used to
+# archive the appearance of a window at a given time in the system's history buffer.
+# When a window scrolls off the top of the screen, it creates a snapshot of itself
+# and adds it to the history buffer for later reference. Eventually items in the
+# history buffer will be spooled out to disk for long-term persistent storage.
+# NOTE: This class is not yet implemented.
+
 class WindowSnapshot:	# A static image of a text window at a given point in time.
 
-		# A snapshot has:
-		#		- A text history buffer.
-		#		- The window it's a snapshot of.
-		#		- The time it was taken.
-		#		- Its location in the text stream.
-		#		- Its state (open or minimized).
-		#		- Its current size (number of lines to inspect).
-		
-		pass
+	# A snapshot has:
+	#		- A text history buffer.
+	#		- The window it's a snapshot of.
+	#		- The time it was taken.
+	#		- Its location in the text stream.
+	#		- Its state (open or minimized).
+	#		- Its current size (number of lines to inspect).
+	
+	pass
+
+# Singleton class anchoring the window system. The constructor creates the window
+# system if it doesn't already exist.
 
 @singleton		
 class TheWindowSystem:
 
-		# The TheWindowSystem has:
-		#		- Set of all windows in the system.
-		#		- List of windows present in the receptive field.
-		#		- List of windows anchored to the top of the receptive field.
-		#		- List of windows anchored to the bottom of the receptive field (usually there is just one, the presently active window).
+	# The TheWindowSystem has:
+	#		- Various window-system-wide preferences.
+	#		- Set of all windows in the system.
+	#		- Reference to the currently-active window, if any.
+	#		- List of windows present in the receptive field.
+	#		- List of windows anchored to the top of the receptive field.
+	#		- List of windows anchored to the bottom of the receptive field
+	#			(usually there is just one, the presently active window).
 
-		def __init__(self):
-				self._windows = Windows()
-				
+	def __init__(self):
 
+		sysConf = TheConfiguration()	# Get the system configuration.
 
+		self._useSideDecorators = sysConf.sideDecorators
+			# Boolean: Whether window images should include side decorators or not.
+
+		self._windows = Windows()
+			# This creates the window set (initially empty).
+
+		self._tabwidth = sysConf.tabWidth
+			# Tab width for rendering window images.
+
+	@property
+	def useSideDecorators(winSys):
+		return winSys._useSideDecorators
+
+	@property
+	def tabWidth(winSys):
+		return winSys._tabwidth

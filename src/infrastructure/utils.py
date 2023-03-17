@@ -48,6 +48,7 @@ __all__ = ['get_hostname', 'get_my_ip',         # Networking functions.
            'countLines', 'unsplit', 			# String manipulation.
 		   'WatchBox' ]                         # Watchable storage box.
 
+
     #|=====================================================================
     #|
     #|   get_hostname()                          [module public function]
@@ -197,6 +198,29 @@ def unsplit(strs, delim:str):
 #    for s in strs[1:]:
 #        result = "%s%s%s" % (result, delim, s)      # There must be an easier way to concatenate strings!
 #    return result
+
+# CHECK: Is there a built-in Python method for the following?
+def overwrite(botStr:str, pos:int, topStr:str, extend:bool=False):
+
+	"""Overwrite the given 'bottom string', starting at position 'pos', 
+		with the given 'top string.'  The last argument specifies whether
+		to extend the total length of the string if needed."""
+		
+	botLen = len(botStr)
+	topLen = len(topStr)
+	
+	# Initialize result to first part of bottom string, before pos.
+	res = botStr[:pos]
+	
+	if pos + topLen > botLen:		# Doesn't fit
+		if extend:
+			res = res + topStr
+		else:
+			res = res + topStr[:(botLen - pos)]
+	else:
+		res = res + topStr + botStr[(pos + topLen):]
+
+	return res
 
     #|======================================================================
     #|

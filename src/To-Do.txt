@@ -1,0 +1,362 @@
+To-Do.txt
+=========
+
+Things to do on GLaDOS coding:
+------------------------------
+
+	1.	[ ] Systematically go through all files, packages & modules looking for things to do, and adding them to this list!
+	
+	
+	Top-level files:
+	~~~~~~~~~~~~~~~~
+	
+		[o] GLaDOS/README.md - Bring this file up-to-date.
+				a.	[o] Document all files & subdirectories.
+				
+		[ ] GLaDOS/glados-config.hjson - Make sure all config options are supported.
+				a.	[ ] Support 'field-conf' config options.
+				b.	[ ] Add more config options as needed until done.
+	
+	
+	ai-data subdirectory: (installed to /opt/AIs/gladys)
+	~~~~~~~~~~~~~~~~~~~~~
+	
+		[/] Create new 'init-goals.hjson' data file (on server, /opt/AIs/ only).
+		
+		[ ] Add support for 'cur-goals.json' data file.
+		
+		[ ] Define other major files and subdirectories (cur-goals.json, 'history/', 
+				'memory/', 'app-data/', etc.).
+	
+	
+	src/ subdirectory:
+	~~~~~~~~~~~~~~~~~~
+	
+		[o] src/README.md - Make sure list of packages is up-to-date.
+	
+		[/] src/ - Add a 'settings/' package.
+		
+	
+	src/apps subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~
+
+		General modules for application system:
+		=======================================
+		
+			src/apps/appActions.py:
+			~~~~~~~~~~~~~~~~~~~~~~~
+			
+			
+			
+			src/apps/appCommands.py:
+			~~~~~~~~~~~~~~~~~~~~~~~~
+			
+				[ ] Consider providing a general app command
+					for each app, to close, exit, or do various
+					window commands on the app.  Create a help
+					module for it.
+				
+			
+			src/apps/application.py:
+			~~~~~~~~~~~~~~~~~~~~~~~~
+			
+			
+			
+			src/apps/appSystem.py:
+			~~~~~~~~~~~~~~~~~~~~~~
+
+				[ ] Should it get its own help module?
+
+
+
+		Modules for individual apps:
+		============================
+
+			src/apps/appsApp.py: (Low priority)
+			~~~~~~~~~~~~~~~~~~~~
+		
+				[ ]	Implement this whole app (maybe??) -- or delete.
+				
+		
+			src/apps/clockApp.py:
+			~~~~~~~~~~~~~~~~~~~~~
+			
+				[ ] Review/cleanup this module.
+			
+				[ ] Add various settings/config preferences.
+			
+			
+			src/apps/browseApp.py:
+			~~~~~~~~~~~~~~~~~~~~~~
+		
+				[ ]	Implement this entire app.
+				
+		
+			src/apps/commsApp.py:
+			~~~~~~~~~~~~~~~~~~~~~
+			
+				[ ]	Implement this entire app. (Email + Telegram.)
+			
+			
+			src/apps/diaryApp.py:
+			~~~~~~~~~~~~~~~~~~~~~
+		
+				[ ]	Implement this entire app.
+				
+		
+			src/apps/goalsApp.py:
+			~~~~~~~~~~~~~~~~~~~~~
+			
+				[ ] Review/cleanup this module.
+			
+				[ ]	Implement saving current goal list to cur-goals.json.
+				
+			
+			src/apps/helpApp.py:
+			~~~~~~~~~~~~~~~~~~~~
+		
+				[ ] Add subcommands.
+				
+				[ ] Interface to helpsys package.
+				
+		
+			src/apps/infoApp.py:
+			~~~~~~~~~~~~~~~~~~~~
+		
+				[ ]	Review/cleanup this module.
+			
+			
+			src/apps/memoryApp.py:
+			~~~~~~~~~~~~~~~~~~~~~~
+			
+				[ ]	Implement this; interface to submind, memory system.
+				
+			
+			src/apps/settingsApp.py:
+			~~~~~~~~~~~~~~~~~~~~~~~~
+			
+				[ ] Implement this; interface to settings package.
+				
+			
+			src/apps/todoApp.py:
+			~~~~~~~~~~~~~~~~~~~~
+			
+				[ ]	Implement this entire app.
+				
+			
+			src/apps/unixApp.py:
+			~~~~~~~~~~~~~~~~~~~~
+			
+				[ ] Implement this; interface to process package.
+				
+			
+			src/apps/writingApp.py:
+			~~~~~~~~~~~~~~~~~~~~~~~
+		
+				[ ]	Implement this entire app.
+				
+	
+	src/auth subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ]	Finish implementing authority system.
+	
+	
+	src/commands subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ]	Clean up commandInterface.py. Consider breaking into submodules.
+	
+	
+	src/config subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ]	Add many more configuration options; improve
+			support for user-specific config preferences.
+	
+	
+	src/console subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ] Eventually associate console input panel to a user role.
+		
+		[ ] Maybe eventually separate the console app from the GLaDOS server?
+
+	
+	src/display subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ]	Someday figure out how to get dynamic terminal resize working.
+	
+	
+	src/entities subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ] Review/clean up this package. 
+	
+	
+	src/events subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ] Review/clean up package. Interface to history package (once that's implemented).
+	
+	
+	src/field subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ]	Review/clean up this whole package.
+	
+		[ ] Improve handling of when floating windows
+			reach the top of the field (minimize them).
+		
+		[ ] Connect up the field package with the history
+			package (once the latter is implemented).
+	
+	
+	src/gpt3 subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~
+	
+	
+	
+	
+	src/helpsys subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ] Make progress on general help system infrastructure.
+		
+		[ ] Implement help modules for many systems/packages.
+		
+	
+	src/history subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ] Finish implementing this facility, including backing store & spooling to long-term memory.
+	
+	
+	src/infrastructure subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ] Clean up all files.
+		[ ] Get rid of timestamp.py (not using).
+	
+	
+	src/memory subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ] Implement memory system.
+		[ ] Implement a memory-search bot (in mind).
+	
+	
+	src/mind subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ]	Review / clean up entire package.
+		
+		[ ] Implement a memory-search bot.
+		
+		[ ] Maybe migrate mind into a process?
+				(Once the latter is implemented.)
+				
+		[ ] Maybe eventually separate out AI personas into
+				individual user accounts, running an 
+				ai-persona.py program which communicates
+				with the central server.
+	
+	
+	src/processes subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ] Implement this entire package.
+		
+		[ ] Allow GLaDOS processes to be implemented as:
+		
+				a. [ ] Threads within the main server program.
+				
+				b. [ ] Separate subprocesses under the main program, still within the server's Unix account.
+				
+				c. [ ] Separate processes running under entire different user accounts.
+					(In this case, the process object is just a bridge over to the other program.)
+	
+	
+	src/settings subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ] Interface this package to the Settings app
+				(once the latter is implemented).
+		
+		[ ] Clean up this package, create many more settings modules.
+		
+		[ ] Add capability to save and load settings, to preserve them
+			across system suspend/resume.  (Also, implement suspend/resume
+			capability more broadly throughout GLaDOS.)
+			
+		[ ] Add a command module to provide the '/set' command.
+	
+		[ ] Add support for user-specific settings (preferences).
+	
+	
+	src/supervisor subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ] Review/clean up package.
+	
+	
+	src/terminal subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ] Implement this entire package.
+	
+	
+	src/text subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ] Review/clean up package.
+	
+	
+	src/tokenizer subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ] tokenizer/tokenizer.py - Add an option to verify token counts.
+	
+	
+	src/users subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ]	Implement this entire package.
+	
+
+	src/windows subdirectory:
+	~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+		[ ]	Review/clean up this whole package.
+	
+		[ ] Implement window highlighting when a window has
+				the command focus.
+		
+		[ ]	Implement window command hints in lower border
+				(when window has the command focus).
+				
+		[ ] Implement the command module for general window
+				commands: /minimize, /restore, /close, etc.
+				(also /place)
+				
+		[ ] Implement the help module for window commands.
+		
+		[ ] windows/windowSettings.py - Create this module.
+	
+
+	
+	UNORGANIZED GLADOS CODING TASKS:
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+				
+	[ ]	When floating windows hit the anchored/pinned windows at the top of the display,
+			they should auto-minimize themselves to save space.
+		[ ] Implement minimize/restore window commands.
+			[ ] Implement command focus/window highlighting.
+	
+	[ ] Handle system shutdown more gracefully: Save settings, optionally save history, etc.
+	
+	[ ] Implement thing to render non-printable ASCII characters in human-readable views.
+			(Use curses.ascii module? Or just colored curses characters?)
+			
+	[ ] Put action updates in log file

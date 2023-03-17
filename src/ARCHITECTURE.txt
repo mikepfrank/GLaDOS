@@ -1,0 +1,423 @@
+GLADOS SOFTWARE ARCHITECTURE
+============================
+
+This file contains a variety of notes pertaining to the software architecture of GLaDOS.
+
+Table of Contents:
+------------------
+	1. Import circularity & dummy class declarations in Python.
+	2. Cross-referencing of modules between packages.
+	3. Layer-cake structure of GLaDOS modules, high to low.
+	
+	
+1. Import circularity & dummy class declarations in Python.
+-----------------------------------------------------------
+
+First, a note to explain the frequent occurrence of "dummy class definitions" in the code; this will then lead into the discussion of section 2.
+
+There is a problem that arises in Python when one attempts to build a large software system that includes multiple different components, organized into various packages and modules, that all need to reference each other, for example via using each other's classes in argument type hints in method declarations.
+
+The problem is that, although Python allows two different modules to both import each other, their contents will ultimately still be loaded in a sequential order -- specifically, whichever module gets imported *first* from the top-level program will have its body executed last -- and therefore, the names defined in the body of that module won't be available within the other module.  Here is a simple example to illustrate. Suppose we try to define two modules a & b as follows:
+
+	Module a.py:
+	,-------------------------------.
+	| from b import B				|
+	| 								|
+	| class A:						|
+    | def __init__(ao, bo:B=None):	|
+    |    if bo is None:				|
+    |    	bo = B(ao)				|
+    |    ao.bo = bo					|
+	|								|
+	| ao = A()						|
+	`-------------------------------'
+	
+	Module b.py:
+	,-------------------------------.
+	| from a import A				|
+	|								|
+	| class B:						|
+    | def __init__(bo, ao:A=None):	|
+	| 	if ao is None:				|
+    |   	ao = A(bo)				|
+    |	bo.ao = ao					|
+	`-------------------------------'
+
+One might want to write code like this so that other modules can import both of these modules, and the objects a and b that are generated end up each having a reference to the other, so that they can invoke each other's methods.
+
+But, this doesn't work. If you try to import module a, you get the following error:
+
+	Traceback (most recent call last):
+	  File "<stdin>", line 1, in <module>
+	  File "/home/ec2-user/python-test/a.py", line 1, in <module>
+		from b import B
+	  File "/home/ec2-user/python-test/b.py", line 1, in <module>
+		from a import A
+	ImportError: cannot import name 'A'
+
+This is because a.A simply hasn't been defined yet at this point; we're still on the import of b, on the first line of a. So, let's try *not* importing the name a.A right away in b.py:
+
+	Module b.py:
+	,-----------------------------------.
+	| import a							|
+	|									|
+	| class B:							|
+    | def __init__(bo, ao:a.A=None):	|
+	| 	if ao is None:					|
+    |   	ao = a.A(bo)				|
+    |	bo.ao = ao						|
+	`-----------------------------------'
+
+But, this still doesn't work:
+
+	Traceback (most recent call last):
+	  File "<stdin>", line 1, in <module>
+	  File "/home/ec2-user/python-test/a.py", line 1, in <module>
+		from b import B
+	  File "/home/ec2-user/python-test/b.py", line 3, in <module>
+		class B:
+	  File "/home/ec2-user/python-test/b.py", line 4, in B
+		def __init__(bo, ao:a.A=None):
+	AttributeError: module 'a' has no attribute 'A'
+
+That's because Python tries to reference the object a.A at module loading, time in order to process the initializer method definition.  One fix would be to simply abandon the type hint on the ao argument to the class B initializer:
+
+	Module b.py:
+	,-----------------------------------.
+	| import a							|
+	|									|
+	| class B:							|
+    | def __init__(bo, ao=None):		|
+	| 	if ao is None:					|
+    |   	ao = a.A(bo)				|
+    |	bo.ao = ao						|
+	`-----------------------------------'
+	(Solution #1)
+
+This works, but leaves us without a type hint.  Also, it's annoying that we have to access the a.A() constructor through its module name, rather than directly.  Also, even the import of module a here is misleading, because it suggests that we can access the names that module a defines at top level in module b, but we can't.  It's actually a useless import.
+
+An arguably cleaner and less confusing approach is to simply avoid the misleading import circularity to begin with.  And, we observe that we should never actually need class B to call class A's constructor, since the object of class A is created first.
+
+So, module b simply becomes:
+
+	Module b.py:
+	,-----------------------------------.
+	| class B:							|
+    | def __init__(bo, ao=None):		|
+    |	bo.ao = ao						|
+	`-----------------------------------'
+	(Solution #2)
+
+This is clean and works fine, but the only problem is that the reader doesn't have any clue what the type of ao is supposed to be.  We'd like to still be able to have the type hint, at least.  We can accomplish this via a dummy class declaration:
+
+	Module b.py:
+	,---------------------------------------.
+	| class A: pass							|
+	| 	# Dummy declaration for class a.A	|
+	|										|
+	| class B:								|
+	|	def __init__(bo, ao:A=None):		|
+    |		bo.ao = ao						|
+	`---------------------------------------'
+	(Solution #3)
+
+This works fine, since type hints in Python don't actually do anything (they're just a form of documentation). And, it gives the reader a clue about what type object ao is supposed to be.  And if they look up the definition of A, they'll see the comment.
+
+
+2. Cross-referencing of modules between packages.
+-------------------------------------------------
+
+The only problem with the above approach is, what if module b really does need to call new-instance constructors from module a? We could do the following:  
+
+	Module b.py:
+	,---------------------------------------.
+	| import a								|
+	|										|
+	| class A: pass							|
+	| 	# Dummy declaration for class a.A	|
+	|										|
+	| class B:								|
+	|	def __init__(bo, ao:A=None):		|
+    |		bo.ao = ao						|
+	|	def other(bo):						|
+	|		bo.aux = a.Aux()				|
+	`---------------------------------------'
+	(Solution #4)
+
+where Aux is some other class defined in module a.  This works fine, but is arguably confusing to the reader, who might wonder why the dummy class definition for class A was even needed if we're importing module a, which defines it (yet, recall from earlier that using a.A in the type hint in the class B initializer wouldn't even work).
+
+An arguably cleaner approach, and the one adopted in most places in GLaDOS, is to separate out the "low-level" classes of module a (the ones that module b needs to be able to call the constructors for) into a separate module, which then can be imported and used in module b:
+
+	Module b.py:
+	,---------------------------------------.
+	| from a_low import Aux					|
+	|										|
+	| class A: pass							|
+	| 	# Dummy declaration for class a.A	|
+	|										|
+	| class B:								|
+	|	def __init__(bo, ao:A=None):		|
+    |		bo.ao = ao						|
+	|	def other(bo):						|
+	|		bo.aux = Aux()					|
+	`---------------------------------------'
+	(Solution #5)
+
+Thus, we avoid the misleading import circularity.  This approach then naturally leads to a package organization where the modules within each package naturally subdivide into "low-level modules" that can be imported by modules in other "sibling" packages without risk of circularity, vs. "high-level modules" that should only be imported by conceptually even higher-level modules within GLaDOS as a whole.
+
+Thus, to avoid getting confused by import circularities, we try to eschew the "import <module>" syntax altogether, in favor of the "from <module> import <names>" syntax, which then detects any attempts to introduce a module circularity.  Thus, the modules of GLaDOS end up naturally being able to be organized into a strict layer-cake structure, with modules at higher levels in the layer cake only importing names from modules at lower levels.
+
+Note that there are other possible approaches; for example, a.Aux could have been defined early in module a, before the import of b, and then b could import that name from a and be able to see it, at least, but this could create other forms of confusion.  (To me, it's confusing to have imports sprinkled throughout a module's code, instead of all being collected together at the top.)  However, for future reference, here's an example implementation of that approach:
+
+	Module a.py:
+	------------
+	
+		# Define this class early so module b can import it.
+
+		class Aux:
+			def __init__(aux):
+				print("Creating Aux object.")
+
+		# Now import module B's main constructor.
+		from b import B
+
+		class A:
+			def __init__(ao, bo:B=None):
+				print("Creating A object.")
+				if bo is None:
+					bo = B(ao)
+				ao.bo = bo
+
+		ao = A()
+
+
+	Module b.py:
+	------------
+	
+		from a import Aux
+			# Note a.Aux is defined early in a, 
+			# before it imports us (b).
+
+		import a	# To access a.A() from within this module.
+
+		class A: pass
+			# Dummy declaration for a.A, to use in type hints
+
+		class B:
+			def __init__(bo, ao:A=None):
+				print("Creating B object.")
+				if ao is None:
+					ao = a.A(bo)
+				bo.ao = ao
+			def other(bo):
+				bo.aux = Aux()
+
+	Demonstration:
+	--------------
+	
+		$ python3
+		Python 3.6.12 (default, May 18 2021, 22:47:55)
+		[GCC 4.8.5 20150623 (Red Hat 4.8.5-28)] on linux
+		Type "help", "copyright", "credits" or "license" for more information.
+		>>> import a
+		Creating A object.
+		Creating B object.
+		>>> bo = a.B()
+		Creating B object.
+		Creating A object.
+		>>> bo.other()
+		Creating Aux object.
+		>>>
+
+3. Layer-cake structure of GLaDOS modules, high to low.
+-------------------------------------------------------
+
+The following table will expand out to include every module within GLaDOS, organized into layers, from highest to lowest.  Again, modules at a given layer may only invoke "from <module> import <names>" for lower-level (deeper, higher-numbered) modules.  
+
+Lower-level modules *may* do "import <module>" on higher-level modules, *if* we keep in mind that names from the higher-level module aren't necessarily available yet, and can't be referenced in type hints or top-level function/method calls.
+
+																IMPORTS MODULES:
+																==============================================
+		Layer 14 (main program):
+		------------------------
+		
+			glados-server.py									0:appdefs; 1:logmaster; 2:settings,helpSystem;
+																	3:configuration; 8:console; 13:supervisor.
+
+
+		Layer 13 (doesn't import anything above layer 12):
+		(imported/constructed only by main)
+		-------------------------------------------------
+		
+			supervisor.supervisor								0:decorators,flag; 1:logmaster,processSystem;
+																	2:entity,settings; 6:action; 8:commandInterface;
+																	9:windowSystem,mindSystem
+		
+
+		Layer 12 (doesn't import anything above layer 11):
+		 (imported/constructed only by supervisor)
+		-------------------------------------------------
+		
+			apps.appSystem
+
+
+		Layer 11 (doesn't import anything above layer 10):
+		 (imported/constructed only by application system)
+		--------------------------------------------------
+			apps.appActions
+			apps.infoApp
+			apps.clockApp
+			apps.goalsApp
+			apps.helpApp
+
+		
+		Layer 10 (doesn't import anything above layer 9):
+		-------------------------------------------------
+			apps.application
+		
+		
+		Layer 9 (doesn't import anything above layer 8):
+		 (imported/constructed only by supervisor)
+		------------------------------------------------
+
+			mind.mindSystem
+			apps.appCommands
+			windows.windowSystem
+			
+
+		Layer 8 (doesn't import anything above layer 7):
+		------------------------------------------------
+
+			commands.commandInterface
+			field.receptiveField
+			console.console
+
+		
+		Layer 7 (doesn't import anything above layer 6):
+		------------------------------------------------
+
+			console.consolePanel
+			console.fieldDisplay
+			console.logPanel
+			mind.aiActions
+
+
+		Layer 6 (doesn't import anything above layer 5):
+		------------------------------------------------
+
+			display.panel
+			supervisor.action
+			mind.mindStream
+
+
+		Layer 5 (doesn't import anything above layer 4):
+		------------------------------------------------
+		
+			display.client
+			events.event
+			field.fieldElement
+			
+
+		Layer 4 (doesn't import anything above layer 3):
+		------------------------------------------------
+		
+			display.display
+			infrastructure.time
+			field.fieldSettings
+			gpt3.api
+			
+
+		Layer 3 (doesn't import anything above layer 2):
+		------------------------------------------------
+		
+			config.configuration
+			display.controls
+			display.threads
+			mind.mindSettings
+			
+		
+		Layer 2 (doesn't import anything above layer 1):
+		------------------------------------------------
+		
+			display.colors
+			display.exceptions
+			entities.entity
+			field.placement
+			helpsys.helpSystem
+			infrastructure.worklist
+			settings.settings
+			text.buffer
+			
+
+		Layer 1 (doesn't import anything above layer 0):
+		------------------------------------------------
+		
+			auth.authority
+			display.keys
+			infrastructure.logmaster
+				(imported by almost everything):
+			infrastructure.utils
+			tokenizer.tokenizer
+			processes.processSystem		[might move up]
+
+
+		Layer 0 (bottom; no imports of custom modules):
+		-----------------------------------------------
+		
+			appdefs
+			auth.capability
+			console.virterm
+			display.drawing
+			events.author
+			infrastructure.decorators
+			infrastructure.desque
+			infrastructure.flag
+			text.tabify
+			tokenizer.encoder	[from OpenAI]
+
+
+3. Layer span structure of GLaDOS packages.
+-------------------------------------------
+
+The following diagram illustrates what levels of the GLaDOS layer-cake diagram are spanned by each of its packages.
+
+				[ #00 ]	[ #01 ]	[ #02 ]	[ #03 ]	[ #04 ]	[ #05 ]	[ #06 ]	[ #07 ]	[ #08 ]	[ #09 ]	[ #10 ]	[ #11 ]	[ #12 ]	[ #13 ]	[ #14 ]
+				=======	=======	=======	=======	=======	=======	=======	=======	=======	=======	=======	=======	=======	=======	=======	
+
+appdefs:		####### 
+
+auth:			####### ####### 			
+
+tokenizer:		####### #######
+
+infrastructure:	####### ####### ####### 		####### 
+
+events:			####### 								####### 
+
+display:		####### #######	#######	#######	#######	#######	#######	
+
+console:		#######													#######	#######	
+
+text:							####### 
+
+settings:						####### 
+
+helpsys:						####### 
+
+processes:						####### 
+
+field:							####### 		####### ####### 				####### 
+
+mind:									####### 				####### ####### 		####### 
+
+gpt3:											####### 
+
+supervisor:														####### 												####### 
+
+commands:																		####### 
+
+windows:																				####### 
+
+apps:																					####### ####### ####### ####### 
+
+glados-server:																													####### 

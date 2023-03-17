@@ -1,6 +1,30 @@
-Note the following Python package dependencies:
+INSTALLATION NOTES.
+===================
 
-	pip3 install openai		\___ Used by gpt3/api module.
-	pip3 install backoff	/
-	pip3 install hjson		---- Used by config package.
+The current Python version being used for development is 3.8.5.
+
+Note that GLaDOS requires the following optional Python packages
+to have previously been installed:
+
+
+    Used by gpt3.api module:
+    ~~~~~~~~~~~~~~~~~~~~~~~~
+        pip3 install openai             (I'm using vers. 0.2.4)
+        pip3 install backoff            (I'm using vers. 1.10.0)
+
+
+    Used by the config package:
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        pip3 install hjson              (I'm using vers. 3.0.2)
+            (Needed to parse config files.)
+
+
+    Used by the infrastructure.time module:
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        pip3 install python-dateutil    (I'm using vers. 2.8.2)
+            (Needed to get time zone abbreviations right.)
+
+
+ALSO NOTE: You have to install a GPT-2 directory tree (except model weights) to use the tokenizer; see instructions in src/tokenizer/README.md
+
 

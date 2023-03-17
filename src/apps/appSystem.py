@@ -1,6 +1,6 @@
 #|==============================================================================
 #|				  TOP OF FILE:	  apps/appSystem.py
-#|------------------------------------------------------------------------------
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #|	 The below module documentation string will be displayed by pydoc3.
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 """
@@ -18,96 +18,131 @@
 	MODULE DESCRIPTION:
 	===================
 
-		This module provides definitions for creating and starting up the 
+		This module provides definitions for creating and starting up the
 		application system, which manages GLaDOS applications (intended for
 		use by the embedded A.I.).
 
 		Currently, the module includes definitions for general classes making
-		up the application system, as well as classes defining specific 
-		applications.  Later, some definitions might be moved out to their 
-		own modules.
+		up the application system, as well as classes defining specific
+		applications.  Later on, some of these definitions might be moved out
+		to their own modules.
 
-		The general classes include:
+		The general public classes defined by this module include:
 
-			* Application_	- Abstract base class from which to derive
-								classes for specific applications.
-			
 			* TheAppSystem	- Singleton class for the overall application
 								system, itself.
 
-		The classes for specific applications include (this one goes to 11):
+		The classes for specific applications include, or will eventually
+		include the following (in order of actual/intended implementation):
 
-			1. Help_App		- The Help app implements the help system,
-								which allows the AI to browse a set of
-								help menus and obtain detailed help for 
-								specific commands.
-			
-			2. Apps_App		- This app is not yet implemented, but it is
-								anticipated to become needed in the future
-								as GLaDOS becomes more complex.	 The intent
-								is to show a menu of all of the installed
-								applications that the A.I. can navitage.
-								(Note, however, that the Apps app is the
-								only app that doesn't appear on the apps 
-								list displayed in the Apps app.)
-										[NOT YET IMPLEMENTED.]
-			
-			3. Info_App		- The Info app is started automatically, and
-								is intended to remain always visible.  It
-								displays important contextual information
-								for the A.I. to help make sure it remains
-								cognizant of its identity & situation and 
-								high-level goals.  It will also allow the
-								A.I. to edit its list of high-level goals.
-			
-			4. Settings_App	- The Settings app allows the A.I. to browse
-								and adjust various settings of GLaDOS, 
-								including general OS settings, application
-								settings, and settings of the A.I. itself.
-										[NOT YET IMPLEMENTED.]
-			
-			5. Memory_App	- The Memory app allows the A.I. to browse a
-								database of "memories", which can include
-								transcripts of its past conversations from 
-								AI Dungeon, and history records from its 
-								own use of GLaDOS.
-										[NOT YET IMPLEMENTED.]
-			
-			6. ToDo_App		- The ToDo app allows the A.I. to maintain a
-								"to-do list" to help it remember a more
-								detailed list of things it wants to do,
-								beyond the more limited list of high-level
-								goals supported by the Info app.  It can
-								check off or delete individual to-do items.
-										[NOT YET IMPLEMENTED.]
-			
-			7. Diary_App	- The Diary app allows the A.I. to keep a "diary"
-								or personal record of important events that
-								it wants to remember.
-										[NOT YET IMPLEMENTED.]
-			
-			8. Comms_App	- The Comms app allows the A.I. to send and 
-								receive (real-world) email messages and text 
-								messages.
-										[NOT YET IMPLEMENTED.]
-			
-			9. Browse_App	- The Browse app provides a simple environment 
-								to support (real-world) web browsing and 
-								searching on the part of the A.I.
-										[NOT YET IMPLEMENTED.]
-			
-			10. Writing_App	- The Writing app allows the A.I. to write and 
-								edit longer written works, including books.
-										[NOT YET IMPLEMENTED.]
-			
-			11. Unix_App	- The Unix app provides access to a real shell
-								on the host machine on which GLaDOS is running.
-								This shell runs in the A.I.'s own user account.
-										[NOT YET IMPLEMENTED.]
-"""
+		1.	The_Info_App		-
+
+				The Info app is started automatically, and is intended to
+				remain always visible.  It displays important contextual
+				information for the A.I. to help make sure it remains
+				cognizant of its identity & situation and high-level goals.
+				It will also allow the A.I. to edit its list of high-level
+				goals using a separate app, called the 'Goals' app (below).
+
+		2.	The_Clock_App		-
+
+				The Clock app provides a simple digital clock that displays
+				itself in a small window at the top of the receptive field.
+
+		3.	The_Goals_App		- 	[NOT YET IMPLEMENTED.]
+
+				The Goals app gives the A.I. an interactive interface that 
+				it can use to view and edit its list of high-level goals.
+
+		4.	The_Help_App		- 	[NOT YET IMPLEMENTED.]
+
+				The Help app implements the help system, which allows the AI
+				to browse a set of help menus and obtain detailed help for
+				specific commands.
+
+		5.	The_Apps_App		- 	[NOT YET IMPLEMENTED.]
+
+				This app is anticipated to become needed in the future as
+				GLaDOS becomes more complex.  The intent is to show a menu of
+				all of the installed applications that the A.I. can navitage.
+				(Note, however, that the Apps app will be the only app that
+				doesn't appear on the apps list displayed in the Apps app.)
+
+		6.	The_Settings_App	-	[NOT YET IMPLEMENTED.]
+
+				The Settings app allows the A.I. to browse and adjust various
+				settings of GLaDOS, including general OS settings, application
+				settings, and settings of the A.I. itself.
+
+		7.	The_Memory_App		-	[NOT YET IMPLEMENTED.]
+
+				The Memory app allows the A.I. to browse a database of
+				"memories", which can include transcripts of its past
+				conversations from AI Dungeon, as well as history records
+				resulting from its own use of GLaDOS.
+
+		8.	The_ToDo_App		-	[NOT YET IMPLEMENTED.]
+
+				The ToDo app allows the A.I. to maintain a "to-do list" to
+				help it remember a more detailed list of things it wants to
+				do, beyond the more limited list of high-level goals
+				supported by the Info app.  It can check off or delete
+				individual to-do items.
+
+		9.	The_Diary_App		-	[NOT YET IMPLEMENTED.]
+
+				The Diary app allows the A.I. to keep a "diary" or personal
+				record of important events that it wants to remember.
+
+		10.	The_Comms_App		-	[NOT YET IMPLEMENTED.]
+
+				The Comms app allows the A.I. to send and receive (real-world)
+				email messages and text messages.
+
+		11.	The_Browse_App		-	[NOT YET IMPLEMENTED.]
+
+				The Browse app provides a simple environment to support
+				(real-world) web browsing and searching on the part of
+				the A.I.
+
+		12.	The_Writing_App		-	[NOT YET IMPLEMENTED.]
+
+				The Writing app allows the A.I. to write and edit longer
+				written works, including books.
+
+		13.	The_Unix_App		-	[NOT YET IMPLEMENTED.]
+
+				The Unix app provides access to a real shell on the host
+				machine on which GLaDOS is running.  This shell runs in the
+				A.I.'s own user account.
+																			 """
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #| End of module documentation string.
-#|------------------------------------------------------------------------------
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+	#|==========================================================================
+	#|
+	#|	 0. Public names exported from this module.		   [module code section]
+	#|
+	#|			Special Python global structure defining the list of 
+	#|			public names that dependent modules will import if 
+	#|			they do 'from apps.application import *'.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+global	__all__		# List of public symbols exported by this module.
+__all__ = [
+			# Classes.
+		'AppSystem',		# Singleton class for the application system.
+
+			# These apps have already been implemented:
+		'The_Info_App',		# Application that manages the information window.
+		'The_Clock_App',	# Application that manages the clock window.
+
+			# Add others to the list here as they are implemented.
+		'The_Help_App',		# Application that manages the help system.
+	]
 
 
 	#|==========================================================================
@@ -124,633 +159,483 @@
 		#|	1.1. Imports of standard python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from os			import path				# Manipulate filesystem path strings.
-
-
 		#|======================================================================
-		#|	1.2. Imports of custom application modules. [module code subsection]
+		#|	1.2. Imports of optional python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-			#|----------------------------------------------------------------
-			#|	The following modules, although custom, are generic utilities,
-			#|	not specific to the present application.
-			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+from	hjson	import	OrderedDict		
+	# Ordered dictionary structure. Used in AppSystem_.
+	
 
-				#-------------------------------------------------------------
-				# The logmaster module defines our logging framework; we
-				# import specific definitions we need from it.	(This is a
-				# little cleaner stylistically than "from ... import *".)
+		#|======================================================================
+		#|	1.3. Imports of custom application modules. [module code subsection]
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from infrastructure.logmaster	import getComponentLogger
+			#|==================================================================
+			#|	1.3.1. The following modules, although custom, are generic 
+			#|		utilities, not specific to the present application.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		# Go ahead and create or access the logger for this module.
+				#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+				#| 1.3.1.1. The logmaster module defines our logging framework.
+				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global _component, _logger		# Software component name, logger for component.
+from infrastructure.logmaster	import getLoggerInfo
 
-_component = path.basename(path.dirname(__file__))	# Our package name.
-_logger = getComponentLogger(_component)			# Create the component logger.
+	#----------------------------------------------------------
+	# Go ahead and create or access the logger for this module,
+	# and obtain the software component name for our package.
 
+global _logger		# Logger serving the current module.
+global _component	# Name of our software component, as <sysName>.<pkgName>.
+			
+(_logger, _component) = getLoggerInfo(__file__)		# Fill in these globals.
 
-		# A simple decorator for singleton classes.
+				#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+				#| 1.3.1.2. Here are some other infrastructure modules we use.
+				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 from infrastructure.decorators	import	singleton
-from infrastructure.utils		import	countLines
+		# A simple decorator for singleton classes.
 
-			#|----------------------------------------------------------------
-			#|	The following modules are specific to the present application.
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#|	1.3.2. These modules are specific to the present application.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from config.configuration		import	TheConfiguration   
-		# Singleton class that provides the current GLaDOS system configuration.
+from config.configuration		import	TheConfiguration, TheAIPersonaConfig
+		# Singletons that provide the current GLaDOS system configuration
+		# and the configuration of the current AI persona.
 
-from windows.windowSystem		import	Window
-from processes.processSystem	import	SubProcess
+from entities.entity			import	The_AppSystem_Entity, AI_Entity_
+		# These are referenced in the _AppSystemAction_ ABC when creating new
+		# application actions on behalf of an AI, or the application system.
+
+from commands.commandInterface	import	TheCommandInterface		# Anchor singleton.
+
+from field.placement			import	Placement
+		# This is needed to place application windows on the receptive field.
+
+	#----------------------------------------------------
+	# Imports from sibling modules to the current module.
+
+from	.application			import	Application_
+		# Base class from which we derive subclasses for specific applications.
+
+from	.appActions				import	(
+
+		The_AppSystem_Subscriber,	
+			# Lets us be notified about and respond to actions we care about.
+			
+		AutoOpenWindowAction,
+			# We create & initiate this action to auto-open a app window.
+	)
+
+from	.appCommands			import	The_AppSys_CmdModule, the_appSys_cmdModule	# Second one here is a special constructor to avoid singleton circularity
+		# Anchor point for the command module for the application system.
+
+	# Import all of the various specific applications that exist.
+
+from	.infoApp	import	The_Info_App	# Implemented 1/16/'21.
+from	.clockApp	import	The_Clock_App	# Implemented 1/17/'21.
+
+	# The below are just stubs for not-yet-completed apps.
+
+from	.goalsApp		import	The_Goals_App
+from	.helpApp		import	The_Help_App
+from	.appsApp		import	The_Apps_App
+from	.settingsApp	import	The_Settings_App
+from	.memoryApp		import	The_Memory_App
+from	.todoApp		import	The_ToDo_App
+from	.diaryApp		import	The_Diary_App
+from	.browseApp		import	The_Browse_App
+from	.commsApp		import	The_Comms_App
+from	.writingApp		import	The_Writing_App
+from	.unixApp		import	The_Unix_App
 
 	#|==========================================================================
 	#|
-	#|	 2. Globals										   [module code section]
+	#|	 3. Globals										   [module code section]
 	#|
 	#|		Declare and/or define various global variables and
 	#|		constants.	Note that top-level 'global' statements are
 	#|		not strictly required, but they serve to verify that
-	#|		these names were not previously used, and also serve as 
+	#|		these names were not previously used, and also serve as
 	#|		documentation.
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		#|======================================================================
+		#|	3.1. Private globals.							   [code subsection]
 		#|
-		#|	Special globals.									[code subsection]
-		#|
-		#|		These globals have special meanings defined by the
-		#|		Python language. 
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-global __all__	# List of public symbols exported by this module.
-__all__ = [
-		'Application_',		# Abstract base class for deriving applications.
-		'AppSystem',		# Singleton class for the application system.
-		'Help_App',			# Application that manages the help system.
-		'Info_App',			# Application that manages the information window.
-			# Add others as they are implemented.
-	]
-
-
-		#|======================================================================
-		#|		
-		#|	Private globals.								   [code subsection]
-		#|
-		#|		These globals are not supposed to be accessed from 
+		#|		These globals are not supposed to be accessed from
 		#|		outside of the present module.
-		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 			#|------------------------------------------------------------------
-			#|	_APP_LIST						[module private global constant]
+			#|	_APP_MAP					   [module private global structure]
 			#|
-			#|		This is a structure (list of dicts) that defines the
-			#|		full list of supported applications.  See the 
-			#|		definition at the end of the file for further 
-			#|		documentation.
+			#|		This defines a global constant data structure (speci-
+			#|		fically, a dictionary) that provides the map between 
+			#|		the names and classes of the full list of (intended-to-
+			#|		be-) supported applica- tions.  
 			#|
-			#|		Note that some of these may not yet be implemented.
+			#|		Note that some of the apps on this list may not yet be 
+			#|		implemented as of this writing.
 			#|
-			#|		The structure of each dict in the list is:
+			#|		The structure of the name/value pairs in the map is:
 			#|
 			#|			name	- Short text name of the application.
 			#|						This must match the name used in the
 			#|						app-configs attribute of the system
 			#|						config file (glados-config.hjson).
 			#|
-			#|			class	- Class defining the application.  This 
+			#|			class	- Class defining the application.  This
 			#|						must be a subclass of Application_.
 			#|
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global _APP_LIST	# We could put this into the AppSystem class instead.
+# NOTE: We could define this map within the AppSystem_ class instead of globally.
+global _APP_MAP		# Map from application name to application class.
+
+# NOTE: The order listed here is intended to match the order in app-config.
+# But, the actual registration order depends on the ordor in app-config.
+_APP_MAP = {	
+
+	# We'll register the Clock app first, so that when it auto-opens, it will 
+	# pin itself to the very top of the receptive field (just after the header bar.
+	
+		'Clock':	The_Clock_App,		# #2: First implemented 1/17/'21.
+
+	# We'll register the Info app second, so that when it auto-opens, it will pin 
+	# itself just under the Clock app.
+	
+		'Info':		The_Info_App,		# #1: First implemented 1/16/'21.
+
+	#========== APPS BELOW THIS LINE ARE NOT YET IMPLEMENTED ==========
+	
+		'Goals':	The_Goals_App,
+		'Help':		The_Help_App,
+		'Apps':		The_Apps_App,
+		'Settings':	The_Settings_App,
+		'Memory':	The_Memory_App,
+		'ToDo':		The_ToDo_App,
+		'Diary':	The_Diary_App,
+		'Browse':	The_Browse_App,
+		'Comms':	The_Comms_App,
+		'Writing':	The_Writing_App,
+		'Unix':		The_Unix_App,
+	}
 
 
 	#|==========================================================================
 	#|
-	#|	3. Classes.										   [module code section]
+	#|	3. Class forward declarations.					   [module code section]
 	#|
-	#|		Declare and/or define the classes of this module.
+	#|			Pre-declare classes to be defined later in this module.
+	#|			(Such dummy definitions are really only useful in type 
+	#|			hints, which don't really do anything.)
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+class	AppSystem_:		pass	# Abstract base class for application systems.
+class	TheAppSystem:	pass	# Concrete singleton class to anchor this module.
+
+
+	#|==========================================================================
+	#|
+	#|	4. Class definitions.							   [module code section]
+	#|
+	#|			Define the classes provided by this module.
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		#|======================================================================
-		#|	3.1. General classes.							   [code subsection]
+		#|	4.1. General classes.							   [code subsection]
 		#|
-		#|		These classes are not application-specific but apply 
+		#|		These classes are not application-specific, but apply
 		#|		generally to the entire application system.
 		#|
+		#|			AppSystem_		    			[public abstract base class]
+		#|
+		#|				Abstract base class for applications systems.
+		#|				Has one one concrete derived leaf class, namely
+		#|				TheAppSystem, which is the singleton class that
+		#|				anchors this module.
+		#|
+		#|			TheAppSystem						[public singleton class]
+		#|
+		#|				Singleton class for the application system.
+		#|				Sole subclass of AppSystem_.
+		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-				
-class Application_:
-	#---------------------------------------------------------------------------
-	"""
-	app.Application_							  [module public abstract class]
+
+class AppSystem_:
+
+	"""Abstract base class for applications systems.  However, for now,
+		there should only be one derived class, TheAppSystem, which is 
+		a singleton class with a single instance, TheAppSystem()."""
+
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|	Instance data members							   [class documentation]
+	#|	=====================
+	#|
+	#|		Private instance data members:
+	#|		------------------------------
+	#|
+	#|		._appDict [dict] - This is a dictionary of registered applica-
+	#|			tions, mapping the app name to the corresponding instance 
+	#|			of an application-specific subclass of Application_.
+	#|
+	#|		._subscriber [The_AppSystem_Subscriber] - A convenient refer-
+	#|			ence to appActions.The_AppSystem_Subscriber(), which is 
+	#|			the singleton instance of the application system's action
+	#|			subscriber.  It looks for interesting action reports, and
+	#|			dispatches appropriately to the rest of the app system.
+	#|
+	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	def __init__(theNewAppSys:AppSystem_):
 	
-		This is the abstract superclass from which the class for each 
-		specific GLaDOS application should be derived.
-		
-		The class for a typical specific application should generally
-		be declared as a singleton class to ensure that there is only
-		one instance of each application in the system.
-		
-		Generically, an application has the following associated
-		elements:
+		"""One-time initializer for the new unique singleton instance."""
 
-			- A name.
-			
-			- A process.
-			
-			- A window.
-			
-			- A state (not-yet-started, running, not running).
-			
-			- A data directory (within the AI's data directory).
-				This is used to preserve application state 
-				information in between GLaDOS system runs.
-					
-			- A command module.
-				Provides all of the commands associated with the 
-				application.
+		appSys = theNewAppSys
 
-		And some methods are:
+		_logger.info("        [Apps/Init] Initializing applications system...")
+
+		appSys._appDict = OrderedDict()
+			# Ordered dictionary of registered applications: Maps app name to 
+			# app object. The order reflects order of appearance in app-list.
+
+			#-------------------------------------------------------------------
+			# At this point, we register the applications that are listed in 
+			# our configuration information as being 'available'.
+
+		_logger.info("        [Apps/Init]     Registering available apps...")
+
+		appSys._registerAvailableApps()
+
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Next, we create, install, and activate the app-system command 
+			#| module. This creates, installs, and activates all of the commands
+			#| for launching individual manually-launchable applications.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+			# First, create the app-system's command module.
+		appSys_cmdMod = the_appSys_cmdModule(appSys)	# Creates & returns the 'singleton' for our command module.
+				# ^ It's very important that we're calling this function instead of a normal singleton class constructor.
+		appSys._cmdMod = appSys_cmdMod					# Remember it for later reference.
 		
-			- launch()		- Starts the application running.
-	"""
+			# Next, install that module into the GLaDOS command interface.
+		cmdIface = TheCommandInterface()		# Gets this singleton.
+		cmdIface.installModule(appSys_cmdMod)	# Plug this module into it.
+		
+			# Finally, activate the command module.
+		appSys_cmdMod.activate()	# This enables all commands in the module.
+
+
+			#-------------------------------------------------------------------
+			# Next, we have to create our action news subscriber, which will 
+			# ensure that we are notified of important system actions that we 
+			# want to be made aware of.  In particular, once the AI's cognitive 
+			# system has booted up to the extent that its receptive field is 
+			# available, we want to know about it, because that's when we'll 
+			# tell our auto-opening applications that they should go ahead and 
+			# open up their windows on the field.
+
+		appSys._subscriber = The_AppSystem_Subscriber(appSys)
+				# We have to pass it a pointer to ourselves, so that later, 
+				# when it actually starts receiving notifications, it can call 
+				# our own methods as needed.
+
+	#__/ End singleton instance initializer for class AppSystem_.
+
+
+	def _registerAvailableApps(theAppSys:AppSystem_):
 	
-	def __init__(self, name:str, conf:dict):
+		"""This private method is called during application system 
+			initialization.  It is responsible for registering each of
+			the individual apps with the application system."""
+
+		appSys = theAppSys
+
+		# NOTE: The below implementation implies that auto-open apps 
+		# will be placed on the field in the same order in which
+		# they are listed in the 'app-list' list within the system 
+		# configuration file.
+
+		appConfigs = TheConfiguration().appConfigs
+
+		# Go through all apps that have config records.
+		for appName in appConfigs.keys():	# (Note this is an OrderedDict.)
+			# NOTE: The order here is the order in which we should register the apps.
+		
+			_logger.info(f"        [Apps/Init]         Registering app '{appName}'...")
+
+				# Get the app's class from the _APP_MAP global struct.
+			appClass = _APP_MAP[appName]
+
+				# Fetch the configuration record for this app.
+			appConf = appConfigs[appName]
+
+				#|-------------------------------------------------------------------
+				#| Extract all of the generic application parameters from the record.
+
+			appAvailable = appConf['avail']
+				# Is the app marked as available to be registered?
+
+			appAutoStart = appConf['auto-start']
+				# Should the app be automatically started on system startup?
+
+			appAutoOpen	 = appConf['auto-open']
+				# Should the app window be automatically opened on field startup?
+
+			appAutoFocus = appConf['auto-focus']
+				# Should the app window grab the command focus when it opens?
+
+			appLoudUpdate = appConf['loud-update']
+				# Should the app window wake up the A.I. when it updates its display?
+
+			appPlacement = appConf['placement']
+				# Where should the app window (if any) initially be placed?
+
+			appConfig	 = appConf['conf']
+				# What's the app-specific data structure?
+
+				#|-------------------------------------------------------------------
+				#| Now actually register the application.
+
+			# If the app is marked as available to register, then register it.
+			if appAvailable:
+				appSys._registerApp(appName, appClass, appAutoStart,
+					appAutoOpen, appAutoFocus, appLoudUpdate,
+					appPlacement, appConfig)
+
+		#__/ End loop over keys of the appConfigs ordered dictionary.
+
+			#-------------------------------------------------------------
+			# We might as well go ahead and start up all the apps that are
+			# supposed to be launched immediately on system startup.
+
+		_logger.info("        [Apps/Init] Starting up auto-start apps...")
+
+		appSys.startup()
+		
+	#__/ End private (singleton) instance method appSys._registerAvailableApps().
 	
-			# Remember the name of this application.
 
-		self.name = name
-		
-			# Create a new window for this application, with a suitable title.
-			# We don't actually display this window until the application is launched.
-		
-		self.window = Window(name + ' Window', app=self)
-		
-			# Create a process for this application, to run in that window.
-			# We don't actually start the process until the application is launched.
-	
-		self.process = Process(name, self.window)
-		
-			# Designate the state of this application as not yet started.
-		
-		self.state = 'not-yet-started'
-		
-			# Do any initialization work that's specific to the individual app's Application subclass.
-			# This includes doing any needed processing of the application configuration struct.
-		
-		self.appSpecificInit(conf)
+	def _registerApp(theAppSys:AppSystem_, appName:str, appClass:type, 
+			appAutoStart:bool, appAutoOpen:bool, appAutoFocus:bool, 
+			appLoudUpdate:bool, appPlacement:Placement, appConfig:dict):
 
-			# Create the application's command module, and install it in the GLaDOS command interface.
-		
-		self.initCommandModule()
-		
-	#__/ End initializer for class Application.
-	
-			
-	def appSpecificInit(self, conf:dict): 
-	
-		""" 
-		This method performs application-specific initialization,
-		using the 'conf' dictionary, which comes from the 'app-config'
-		attribute in the system config file (glados-config.hjson).
-		
-		Please note that this is a virtual method (placeholder) which 
-		needs to be overridden in each application-specific subclass.
-		"""
-				
-		pass
-	#__/ End appSpecificInit().
+		"""Registers an application with the application system.
+			Generic configuration parameters of the app are passed in 
+			as individual arguments.  App-specific parameters are in 
+			the appConfig record."""
 
-	
-	def initCommandModule(self):
-		"""
-				
-		"""
-		
-			# First, create the application's command module.
-			# Subclasses should implement this method.
-		
-		cmdModule = self.createCommandModule()
-		
-			# Remember it for later.
-		
-		self.commandModule = cmdModule
-		
-			# Install it in the system's command interface.
-		
-		
-		
-	#__/ End initCommandModule().
-
-
-	def createCommandModule(self):
-		"""
-		This virtual method should be overridden in application-specific
-		subclasses.	 It should create a command module for the application
-		(i.e., an instance of CommandModule or one of its subclasses) and
-		return it.	Generally, the command module should have been pre-
-		loaded with all of the application's commands.
-		"""
-		
-		return None				
-			# This makes sense since the abstract Application class isn't itself 
-			# associated with any specific command module.
-				
-	#__/ End createCommandModule().
-	
-#__/ End class Application.
-
-@singleton
-class AppSystem:
-
-	# The AppSystem has:
-	#
-	#	- Dict of registered applications: Maps app name to app object.
-
-
-	def __init__(self):		# One-time initializer for singleton instance.
-			
-		self._appDict = {}
-		
-			# At this point, we register the applications that are
-			# listed as 'available' in our configuration information.
-				
-		self._registerAvailableApps()
-
-
-	def _registerApp(self, appName:str, appClass:type, appConfig:dict, appAutoStart:bool):
-			
 			# First, call the class constructor to actually create the application object.
-				
-		app = appClass(appName, appConfig)
-		
+		app = appClass(appName, appAutoStart, appAutoOpen, appAutoFocus,
+					   appLoudUpdate, appPlacement, appConfig)
+
 			# Now add that app object to our dict of apps.
+		theAppSys._appDict[appName] = app
 		
-		self._appDict[appName] = app
-		
-			# Annotate the app with its autostart indicator.
-		app.autoStart = appAutoStart
-					
-	def __call__(self, name:str):
+	#__/ End private singleton instance method appSys._registerApp().
+
+
+	def __call__(self:AppSystem_, name:str):
+		"""Calling the application system with an application name as
+			the argument just returns the application with that name."""
 		return self._appDict(name)
-			
+
+
+	@property
+	def apps(thisAppSys:AppSystem_):
+		"""Gets an ordered list of all the currently-registered apps."""
+		return thisAppSys._appDict.values()
+
+
 		# This executes the startup sequence, which basically consists of starting up
 		# all of the apps that we tagged for auto-start.
-			
-	def startup(self):
-		for app in self._appDict.values():
+	def startup(self:AppSystem_):
+
+		"""This method handles startup activities for the application system.
+			It is called by the system supervisor during system startup."""
+
+		# So far, the only thing we have to do is start up all of the
+		# individual apps that are marked to be auto-started on startup.
+		for app in self.apps:
 			if app.autoStart:
+				_logger.info("        [Apps/Init]     Auto-starting "
+					f"'{app.name}' app...")
 				app.start()
 
-	def _registerAvailableApps(self):
-	
-		for app in _APP_LIST:	 # These are simple dict structures.
-		
-			appName = app['name']
-			appClass = app['class']
-			
-			appConfigs = Configuration().appConfigs
-			
-			appAvailable = appConfigs[appName]['avail']	 # Is the app available to be registered?
-			appAutoStart = appConfigs[appName]['auto']
-			appConfig		 = appConfigs[appName]['conf']
-			
-			if appAvailable:
-				self._registerApp(appName, appClass, appConfig, appAutoStart)
-				
-		self.startup()
-			
-#__/ End class AppSystem.
-		
 
-		#|======================================================================
-		#|	3.2. Application-specific classes.				   [code subsection]
-		#|
-		#|		These classes define specific applications within GLaDOS.
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	def displayWindows(thisAppSys:AppSystem_):
 
-@singleton
-class Help_App(Application_):
+		"""Tells the application system that it's OK now to actually display
+			any open application windows on the receptive field."""
 
-	"""
-	The "Help" tool simply displays some basic information
-	about how to use GLaDOS (for the A.I.'s benefit).
-	"""
+		appSys = thisAppSys
 
-	# Note the string literal given here is just a default Help 
-	# message, which may be overridden by the main-msg attribute
-	# in the system config file.
+		_logger.info("[Apps/Open] Automatically opening 'auto-open' app windows...")
 
-	_helpMsg = """
-		
-		 This is the main Help message for GLaDOS, the
-		Generic Lifeform and Domicile Operating System, 
-		(c) 2020 Metaversal Contructions.
+		for app in appSys.apps:
 
-		 At the prompt, you may enter a command line starting
-		with '/', or type free-form text to add to your history.
+			# If this particular application hasn't even been started yet,
+			# we can skip trying to auto-open its window.
 
-		 Available command words include:
+			if not app._launched:
+				continue
 
-						/Help /Info /Settings /Memory /ToDo
-						/Diary /Browse /Comms /Writing /Unix
-						
-		 Note: Command words are not case-sensitive, and you may
-		abbreviate them using any unique prefix.
+			# Check to see if this particular app is configured to auto-open
+			# its window.  If so, then we do an auto-open action, and also we
+			# check whether we need to auto-focus.
 
-		"""[1:-1]
+			if app.autoOpen:
 
-	def appSpecificInit(self, conf:dict):
-			
-			# Override the default help message with the message
-			# from the 'main-msg' config attribute, if present.
-		
-		if 'main-msg' in conf:
-				self._helpMsg = conf['main-msg']
-		
-		helpMsg = self._helpMsg
-		
-			# Now we can go ahead and tell our window to display
-			# the help message contents.
+				_logger.info(f"[Apps/Open] Auto-opening '{app.name}' app window(s)...")
 
-			# First, size the window the exactly fit the message.
-				
-		self.window.nRows = countLines(helpMsg)
-			# .nRows should be a property
-			# countLines() should go in infrastructure/utils 
-			
-			# Now, display the text.
-		self.window.addText(helpMsg)
+				# At this point, we could just call app.openWins directly, but
+				# instead, we conceive and then initiate an explicit action to
+				# do the job, namely, an instance of AutoOpenWindowAction. We
+				# do this so that the event of this action's execution will be
+				# automatically incorporated into the AI's cognitive stream; i.e.,
+				# the AI will explicitly be made aware of the fact that this
+				# action occurred.  This is to help it to understand what's
+				# going on in this new operating environment it's in.  Also, this
+				# does some degree of automatic logging of the action.
 
-		#----------------------------------------------------------
-		# NOTE: At the moment, the 'Apps' app is not needed because
-		# the help window already lists all the apps.
+				aowi = AutoOpenWindowAction(app)	# Construct (conceive) the action.
+				aowi.initiate()						# Tell it to initiate its execution.
+					# This will probably also go ahead and finish executing too.
 
-@singleton
-class Apps_App(Application_):
+				# Also, check for auto-focus.
+				if app.autoFocus:
+					app.grabFocus()		# Tell the app to grab command focus.
 
-	"""
-	Apps - This tool simply displays the list of all the
-	available apps, and allows the A.I. to select one to 
-	launch.
-	"""
+			#__/ End if app is marked for auto-open.
 
-	pass
+		#__/ End loop over registered apps.
 
-@singleton
-class Info_App(Application_):
-		
-	"""
-	Info - The idea behind this app is that it maintains and 
-	displays certain critical contextual information that the A.I. 
-	needs to know, including its identity, life circumstances, and
-	its present high-level goals.  Its window normally remains pinned 
-	at the top of the A.I.'s receptive field.  When the Information app
-	is launched, it allows the A.I. to edit certain information such
-	as its high-level goals. NOTE: This is one of the few apps that
-	is generally launched automatically at system startup. 
-	"""
+	#__/ End public singleton instance method appSys.displayWindows().
 
-		# NOTE: The feature to allow the AI to edit goals is not yet
-		# implemented. For now the Info app just displays the contents
-		# of a static text file.
-
-	def appSpecificInit(self, conf:dict):
-	
-		"""This method performs application-specific initialization 
-				for the Info application, at app creation time."""
-	
-			#----------------------------------------------------------
-			# First, get the system configuration, because it contains
-			# key information we need, such as the location of the AI's 
-			# data directory.
-
-		sysConf = Configuration()
-			# Note this retrieves the singleton instance 
-			# of the Configuration class.
-
-			#------------------------------------------------------
-			# First, get the location of the AI's data directory,
-			# which is in the system configuration.
-				
-		aiDataDir = sysConf.aiDataDir
-		
-			#-----------------------------------------------------
-			# Next, we need to get the name of the info text file
-			# (relative to that directory). This comes from our
-			# app-specific configuration data.
-				
-		infoFilename = conf['info-filename']
-		
-			#------------------------------------------------------
-			# Next, we need to construct the full pathname of the
-			# info text file.
-		
-		infoPathname = path.join(aiDataDir, infoFilename)
-		
-			#------------------------------------------------------
-			# Next, we need to actually load the info text from the
-			# appropriate data file in that directory.
-				
-		with open(infoPathname) as file:
-				infoText = "\n" + file.read() + "\n"
-				
-		_logger.debug("Loaded inital info text:\n" + infoText)
-
-			#--------------------------------------------------
-			# Next, we size our window to exactly fit the text.
-				
-		self.window.nRows = countLines(infoText)
-		
-			#----------------------------------------------
-			# Finally, we have our window display the text.
-				
-		self.window.addText(infoText)
-
-	def start(inst):
-			pass
-
-#__/ End class Info_App.
+#__/ End public abstract class AppSystem_.
 
 
 @singleton
-class Settings_App(Application_):
+class TheAppSystem(AppSystem_):
 
-	"""
-	Settings - This app can be used by the A.I. to adjust various
-	settings within GLaDOS.	 These can be associated with major 
-	systems or subsystems of GLaDOS, or individual apps or 
-	processes. 
-	"""
+	"""This singleton subclass of AppSystem_ anchors the entire appSystem
+		module.  Dependent modules may retrieve its unique instance using 
+		TheAppSystem()."""
 
-	pass
+	pass	# Code is all in our parent class AppSystem_, above.
 
-@singleton
-class Memory_App(Application_):
-		
-	"""
-	Memory - The memory tool allows the A.I. to browse and search
-	a database of records of its past conversations, thoughts, and
-	actions.
-	"""
-
-	pass
-
-@singleton
-class ToDo_App(Application_):
-		
-	"""
-	ToDo - The idea of this app is that it is a simple to-do list 
-	tool, which the A.I. can use to make notes to itself of important
-	tasks that it wants to do later.  The tasks can be given priority 
-	levels.	 The A.I. can check them off or delete them when complete. 
-	"""
-
-	pass
-
-@singleton
-class Diary_App(Application_):
-		
-	"""
-	Diary - This tool allows the A.I. to keep a "diary" of important
-	notes to itself, organized by date/time.
-	"""
-
-	pass
-
-@singleton
-class Browse_App(Application_):
-		
-	"""
-	Browse - This is a simple text-based tool to facilitate simple web
-	browsing and searching.
-	"""
-
-	pass
-
-@singleton
-class Comms_App(Application_):
-		
-	"""
-	The "comms" tool faciltates the A.I.'s two-way 
-	communications with the outside world.	This may include direct 
-	messages sent via Telegram, email messages, or other interfaces.  
-	This may be broken out later into a whole 'Comms' subfolder of 
-	separate apps.
-	"""
-
-	pass
-
-@singleton
-class Writing_App(Application_):
-		
-	"""
-	The writing tool is an interface that helps the A.I.
-	to compose and edit complex, hierarchically-structured works:  
-	Stories, poems, and extended multi-chapter books.
-	"""
-
-	pass
-
-@singleton
-class Unix_App(Application_):
-		
-	"""
-	This app gives the A.I. access to an actual Unix shell
-	environment on the host system that GLaDOS is running on.  The A.I.
-	runs within its own user account with limited permissions.
-	"""
-
-	pass
-
-	#|==========================================================================
-	#|
-	#|	4. Main body.									   [module code section]
-	#|
-	#|		This code constitutes the main body of the module
-	#|		which is executed on the initial import of the module.
-	#|						
-	#|		All it does currently is initialize the appList global 
-	#|		using the application classes as defined above.
-	#|
-	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-		#|------------------------------------------------------------------
-		#|	Here, we initialize the _APP_LIST global (declared earlier).
-		#|
-		#|	Recall, this is a structure (list of dicts) that defines the
-		#|	full list of supported applications.  Note that some of these 
-		#|	may not yet be implemented.
-		#|
-		#|	The structure of each dict in the list is:
-		#|
-		#|		name	- Short text name of the application.  This must 
-		#|					match the name used in the app-configs 
-		#|					attribute of the system config file 
-		#|					(glados-config.hjson).
-		#|
-		#|		class	- Class defining the application.  This must be 
-		#|					one of the subclasses of Application_ 
-		#|					defined above.
-		#|
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-_APP_LIST = [
-		{
-			'name':			'Help',
-			'class':		Help_App
-		},
-		{		
-			'name':			'Apps',
-			'class':		Apps_App
-		},
-		{
-			'name':			'Info',
-			'class':		Info_App
-		},
-		{
-			'name':			'Settings',
-			'class':		Settings_App
-		},
-		{
-			'name':			'Memory',
-			'class':		Memory_App
-		},
-		{
-			'name':			'ToDo',
-			'class':		ToDo_App
-		},
-		{
-			'name':			'Diary',
-			'class':		Diary_App
-		},
-		{
-			'name':			'Browse',
-			'class':		Browse_App
-		},
-		{
-			'name':			'Comms',
-			'class':		Comms_App
-		},
-		{
-			'name':			'Writing',
-			'class':		Writing_App
-		},
-		{
-			'name':			'Unix',
-			'class':		Unix_App
-		},
-	]
+#__/ End public singleton class TheAppSystem.
 
 
-#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #|					 END OF FILE:	apps/appSystem.py
-#|=============================================================================
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

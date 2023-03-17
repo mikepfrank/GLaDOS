@@ -6,11 +6,12 @@
 	DESCRIPTION:
 	
 		This is the core module of the "events" package; it provides the
-		definition of a class Event, which keeps track of information such
-		as the date/time and source of the event.  There are also classes
-		for working with event formats, which determine how Event objects
-		are translated to text.  The AI can select how events that it is
-		viewing in its receptive field will be formatted.
+		definition of a class TextEvent, which keeps track of informaton 
+		such as the date/time and source of an event consisting of a piece
+		of text.  There are also classes for working with event formats, 
+		which determine how TextEvent objects are translated to actual 
+		displayed text.  The AI can select how events that it is viewing 
+		in its receptive field will be formatted.
 		
 
 """
@@ -21,10 +22,16 @@
 #|  Module imports.                                           [code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 	# Needed for tracking the creation date and time of events.
 
-from .author import Author	# Abstract superclass of author objects.
+#----------------------------------------------------------------------
+from infrastructure.time import tznow
+
+from config.configuration import TheConfiguration
+
+#from .author import Author	# Abstract superclass of author objects.
+from entities.entity import Entity_	# Abstract superclass for entity objects.
 
 #|==============================================================================
 #|  Module public classes.                               		[code section]
@@ -36,22 +43,26 @@ from .author import Author	# Abstract superclass of author objects.
 	#| section gets large, we could move it to a separate file EventFormat.py.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-class Event: pass	# Forward declaration just so we can use it as a type descriptor.
+class TextEvent: pass	# Forward declaration just so we can use it as a type descriptor.
 
-class EventFormat:
+class TextEventFormat:
 	"""Abstract superclass for event formats."""
 	# Subclasses should implement the display(event) class method.
 	pass
 	
-class PlainEventFormat:
+class PlainEventFormat(TextEventFormat):
 	
 	"""A plain event format that only shows the raw text of the event, nothing else."""
 
 	@classmethod
-	def display(thisClass,event):
+	def display(thisClass, event):
 		return event.text
 
-class PromptedEventFormat:		# Abstract class for event formats that begin with a prompt-like structure
+	@classmethod
+	def promptLen(thisClass, event):
+		return 0
+
+class PromptedEventFormat(TextEventFormat):		# Abstract class for event formats that begin with a prompt-like structure
 
 	"""Abstract superclass for event formats that begin with a prompt-like prefix.
 		The .prompt() class method in these formats is useful for prompting the AI."""
@@ -78,19 +89,57 @@ class PromptedEventFormat:		# Abstract class for event formats that begin with a
 
 	@classmethod
 	def display(thisClass, event):
-		return thisClass.prompt() + event.text;
+		return thisClass.prompt(event) + event.text
+	
+	@classmethod
+	def promptLen(thisClass, event):
+		return len(thisClass.prompt(event))
 
 class BriefEventFormat(PromptedEventFormat):
 
 	@classmethod
 	def prompt(thisClass,event):
-		return f"{event.author}> "
-		
-class FullEventFormat:
+		return f"{event.creator}> "
 
+class TimedEventFormat_(PromptedEventFormat):
+
+	"""This abstract class provides a prompted event format in which the time 
+		is given to some degree of precision.  Override <formatStr> in your
+		subclasses to set the precision."""
+
+	formatStr=None	# Don't set this by default in this abstract class.
+		#| Some possible values of formatStr would be:
+		#|	'%Y-%m-%d'			- Just the date.
+		#|	'%Y-%m-%d %H:%M'	- Date & time, down to the minute.
+		#|	'%Y-%m-%d %H:%M:%S'	- Complete date & time, down to the second.
+		
 	@classmethod
 	def prompt(thisClass, event):
-		return f"{event.creationTime.strftime('%Y-%m-%d %H:%M:%S')} | {event.author}> "
+		return f"{event.creationTime.strftime(thisClass.formatStr)} ({event.creator})> "
+
+
+class DateEventFormat(TimedEventFormat_):
+
+	"""This class provides a timed event format in which the date is given,
+		but not the time of day."""
+
+	formatStr = '%Y-%m-%d'			# Just the date.
+
+
+class MinuteEventFormat(TimedEventFormat_):
+
+	"""This class provides a timed event format in which the time of day is given,
+		down to the minute."""
+
+	formatStr = '%I:%M %p'	# 12-hour time, down to the minute.
+
+
+class SecondEventFormat(TimedEventFormat_):
+
+	"""This class provides a timed event format in which the date of day is given,
+		down to the second."""
+
+	formatStr = '%I:%M:%S %p'	# 12-hour time,, down to the second.
 
 	
 	#|--------------------------------------------------------------------------
@@ -101,7 +150,9 @@ class FullEventFormat:
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
-class Event:
+class TextEvent: pass
+
+class TextEvent:
 	
 	"""Class for objects that track the date, time, and creator of a 
 		given chunk of text stored in the AI's history or memory."""
@@ -115,17 +166,51 @@ class Event:
 	#|
 	#\--------------------------------------------------------------------------
 
-	def __init__(inst, text:str=None, when:datetime=None, author:Author=None):
+	def __init__(inst, text:str=None, author:Entity_=None, defaultFormat=None,
+				 when:datetime=None, action=None):
 	
 			# Default the creation time to right now if not provided.
 			
-		if when=None:
-			when = datetime.now()
+		if when is None:
+			inst.updateTime()
+		else:
+			inst.creationTime	= when
 		
-		inst.creationTime	= when
 		inst.creator		= author
 		inst.text			= text
-		
-	def display(inst, format:EventFormat):
-		format.display(inst)
+		inst.defaultFormat	= defaultFormat
+		inst.action			= action
+			# The action that caused this event. This can help the AI's mind
+			# to recognize events of specific sub-types; e.g., see the
+			# noticeEvent() method in TheCognitiveSystem class in the 
+			# mindSystem module in the mind package.
+
+		#_logger.debug("Created text event with author {author} and text: [text].")
 	
+	def updateTime(thisEvent):
+
+		"""Updates the creation time of the event to the present moment."""
+
+		thisEvent.creationTime	= tznow()
+			# The time will be displayed in the user's timezone by default.
+	
+	def display(inst, fmt:TextEventFormat=None):
+	
+		"""Returns a complete string for displaying the event, using
+			the given format, or the event's default format if the
+			format is not specified."""
+	
+		if fmt is None:
+			fmt = inst.defaultFormat
+	
+		return fmt.display(inst)
+
+	def promptLen(thisEvent:TextEvent, fmt:TextEventFormat=None):
+		"""Returns the length of the prompt portion of the event."""
+
+		event = thisEvent
+
+		if fmt is None:
+			fmt = event.defaultFormat
+	
+		return fmt.promptLen(event)

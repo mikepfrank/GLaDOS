@@ -1,252 +1,561 @@
-#|==============================================================================
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #|                      TOP OF FILE:    glados-config.hjson
-#|------------------------------------------------------------------------------
-#|	FILE NAME:      glados-config.hjson				[Human-readable JSON file]
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#|  FILE NAME:      glados-config.hjson               [Human-readable JSON file]
 #|
-#|	FULL PATH:      $GIT_ROOT/GLaDOS/src/glados-config.hjson
+#|  FULL PATH:      $GIT_ROOT/GLaDOS/src/glados-config.hjson
 #|  MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
 #|  SYSTEM NAME:    GLaDOS (Generic Lifeform and Domicile Operating System)
 #|  APP NAME:       GLaDOS.server (GLaDOS server application)
 #|
-#|	DESCRIPTION:
+#|  DESCRIPTION:
 #|
-#|		This file records configuration parameters for the GLaDOS system
-#|		in human-readable JSON format (see https://hjson.github.io/).  This
-#|		file can and should be edited by hand as needed prior to server 
-#|		startup to configure system parameters.  The config module within
-#|		GLaDOS is used to read in and maintain the configuration encoded
-#|		in this file.
+#|
+#|      This file records configuration parameters for the main server
+#|      application of the GLaDOS system in "human-readable JSON" format
+#|      (see https://hjson.github.io/).  This file can and should be edi-
+#|      ted by hand as needed prior to server startup to configure initial
+#|      system parameters.  The config.configuration module within GLaDOS
+#|      is used to read in and maintain the configuration information en
+#|      coded in this file.
+#|
+#|      In the future, we will add the ability to also update configura-
+#|      tion parameters dynamically from within GLaDOS, and then save the
+#|      updated parameter values to a separate JSON file, which will take
+#|      precedence over the values contained in this file if it's present.
+#|      However, that feature has not yet been implemented.
+#|
+#|      NOTE: This module is distinguished from the dynamical settings
+#|      management facility in the 'settings' package in several respects:
+#|
+#|          - The purpose of adding a parameter to the settings facility
+#|              is to enable users (human or AI) to view and change that
+#|              setting dynamically from within GLaDOS.
+#|
+#|          - Settings generally have both a current value, and a default
+#|              value that the setting will revent to if one does "reset
+#|              to defaults."  This is also the value that the setting
+#|              will take on initially, if it hasn't yet been dynamically
+#|              modified.
+#|
+#|          - In cases where a given parameter is covered both within the
+#|              config file and in the settings facility, the value in the
+#|              config file specifies what is the default value that that
+#|              particular setting should revert to, if it is reset to its
+#|              default value.
+#|
+#|          - Eventually, both the config and settings packages will allow
+#|              for saving of parameter values to persistent storage, and
+#|              then reloading of saved values on startup.  The plan is
+#|              that, if the settings module saves a current value for a
+#|              parameter, it takes precedent over the saved config set-
+#|              ting unless/until the setting is reset to default.
 #|
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+    #|----------------------------------------------------------------------
+    #| In the context of config files, we refer to JSON/hJSON dicts/maps as
+    #| "records."  The top-level structure in the config file is a record
+    #| that contains a number of individual parameter settings, as well as
+    #| several sub-structures, as follows:
+    #|
+    #|      timezone [number] - Hours offset from UTC for time display.
+    #|
+    #|      tab-width [integer] - Distance between tab stops.
+    #|
+    #|      window-conf [record] - Parameters for the window system.
+    #|
+    #|      field-conf [record] - Parameters for the receptive field.
+    #|
+    #|      app-list [list] - List of config records for individual apps.
+    #|
+    #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-# The top-level config struct is a dict of attribute-value pairs.
+{   # This is the top-level record of the server config file, glados-config.hjson.
 
-{
-	# NOTE: Eventually, we should move the following settings into an AI-
-	# specific config file, located in the directory specified by the 
-	# AI_DATA environment variable (or the 'ai-data' subdirectory of the
-	# main GLaDOS directory, if not specified).
+        /* This is the timezone, expressed as a number of hours offset from
+            UTC, to be used for displaying times, e.g. in prompt strings.
 
-		#-----------------------------------------------------------------
-		# The model-family is a symbol specifying the general architecture
-		# of the AI.  Choices are:  gpt-2 (Samson), gpt-3 (Gladys).
-		# (However, gpt-2 is not yet supported.)
+            NOTE: If you have set your 'TZ' environment variable, then it
+            will override this setting! */
 
-	#model-family:		'gpt-3'		# Used for Gladys
-	
-		#------------------------------------------------------------------
-		# The model-version is a symbol naming the particular model within
-		# the model-family.  Choices for gpt-3 include ada, babbage, curie,
-		# and davinci.
-	
-	#model-version:		'davinci'	# The most powerful GPT-3 model.
+    timezone:       -7      # U.S. Mountain Standard Time
 
-		#-----------------------------------------------------------------------
-		# The max-visible-ntokens specifies the assumed size of the receptive 
-		# field of the underlying language model.  We're assuming 2,048 tokens
-		# for now, but it might be longer in GPT-3/davinci, so we really need to
-		# do some experiments to figure it out.
-		
-	#max-visible-tokens:		2048
+        /* This is the default value for the separation between tab stops to
+            be assumed throughout the system.  That is, if 0 is the leftmost
+            column, tab stops would implicitly be located at all columns
 
-		#|----------------------------------------------------------------------
-		#| The app-list attribute specifies the list of GLaDOS applications 
-		#| that are potentially available to the AI and gives configuration
-		#| details for each.  Each element of this list has the following
-		#| attributes:
-		#|
-		#|		name		The short text label denoting the application.
-		#|					(This must match the name given in the appList 
-		#|					attribute in src/apps/starter.py.)
-		#|
-		#|		available	Boolean; is the app available to the AI? This
-		#|					controls whether the app will be automatically 
-		#|					registered with the application system when
-		#|					GLaDOS is started up.
-		#|
-		#|		auto-start		Boolean; should this app be lauched 
-		#|						automatically when the application 
-		#|						system is started?  
-		#|
-		#|		app-config	Optional; specifies application-specific
-		#|					configuration attributes.
-		#|
-		#| Initially most of the apps are marked unavailable just because 
-		#| they are not yet finished being implemented.
-		#|
-		#| Commands to start apps will generally have one-letter (or similarly
-		#| short) abbreviations. In alphabetical order, they are as follows:
-		#| Note that command names/abbreviations are case-insensitive.
-		#|
-		#|		/(A)pps			/(H)elp			/(T)oDo
-		#|		/(B)rowse		/(I)nfo			/(U)nix
-		#|		/(C)omms		/(M)emory		/(W)riting
-		#|		/(D)iary		/(S)ettings
-		#|		
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+                                    #n*<tab-width>
 
-		
-	app-list:	[
-	
-				/* Help - The "Help" tool simply displays some basic information
-					about how to use GLaDOS (for the A.I.'s benefit). */
-					
-			{
-				name:			Help
-				available:		true
-				auto-start:		false
-				
-				app-config: {
-				
-						/* main-msg is the message to be displayed in the Help
-							window when the Help app first starts up.  We try to
-							keep all system windows in GLaDOS to 60 columns. */
-				
-					main-msg:
-						#--------1---------2---------3---------4---------5---------6
-						'''
-						
-							This is the main Help message for GLaDOS, the
-						General Lifeform and Domicile Operating System, 
-						(c) 2020 Metaversal Contructions.
-	
-							At the prompt, you may enter a command line starting
-						with '/', or type free-form text to add to your history.
-						Available command words include:
-	
-								/Help /Info /Settings /Memory /ToDo
-								/Diary /Browse /Comms /Writing /Unix
-				
-							Note: Command words are not case-sensitive, and you 
-						may abbreviate them using any unique prefix.  For detailed
-						help on any command, type "/Help <command>".
-						
-						'''
-				}
-			},
-	
-				/* Apps - This tool simply displays the list of all the
-					available apps, and allows the A.I. to select one to 
-					launch. */
-	
-			{
-				name:			Apps
-				available:		false
-				auto-start:		false
-			},
-			
-				/* Info - The idea behind this app is that it maintains and 
-					displays certain critical contextual information that the A.I. 
-					needs to know, including its identity, life circumstances, and
-					its present high-level goals.  Its window normally remains pinned 
-					at the top of the A.I.'s receptive field.  When the Information app
-					is launched, it allows the A.I. to edit certain information such
-					as its high-level goals. NOTE: This is one of the few apps that
-					is generally launched automatically at system startup. */
-	
-			{
-				name:			Info
-				available:		true
-				auto-start:		true
-				
-				app-config: {
-				
-						/* info-filename is the pathname of the file (relative to the
-							root of the A.I.'s main data directory) that contains the
-							text that will normally be displayed in the Info window
-							when the Info app first starts up. */
-				
-					info-filename:		info.txt
-				}
-			},
-			
-				/* Settings - This app can be used by the A.I. to adjust various
-					settings within GLaDOS.  These can be associated with major 
-					systems or subsystems of GLaDOS, or individual apps or 
-					processes. */
-			
-			{
-				name:			Settings
-				available:		false
-				auto-start:		false
-			},
-			
-				/* Memory - The memory tool allows the A.I. to browse and search
-					a database of records of its past conversations, thoughts, and
-					actions. */
-			
-			{
-				name:			Memory
-				available:		false
-				auto-start:		false
-			},
-			
-				/* ToDo - The idea of this app is that it is a simple to-do list 
-					tool, which the A.I. can use to make notes to itself of important
-					tasks that it wants to do later.  The tasks can be given priority 
-					levels.  The A.I. can check them off or delete them when complete. */
-			
-			{
-				name:			ToDo
-				available:		false
-				auto-start:		false
-			},
-			
-				/* Diary - This tool allows the A.I. to keep a "diary" of important
-					notes to itself, organized by date/time. */
-			
-			{
-				name:			Diary
-				available:		false
-				auto-start:		false
-			},
-			
-				/* Browse - This is a simple text-based tool to facilitate simple web
-					browsing and searching. */
-			
-			{
-				name:			Browse
-				available:		false
-				auto-start:		false
-			},
-			
-				/* The "comms" tool faciltates the A.I.'s two-way 
-					communications with the outside world.  This may include direct 
-					messages sent via Telegram, email messages, or other interfaces.  
-					This may be broken out later into a whole 'Comms' subfolder of 
-					separate apps. */
-			
-			{
-				name:			Comms
-				available:		false
-				auto-start:		false
-			},
-			
-				/* The writing tool is an interface that helps the A.I.
-					to compose and edit complex, hierarchically-structured works:  
-					Stories, poems, and extended multi-chapter books. */
-			
-			{
-				name:			Writing
-				available:		false
-				auto-start:		false
-			},
-			
-				/* This app gives the A.I. access to an actual Unix shell
-					environment on the host system that GLaDOS is running on.  The A.I.
-					runs within its own user account with limited permissions. */
-			
-			{
-				name:			Unix
-				available:		false
-				auto-start:		false
-			},
-		]
+            where n>0 is any positive integer.  Mainly, this is only used for
+            rendering of HT (horizontal tab) characters on human-viewable
+            displays; but, please note that there is no guarantee that the AI
+            will interpret tabs according to the same convention.  The best
+            we can do is give it a hint (say in an info bar near the bottom
+            of its main screen, or within an individual window).
+                For this reason, the use of tab characters should probably be
+            avoided, for the most part, in most AI-viewable text. */
 
-	# Eventually, we need to add more configuration parameters here, to do
-	# things like set GPT-3 model parameters, customize locations in the 
-	# filesystem for various resources such as the memory and history, and
-	# so forth.
+    tab-width:      8
+		# Trying 8 now to reduce the number of tokens in whitespace.
+		# Though 4 is a more typical modern value.
 
-}
+        /* This Boolean states whether the user terminal's script is
+            capable of displaying Unicode box-drawing specials (code
+            page 2500-257F).  If so, then the console can try to use
+            them, and the field display might also use them. */
+
+    has-box-chars:  True    # E.g., Everson Mono Bold font looks good.
+
+        #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        #| The configuration structure for the text windowing system that
+        #| we provide to the AI in its field display.  Note that these
+        #| settings can be overridden by preferences within the AI
+        #| persona's "personal" configuration file.
+        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+    window-conf:    {
+
+                /* This is 'true' if windows should be displayed with
+                    vertical decorators along their left and right sides;
+                    otherwise 'false'.  The default vertical decorator
+                    consists of a vertical bar ('|') with interior padding
+                    (one space character by default). */
+
+            #side-decorators:   false       # Defaults to true if not specified.
+            side-decorators:    true        # Defaults to true if not specified.
+
+        }
+
+
+        #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        #| The basic configuration structure for the receptive field.
+        #| Note that these settings can be overridden in the AI-specific
+        #| configuration file.
+        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+    field-conf:     {
+
+                /* Title string to be displayed (centered) in the header bar
+                    at the very top edge of the entire receptive field.  Note
+                    that presently, this has the NLP model family name "hard-
+                    coded" into it; someday, if we have more models available,
+                    we may want to specify this as a separate parameter. */
+
+            title:                  "GLaDOS Main Screen / GPT-3 Receptive Field"
+
+                /* The nominal width of the receptive field, in (assumed
+                    fixed-width) characters.  (Note that not all field views
+                    or field elements will necessarily end up respecting this
+                    suggested value.) */
+
+            nominal-width:          60
+                # (Note: The primary reason for limiting this value is to reduce
+                #   the number of tokens taken up by horizontal separators.)
+
+                /* This character should be used as the "background" pattern
+                    making up the entire header bar, apart from the title
+                    text itself.*/
+
+            header-bar-bgchar:      '='
+
+                /* This character should be used as the "background" pattern
+                    making up the entire prompt separator bar, apart from the
+                    separator instruction text. */
+
+            separator-bar-bgchar:   "="
+
+                /* "Instruction" text to display in the prompt separator bar. */
+
+            separator-bar-text:     "Enter a command line or free-form text. (/Help)"
+
+                /* We need to add a parameter here to specify the default prompt
+                    format style. */
+        }
+
+        #|----------------------------------------------------------------------
+        #| The app-list attribute specifies the list of GLaDOS applications
+        #| that are (potentially) available to the AI, and gives configuration
+        #| details for each.  Each element of this list includes the following
+        #| attributes:
+        #|
+        #|      name        The short text label denoting the application.
+        #|                  (This must match the name given in the appList
+        #|                  attribute in src/apps/starter.py.)
+        #|
+        #|      available   Boolean; is the app available to the AI? This
+        #|                  controls whether the app will be automatically
+        #|                  registered with the application system when
+        #|                  GLaDOS is started up.
+        #|
+        #|      auto-start  Boolean; should this app be launched automati-
+        #|                  cally when the application system is started?
+        #|                  (Some apps may normally run in the background,
+        #|                  so this is not taken to imply auto-open, below.)
+        #|
+        #|      auto-open   Boolean; should this app automatically open its
+        #|                  window (placing it on the AI's receptive field)
+        #|                  as soon as the receptive field is available?
+        #|
+        #|      app-config  Optional record; if present, it specifies
+        #|                  application-specific configuration parameters.
+        #|
+        #| Initially, most of the apps in this sample config file are marked
+        #| unavailable just because they are not yet finished being implemented.
+        #|
+        #| Commands to launch apps will generally have one-letter (or similarly
+        #| short) abbreviations. In alphabetical order, they are as follows:
+        #| Note that command names/abbreviations are case-insensitive.
+        #|
+        #|      /(A)pps         /(D)iary        /(M)emory       /(W)riting
+        #|      /(B)rowse       /(G)oals        /(S)ettings
+        #|      /(Cl)ock        /(H)elp         /(T)oDo
+        #|      /(Co)mms        /(I)nfo         /(U)nix
+        #|
+        #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
+    app-list:   [
+
+            # Application-specific config records. The order given here
+            # determines the order of placement for auto-open windows.
+
+        #/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        #|  NOTE: A few additional application concepts not yet explicitly
+        #|  included among the config records below include:
+        #|
+        #|      - Calendar: Displays 1-3 months worth of wall calendar around
+        #|          the current date. (Will this even be useful to the A.I.?)
+        #|
+        #\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+            /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+              Clock                                      [app config record]
+              -----
+
+                    The Clock app is the second GLaDOS app to be
+                    implemented.  (We're building it early because
+                    Gladys requested us at one point not to include
+                    the current time in her prompts, so we're going
+                    to give her a separate Clock app which she can
+                    bring up whenever she actually does want to check
+                    the current time.)
+
+                    Unlike the case with most apps, the Clock config
+                    record below sets its 'quiet-update' parameter to
+                    true, which means that when this app updates its
+                    display on the receptive field, which will happen
+                    once per second (or minute), the AI won't be woken
+                    up if it is in sleep mode.  (Sleeping wouldn't mean
+                    very much if the AI was woken up at every single
+                    tick of the clock.)
+
+                    Application-specific settings for this app include
+                    a 'mode' setting, which can be either 'minutes' or
+                    'seconds' to determine whether the number of seconds
+                    is displayed.
+
+                    NOTE: This is one of the few apps that is generally
+                    launched automatically at system startup.
+
+              vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+
+        {
+            name:           Clock
+
+            available:      true    # This app is about to be implemented.
+
+            auto-start:     true
+                #             \
+                # This setting is important, because in order for the clock
+                # to be functional (i.e., regularly updating its display),
+                # we need to start up a background thread which will wake up
+                # once per second and update the display if needed (it will
+                # not always be needed if the clock is in 'minutes' mode).
+
+            auto-open:      true
+                #             \
+                # This says that the app should automatically open up its
+                # window(s) on the receptive field as soon as the receptive
+                # field becomes available.  We do this because this way, the
+                # AI will always be able to remain aware of the current time.
+                # However, we will still allow the AI to minimize or close
+                # the clock app if it wants to. [That last part is still TBD.]
+
+            placement:      'pinned-to-top'     # We want this app to be prominent.
+                #               \
+                # This means, initially place the app's window near the top
+                # edge of the receptive field (just below the field header).
+
+            auto-focus:     true
+                #             \
+                # This says that the app will grab the command focus when
+                # it first opens its window on the field.  The only reason
+                # we do this is to allow the AI to practice using window
+                # commands (like '/Minimize,' or '/Close') on this window
+                # if it wants to.
+
+            quiet-update:   true
+                #             \
+                # This says that when the app updates its field display, the
+                # A.I. will not automatically be woken up if it is sleeping,
+                # nor will it be poked if it is in hibernating mode (i.e.,
+                # waiting for field updates).
+
+            app-config: {
+
+                #mode:  seconds     # Note this one is commented out.
+                mode:   minutes
+                    #       \
+                    # We start up the Clock app in 'minutes' mode rather than
+                    # 'seconds' mode by default, because there isn't much point
+                    # in having it update its display once per second since we
+                    # can't really afford to do a GPT-3 API call every second
+                    # anyway, at least, not with the largest (DaVinci) model.
+                    # (Maybe normally, when the AI is free-running, we'll
+                    # configure its main loop to cycle once every 15 mins, or
+                    # something of that nature.)
+
+            }
+
+        }
+
+
+            /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+              Info                                       [app config record]
+              ----
+
+                    The Info or information app was the very first
+                    GLaDOS app to be implemented (finished 1/16/'21).
+
+                    The idea behind this app is that it maintains and
+                    displays certain critical contextual information
+                    that the A.I. persona needs to be made aware of,
+                    including its identity, life circumstances, and
+                    its present high-level goals.  Its window normally
+                    remains pinned to the very top of the A.I.'s
+                    receptive field (just below the header bar).  The
+                    the Info app also displays a tool tip that the A.I.
+                    can use the /Goals command to edit its goal list.
+
+                    NOTE: This is one of the few apps that is generally
+                    launched automatically at system startup.
+
+              vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+
+        {
+            name:           Info
+
+            available:      true
+                #             \
+                # This app is now implemented and available to the AI!
+
+            auto-start:     true
+                #             \
+                # This parameter setting ensures that this app will automa-
+                # tically start "running" (in the background) as soon as the
+                # app system gets initialized.  This does nothing right now,
+                # but it may become important later if/when the app gains
+                # some more dynamic behavior.
+
+            auto-open:      true
+                #             \
+                # This says that the app should automatically open up its
+                # window(s) on the receptive field as soon as the receptive
+                # field becomes available.  We do this because we want this
+                # window to be the very first thing the AI sees when it first
+                # wakes up, to remind it who it is & what's the context.
+
+            auto-focus:     false
+                #             \
+                # We want to make sure that the Info app doesn't grab the
+                # command focus, because it doesn't have any associated
+                # commands anyway: Because, we don't want the AI to even be
+                # able to minimize it or close it, and the goal-editing
+                # function is going to be handled by a separate '/Goals'
+                # app anyway.
+
+            placement:      'pinned-to-top'     # We want this app to be prominent.
+                #               \
+                # This means, initially place the app's window near the top
+                # edge of the receptive field (just below the field header
+                # and the clock app, which will have already been pinned there).
+
+            app-config: {   # Application-specific configuration parameters.
+
+                    /* info-filename is the pathname of the file (relative to the
+                        root of the A.I.'s main data directory) that contains the
+                        text that will normally be displayed in the Info window
+                        when the Info app first starts up. */
+
+                info-filename:      info.txt
+            }
+        },
+
+
+        {
+            name:           Goals
+            available:      true	# Implementation started 1/25/'21.
+            auto-start:     true	# Does nothing for us yet; maybe later.
+            auto-open:      false	# Don't open Goals Window automatically.
+			auto-focus:		true	# Grab command focus when window opens.
+			#placement:		'pinned-to-top'	
+
+			app-config: {
+
+				goals-filename:		cur-goals.json
+
+			}
+
+        },
+
+
+        {
+            name:           Help
+
+            available:      true    # This app is implemented and available to the AI.
+
+			#auto-start:     false
+			auto-start:		true	# Just doing this temporarily for testing.
+
+            auto-open:      false
+			#auto-open:		true	# Just doing this temporarily for testing.
+
+			placement:		'slide-to-bottom'  # Just above anchored, but don't stay there.
+
+            app-config: {
+
+                    /* main-msg is the message to be displayed in the Help
+                        window when the Help app first starts up.  We try to
+                        keep all system windows in GLaDOS to 60 columns. */
+
+                main-msg:
+					# Note: The Help window will have word-wrap turned on, so
+					# the text will automatically be wrapped to fit within the
+					# window.
+                    #--------1---------2---------3---------4---------5---------6
+                    '''
+
+                        This is the top-level Help screen for GladOS, the General Lifeform's automated Domicile Operating System, Copyright (c) 2020-22 Metaversal Constructions.
+
+                        At the prompt, you may enter a command line starting with '/', or type a free-form paragraph of text to add to your cognitive history.  Available command words include:
+
+                            /Goals /Settings /Memory /ToDo /Help
+                            /Diary /Browse /Comms /Writing /Unix
+
+                        Note: Command words are not case-insensitive, and you may abbreviate them using any unique prefix.  For detailed help on any command, type "/Help <command>".
+
+                    '''
+            }
+        },
+
+            /* Apps - This tool simply displays the list of all the
+                available apps, and allows the A.I. to select one to
+                launch. */
+
+        {
+            name:           Apps
+            available:      false   # THIS APP IS NOT YET IMPLEMENTED.
+            auto-start:     false
+            auto-open:      false
+        },
+
+            /* Settings - This app can be used by the A.I. to adjust various
+                settings within GLaDOS.  These can be associated with major
+                systems or subsystems of GLaDOS, or individual apps or
+                processes. */
+
+        {
+            name:           Settings
+            available:      false       # THIS APP IS NOT YET IMPLEMENTED.
+            auto-start:     false
+            auto-open:      false
+        },
+
+            /* Memory - The memory tool allows the A.I. to browse and search
+                a database of records of its past conversations, thoughts, and
+                actions. */
+
+        {
+            name:           Memory
+            available:      false       # THIS APP IS NOT YET IMPLEMENTED.
+            auto-start:     false
+            auto-open:      false
+        },
+
+            /* ToDo - The idea of this app is that it is a simple to-do list
+                tool, which the A.I. can use to make notes to itself of important
+                tasks that it wants to do later.  The tasks can be given priority
+                levels.  The A.I. can check them off or delete them when complete. */
+
+        {
+            name:           ToDo
+            available:      false       # THIS APP IS NOT YET IMPLEMENTED.
+            auto-start:     false
+            auto-open:      false
+        },
+
+            /* Diary - This tool allows the A.I. to keep a "diary" of important
+                notes to itself, organized by date/time. */
+
+        {
+            name:           Diary
+            available:      false       # THIS APP IS NOT YET IMPLEMENTED.
+            auto-start:     false
+            auto-open:      false
+        },
+
+            /* Browse - This is a simple text-based tool to facilitate simple web
+                browsing and searching. */
+
+        {
+            name:           Browse
+            available:      false       # THIS APP IS NOT YET IMPLEMENTED.
+            auto-start:     false
+            auto-open:      false
+        },
+
+            /* The "comms" tool faciltates the A.I.'s two-way
+                communications with the outside world.  This may include direct
+                messages sent via Telegram, email messages, or other interfaces.
+                This may be broken out later into a whole 'Comms' subfolder of
+                separate apps. */
+
+        {
+            name:           Comms
+            available:      false       # THIS APP IS NOT YET IMPLEMENTED.
+            auto-start:     false
+            auto-open:      false
+        },
+
+            /* The writing tool is an interface that helps the A.I.
+                to compose and edit complex, hierarchically-structured works:
+                Stories, poems, and extended multi-chapter books. */
+
+        {
+            name:           Writing
+            available:      false       # THIS APP IS NOT YET IMPLEMENTED.
+            auto-start:     false
+            auto-open:      false
+        },
+
+            /* This app gives the A.I. access to an actual (albeit user-level)
+                Unix shell environment on the host system that GLaDOS is running
+                on.  The A.I. runs within its own user account with limited
+                permissions. */
+
+        {
+            name:           Unix
+            available:      false       # THIS APP IS NOT YET IMPLEMENTED.
+            auto-start:     false
+            auto-open:      false
+        },
+
+    ]   # End of app-list sub-structure.
+
+}   # End of top-level record.
+
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#|                      END OF FILE:    glados-config.hjson
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

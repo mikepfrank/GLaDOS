@@ -1,0 +1,424 @@
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#|					 TOP OF FILE:	 display/controls.py
+#|------------------------------------------------------------------------------
+#|	 The below module documentation string will be displayed by pydoc3.
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+"""
+	FILE NAME:		display/controls.py				 [Python module source file]
+	
+	MODULE NAME:	display.controls
+	IN PACKAGE:		display
+	FULL PATH:		$GIT_ROOT/GLaDOS/src/display/controls.py
+	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
+	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
+	APP NAME:		GLaDOS.server (Main GLaDOS server application)
+	SW COMPONENT:	GLaDOS.display (Display screen management)
+
+
+	MODULE DESCRIPTION:
+	===================
+	
+		This module provides definitions to facilitate the rendering of
+		normally-nonprinting characters (such as control characters and
+		whitespace characters from the Basic Latin, a.k.a. 7-bit ASCII, 
+		and Latin-1 Supplement, a.k.a. ISO/IEC 8859-1, code blocks).
+		
+		The reason for including this capability in GLaDOS is so that, 
+		if/when the AI produces such characters, they can be seen visually 
+		on the display, so as to see exactly what the AI is doing.
+		
+"""
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#| End of module documentation string.
+#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|
+	#|	1.  Exported name list. 		   				   [module code section]
+	#|
+	#|			Here we list all of the public names that are standardly
+	#|			exported from this module, if the using module does:
+	#|
+	#|						from display import *
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+global __all__ 
+__all__ = [		# List of all public names exported from this module.
+
+			#------------------
+			# Global constants.
+		
+		'NBSP',		# Nonbreaking space character code.
+		
+			#|~~~~~~~~~~~
+			#| Functions.
+		
+				#---------------------------
+				# Control-related functions.
+			
+		'render_char', 		# Renders any 7/8-bit character in a curses window.
+		
+			# These next two aren't actually used outside this module yet; should they be made private?
+		'isNonprinting',	# Returns True for nonprinting (control or whitespace) 7/8-bit code points.
+		'isMeta', 			# Returns True for 'Meta' (8th bit set) 7/8-bit code points.
+		
+	]
+
+
+	#|==========================================================================
+	#| 	2.	Imports.									   [module code section]
+	#|
+	#|		2.1.  Standard Python modules imported into this module.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from curses import (
+
+		A_UNDERLINE		# Underline attribute, which we support.
+
+	)
+
+from curses.ascii import (
+
+			# ASCII control codes.
+
+		NUL, SOH, STX, ETX, EOT, ENQ, ACK, BEL, BS, TAB, HT, LF, NL, VT,
+		FF, CR, SO, SI, DLE, DC1, DC2, DC3, DC4, NAK, SYN, ETB, CAN, EM,
+		SUB, ESC, FS, GS, RS, US, SP, DEL,
+
+			# Functions we use.
+
+		alt,	# Turns on 8th bit of a 7-bit character.
+	)
+
+global XON, XOFF
+
+XON = DC1
+XOFF = DC3
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	2.1.  Custom imports.						[module code subsection]
+		#|
+		#|		Here we import various local/application-specific 
+		#|		modules that we need.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+			#|----------------------------------------------------------------
+			#| Import sibling modules we need from within the display package.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+from .colors import *		# All color-related definitions.
+
+	# Create a constant for NBSP.
+global NBSP		# Character code point for nonbreaking space.
+NBSP = alt(SP)	# Start with a space (SP), and set the 8th bit.
+
+	#|==========================================================================
+	#|	3.	Static data structures.					   	   [module code section]
+	#|
+	#|		In this section, we define various static data structures
+	#|		(such as arrays, tables, and dictionaries) that we need.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#|	controls._nonprint_7bit_glyphs	[private global data structures]
+			#|	controls._nonprint_8bit_glyphs
+			#|
+			#|		This is a lookup table that maps the code point for 
+			#|		each non-printing 7-bit ASCII character (including 
+			#|		whitespace characters and other control characters)
+			#|		to an ordered pair of a (non-plain) render style and
+			#|		a glyph, or printable (non-blank, non-control)
+			#|		character.  This then gives us a way to render such
+			#|		characters on the display in a uniquely identifiable
+			#|		way, in case they happen to be generated by the AI
+			#|		(or by one of our apps).
+			#|
+			#|		The 8-bit version of the table should be used when the
+			#|		terminal's font supports the Western (LATIN-1) character
+			#|		set (a subset of Unicode) for at least the range of 
+			#|		code points 161-255.  If the terminal does not support 
+			#|		these characters, then the 7-bit version should be used.
+			#|
+			#|		These tables could be dynamically modified, but 
+			#|		support for doing that has not been implemented yet.
+			#|
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
+	#|------------------------------------------------------------------
+	#| The idea of the below is that, on terminals with only 7-bit ASCII
+	#| font support, we can render various (normally non-printable)
+	#| ASCII control and whitespace characters as a single 7-bit
+	#| character glyph using some alternate display attributes.
+
+_nonprint_7bit_glyphs = {	# Returns pair of (render style, printable 7-bit character)
+
+	  #CdPt:	(RNDSTYL, GLPH),
+	  #-----	---------------
+# NOTE: The first nine are control characters, which are rendered black-on-red.
+		NUL:	(CONTROL, '_'),		# 0 = ^@ = Null character.
+		SOH:	(CONTROL, ':'),		# 1 = ^A = Start of heading.
+		STX:	(CONTROL, '['),		# 2 = ^B = Start of text.
+		ETX:	(CONTROL, ']'),		# 3 = ^C = End of text.
+		EOT:	(CONTROL, '.'),		# 4 = ^D = End of transmission.
+		ENQ:	(CONTROL, '?'),		# 5 = ^E = Enquiry.
+		ACK:	(CONTROL, 'Y'),		# 6 = ^F = Acknowledgement.
+		BEL:	(CONTROL, '*'),		# 7 = ^G = Bell.
+		BS:		(CONTROL, '<'),		# 8 = ^H = Backspace.
+# Note the next few are whitespace characters (rendered gray-on-black).
+		HT:		(WHITESP, '>'),		# 9 = ^I = Horizontal tab.
+		LF:		(WHITESP, '/'),		# 10 = ^J = Line feed.
+		VT: 	(WHITESP, 'v'),		# 11 = ^K = Vertical tab.
+		FF:		(WHITESP, 'V'),		# 12 = ^L = Form feed.
+		CR:		(WHITESP, '<'),		# 13 = ^M = Carriage return.
+# Now we go back to the rest of the non-whitespace control characters.
+		SO:		(CONTROL, '('),		# 14 = ^N = Shift-out.
+		SI:		(CONTROL, ')'),		# 15 = ^O = Shift-in.
+		DLE:	(CONTROL, '/'),		# 16 = ^P = Data-link escape.
+		DC1:	(CONTROL, 'o'),		# 17 = ^Q = Device control 1.
+		DC2:	(CONTROL, '@'),		# 18 = ^R = Device control 2.
+		DC3:	(CONTROL, '='),		# 19 = ^S = Device control 3.
+		DC4:	(CONTROL, '-'),		# 20 = ^T = Device control 4.
+		NAK:	(CONTROL, 'N'), 	# 21 = ^U = Negative acknowledgement.
+		SYN:	(CONTROL, '~'),		# 22 = ^V = Synchronous idle.
+		ETB:	(CONTROL, ';'),		# 23 = ^W = Emd transmission block.
+		CAN: 	(CONTROL, 'X'), 	# 24 = ^X = Cancel.
+		EM:		(CONTROL, '|'), 	# 25 = ^Y = End of medium.
+		SUB:	(CONTROL, '$'),		# 26 = ^Z = Substitute.
+		ESC: 	(CONTROL, '^'),		# 27 = ^[ = Escape.
+		FS:		(CONTROL, 'F'),		# 28 = ^\ = File separator.
+		GS: 	(CONTROL, 'G'),		# 29 = ^] = Group separator.
+		RS: 	(CONTROL, '&'),		# 30 = ^^ = Record separator.
+		US: 	(CONTROL, ','), 	# 31 = ^_ = Unit separator.
+# These last couple are outside the range 0-31 of the normal control characters.
+		SP: 	(WHITESP, '_'),		# 32 = Space.
+		DEL:	(CONTROL, '#'), 	# 127 = Rubout/delete.
+
+	}
+
+
+	#|------------------------------------------------------------------
+	#| The idea of the below is that, on terminals without full Unicode
+	#| font support, but with support for extended 8-bit (LATIN-1) ASCII, 
+	#| we can render various (normally non-printable) ASCII control and 
+	#| whitespace characters as a single 8-bit character glyph using 
+	#| some alternate display attributes.
+
+_nonprint_8bit_glyphs = {	# Returns pair of (render style, printable character)
+
+	  #CdPt:	(RNDSTYL, GLPH),
+	  #-----	---------------
+# NOTE: The first nine are control characters, which are rendered black-on-red.
+		NUL:	(CONTROL, '_'),		# 0 = ^@ = Null character.
+		SOH:	(CONTROL, '$'),		# 1 = ^A = Start of heading.
+		STX:	(CONTROL, '«'),		# 2 = ^B = Start of text.
+		ETX:	(CONTROL, '»'),		# 3 = ^C = End of text.
+		EOT:	(CONTROL, '.'),		# 4 = ^D = End of transmission.
+		ENQ:	(CONTROL, '?'),		# 5 = ^E = Enquiry.
+		ACK:	(CONTROL, '!'),		# 6 = ^F = Acknowledgement.
+		BEL:	(CONTROL, '¢'),		# 7 = ^G = Bell.
+		BS:		(CONTROL, '<'),		# 8 = ^H = Backspace.
+# Note the next few are whitespace characters (rendered gray-on-black).
+		HT:		(WHITESP, '>'),		# 9 = ^I = Horizontal tab.
+		LF:		(WHITESP, '/'),		# 10 = ^J = Line feed.
+		VT: 	(WHITESP, 'v'),		# 11 = ^K = Vertical tab.
+		FF:		(WHITESP, '§'),		# 12 = ^L = Form feed.
+		CR:		(WHITESP, '®'),		# 13 = ^M = Carriage return.
+# Now we go back to the rest of the non-whitespace control characters.
+		SO:		(CONTROL, '('),		# 14 = ^N = Shift-out.
+		SI:		(CONTROL, ')'),		# 15 = ^O = Shift-in.
+		DLE:	(CONTROL, '±'),		# 16 = ^P = Data-link escape.
+		DC1:	(CONTROL, '°'),		# 17 = ^Q = Device control 1.
+		DC2:	(CONTROL, '©'),		# 18 = ^R = Device control 2.
+		DC3:	(CONTROL, '='),		# 19 = ^S = Device control 3.
+		DC4:	(CONTROL, '-'),		# 20 = ^T = Device control 4.
+		NAK:	(CONTROL, '¬'), 	# 21 = ^U = Negative acknowledgement.
+		SYN:	(CONTROL, '~'),		# 22 = ^V = Synchronous idle.
+		ETB:	(CONTROL, ';'),		# 23 = ^W = Emd transmission block.
+		CAN: 	(CONTROL, '×'), 	# 24 = ^X = Cancel.
+		EM:		(CONTROL, '|'), 	# 25 = ^Y = End of medium.
+		SUB:	(CONTROL, '¿'),		# 26 = ^Z = Substitute.
+		ESC: 	(CONTROL, '^'),		# 27 = ^[ = Escape.
+		FS:		(CONTROL, '¦'),		# 28 = ^\ = File separator.
+		GS: 	(CONTROL, '÷'),		# 29 = ^] = Group separator.
+		RS: 	(CONTROL, '¶'),		# 30 = ^^ = Record separator.
+		US: 	(CONTROL, '·'), 	# 31 = ^_ = Unit separator.
+# These last couple are outside the range 0-31 of the normal control characters.
+		SP: 	(WHITESP, '·'),		# Space. (Gray on black.) (Was '_'.)
+		DEL:	(CONTROL, '#'), 	# Rubout/delete. (Black on red.)
+
+	}
+
+# (For terminals with full Unicode capability, we could choose from an even
+# broader range of glyphs, but we haven't bothered with that here yet.)
+
+
+	#|==========================================================================
+	#|	4.	Function definitions.						   [module code section]
+	#|
+	#|		In this section we define the various functions provided by 
+	#|		this module.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	(controls).isNonprinting()						   [public function]
+		#|
+		#|		Given a character code point, returns True if this is a
+		#|		(normally) non-printing character in the range 0-255.
+		#|
+		#|		Note that by "non-printing" characters, we include the
+		#|		various whitespace characters, as well as control codes.
+		#|		Also, meta-controls and nonbreaking space are included.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+def isNonprinting(code):
+
+	"""Returns true if the given code point is a 7- or 8-bit whitespace
+		or control character, which normally would not be visible."""
+
+	# 7-bit ASCII x00-1F controls and space (32).
+	if code >=0 and code <= 32:
+		return True
+
+	if code == 127:		# Delete/RUBOUT charater.
+		return True
+
+	# Controls/whitespace in 8-bit ASCII/Unicode
+	if code >= 128 and code <= 160:		# 160 is nonbreaking space
+		return True
+
+	# For everything else, assume it's printing.
+	return False
+
+#__/ End function controls.isNonprinting().
+
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	(controls.)isMeta()								   [public function]
+		#|
+		#|		Given a character code point, returns True if this is an
+		#|		8-bit code point that does not also fit in 7 bits.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+def isMeta(code):
+	"""Retruns True if <code> is an 8-bit code point
+		with its high-order bit set (0x80-0xFF)."""
+	if code >= 128 and code <= 255:
+		return True
+
+#__/ End function controls.isMeta().
+	
+
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	(controls.)render_char()						   [public function]
+		#|
+		#|		Given a window and a single character code point, render
+		#|		this character at the current location in the window, even
+		#|		if it is a normally-nonprintable 7- or 8-bit control or
+		#|		whitespace character.  Note this uses the mechanisms above.
+		#|
+		#|		If the optional argument baseAttrs is supplied, then it is
+		#|		combined with the attributes needed to render the character.
+		#|		This is probably only useful for baseAttrs=A_UNDERLINE.
+		#|
+		#|		Note that code points greater than 383 may not be supported
+		#|		by the terminal font, and thus may not be displayable even
+		#|		using this function.  For reference, below is a table of 
+		#|		characters from 160-383 that are commonly available in
+		#|		Western scripts supported on most terminals. (Please note
+		#|		that the characters after the break don't fit in 8 bits.)
+		#|
+		#|
+		#|							Low-order Hexadecimal Digit
+		#|
+		#|					0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+		#|					==============================================
+		#|			 A: 	   ¡  ¢  £  ¤  ¥  ¦  §  ¨  ©  ª  «  ¬  ­  ®  ¯ 
+		#|			 B:		°  ±  ²  ³  ´  µ  ¶  ·  ¸  ¹  º  »  ¼  ½  ¾  ¿ 
+		#|			 C:		À  Á  Â  Ã  Ä  Å  Æ  Ç  È  É  Ê  Ë  Ì  Í  Î  Ï 
+		#|			 D:		Ð  Ñ  Ò  Ó  Ô  Õ  Ö  ×  Ø  Ù  Ú  Û  Ü  Ý  Þ  ß 
+		#|			 E:		à  á  â  ã  ä  å  æ  ç  è  é  ê  ë  ì  í  î  ï 		^
+		#|			 F:		ð  ñ  ò  ó  ô  õ  ö  ÷  ø  ù  ú  û  ü  ý  þ  ÿ		| 8-bit (Latin-1 Supplement)
+		#|					----------------------------------------------		+------
+		#|			10:		Ā  ā  Ă  ă  Ą  ą  Ć  ć  Ĉ  ĉ  Ċ  ċ  Č  č  Ď  ď 		| 9-bit (Latin Extended-A)
+		#|			11:		Đ  đ  Ē  ē  Ĕ  ĕ  Ė  ė  Ę  ę  Ě  ě  Ĝ  ĝ  Ğ  ğ 		V
+		#|			12:		Ġ  ġ  Ģ  ģ  Ĥ  ĥ  Ħ  ħ  Ĩ  ĩ  Ī  ī  Ĭ  ĭ  Į  į 
+		#|			13:		İ  ı  Ĳ  ĳ  Ĵ  ĵ  Ķ  ķ  ĸ  Ĺ  ĺ  Ļ  ļ  Ľ  ľ  Ŀ 
+		#|			14:		ŀ  Ł  ł  Ń  ń  Ņ  ņ  Ň  ň  ŉ  Ŋ  ŋ  Ō  ō  Ŏ  ŏ 
+		#|			15:		Ő  ő  Œ  œ  Ŕ  ŕ  Ŗ  ŗ  Ř  ř  Ś  ś  Ŝ  ŝ  Ş  ş 
+		#|			16:		Š  š  Ţ  ţ  Ť  ť  Ŧ  ŧ  Ũ  ũ  Ū  ū  Ŭ  ŭ  Ů  ů 
+		#|			17:		Ű  ű  Ų  ų  Ŵ  ŵ  Ŷ  ŷ  Ÿ  Ź  ź  Ż  ż  Ž  ž  ſ 	
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	#|----------------------------------------------------------------------
+	#| The following renders even nonprintable control/whiteplace characters
+	#| using substitute glyphs with alternate attributes.
+
+def render_char(win, code, baseAttrs=0):
+		# win is screen or window.
+		# code is the ordinal character code point.
+
+	"""Renders the given code point at the current location in the given
+		window, even if it's a normally-nonprintable control or whitespace
+		character."""
+		
+		#|--------------------------------------------------------------
+		#|	First, if the given character code isn't one of the 7/8-bit 
+		#|	non-printing characters that we now how to handle specially,
+		#|	then just render it in the normal way.
+		
+	if not isNonprinting(code):		# This means, we don't know anything special to do with it.
+		if code >= 0 and code <= 0x10ffff:		# Make sure it's in the Unicode range.
+			win.addstr(chr(code), baseAttrs)	# Alright now just add the bastard.
+		else:
+			_logger.warn("render_char(): Was given an invalid code point {code}. Ignoring.")
+		return
+
+		#|---------------------------------------------------------------------
+		#|	OK, if we get here, then it's a non-printing character in the range 
+		#|	that we know how to handle; so, figure out what rendering style and 
+		#|	glyph to use to render it.
+	
+		# Special handling for rendering 8-bit non-printing characters.
+
+	meta = isMeta(code)
+	if meta:
+			# Use the same glyph for meta specials as for normal ones.
+		code = code - 128
+
+		# Render this non-printing character code as a styled glyph.
+	(style, glyph) = _nonprint_8bit_glyphs[code]	# Uses Western/LATIN-1 characters.
+	#(style, glyph) = _nonprint_7bit_glyphs[code]	# Less pretty code, uses 7-bit ASCII only.
+
+		# If meta, map the render styles to their meta equivalents.
+	if meta:
+		if style is CONTROL:
+			style = METACTL
+		elif style is WHITESP:
+			style = METAWSP
+	
+	# The only base attribute that we support combining with the render style
+	# is the underline style.  Otherwise, just zero it out at this point.
+	if baseAttrs != A_UNDERLINE:
+		baseAttrs = 0
+
+		# Convert the style to a display attribute setting.
+	attr = style_to_attr(style) | baseAttrs
+	
+		# Now display the glyph, using those attributes.
+	win.addstr(glyph, attr)
+	
+#__/ End function display.render_char().
+
+
+#|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#|						END OF FILE:	display/controls.py
+#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

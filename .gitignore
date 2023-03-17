@@ -1,6 +1,7 @@
 # Mike's custom items
 *~
-ai-data/info.txt
+log
+err.out
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
