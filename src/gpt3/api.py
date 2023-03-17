@@ -364,33 +364,33 @@ _ENGINE_ATTRIBS = {
 
 		# OG GPT-3 models; data through Oct. 2019.
 
-    'ada':				{'engine-name': 'ada', 		    	'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
-    'babbage':			{'engine-name': 'babbage',	    	'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
-    'curie':			{'engine-name': 'curie',	    	'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
-    'davinci':			{'engine-name': 'davinci',	    	'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
+    'ada':				{'model-family': 'GPT-3',	'engine-name': 'ada', 		'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
+    'babbage':			{'model-family': 'GPT-3',	'engine-name': 'babbage',	'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
+    'curie':			{'model-family': 'GPT-3',	'engine-name': 'curie',	    'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
+    'davinci':			{'model-family': 'GPT-3',	'engine-name': 'davinci',	'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
     
 		# Early InstructGPT models. (RLHF trained; data through Oct. 2019.)
 
-    'text-ada-001':		{'engine-name': 'text-ada-001',	    'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
-    'text-babbage-001': {'engine-name': 'text-babbage-001', 'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
-    'text-curie-001':	{'engine-name': 'text-curie-001',   'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
-    'text-davinci-001': {'engine-name': 'text-davinci-001', 'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
+    'text-ada-001':		{'model-family': 'GPT-3/Instruct',	'engine-name': 'text-ada-001',		'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
+    'text-babbage-001': {'model-family': 'GPT-3/Instruct',	'engine-name': 'text-babbage-001',	'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
+    'text-curie-001':	{'model-family': 'GPT-3/Instruct',	'engine-name': 'text-curie-001',	'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
+    'text-davinci-001': {'model-family': 'GPT-3/Instruct',	'engine-name': 'text-davinci-001',	'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
 
 		# GPT-3.5 models. (Increased context length; data through June 2021.)
 
-    'text-davinci-002': {'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06,		'is-chat': False,	'encoding': 'p50k_base'},
-    'code-davinci-002': {'engine-name': 'code-davinci-002', 'field-size': 4000, 'price': 0,			'is-chat': False,	'encoding': 'p50k_base'},
-    'text-davinci-003': {'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02,		'is-chat': False,	'encoding': 'p50k_base'},
+    'text-davinci-002': {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06,		'is-chat': False,	'encoding': 'p50k_base'},
+    'code-davinci-002': {'model-family': 'GPT-3.5',	'engine-name': 'code-davinci-002', 'field-size': 4000, 'price': 0,			'is-chat': False,	'encoding': 'p50k_base'},
+    'text-davinci-003': {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02,		'is-chat': False,	'encoding': 'p50k_base'},
     
 		# ChatGPT models. (These use the chat API. Data through Sep. 2021.)
 
-	'gpt-3.5-turbo-0301':   {'engine-name': 'gpt-3.5-turbo-0301', 	'field-size': 4096, 'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
-    'gpt-3.5-turbo':    	{'engine-name': 'gpt-3.5-turbo', 		'field-size': 4096, 'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
+	'gpt-3.5-turbo-0301':   {'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0301', 	'field-size': 4096, 'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
+    'gpt-3.5-turbo':    	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo', 		'field-size': 4096, 'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
     
 		# GPT-4 models.  (These also use the chat API. Data through Sep. 2021.)
 
-	'gpt-4-0314':	{'engine-name': 'gpt-4-0314',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
-	'gpt-4':		{'engine-name': 'gpt-4-0314',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
+	'gpt-4-0314':	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-0314',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
+	'gpt-4':		{'model-family': 'GPT-4',	'engine-name': 'gpt-4-0314',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
 		# NOTE: In these models, prompt tokens are discounted, so there's a new field 'prompt-price' (not yet used by our accounting code).
 
 } # End _ENGINE_ATTRIBS constant module global data structure.
@@ -409,6 +409,12 @@ def _get_engine_attribs(engine_name):
 # Given an engine name and an attribute name, return the attribute value.
 def _get_engine_attr(engine_name, attr_name):
 	return _get_engine_attribs(engine_name)[attr_name]
+
+# Given an engine name, return the model-family attribute value.
+def _get_model_family(engine_name):
+	"""Given an engine name string, return the corresponding model-family 
+		attribute value."""
+	return _get_engine_attr(engine_name, 'model-family')
 
 # Given an engine name, return the field-size attribute value.
 def _get_field_size(engine_name):
@@ -2214,6 +2220,10 @@ class ChatCompletion(Completion):
 #|
 #|			Current API configuration of this core connection.
 #|
+#|		.modelFamily : str							[instance property]
+#|
+#|			The model family of this core connection's engine.
+#|
 #|		.isChat	: bool								[instance property]
 #|
 #|			True if this core connection is a chat connection.
@@ -2308,6 +2318,19 @@ class GPT3Core:
 	def conf(self) -> GPT3APIConfig:
 		"""Get our current API configuration."""
 		return self._configuration
+
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	.modelFamily							[instance public property]
+		#|
+		#|		Returns the model family of this core connection's engine.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+	@property
+	def modelFamily(self) -> str:
+		"""Returns the model family of this core connection's engine."""
+		return _get_model_family(self.conf.engineId)
 
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

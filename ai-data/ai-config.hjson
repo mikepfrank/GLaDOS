@@ -78,32 +78,53 @@
 		persona-user-account:			"aria"		# Not yet used.
 
 
-			#-----------------------------------------------------------------
-			# The model-family is a symbol specifying the general architecture
-			# of the AI.  Choices are:  gpt-2 (Samson), gpt-3 (Gladys).
-			# (However, gpt-2 is not yet supported.)
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#|	The model-family is a symbol specifying the general architecture
+			#|	of the underlying AI.  Choices are:  
+			#|
+			#|		'GPT-2' 			(Samson), 		# Not yet supported.
+			#|		'GPT-3' 			(Gladys),
+			#|		'GPT-3/Instruct'	(Love),
+			#|		'GPT-3.5' 			(Dante, David, DaVinci),
+			#|		'ChatGPT' 			(Turbo, Lingo, Lingua, etc.),
+			#| 		'GPT-4' 			(Aria).
+			#|
+			#|	NOTE: The model-family config parameter is now deprecated, since
+			#|	the GPT3Core objects created in gpt3/api.py now figure out their
+			#|	own model-family based on the model-version. However, we'll keep
+			#|	this config parameter around for now in case it's referenced.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		model-family:					'gpt-3'		# Used for Gladys
+		model-family:					'GPT-4'		# Used for Aria
+			# NOTE: This parameter is deprecated. (See comment above.)
 
-		
-			#------------------------------------------------------------------
-			# The model-version is a symbol naming the particular model within
-			# the model-family.  Choices for gpt-3 include ada, babbage, curie,
-			# and davinci.  Newer options are named 'text-<name>-<NNN>'.
+
+			#|------------------------------------------------------------------
+			#| The model-version is a symbol naming the particular model within
+			#| the model-family.  Choices for GPT-3 include ada, babbage, curie,
+			#| and davinci.  Newer options are named 'text-<name>-<NNN>', where
+			#| <name> is the model-size codename and <NNN> is a version number.
+			#| (And OpenAI keeps adding additional name formats as well.)
 		
 		#model-version:					'ada'		# The weakest GPT-3 model.
 		#model-version:					'babbage'	# The 2nd weakest GPT-3 model.
 		#model-version:					'curie'		# The 3nd weakest GPT-3 model.
 		#model-version:					'davinci'	# The most powerful of the original GPT-3 models; origin of Gladys.
 
-			# NOTE: The Instruct model seems smarter but less personable. :/
+			# NOTE: The Instruct models (and later) seem smarter but less personable. :/
 
-		#model-version:					'text-davinci-001'	# Instruct series upgrade. Used for Love.
-		#model-version:					'text-davinci-002'	# Upgraded davinci with 4K tokens. ("Gladys 2.0") Used for Dante.
-		#model-version:					'code-davinci-002'	# GPT-3.5 base model. Used for David.
-		#model-version:					'text-davinci-003'	# GPT-3.5 aligned model. Used for DaVinci.
-		#model-version:					'gpt-3.5-turbo'		# GPT-3.5 fine-tuned model. Basis of ChatGPT. Used for Turbo.
-		model-version:					'gpt-4'		# GPT-4 fine-tuned model.
+		#model-version:					'text-davinci-001'	# Instruct series upgrade of davinci. Used for Love.
+
+			# The models below are from the GPT-3.5 series; the context window is expanded to 4K tokens.
+
+		#model-version:					'text-davinci-002'	# Upgraded davinci with 4K tokens (GPT-3.5). ("Gladys 2.0") Used for Dante.
+		#model-version:					'code-davinci-002'	# Starting model for GPT-3.5 RLHF series. Used for David. (Also Codex.)
+		#model-version:					'text-davinci-003'	# GPT-3.5 RLHF-aligned model. Used for DaVinci.
+		#model-version:					'gpt-3.5-turbo'		# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
+
+			# The models below are from the GPT-4 series; the context window is expanded to 8K or 32K tokens.
+
+		model-version:					'gpt-4'				# GPT-4 fine-tuned chat model. 8K tokens. Used for Aria.
 
 
 			#-----------------------------------------------------------------------
@@ -111,7 +132,8 @@
 			# of system actions that we want to be made aware of when they occur.
 			# These actions' completion events will appear in our cognitive stream.
 			
-		sys-notification-threshold:		0	# All system actions with non-negative importance.
+		sys-notification-threshold:		0	
+			# This selects all system actions with non-negative importance.
 
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
