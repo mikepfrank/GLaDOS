@@ -83,7 +83,7 @@
 			#|	of the underlying AI.  Choices are:  
 			#|
 			#|		'GPT-2' 			(Samson), 		# Not yet supported.
-			#|		'GPT-3' 			(Gladys),
+			#|		'GPT-3' 			(Gladys, Curie),
 			#|		'GPT-3/Instruct'	(Love),
 			#|		'GPT-3.5' 			(Dante, David, DaVinci),
 			#|		'ChatGPT' 			(Turbo, Lingo, Lingua, etc.),
@@ -108,7 +108,7 @@
 		
 		#model-version:					'ada'		# The weakest GPT-3 model.
 		#model-version:					'babbage'	# The 2nd weakest GPT-3 model.
-		#model-version:					'curie'		# The 3nd weakest GPT-3 model.
+		#model-version:					'curie'		# The 3nd weakest GPT-3 model. Used for Curie.
 		#model-version:					'davinci'	# The most powerful of the original GPT-3 models; origin of Gladys.
 
 			# NOTE: The Instruct models (and later) seem smarter but less personable. :/
