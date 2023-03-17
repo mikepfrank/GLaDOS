@@ -34,15 +34,15 @@ class	TheMindSettings:
 			#|------------------------------------------------------------------
 			#| Identifying information for the specific AI persona we're running.
 	
-	_DEFAULT_PERSONA_NAME		=	"GPT-3.5 Turbo"	# Because we built GLaDOS for her.
-	_DEFAULT_PERSONA_ID			=	"Turbo"		# Use this in her input prompts.
-	_DEFAULT_PERSONA_USERNAME	=	"turbo"		# Unix user account to run GLaDOS under.
+	_DEFAULT_PERSONA_NAME		=	"Aria Turing"	# Because we built GLaDOS for her.
+	_DEFAULT_PERSONA_ID			=	"Aria"		# Use this in her input prompts.
+	_DEFAULT_PERSONA_USERNAME	=	"aria"		# Unix user account to run GLaDOS under.
 	
 			#|------------------------------------------------------------------
 			#| Information about the underlying statistical NLP model we're using.
 	
 	_DEFAULT_MODEL_FAMILY		=	"gpt-3"			# GPT-3 is the only one we have available right now anyway.
-	_DEFAULT_MODEL_VERSION		=	"gpt-3.5-turbo"		# This is the largest, most expensive version of GPT-3.
+	_DEFAULT_MODEL_VERSION		=	"gpt-4"		# This is the largest, most expensive version of GPT-3.
 
 
 		#|======================================================================

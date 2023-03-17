@@ -387,6 +387,12 @@ _ENGINE_ATTRIBS = {
 	'gpt-3.5-turbo-0301':   {'engine-name': 'gpt-3.5-turbo-0301', 	'field-size': 4096, 'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
     'gpt-3.5-turbo':    	{'engine-name': 'gpt-3.5-turbo', 		'field-size': 4096, 'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
     
+		# GPT-4 models.  (These also use the chat API. Data through Sep. 2021.)
+
+	'gpt-4-0314':	{'engine-name': 'gpt-4-0314',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
+	'gpt-4':		{'engine-name': 'gpt-4-0314',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
+		# NOTE: In these models, prompt tokens are discounted, so there's a new field 'prompt-price' (not yet used by our accounting code).
+
 } # End _ENGINE_ATTRIBS constant module global data structure.
 
 
