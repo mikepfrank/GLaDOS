@@ -74,7 +74,7 @@ the Python 3 version of pip.
 
 ### Makefile ([`makefile`](makefile "makefile"))
 
-Currently this supports the following rules, which can be invoked using the ``make`` command:
+Currently this supports the following make rules, which can be invoked using the ``make`` command:
 
 * ``install-data`` - Install the AI's data files in $(AI_DATADIR).
 * ``default``, ``run-glados`` - Launch the experimental GladOS server program.
