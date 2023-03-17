@@ -74,7 +74,12 @@ the Python 3 version of pip.
 
 ### Makefile ([`makefile`](makefile "makefile"))
 
-Currently this just has a single default rule which runs the test-server.sh script.
+Currently this supports the following rules, which can be invoked using the ``make`` command:
+
+* ``install-data`` - Install the AI's data files in $(AI_DATADIR).
+* ``default``, ``run-glados`` - Launch the experimental GladOS server program.
+* ``run-bot`` - Launch the Telegram bot server program.
+* ``update-models`` - Update the ``models.json`` file (see below).
 
 ### Models JSON file ([`models.json`](models.json "models.json file"))
 
