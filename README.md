@@ -18,7 +18,8 @@ The following development branches are in relatively good shape, in the sense th
  - ``dante-dev`` -- Dante is a GPT-3/text-davinci-002 persona. [Includes codebase changes.]
  - ``david-dev`` -- David is a GPT-3/code-davinci-002 persona. [Includes codebase changes.]
  - ``davinci-stable``, ``davinci-dev`` -- DaVinci is a GPT-3/text-davinci-003 persona. **NOTE: The davinci-dev branch is under active development; the most recent stable version is on 'davinci-stable'...**
- - ``turbo``, ``lingo``, and ``lingua`` -- Turbo, Lingo and Lingua are all GPT-3/gpt-3.5-turbo (ChatGPT) personas. Note that these use a different back-end API endpoint (``chat-completions``) from the previous cases. [Includes codebase changes.]
+ - ``turbo``, ``lingo``, and ``lingua`` -- Turbo, Lingo and Lingua are all GPT-3/gpt-3.5-turbo (ChatGPT) personas. Note that these use a different back-end API endpoint (``chat-completions``) from the previous cases. Lingo & Lingua's Telegram bots were customized by gpt-3.5-turbo (accessed via the Playground). [Includes codebase changes.]
+ - ``aria`` -- Aria Turing is a GPT-4 persona. Her Telegram bot was customized by GPT-4 (accessed under ChatGPT Plus). [Includes codebase changes.]
  
 The below branches may need some git maintenance work at the moment (e.g., some master branch updates may still need to be merged in).
  
