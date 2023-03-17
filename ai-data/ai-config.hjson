@@ -94,7 +94,8 @@
 		#model-version:					'ada'		# The weakest GPT-3 model.
 		#model-version:					'babbage'	# The 2nd weakest GPT-3 model.
 		#model-version:					'curie'		# The 3nd weakest GPT-3 model.
-		model-version:					'davinci'	# The most powerful of the original GPT-3 models; origin of Gladys.
+		#model-version:					'davinci'	# Current binding (no longer the OG!)
+		model-version:					'davinci:2020-05-03'	# The most powerful of the original GPT-3 models; origin of Gladys.
 
 			# NOTE: The Instruct model seems smarter but less personable. :/
 

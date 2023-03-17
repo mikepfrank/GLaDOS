@@ -349,7 +349,7 @@ class The_GPT3_API:
 				trimmedSpace = True
 				prompt = prompt[:-1]
 			
-				# Generate the response using the lower-level API wrapped.
+				# Generate the response using the lower-level API wrapper.
 			response = thisAPI.core.genString(prompt)
 
 			# If we trimmed a space at the start of the prompt,

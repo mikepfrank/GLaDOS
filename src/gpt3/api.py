@@ -241,6 +241,7 @@ _ENGINE_ATTRIBS = {
     'babbage':			{'engine-name': 'babbage',	    	'field-size': 2048, 'price': 0.0012},
     'curie':			{'engine-name': 'curie',	    	'field-size': 2048, 'price': 0.006},
     'davinci':			{'engine-name': 'davinci',	    	'field-size': 2048, 'price': 0.06},
+    'davinci:2020-05-03':			{'engine-name': 'davinci',	    	'field-size': 2048, 'price': 0.06},
     'text-ada-001':		{'engine-name': 'text-ada-001',	    'field-size': 2048, 'price': 0.0008},
     'text-babbage-001': {'engine-name': 'text-babbage-001', 'field-size': 2048, 'price': 0.0012},
     'text-curie-001':	{'engine-name': 'text-curie-001',   'field-size': 2048, 'price': 0.006},
@@ -321,6 +322,7 @@ inputToks = {
 		'babbage':				0,
 		'curie':				0,
 		'davinci':				0,
+		'davinci:2020-05-03':	0,
 		'text-ada-001':			0,
 		'text-babbage-001':		0,
 		'text-curie-001':		0,
@@ -333,6 +335,7 @@ outputToks = {
 		'babbage':				0,
 		'curie':				0,
 		'davinci':				0,
+		'davinci:2020-05-03':	0,
 		'text-ada-001':			0,
 		'text-babbage-001':		0,
 		'text-curie-001':		0,
@@ -349,6 +352,7 @@ expenditures = {
 		'babbage':				0,
 		'curie':				0,
 		'davinci':				0,
+		'davinci:2020-05-03':	0,
 		'text-ada-001':			0,
 		'text-babbage-001':		0,
 		'text-curie-001':		0,
@@ -1055,6 +1059,8 @@ class Completion:
 			# If we get here, we know we have enough space for our query + result,
 			# so we can proceed with the request to the actual underlying API.
 			complStruct = openai.Completion.create(**apiArgs)
+
+			_logger.debug(f"[GPT-3 API] Got completion structure: {complStruct}.")
 
 			# This measures the length of the response in tokens, and updates
 			# the global record of API usage statistics accordingly.			

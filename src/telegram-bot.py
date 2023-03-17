@@ -189,10 +189,12 @@ logmaster.configLogMaster(
         component   = _appName,     # Name of the system component being logged.
         role        = 'bot',        # Sets the main thread's role string to 'bot'.
         consdebug   = False,        # Turn off full debug logging on the console.
-        #consinfo    = True,         # Turn on info-level logging on the console.
-        consinfo    = False,        # Turn off info-level logging on the console.
-        #logdebug    = True          # Turn on full debug logging in the log file.
-        logdebug    = False         # Turn off full debug logging in the log file.
+
+        consinfo    = True,         # Turn on info-level logging on the console.
+        #consinfo    = False,        # Turn off info-level logging on the console.
+
+        logdebug    = True          # Turn on full debug logging in the log file.
+        #logdebug    = False         # Turn off full debug logging in the log file.
     )
 # NOTE: Debug logging is currently turned off to save disk space.
 
@@ -1030,9 +1032,9 @@ def process_message(update, context):
                 # We exceeded our OpenAI API quota. There isn't really anything we can
                 # do here except send a diagnostic message to the user.
 
-                _logger.error("process_message(): OpenAI quota exceeded.")
+                _logger.error("process_message(): OpenAI quota or rate limit exceeded.")
 
-                update.message.reply_text("[DIAGNOSTIC: Out of monthly quota for AI service.]")
+                update.message.reply_text("[DIAGNOSTIC: Out of monthly quota for AI service, or rate limit exceeded. Please try again later.]")
                 
                 return  # That's all she wrote.
 
