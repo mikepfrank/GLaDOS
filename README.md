@@ -82,7 +82,8 @@ This file just is here for the developer's convenience; it simply shows the outp
 
     curl https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY" > models.json
 
-at the time that this file was last updated. (Assuming that the user's OpenAI API key is in the
+at the time that this file was last updated using ``make
+update-models``. (Assuming that the user's OpenAI API key is in the
 `OPENAI_API_KEY` environment variable.)
 
 ### Top-Level README File (`README.md`)
