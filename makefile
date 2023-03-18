@@ -5,6 +5,10 @@
 default:
 	make run-glados
 
+# Test our connection to the OpenAI API.
+test-api:
+	python3 src/api-test.py
+
 # Launch the experimental GladOS server process.
 run-glados:
 	./test-server.sh

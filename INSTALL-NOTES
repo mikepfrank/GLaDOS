@@ -123,8 +123,8 @@ all defined in the AI's user environment:
     * OPENAI_API_KEY - Your access key to the OpenAI API.
 
 
-Step 6. - Install AI's data files in the operations directory.
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Step 6. - Install the AI's data files in its ops directory.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 From the AI's user account, in their GLaDOS directory, do:
 
@@ -135,7 +135,17 @@ between development branches without necessarily affecting
 any currently-running AI server applications.)
 
 
-Step 5. - Launch AI server programs.
+Step 7. - Test the connection to the OpenAI API.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+From the AI's user account, in their GLaDOS directory, do:
+
+	$ make test-api
+
+This should run a simple API test.
+
+
+Step 8. - Launch AI server programs.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You may want to do the following in separate terminal
