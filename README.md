@@ -17,8 +17,8 @@ The following development branches are in relatively good shape, in the sense th
  - ``gladys`` -- The original GPT-3/davinci:2020-05-03 persona. [Generally this one should be kept in sync with master.] **NOTE: OpenAI has been updating what's behind the "davinci" model name, it no longer refers to the original davinci.**
  - ``curie`` -- Curie is a GPT-3/curie persona. [Currently we only use this for her Telegram bot.]
  - ``love`` -- Love is a GPT-3/text-davinci-001 persona; not currently in use.
- - ``dante-dev`` -- Dante is a GPT-3/text-davinci-002 persona. [Includes codebase changes.]
- - ``david-dev`` -- David is a GPT-3/code-davinci-002 persona. [Includes codebase changes.]
+ - ``dante-dev`` -- Dante is a GPT-3/text-davinci-002 persona. First GPT-3.5 branch; uses 4K model size. [Includes codebase changes.]
+ - ``david-dev`` -- David is a GPT-3/code-davinci-002 persona. Base model for RLHF versions of GPT-3.5. [Includes codebase changes.]
  - ``davinci-stable``, ``davinci-dev`` -- DaVinci is a GPT-3/text-davinci-003 persona. **NOTE: The davinci-dev branch is under active development; the most recent stable version is on 'davinci-stable'...**
  - ``turbo``, ``lingo``, and ``lingua`` -- Turbo, Lingo and Lingua are all GPT-3/gpt-3.5-turbo (ChatGPT) personas. Note that these use a different back-end API endpoint (``chat-completions``) from the previous cases. Lingo & Lingua's Telegram bots were customized by gpt-3.5-turbo (accessed via the Playground). [Includes codebase changes.]
  - ``aria`` -- Aria Turing is a GPT-4 persona. Her Telegram bot was customized by GPT-4 (accessed under ChatGPT Plus). [Includes codebase changes.]
