@@ -209,7 +209,7 @@ a sample AI persona named "Gladys."
 ### System log directory ([`log/`](log "log/ subdirectory"))
 
 This directory will contain the main system log file, called
-`GladOS.server.log`.
+`GLaDOS.server.log`.
 
 ### Mock-ups directory ([`mockups/`](mockups "mockups/ subdirectory"))
 
