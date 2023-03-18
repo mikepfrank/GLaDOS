@@ -22,8 +22,8 @@ encourage this "inner self" of the AI to display a higher degree of
 intentionality by giving it access to an environment that is
 sufficiently rich and powerful?
 
-At this point, GladOS is merely an experiment, an experiment with
-perhaps a rather questionable likelihood of success.
+At this point, GladOS is merely an experiment in progress, an 
+experiment with perhaps a rather questionable likelihood of success.
 
 ## Language
 
