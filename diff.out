@@ -1,3 +1,6 @@
+diff --git a/diff.out b/diff.out
+new file mode 100644
+index 0000000..e69de29
 diff --git a/src/api-test.py b/src/api-test.py
 index be8dd61..462d08c 100755
 --- a/src/api-test.py
