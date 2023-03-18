@@ -22,8 +22,8 @@ encourage this "inner self" of the AI to display a higher degree of
 intentionality by giving it access to an environment that is
 sufficiently rich and powerful?
 
-At this point, GladOS is merely an experiment, an experiment with
-perhaps a rather questionable likelihood of success.
+At this point, GladOS is merely an experiment in progress, an 
+experiment with perhaps a rather questionable likelihood of success.
 
 ## Language
 
@@ -67,14 +67,19 @@ ignored.)
 ### Installation Notes ([`INSTALL-NOTES`](INSTALL-NOTES "INSTALL-NOTES file"))
 
 This is a plain ASCII text file with some human-readable notes on how
-to install GladOS.  Right now, the only required steps (after cloning
-the repo) are to `pip install` several packages: `openai`, `backoff`,
-`hjson`, and `python-dateutil`.  Please make sure that you are using
-the Python 3 version of pip.
+to install GladOS.  Note you will need to `pip install` several packages: 
+`openai`, `backoff`, `tiktoken`, `hjson`, and `python-dateutil`.  Please 
+make sure that you are using the Python 3 version of pip.
 
 ### Makefile ([`makefile`](makefile "makefile"))
 
-Currently this just has a single default rule which runs the test-server.sh script.
+Currently this supports the following make rules, which can be invoked using the ``make`` command:
+
+* ``install-data`` - Install the AI's data files in $(AI_DATADIR).
+* ``test-api`` - Test the connection to the OpenAI API.
+* ``default``, ``run-glados`` - Launch the experimental GladOS server program.
+* ``run-bot`` - Launch the Telegram bot server program.
+* ``update-models`` - Update the ``models.json`` file (see below).
 
 ### Models JSON file ([`models.json`](models.json "models.json file"))
 
@@ -136,7 +141,7 @@ API wrapper.
     $ pip3 install openai
     $ pip3 install backoff
     $ export OPENAI_API_KEY=<YourAPIKeyGoesHere>
-    $ python3 src/glados-test.py
+    $ make test-api		# Does `python3 src/api-test.py`
 
 This prompts GPT-3 with the first line from the nursery rhyme "Mary
 Had a Little Lamb," and, if all goes well, you will see GPT-3

@@ -312,53 +312,19 @@ _statsLoaded 	= False			# We haven't tried to load stats from the file yet.
 global 			_inputLength	# Length of the input string.
 _inputLength 	= 0				# Will be modified when processing a query.
 
-global inputToks, outputToks	# These are dictionaries of token counts.
+global _inputToks, _outputToks, _expenditures
+	# These are dictionaries of token counts.
 	# (Cumulative tokens used for each engine since last reset.)
 
-# Initialize two separate dicts to hold cumulative input & output token counts.
+# Initialize all the various stats dictionaries to all-zero values.
 
-inputToks = {
-		'ada':					0,
-		'babbage':				0,
-		'curie':				0,
-		'davinci':				0,
-		'davinci:2020-05-03':	0,
-		'text-ada-001':			0,
-		'text-babbage-001':		0,
-		'text-curie-001':		0,
-		'text-davinci-001':		0,
-		'text-davinci-002':		0,
-	}
-
-outputToks = {
-		'ada':					0,
-		'babbage':				0,
-		'curie':				0,
-		'davinci':				0,
-		'davinci:2020-05-03':	0,
-		'text-ada-001':			0,
-		'text-babbage-001':		0,
-		'text-curie-001':		0,
-		'text-davinci-001':		0,
-		'text-davinci-002':		0,
-	}
-
-# Meanwhile, this dict will keep track of the cumulative expenditures
-# in dollars for each engine.
-
-global expenditures
-expenditures = {
-		'ada':					0,
-		'babbage':				0,
-		'curie':				0,
-		'davinci':				0,
-		'davinci:2020-05-03':	0,
-		'text-ada-001':			0,
-		'text-babbage-001':		0,
-		'text-curie-001':		0,
-		'text-davinci-001':		0,
-		'text-davinci-002':		0,
-	}
+_inputToks = {}
+_outputToks = {}
+_expenditures = {}
+for engId in _ENGINE_NAMES:
+	_inputToks[engId] = 0
+	_outputToks[engId] = 0
+	_expenditures[engId] = 0
 
 # This global variable tracks the total cost in dollars across all engines.
 
@@ -1104,7 +1070,7 @@ class Completion:
 		_logger.debug(f"Counted {nToks} tokens in input text [{prompt}]")
 
 			# Update the global record of API usage statistics.
-		inputToks[engine] = inputToks[engine] + nToks
+		_inputToks[engine] = _inputToks[engine] + nToks
 	
 	#__/ End of class gpt3.api.Completion's ._accountForInput method.
 
@@ -1129,7 +1095,7 @@ class Completion:
 		_logger.debug(f"Counted {nToks} tokens in output text [{text}].")
 
 			# Update the global record of API usage statistics.
-		outputToks[engine] = outputToks[engine] + nToks
+		_outputToks[engine] = _outputToks[engine] + nToks
 
 	#__/ End of class gpt3.api.Completion's ._accountForOutput method.
 
@@ -1438,7 +1404,7 @@ def loadStats():
 
 	"""Loads the api-stats.json file from the AI's data directory."""
 
-	global _statsLoaded, inputToks, outputToks, expenditures, totalCost
+	global _statsLoaded, _inputToks, _outputToks, _expenditures, totalCost
 
 		# This constructs the full filesystem pathname to the stats file.
 	statsPath = statsPathname()
@@ -1448,9 +1414,9 @@ def loadStats():
 
 			stats 			= json.load(inFile)
 
-			inputToks 		= stats['input-tokens']
-			outputToks 		= stats['output-tokens']
-			expenditures 	= stats['expenditures']
+			_inputToks 		= stats['input-tokens']
+			_outputToks 	= stats['output-tokens']
+			_expenditures 	= stats['expenditures']
 			totalCost 		= stats['total-cost']
 		
 		#_logger.normal(f"Loaded API usage stats from {statsPath}: \n{pformat(stats, width=25)}")
@@ -1520,15 +1486,15 @@ def displayStats():
 			
 			engStr 	= "%16s" % engine
 
-			inToks 	= inputToks[engine]
-			outToks = outputToks[engine]
+			inToks 	= _inputToks[engine]
+			outToks = _outputToks[engine]
 			total 	= inToks + outToks
 	
 			inTokStr  = "%7d" % inToks
 			outTokStr = "%7d" % outToks
 			totStr 	  = "%7d" % total
 	
-			cost = "$%8.4f" % expenditures[engine]
+			cost = "$%8.4f" % _expenditures[engine]
 	
 			statLine(f"{engStr} {inTokStr} {outTokStr} {totStr} {cost}")
 	
@@ -1559,7 +1525,7 @@ def saveStats():
 	"""Saves cumulative API usage statistics to the api-stats.json file
 		in the AI's data directory."""
 
-	global expenditures, totalCost
+	global _expenditures, totalCost
 
 		# This constructs the full filesystem pathname to the stats file.
 	statsPath = statsPathname()
@@ -1568,12 +1534,12 @@ def saveStats():
 
 		(costs, dollars) = recalcDollars()
 
-		expenditures = costs
+		_expenditures = costs
 		totalCost = dollars
 
 		stats = {
-				'input-tokens': inputToks,
-				'output-tokens': outputToks,
+				'input-tokens': _inputToks,
+				'output-tokens': _outputToks,
 				'expenditures': costs,
 				'total-cost': dollars
 			}
@@ -1601,7 +1567,7 @@ def recalcDollars():
 	costs = dict()	# This is a dictionary mapping engine names to cumulative costs (in dollars).
 	dollars = 0		# Total cost of all API calls, in dollars.
 	for engine in _ENGINE_NAMES:
-		nToks = inputToks[engine] + outputToks[engine]	# Total number of tokens used.
+		nToks = _inputToks[engine] + _outputToks[engine]	# Total number of tokens used.
 		engCost = (nToks/1000) * _get_price(engine)		# Price is per 1000 tokens.
 		costs[engine] = engCost
 		dollars = dollars + engCost
