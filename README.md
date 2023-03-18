@@ -4,7 +4,7 @@
 
 Formerly named *GLaDOS, General Lifeform's automated Domicile Operating System.* 
 
-## Major branches of this repo.
+## Major branches of this repo:
 
 This ``main`` branch is intended for major releases (but there aren't any yet).
 
