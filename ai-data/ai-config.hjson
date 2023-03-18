@@ -119,10 +119,7 @@
 
 		#min-query-tokens:				42		# Seems like a reasonable minimum.
 		min-query-tokens:				100		# Gladys 2.0 requested this.
-<<<<<<< HEAD
-=======
 			# NOTE: Need to rename this throughout system to min-response-tokens
->>>>>>> master
 
 
 			#-----------------------------------------------------------------
@@ -207,17 +204,10 @@
 			/*------------------------------------------------------------------
 				Return the log-probabilities of this many of the top
 				most likely tokens, in addition to the sampled token
-<<<<<<< HEAD
-			    (which may or may not be in this set). Default: None.
-			    (Meaning, don't return log-probabilities.) If zero,
-			    then the log-probability is reported for each returned
-			    token. */
-=======
 				(which may or may not be in this set). Default: None.
 				(Meaning, don't return log-probabilities.) If zero,
 				then the log-probability is reported for each returned
 				token. */
->>>>>>> master
 
 		log-probs:				null	# Don't change this!
 
