@@ -8,7 +8,7 @@ Formerly named *GLaDOS, General Lifeform's automated Domicile Operating System.*
 
 This ``main`` branch is intended for major releases (but there aren't any yet).
 
-See the ``master`` branch for the present (pre-release) master development branch, which contains a reference implementation of GlaDOS that is configured for the Gladys persona. Gladys is a persona exhibited by the original GPT-3/davinci engine (which you might call "davinci classic"). Note that you must now use the name ``davinci:2020-03-05`` to access the original version of davinci.
+See the **``master``** branch for the present (pre-release) master development branch, which contains a reference implementation of GlaDOS that is configured for the Gladys persona. Gladys is a persona exhibited by the original GPT-3/davinci engine (which you might call "davinci classic"). Note that you must now use the name ``davinci:2020-03-05`` to access the original version of davinci.
 
 There are also development branches for various experimental AI personas; some of these dev branches may include code changes some of which may still be unfinished and/or may need to be folded back into the master branch.  (But I will try to keep the master dev branch, at least, in a working state.)
 
