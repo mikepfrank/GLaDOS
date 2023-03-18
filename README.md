@@ -67,10 +67,9 @@ ignored.)
 ### Installation Notes ([`INSTALL-NOTES`](INSTALL-NOTES "INSTALL-NOTES file"))
 
 This is a plain ASCII text file with some human-readable notes on how
-to install GladOS.  Right now, the only required steps (after cloning
-the repo) are to `pip install` several packages: `openai`, `backoff`,
-`hjson`, and `python-dateutil`.  Please make sure that you are using
-the Python 3 version of pip.
+to install GladOS.  Note you will need to `pip install` several packages: 
+`openai`, `backoff`, `tiktoken`, `hjson`, and `python-dateutil`.  Please 
+make sure that you are using the Python 3 version of pip.
 
 ### Makefile ([`makefile`](makefile "makefile"))
 
