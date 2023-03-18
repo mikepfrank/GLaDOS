@@ -4,16 +4,16 @@ INSTALLATION NOTES.
 Instructions to set up & run GladOS and/or the Telegram bot.
 
 
-Step -1. [Optional] - Create the Telegram bot for your AI persona.
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Step 1. [Optional] - Create the Telegram bot for your AI persona.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This is done using the BotFather bot on Telegram.  The 
-command list can be found in src/telegram-bot.py.  Make
-note of your bot's token; it will be needed to run the 
-bot server.
+command list can be found in ``src/telegram-bot.py`` 
+(search for ``COMMAND_LIST``).  Make a note of your bot's 
+token; it will be needed to run the bot server.
 
 
-Step 0. - Clone the git repo.
+Step 2. - Clone the git repo.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 0a. It's recommended to set up a new user account for the AI on your host.
@@ -22,7 +22,7 @@ Step 0. - Clone the git repo.
 0d. cd GLaDOS; git checkout <branch>
 
 
-Step 1. - Install dependencies.
+Step 3. - Install dependencies.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The current Python version being used for development is 3.8.5.
@@ -57,27 +57,27 @@ src/tokenizer/README.md.  HOWEVER: On the newer branches of GLaDOS
 phased out in favor of the tiktoken library.
 
 
-Step 2. - Customize as desired.
+Step 4. - Customize as desired.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-2a. [Optional] General GladOS customizations can be found in 
+4a. [Optional] General GladOS customizations can be found in 
     ``glados-config.json``, but you should not need to change these.
 
-2a. Primary AI persona customizations may be found in the file 
+4b. Primary AI persona customizations may be found in the file 
     ``ai-data/ai-config.json``. In particular, see:
 
     * mind-conf.{persona-name,persona-id,persona-user-account,model-version} -- Self-explanatory.
     * field-conf.max-visible-tokens -- Usually you would just set this to match the model's context window size.
     * telegram-conf.{bot-name,context} -- Configures the Telegram bot.
 
-2b. The ``ai-data/info.txt`` file customizes the contents of the 
+4c. The ``ai-data/info.txt`` file customizes the contents of the 
     Info window in GladOS.
 
-2c. [Optional.] Give the AI persona some initial goals in the 
+4d. [Optional.] Give the AI persona some initial goals in the 
     ``ai-data/init-goals.hjson`` file; this initializes the 
     Goals app in GladOS.
 
-2d. You may need to modify the following attributes in 
+4e. You may need to modify the following attributes in 
     ``src/mindSettings.py``, class ``TheMindSettings``, for use in 
     GladOS.  These are supposed to be overridden by values loaded 
     from the config file on startup, but if the AI or operator ever 
@@ -89,12 +89,12 @@ Step 2. - Customize as desired.
     * _DEFAULT_PERSONA_USERNAME
     * _DEFAULT_MODEL_VERSION
 
-2e. In ``src/entities/entity.py`` class ``Operator_Entity``, update 
+4f. In ``src/entities/entity.py`` class ``Operator_Entity``, update 
     ``_ENTITY_ID`` to the name of the system operator.  (Eventually, 
     this should probably come from an environment variable and/or
     config file parameter instead.)
     
-2f. In ``src/gpt3/api.py``, make sure the specific AI engine (LLM) 
+4g. In ``src/gpt3/api.py``, make sure the specific AI engine (LLM) 
     you want to use is included in these dicts:
 
     * _ENGINE_ATTRIBS
@@ -103,19 +103,27 @@ Step 2. - Customize as desired.
     * expenditures
     
 
-Step 3. - Set up environment variables.
+Step 5. - Set up environment variables.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You should make sure that the following environment variables are all defined in your user environment:
+You should make sure that the following environment variables are 
+all defined in the AI's user environment:
 
-    * AI_NAME - This is usually the same as the username of the AI's user account on the server host.
+    * AI_NAME - This is usually the same as the username of the 
+        AI's user account on the server host machine.
+
     * AI_DATADIR - Suggested value: ``/opt/AIs/${AI_NAME}``.
-    * TELEGRAM_TOKEN, TELEGRAM_BOT_TOKEN - Token for the AIs Telegram bot. (Set both.)
+        This will be where (most) run-time data will be kept.
+    
+    * TELEGRAM_TOKEN, TELEGRAM_BOT_TOKEN - Token for the AIs 
+        Telegram bot. (Set both of these.)
+    
     * TZ - Preferred time zone string. E.g., 'America/Denver'.
+    
     * OPENAI_API_KEY - Your access key to the OpenAI API.
 
 
-Step 4. - Install AI's data files in operations directory.
+Step 6. - Install AI's data files in the operations directory.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 From the AI's user account, in their GLaDOS directory, do:
