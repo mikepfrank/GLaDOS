@@ -79,6 +79,13 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 			#|	1.2.2. The following modules are specific to GLaDOS.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+from	gpt3.api				import	(
+						ChatMessages,	# Class: Encapsulates a list of chat messages.
+						isChatEngine,	# Function: Is the specified model a chat engine?
+						messageRepr,	# Function: Gets back-end representation of a message.
+						tiktokenCount, 	# Function: Count the number of tokens in a string.
+					)
+
 from	events.event			import	TextEvent
 
 from	text.buffer				import	TextBuffer
@@ -523,21 +530,39 @@ class TheAIFieldView(FieldView_):
 		data = []	# Initialize data array to empty list.
 		for slot in slots:
 			element = slot.element		# Get the field element.
-			image = element.image		# Get that element's (text) image.
-			data.append(image)			# Append it to our list.
+
+			# If our .modelVersion is a chat engine, then we need to
+			# render the element as a delimited chat message using 
+			# api._msg_repr(). Otherwise, we just render it as a
+			# plain text string.
+
+			if isChatEngine(view.modelVersion):
+				rendering = messageRepr(view.elemMessage(element))	
+					# Get the (guessed) back-end representation of the 
+					# chat message representing this field element.
+			else:
+				rendering = element.image		
+					# Get that element's (plain text) image.
+
+			data.append(rendering)			# Append it to our list.
 			
 		text = ''.join(data)		# Here's the data as one huge string.
 
 		#_logger.debug(f"aiFieldView.render(): Just rendered field view as: [[{text}]]")
 
-		view._data = data			# Remember the data array.
-		view._text = text
-		view._nChars = None			# Mark nChars as not-yet-computed.
-		view._nTokens = None		# Mark nTokens as not-yet-computed.
+		view._data = data		# Remember the data array.
+		view._text = text		# Remember the text string.
+
+		view._nChars = None
+			# Invalidate nChars (mark it as not-yet-computed).
+
+		view._nTokens = None		
+			# Invalidate nTokens (mark it as not-yet-computed).
 	
-		# We don't bother to pre-generate the message list, because
-		# the AI might not even be using a chat engine.  Instead, we
-		# invalidate it so that it will be regenerated if needed.
+		# We don't bother to pre-generate the message list here, 
+		# because this AI might not even be using a chat engine.  
+		# Instead, we just invalidate it so that it will be 
+		# regenerated if and when needed.
 		view._messages = None
 
 			# Mark the base data as having been seen now (by us at least).
@@ -552,6 +577,11 @@ class TheAIFieldView(FieldView_):
 
 
 	@property
+	def modelVersion(inst:TheAIFieldView):
+		return inst._modelVersion
+
+
+	@property
 	def text(inst:TheAIFieldView):
 		
 		"""Returns the field view as one huge text string."""
@@ -562,6 +592,24 @@ class TheAIFieldView(FieldView_):
 			inst._text = text = ''.join(data)
 		return text
 
+
+	def elemMessage(inst:TheAIFieldView, element:FieldElement_):
+		"""Converts a given field element into a message dictionary
+			(in the format expected by the GPT-3 chat API)."""
+		
+		image = element.image	# Get that element's (text) image.
+		owner = element.owner	# Get the element's owner (an entity).
+		role = owner.chatRole	# Get the role (CHAT_ROLE_{SYSTEM,USER,AI}).
+		name = owner.chatName	# Get the name to be used for the owner entity in chat, if any.
+
+		message = {				# Construct the message dictionary.
+			"role": 	role,
+			"content":	image
+		}
+		if name is not None:	# If there's a name...
+			message["name"] = name	# ...add it to the message.
+
+		return message
 
 	def messages(inst:TheAIFieldView):
 
@@ -582,16 +630,23 @@ class TheAIFieldView(FieldView_):
 				
 				element = slot.element	# Get the field element.
 				
-				image = element.image	# Get that element's (text) image.
-				role = element.role		# Get that element's role (CHAT_ROLE_{SYSTEM,USER,AI}).
-				name = element.name		# Get that element's user name (may be None).
+				message = inst.elemMessage(element)
+					# Convert the element into a message dictionary.
 
-				message = {				# Construct the message dictionary.
-					"role": role,
-					"content": image
-				}
-				if name is not None:	# If there's a name...
-					message["name"] = name	# ...add it to the message.
+				# image = element.image	# Get that element's (text) image.
+
+				# role = element.owner.chatRole
+				# 	# Get the role (CHAT_ROLE_{SYSTEM,USER,AI}).
+
+				# name = element.owner.chatName	
+				# 	# Get the name to be used for the owner entity in the chat API (may be None).
+
+				# message = {				# Construct the message dictionary.
+				# 	"role": 	role,
+				# 	"content":	image
+				# }
+				# if name is not None:	# If there's a name...
+				# 	message["name"] = name	# ...add it to the message.
 
 				messages.append(message)	# Add the message to the list.
 
@@ -604,8 +659,8 @@ class TheAIFieldView(FieldView_):
 		"""Returns the number of characters in the current field view."""
 		nChars = inst._nChars
 		if nChars is None:		# Not calculated yet?
-			text = inst.text()
-			inst._nChars = nChars = len(text)
+			text = inst.text()					# Get the text string.
+			inst._nChars = nChars = len(text)	# Remember the number of characters.
 		return nChars
 	
 
@@ -615,19 +670,39 @@ class TheAIFieldView(FieldView_):
 
 	def nTokens(inst):
 		"""Returns the number of tokens in the current field view."""
-		# This works by concatenating together all the rows of 
-		# the text buffer, and then we run that
-		# through the tokenizer.
+		
 		nTokens = inst._nTokens
+		
 		if nTokens is None:		# Not calculated yet?
-			text = inst.text()	# Put together the complete text.
 
-			#_logger.debug(f"About to count tokens in text: [{text}]")
+			# First, check to see if we're using a chat engine.
+			# If so, we need to count up the tokens in the messages,
+			# not the text.
+			engineId = inst.modelVersion
 
-			inst._nTokens = nTokens = countTokens(text)	# Function is now deprecated.
-			#inst._nTokens = nTokens = tiktokenCount(text)
-			# This is wrong too, because if we're using a chat engine, wwe need to
-			# count up the tokens in the messages, not the text. [NOTE: FIX THIS.]
+			if isChatEngine(engineId):
+				messages = inst.messages()			# Get the raw list of messages.
+				chatMsgs = ChatMessages(messages)	# Convert to ChatMessages object.
+				nTokens = chatMsgs.totalTokens(model=engineId)
+					# This is the total number of tokens in all the messages.
+					# Note we have to pass in the model version, because
+					# the tokenizer to use depends on the model version.
+			
+			else:	# Not using a chat engine.
+
+				# This works by concatenating together all the data strings
+				# making up the total view, and then we run that through the 
+				# appropriate tokenizer.
+
+				text = inst.text()	# Put together the complete text.
+
+				#_logger.debug(f"About to count tokens in text: [{text}]")
+
+				nTokens = tiktokenCount(text, model=engineId)
+					# Note we have to pass in the model version, because
+					# the tokenizer to use depends on the model version.
+
+			inst._nTokens = nTokens		# Remember the number of tokens.
 
 		return nTokens
 		
@@ -636,11 +711,21 @@ class TheAIFieldView(FieldView_):
 # to the system viewing the field and maybe they each have their views
 # configured slightly differently.
 
-class HumanFieldView(FieldView_):
-	"""Derived class for views of the receptive field to be shown to
-		human users."""
-	def render(inst):
-		pass
+# class HumanFieldView(FieldView_):
+# 	"""Derived class for views of the receptive field to be shown to
+# 		human users."""
+	
+# 	# We need to extend our superclass's default initializer to take an
+# 	# extra argument 'modelVersion', which is the version of GPT-3/4
+# 	# that the AI is using.  This is needed because the AI's view of the
+# 	# field is measured using a tokenizer that depends on the model version.
+# 	def __init__(inst, base:_TheBaseFieldData, modelVersion:str):
+# 		super().__init__(base)
+# 		inst._modelVersion = modelVersion
+
+# 	def render(inst):
+# 		pass	# Don't bother pre-rendering the human view, because
+# 				# it will be rendered on demand on display refresh.
 
 # In the following design pattern, before designing a singleton class,
 # we put as much of that class's functionality as possible into an abstract
@@ -838,6 +923,7 @@ class TheReceptiveField(ReceptiveField_):
 		# Since we just changed the field, tell the view to re-render itself.
 		field.updateView()
 
+
 	@property
 	def base(field:TheReceptiveField):
 		return field._baseFieldData
@@ -847,6 +933,7 @@ class TheReceptiveField(ReceptiveField_):
 	def console(field:TheReceptiveField):
 		return field._console	# Our console client.
 
+
 	def setConsole(field:TheReceptiveField, console:ConsoleClient):
 	
 		"""Tells the field where to find the system console.  We 
@@ -855,6 +942,7 @@ class TheReceptiveField(ReceptiveField_):
 			
 		field._console = console
 	
+
 	def place(field:TheReceptiveField, slot:FieldSlot, where:Placement):
 	
 		"""This method tells the field to place the given slot onto itself.
@@ -863,7 +951,7 @@ class TheReceptiveField(ReceptiveField_):
 		base = field.base
 		
 			# Tell our base data structure to place this slot inside itself.
-		base.place(slot, placement)
+		base.place(slot, where)
 
 
 	@property
@@ -932,7 +1020,11 @@ class TheReceptiveField(ReceptiveField_):
 			the field.  The format of the returned value is a simple list
 			of items, each of which is a string.  Each item is conceptually
 			a single, indivisible unit; however, they are concatenated 
-			together for purposes of displaying them to the AI, or a human."""
+			together for purposes of displaying them to the AI, or a human.
+			
+			NOTE: For chat engines, the individual data items are in a
+			special format,
+			"""
 			
 		field	= theReceptiveField
 		view	= field.view

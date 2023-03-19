@@ -98,7 +98,10 @@
 
 			createCoreConnection() - Creates a new GPT3Core or GPT3ChatCore
 				object, depending on the value of the 'engineId' parameter.
-			
+
+			isChatEngine() - Returns True if the specified engine ID is
+				one of the chat engines, False otherwise.
+
 			local_countTokens() - Counts tokens in a string using the local
 				tokenizer.  This is much faster than the above function, but
 				requires GPT-2 to be installed locally.  It is also not as
@@ -198,6 +201,7 @@ import	json		# We use this to save/restore the API usage statistics.
 
 import	datetime	# We use this to tag new messages with the current time.
 
+from	curses.ascii	import	STX, ETX	# We use these to delimit messages.
 
 	#/==========================================================================
 	#|	1.2. Imports of modules to support GPT-3.		[module code subsection]
@@ -324,12 +328,16 @@ __all__ = [
 			# NOTE: This could return either a GPT3Core or a GPT3ChatCore object,
 			# depending on the selected engine type.
 
+		'isChatEngine',			# Function: Returns True if the engine is a chat engine.
+
 		'loadStatsIfNeeded',	# Function: Loads the GPT-3 usage statistics file 
 			# if not already loaded.
 
 		'local_countTokens',	# Function: Counts tokens in a string. (No cost.)
 			# NOTE: This function is deprecated since it creates a dependency on
 			# GPT-2 having been installed; use the tiktokenCount() function instead.
+
+		'messageRepr',			# Function: Returns a string representation of a chat message.
 
 		'tiktokenCount',		# Function: Counts tokens in a string. (No cost, fast.)
 			# NOTE: This is the recommended token-counting function.
@@ -451,6 +459,10 @@ def _is_chat(engine_name):
 	"""Given an engine name string, return the corresponding is-chat 
 		attribute value."""
 	return _get_engine_attr(engine_name, 'is-chat')
+
+# Expose _is_chat() as a public function.
+def isChatEngine(engineId:str):
+	return _is_chat(engineId)
 
 # Given an engine name, return the encoding attribute value.
 def _get_encoding(engine_name):
@@ -3313,6 +3325,36 @@ def _recalcDollars():
 #__/ End module function _recalcDollars().
 
 
+def _msg_repr(msg:dict) -> str:
+
+	"""Return a string representation of the given message dict.
+		Note that this is an educated guess about how the API backend
+		actually represents the messages to the underlying language
+		model. It's not documented anywhere, but we're guessing that
+		it's probably something like this:
+
+			[STX] <role> '\n' <content> '\n' [ETX]
+
+		where <role> and <content> are the values of the 'role' and
+		'content' fields of the message dict, respectively, and [STX]
+		and [ETX] are the start-of-text and end-of-text tokens used
+		by the underlying language model. From what we know, the length
+		(in tokens) of the message representation is 4 + len(role) + 
+		len(content)
+		"""
+	
+	rep = chr(STX) + msg['role'] + '\n' + msg['content'] + '\n' + chr(ETX)
+
+	return rep
+
+#__/ End module function _msg_repr().
+
+
+# Expose the message representation function as a module-level public function.
+def messageRepr(message:dict) -> str:
+	return _msg_repr(message)
+
+
 def _msg_tokens(msg:dict, model:str=None) -> int:
 	"""Return the number of tokens in the given message dict. Note that
 		we include the tokens in the 'role' and 'content' fields of
@@ -3321,32 +3363,34 @@ def _msg_tokens(msg:dict, model:str=None) -> int:
 		to represent the messages before passing them to the 
 		underlying language model."""
 		
-	_estimatedFormattingTokens = 4
-		# This is the number of extra tokens that we're guessing the 
-		# API uses to format the role and content of each message.  
-		# It's not documented anywhere, but we're guessing that it's
-		# probably ~4 tokens per message, to delimit the 2 fields.
-		# This is because we got a hint from someone that the back-end 
-		# format is something like:
-		#
-		#		<begin_msg_token> <role_token> '\n' <content_tokens> '\n' <end_msg_token>
-		#			 1 token	   N(=1) tok.	 1		M tokens	   1 		 1
+	# _estimatedFormattingTokens = 4
+	# 	# This is the number of extra tokens that we're guessing the 
+	# 	# API uses to format the role and content of each message.  
+	# 	# It's not documented anywhere, but we're guessing that it's
+	# 	# probably ~4 tokens per message, to delimit the 2 fields.
+	# 	# This is because we got a hint from someone that the back-end 
+	# 	# format is something like:
+	# 	#
+	# 	#		<begin_msg_token> <role_token> '\n' <content_tokens> '\n' <end_msg_token>
+	# 	#			 1 token	   N(=1) tok.	 1		M tokens	   1 		 1
 
-	msgToks = 0
-	if 'role' in msg:
-		msgToks += tiktokenCount(msg['role'], model=model)	
-			# The role field should always be 1 token long.
-	if 'name' in msg:
-		msgToks += tiktokenCount(msg.get('name',''), model=model) - 1
-			# The name field is optional, and if present, it
-			# overrides the role field.  So if the name field
-			# is present, we subtract 1 from the token count
-			# since the name field is supposed to replace the 
-			# role field & the role field is always 1 token long.
-	if 'content' in msg:
-		msgToks += tiktokenCount(msg['content'], model=model)
+	# msgToks = 0
+	# if 'role' in msg:
+	# 	msgToks += tiktokenCount(msg['role'], model=model)	
+	# 		# The role field should always be 1 token long.
+	# if 'name' in msg:
+	# 	msgToks += tiktokenCount(msg.get('name',''), model=model) - 1
+	# 		# The name field is optional, and if present, it
+	# 		# overrides the role field.  So if the name field
+	# 		# is present, we subtract 1 from the token count
+	# 		# since the name field is supposed to replace the 
+	# 		# role field & the role field is always 1 token long.
+	# if 'content' in msg:
+	# 	msgToks += tiktokenCount(msg['content'], model=model)
 
-	msgToks += _estimatedFormattingTokens
+	# msgToks += _estimatedFormattingTokens
+
+	msgToks = tiktokenCount(_msg_repr(msg), model=model)
 
 	# This is too verbose for normal operation. Comment it out after testing.
 	#if logmaster.doDebug: _logger.debug(f"Message {msg} has {msgToks} tokens.")
