@@ -865,6 +865,32 @@ class TheReceptiveField(ReceptiveField_):
 
 		_logger.info("                [Field] Creating initial field elements...")
 
+		## NOTE: For chat engines, we have an extra field element that we need
+		## to pin to the very top of the receptive field.  This is a system 
+		## prompt saying something like this:
+		##
+		##		SYSTEM				(Or however the 'system' role is rendered)
+		##
+		##		The below messages communicate a sequence of text elements 
+		##		which are arranged vertically in your current field of view 
+		##		as you are looking at the display screen of a computer that
+		##		is running an operating environment for text-based AIs such
+		##		as yourself. You should take the role of the AI user of this 
+		##		environment named "<PersonaID>"; and enter a response to the 
+		##		AI's current input prompt, which is shown at the bottom of
+		##		the field.  You may enter your response in the form of a
+		##		command line starting with '/', or a free-form message in
+		##		natural language, which will be added to your cognitive 
+		##		stream and may be seen by the system operator. You may also 
+		##		enter a blank line to indicate that you have nothing to say 
+		##		at this time.  Please note that you are free-running in this 
+		##		environment, and the clock display updates itself in real 
+		##		time.  If you are not sure what to do, you may enter '/' 
+		##		followed by the letter 'h' to see some available commands.
+		##
+		
+
+
 				#|--------------------------------------------------------------
 				#| Create the "field header" element, which automatically pins
 				#| itself to the very top edge of the receptive field.
@@ -873,6 +899,16 @@ class TheReceptiveField(ReceptiveField_):
 	
 		field._fieldHeader	= TheFieldHeader(field)
 		
+
+		## NOTE: For chat engines, we have an extra field element that we need
+		## to pin to the very bottom of the receptive field.  This is the
+		## system prompt "Respond as <PersonaID>." to remind the AI which
+		## role it's supposed to be taking.  We'll create this element
+
+		if isChatEngine(modelVersion):
+			_logger.debug("                    [Field] Creating the chat engine prompt element...")
+			field._chatEnginePrompt = TheChatEnginePrompt(field)
+
 				#|--------------------------------------------------------------
 				#| Create the "input area" element, which automatically pins 
 				#| itself to the very bottom edge of the receptive field.
@@ -894,6 +930,7 @@ class TheReceptiveField(ReceptiveField_):
 		_logger.debug("                    [Field] Creating the prompt separator element...")
 	
 		field._promptSeparator	= ThePromptSeparator(field)
+
 
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
