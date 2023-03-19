@@ -2348,6 +2348,7 @@ class GPT3Core:
 		
 		if 'config' in kwargs:
 			config = kwargs['config']
+			del kwargs['config']	# Remove from keyword args since absorbed.
 		else:
 			config = None
 
@@ -2356,6 +2357,7 @@ class GPT3Core:
 		if config == None and len(args) > 0:
 			if args[0] != None and isinstance(args[0],GPT3APIConfig):
 				config = args[0]
+				args = args[1:]		# Remove from arglist since absorbed.
 
 			# If no config was provided, then create one from the arguments.
 			# (In future, this should be changed to otherwise modify the provided
@@ -2634,6 +2636,7 @@ class GPT3ChatCore(GPT3Core):
 		
 		if 'chatConf' in kwargs:
 			chatConf = kwargs['chatConf']
+			del kwargs['chatConf']	# Removed it since we absorbed it.
 		else:
 			chatConf = None
 
@@ -2642,6 +2645,7 @@ class GPT3ChatCore(GPT3Core):
 		if chatConf == None and len(args) > 0:
 			if args[0] != None and isinstance(args[0],GPT3ChatAPIConfig):
 				chatConf = args[0]
+				args = args[1:]		# Remove it from the args, since we absorbed it.
 
 			# If no chatConf was provided, then create one from the arguments.
 			# (In future, this should be changed to otherwise modify the provided
@@ -3031,7 +3035,7 @@ def createCoreConnection(engineId:str=None, conf:GPT3APIConfig=None, **kwargs):
 
 	# Instantiate the appropriate type of core object.
 	if _is_chat(engineId):
-		newCore = GPT3ChatCore(engineId=engineId, config=conf, **kwargs)
+		newCore = GPT3ChatCore(engineId=engineId, chatConf=conf, **kwargs)
 	else:
 		newCore = GPT3Core(engineId=engineId, config=conf, **kwargs)
 

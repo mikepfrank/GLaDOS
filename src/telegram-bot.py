@@ -199,6 +199,8 @@ from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF
                 #   selects the appropriate subclass of GPT3Core to instantiate, 
                 #   based on the engineId parameter.
 
+			messageRepr,	# Generates text representation of a chat message dict.
+
 		)
 
 
@@ -939,10 +941,11 @@ class Conversation:
 			# # This is simple and seems to work pretty well.
 
 			# Trying this new variation, to facilitate continuations:
-			'content': f'Respond as {self.bot_name}.  (Note: If you run out ' + \
-				'of space, truncate your response and end it with "(cont)"; ' + \
-				'then if the user types "/continue", resume generating your ' + \
-				'prior response where you left off.)\n'
+			'content': f'Respond as {self.bot_name}. (Note: If you need more '	\
+				'space to respond, then instead of condensing your response, '	\
+				'just truncate it at some point and end it with "(cont.)"; '	\
+				'then if the user types "/continue", resume generating your '	\
+				'response where you left off.)\n'
 				
 		})
 
@@ -1601,9 +1604,11 @@ def process_response(update, context, response_message):
 			# Send the user a diagnostic message.
 			update.message.reply_text(f"[DIAGNOSTIC: Unknown command [{command_name}].]")
 
-	# One more thing to do here: If the AI's response ends with the string "(cont)" or
-	# "...", then we'll send a message to the user asking them to continue the conversation.
-	if response_message.text.endswith("(cont)") or response_message.text.endswith("..."):
+	# One more thing to do here: If the AI's response ends with the string "(cont)" or "(cont.)"
+	# or "(more)" or "...", then we'll send a message to the user asking them to continue the 
+	# conversation.
+	if response_message.text.endswith("(cont)") or response_message.text.endswith("(cont.)") or \
+	   response_message.text.endswith("(more)") or response_message.text.endswith("..."):
 		update.message.reply_text("[If you want me to continue my response, type '/continue'.]")
 
 #__/ End of process_response() function definition.
@@ -1635,13 +1640,15 @@ def process_chat_message(update, context):
 		with open(f"{LOG_DIR}/latest-messages.txt", "w") as f:
 			for chat_message in chat_messages:
 
-				if 'role' in chat_message:
-					roleOrName = chat_message['role']
-				# Note 'name' overrides 'role' if both are present.
-				if 'name' in chat_message:
-					roleOrName = chat_message['name']
-
-				f.write(f"{roleOrName}: {chat_message['content']}\n")  # Write the message to the file.
+				f.write(messageRepr(chat_message))
+				
+				#if 'role' in chat_message:
+				#	roleOrName = chat_message['role']
+				## Note 'name' overrides 'role' if both are present.
+				#if 'name' in chat_message:
+				#	roleOrName = chat_message['name']
+				#
+				#f.write(f"{roleOrName}: {chat_message['content']}\n")  # Write the message to the file.
 
 		# Now we'll try actually calling the API.
 		try:
