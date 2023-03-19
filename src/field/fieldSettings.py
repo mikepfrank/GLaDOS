@@ -134,6 +134,7 @@ class TheFieldSettings:
 	@classmethod
 	def config(theFieldSettingsClass:ClassVar):
 		theFieldSettingsClass.reconfigure()		# Just a synonym.
+		return theFieldSettingsClass
 
 	@classmethod
 	def reconfigure(theFieldSettingsClass:ClassVar):
@@ -209,7 +210,7 @@ class TheFieldSettings:
 			maxSize = theFieldSettingsClass._DEFAULT_MAX_SIZE
 			
 			# Update our class variable
-		fieldSettingsClass.maxSize = maxSize
+		theFieldSettingsClass.maxSize = maxSize
 
 	@classmethod
 	def updateNominalWidth(theFieldSettingsClass,
@@ -221,7 +222,7 @@ class TheFieldSettings:
 			newWidth = theFieldSettingsClass._DEFAULT_NOMINAL_WIDTH
 
 			# Update our class variable
-		fieldSettingsClass.nominalWidth = newWidth
+		theFieldSettingsClass.nominalWidth = newWidth
 		# We should probably do more stuff here to propagate this change throughout the system.
 
 

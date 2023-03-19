@@ -93,6 +93,10 @@ from 	mind.aiActions			import 	ActionByAI_
 	# This is an abstract class for actions that we might want to take,
 	# which should then be automatically handled by the Supervisor.
 
+from	mind.mindSettings		import	TheMindSettings, TheMindSettingsModule
+	# TheMindSettings - This uninstantiated class object holds our settings in class variables.
+	# TheMindSettingsModule - A settings module for plugging into the settings facility.
+
 			#|----------------------------------------------------------------
 			#|	1.2.3. The following modules are "sibling" modules to the 
 			#|		present module within its package.
@@ -492,7 +496,15 @@ class TheAIFieldView: pass
 class TheAIFieldView(FieldView_):
 	
 	"""Derived class for views of the receptive field to be sent to AIs."""
-	
+
+	# We need to extend our superclass's default initialize to take and
+	# extra argument 'modelVersion', which is the version of GPT-3/4
+	# that the AI is using.  This is needed because the AI's view of the
+	# field is measured using a tokenizer that depends on the model version.
+	def __init__(inst, base:_TheBaseFieldData, modelVersion:str):
+		super().__init__(base)
+		inst._modelVersion = modelVersion
+
 	def render(view:TheAIFieldView):
 		# This works by iterating through elements in the base data,
 		# and just adding their images as items in the data set.
@@ -516,27 +528,77 @@ class TheAIFieldView(FieldView_):
 			
 		text = ''.join(data)		# Here's the data as one huge string.
 
+		#_logger.debug(f"aiFieldView.render(): Just rendered field view as: [[{text}]]")
+
 		view._data = data			# Remember the data array.
 		view._text = text
 		view._nChars = None			# Mark nChars as not-yet-computed.
 		view._nTokens = None		# Mark nTokens as not-yet-computed.
 	
+		# We don't bother to pre-generate the message list, because
+		# the AI might not even be using a chat engine.  Instead, we
+		# invalidate it so that it will be regenerated if needed.
+		view._messages = None
+
 			# Mark the base data as having been seen now (by us at least).
 		base.markSeen()
 
 		#_logger.debug(f"aiFieldView.render(): Just rendered field view as: [[{text}]]")
 
+
 	@property
-	def data(inst):
+	def data(inst:TheAIFieldView):
 		return inst._data
 
-	def text(inst):
+
+	@property
+	def text(inst:TheAIFieldView):
+		
 		"""Returns the field view as one huge text string."""
+		
 		text = inst._text
 		if text is None:		# Not computed yet?
 			data = inst.data
 			inst._text = text = ''.join(data)
 		return text
+
+
+	def messages(inst:TheAIFieldView):
+
+		"""Returns the field view as a list of message dictionaries
+			(in the format expected by the GPT-3 chat API)."""
+		
+		messages = inst._messages
+		if messages is None:		# Not computed yet?
+
+			# We'll build up the list of messages by iterating through
+			# the field slots, and for each one, we'll construct an
+			# appropriate message dictionary.
+
+			messages = []		# Initialize list of messages.
+
+			slots = inst.baseData.slots		# Get the list of field slots.
+			for slot in slots:
+				
+				element = slot.element	# Get the field element.
+				
+				image = element.image	# Get that element's (text) image.
+				role = element.role		# Get that element's role (CHAT_ROLE_{SYSTEM,USER,AI}).
+				name = element.name		# Get that element's user name (may be None).
+
+				message = {				# Construct the message dictionary.
+					"role": role,
+					"content": image
+				}
+				if name is not None:	# If there's a name...
+					message["name"] = name	# ...add it to the message.
+
+				messages.append(message)	# Add the message to the list.
+
+			inst._messages = messages	# Remember the list of messages.
+
+		return messages
+	
 
 	def nChars(inst):
 		"""Returns the number of characters in the current field view."""
@@ -545,7 +607,12 @@ class TheAIFieldView(FieldView_):
 			text = inst.text()
 			inst._nChars = nChars = len(text)
 		return nChars
-		
+	
+
+	# Note: The following method really needs to be updated, because
+	# the tokenizer to use depends on the AI engine being used.
+	# For now, we'll just use the default tokenizer.
+
 	def nTokens(inst):
 		"""Returns the number of tokens in the current field view."""
 		# This works by concatenating together all the rows of 
@@ -557,7 +624,11 @@ class TheAIFieldView(FieldView_):
 
 			#_logger.debug(f"About to count tokens in text: [{text}]")
 
-			inst._nTokens = nTokens = countTokens(text)
+			inst._nTokens = nTokens = countTokens(text)	# Function is now deprecated.
+			#inst._nTokens = nTokens = tiktokenCount(text)
+			# This is wrong too, because if we're using a chat engine, wwe need to
+			# count up the tokens in the messages, not the text. [NOTE: FIX THIS.]
+
 		return nTokens
 		
 		
@@ -610,6 +681,7 @@ class TheReceptiveField(ReceptiveField_):
 			entity:AI_Persona,		# Caller must specify an AI persona entity.
 			fieldSize:int=None, 	# If supplied, this overrides config data.
 			nominalWidth:int=None,	# If supplied, this overrides config data.
+			modelVersion:str=None,	# If supplied, this overrides config data.
 		):
 		
 		"""Arguments:
@@ -620,6 +692,8 @@ class TheReceptiveField(ReceptiveField_):
 			
 			nominalWidth - Specifies the nominal width of the receptive field in 
 				(assumed) fixed-width character columns.
+
+			modelVersion - Specifies the version of the GPT-3 (or 4) model to use.
 		
 		"""
 	
@@ -635,28 +709,46 @@ class TheReceptiveField(ReceptiveField_):
 			#| current field settings.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 			
-			# First, configure all of the default settings for the field facility.
-		settings = TheFieldSettings.config()
-		
+		# First, configure all of the default settings for the field facility.
+		settings = TheFieldSettings.config()	# Get the configured settings.
+			# NOTE: The settings variable is currently unused, but we'll
+			# keep it around in case we need it later. 
+
 		if fieldSize is None:
-			fieldSize = TheFieldSettings.maxSize
+			fieldSize = settings.maxSize
 		else:	# Change the maxSize setting to the value provided.
-			TheFieldSettings.maxSize = fieldSize
+			settings.maxSize = fieldSize
 			#TheFieldSettings.updateMaximumSize(fieldSize)	# Don't need this yet.
 		
 		if nominalWidth is None:
-			nominalWidth = TheFieldSettings.nominalWidth
+			nominalWidth = settings.nominalWidth
 		else:
-			TheFieldSettings.nominalWidth = nominalWidth
-			#TheFieldSettings.updateNominalWidth(nominalWidth)	# Don't need yet
-	
+			settings.nominalWidth = nominalWidth
+			#settings.updateNominalWidth(nominalWidth)	# Don't need yet
+
+		# We also need to make sure all of the AI's mind settings are
+		# configured properly, because the receptive field size will be
+		# measured in tokens, and the tokenizer to use depends on the
+		# AI's mind settings (in particular on the modelVersion setting).
+		mindSettings = TheMindSettings.config()	# Get the configured settings.
+			# NOTE: The mindSettings variable is currently unused, but we'll
+			# keep it around in case we need it later.
+
+		if modelVersion is None:
+			modelVersion = mindSettings.modelVersion
+		else:
+			mindSettings.modelVersion = modelVersion
+			#mindSettings.updateModelVersion(modelVersion)	# Don't need yet
+
 		_logger.info("                [Field] Initializing with the following settings:")
 		_logger.info(f"                    Field size = {fieldSize} tokens.")
 		_logger.info(f"                    Nominal width = {nominalWidth} characters.")
+		_logger.info(f"                    Model version = '{modelVersion}'.")
 	
 			# Stash the important settings in instance data members.
 		field._fieldSize		= fieldSize
 		field._nominalWidth		= nominalWidth
+		field._modelVersion		= modelVersion
 	
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#| 2. Next, we initialize core sub-structures. Primarily, these are
@@ -675,7 +767,7 @@ class TheReceptiveField(ReceptiveField_):
 		_logger.debug("                [Field] Creating the AI's field view...")
 	
 			# Create and store field views for the AI & for humans.
-		field._aiFieldView		= TheAIFieldView(baseFieldData)
+		field._aiFieldView		= TheAIFieldView(baseFieldData, modelVersion)
 		#field._humanFieldView	= HumanFieldView(baseFieldData)
 
 
