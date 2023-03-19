@@ -189,6 +189,8 @@ class Application_:
 	#|
 	#|		.name [string]	- Short name for the application.
 	#|
+	#|		.entity [Application_Entity_]	- The entity (descriptor) for the application.
+	#|
 	#|		.state [string]	- State of the application.  One of:
 	#|
 	#|			'initializing'		- Hasn't finished being initialized yet.
@@ -260,6 +262,9 @@ class Application_:
 			placement:Placement,	# Where to place the app window in the receptive field.
 			
 			conf:dict				# Application-specific dictionary structure.
+
+			entity:Application_Entity_=None	# The entity (descriptor) for the application.
+				# Abstract applications don't have entities, but concrete subclasses do.
 		):
 		
 		"""Default initializer for new instances of concrete subclasses of the Application_ abstract class.
@@ -285,6 +290,7 @@ class Application_:
 			#| Remember the name of this application, & other arguments to our constructor.
 
 		newApp.name 				= name			# The name of the application object.
+		newApp.entity				= entity		# The entity (descriptor) for the application.
 		
 		newApp.autoStart			= autoStart		# Whether to start up the app automatically on system startup.
 		newApp.autoOpen				= autoOpen		# Whether to open app automatically when receptive field exists.

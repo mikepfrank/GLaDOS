@@ -19,6 +19,8 @@ from	infrastructure.decorators	import	singleton
 from	config.configuration		import	TheAIPersonaConfig
 		# Singleton that provides the configuration of the current AI persona.
 
+from	entities.entity			import	The_InfoApp_Entity
+
 from	.application			import	Application_
 		# Base class from which we derive subclasses for specific applications.
 
@@ -60,6 +62,8 @@ class The_Info_App(Application_):
 				created, but is not yet displayed.."""
 
 		_logger.debug("infoApp.appSpecificInit(): Initializing Info app...")
+
+		self.entity = The_InfoApp_Entity()
 
 			#----------------------------------------------------------
 			# First, get the AI persona configuration, because it

@@ -12,6 +12,8 @@ global _component	# Name of our software component, as <sysName>.<pkgName>.
 from	infrastructure.decorators	import	singleton
 		# A simple decorator for singleton classes.
 
+from	entities.entity			import	The_HelpApp_Entity
+
 from	commands.commandInterface	import	Command,CommandModule	# We'll subclass these.
 
 from	helpsys.helpSystem			import	HelpModule	# We'll subclass this.
@@ -131,6 +133,8 @@ class The_Help_App(Application_):
 		"""[1:-1]
 
 	def appSpecificInit(self, conf:dict):
+
+		self.entity = The_HelpApp_Entity()
 
 			# Override the default help message with the message
 			# from the 'main-msg' config attribute, if present.

@@ -68,7 +68,11 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 from	infrastructure.decorators	import	singleton
 from	infrastructure.utils		import	overwrite		# Used for composing horizonal bars.
 
-from	entities.entity				import	AI_Persona		# Class for our AI persona entity.
+from	entities.entity				import	(
+    			Entity_, 		# Abstract base class for all entities.
+            	AI_Persona,			# Class for our AI persona entity.
+		    	Receptive_Field		# Owner of standard field elements.
+			)
 
 from	events.event 	import (
 
@@ -348,11 +352,14 @@ class FieldElement_:
 	#	- A slot that it's assigned to on the receptive field.
 	#	- A (current) height. in rows of text. (Some elements can have adjustable heights.)
 	#	- An "image" member, which is the actual text data to display for this element.
+	#	- A "placement" member, which indicates where this element should be placed on the field.
+	#	- A "role" member, which indicates what kind of entity owns this element.
 	#
 	# And the following methods:
 	# 	- An "update" method, which advises the element to update its current image if it needs to.
 
-	def __init__(thisFE, name:str="(Unnamed Element)", where:Placement=None, field:ReceptiveField_=None):
+	def __init__(thisFE, name:str="(Unnamed Element)", where:Placement=None, 
+	      field:ReceptiveField_=None, owner:Entity_=None):
 		"""
 			FieldElement_.__init__()			  [Default instance initializer]
 			
@@ -374,6 +381,7 @@ class FieldElement_:
 			# Remember our initial requested placement.
 		thisFE._initPlacement	= where
 		thisFE._image			= None		# No image data exists by default.
+		thisFE._owner			= owner		# Remember who owns this element.
 
 			# Go ahead and create a field slot to contain this field element.
 		slot = FieldSlot(thisFE, where, field)
@@ -383,6 +391,10 @@ class FieldElement_:
 	@property
 	def name(elem):
 		return elem._name
+	
+	@property
+	def owner(elem):
+		return elem._owner
 
 	def resetPlacement(elem):
 		"""Reset this element's placement back to its initial placement."""
@@ -453,7 +465,8 @@ class TheFieldHeader(FieldElement_):
 			#| ization for all field elements.
 
 		super(TheFieldHeader.__wrapped__, nhe).__init__(
-				"Field Header", PINNED_TO_TOP, *args, **kwargs)
+				name="Field Header", where=PINNED_TO_TOP, owner=Receptive_Field,
+				*args, **kwargs)
 			# NOTE: We always pin the field header to the very top of the 
 			# receptive field, because that's where it's supposed to appear, 
 			# by definition.
@@ -493,7 +506,9 @@ class ThePromptSeparator(FieldElement_):
 			# the element placement.
 
 		super(ThePromptSeparator.__wrapped__, psElem).__init__(
-				"Prompt Separator", PINNED_TO_BOTTOM, *args, **kwargs)
+				name="Prompt Separator", where=PINNED_TO_BOTTOM, 
+				owner=Receptive_Field,
+				*args, **kwargs)
 			# NOTE: We always pin the prompt separator to the bottom of the 
 			# receptive field, except this will really end up being just above
 			# the actual prompt area, which should have been previously pinned.
@@ -533,7 +548,8 @@ class TheInputArea(FieldElement_):
 		inputArea._aiTextEvent = aiTextEvent
 		
 		super(TheInputArea.__wrapped__, inputArea).__init__(
-			"Input Area", PINNED_TO_BOTTOM, field)
+			name="Input Area", where=PINNED_TO_BOTTOM, field=field,
+			owner=AI_Persona)
 			# NOTE: The input area must be pinned to the very bottom of the receptive
 			# field, so that the AI will perceive the prompt as what it's completing.
 
@@ -585,7 +601,8 @@ class TextEventElement(FieldElement_):
 
 		# General field element initialization.
 		super(TextEventElement, teElem).__init__(
-			f"Text Event #{seqno}", SLIDE_TO_BOTTOM, field)
+			name=f"Text Event #{seqno}", where=SLIDE_TO_BOTTOM, field=field,
+			owner=event.creator)
 			# NOTE: We slide new text events to the bottom (above anchored elements),
 			# but then allow them to subsequently float upwards.
 
@@ -622,7 +639,8 @@ class WindowElement(FieldElement_):
 					  f"window '{win.title}' with placement '{where}',")
 
 		super(WindowElement, wElem).__init__(
-			f"Window '{win.title}'", win.placement, field)
+			name=f"Window '{win.title}'", where=win.placement, field=field,
+			owner=win.owner)
 
 	@property
 	def image(thisWinElem):
