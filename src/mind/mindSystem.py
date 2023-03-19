@@ -179,13 +179,30 @@ from	infrastructure.flag			import	Flag	# Waitable flag class.
 
 from	gpt3.api				import	(
 
-			# Classes.
+			#-------------------
+			# Exception classes.
 
-		GPT3APIConfig, GPT3Core, PromptTooLargeException,
+		PromptTooLargeException,	# Exception raised when a prompt is too long.
 
+			#---------------
+			# Other classes.
+
+		# Classes no longer imported:
+		#
+		# GPT3APIConfig - This class specifies the configuration of the
+		#	OpenAI GPT-3 API.  It is used to create a GPT3Core object.
+		#	However, it is now deprecated.  Instead, use the
+		#	createAPIConfig() function, imported below.
+		#
+		# GPT3Core - The core of the GPT-3 API. This is the class that
+		#	actually makes the API calls to OpenAI. However, calling the
+		#	class constructor directly is now deprecated. Instead, use
+		#	the createCoreConnection() function, imported below.
+
+			#-----------
 			# Functions.
 
-		loadStatsIfNeeded, stats
+		createAPIConfig, createCoreConnection, loadStatsIfNeeded, stats
 	)
 
 from 	config.configuration 	import	TheAIPersonaConfig
@@ -244,17 +261,42 @@ class TheAIPersona:
 
 	"""This singleton class manages the AI's persona."""
 
-	def __init__(theNewAIPersona:TheAIPersona, name:str, ID:str):
+	def __init__(theNewAIPersona:TheAIPersona, name:str=None, ID:str=None,
+	      			username:str=None, modelFamily:str=None, modelVers:str=None):
 
 		persona = theNewAIPersona
 
-			# Remember it's name and ID.
+			# Remember it's name and ID, etc..
 		persona._name = name
 		persona._id = ID
+		persona._username = username
+		persona._modelFamily = modelFamily	# The model family. (E.g., "GPT-3")
+		persona._modelVers = modelVers		# The model version. (E.g., "ada")
 		
 			# Create and store an Entity object for it.
-		persona._entity = AI_Persona(name=name, eid=ID)
-		
+		persona._entity = AI_Persona(name=name, eid=ID, username=username,
+			modelFamily=modelFamily, modelVers=modelVers)
+
+	@property
+	def name(persona):
+		return persona._name
+	
+	@property
+	def id(persona):
+		return persona._id
+	
+	@property
+	def username(persona):
+		return persona._username
+	
+	@property
+	def modelFamily(persona):
+		return persona._modelFamily
+	
+	@property
+	def modelVers(persona):
+		return persona._modelVers
+
 	@property
 	def entity(persona):
 		return persona._entity
@@ -324,7 +366,7 @@ class The_GPT3_API:
 		api.configure()
 
 			# Creates a new "core connection" using that configuration.
-		api._core = core = GPT3Core(api.conf)
+		api._core = createCoreConnection(api.conf)
 
 			# Loads API usage statistics from the filesystem if needed.
 		loadStatsIfNeeded()
@@ -332,47 +374,66 @@ class The_GPT3_API:
 			# Retrieves the API statistics as a human-readable table.
 		api._stats = stats()
 
-	def genResponse(thisAPI:The_GPT3_API, prompt:str):
+
+	@property
+	def isChat(thisAPI:The_GPT3_API) -> bool:
+
+		"""This property returns True if the current core API configuration
+			is for a chat model, and False otherwise."""
+
+		return thisAPI.core.isChat
+
+
+	def genResponse(thisAPI:The_GPT3_API, prompt:str=None, messages=None):
 
 		"""This method uses the current core API configuration to
 			generate a response string in response to the given prompt
-			string."""
+			string or (for chat models) messages."""
 
 		try:
 
+			# If we're given a list of messages, we'll use them (assuming
+			# here that we're using a chat model) to generate a response.
+			if messages is not None:
+				response = thisAPI.core.genString(messages)
 
-			# If the prompt had a space at the end, trim it off,
-			# because it prevents GPT-3 from generating tokens
-			# that normally would include a leading space.
-			trimmedSpace = False
-			if len(prompt) >= 1 and prompt[-1] == ' ':
-				trimmedSpace = True
-				prompt = prompt[:-1]
-			
-				# Generate the response using the lower-level API wrapped.
-			response = thisAPI.core.genString(prompt)
+			# Otherwise, we'll use the prompt string to generate a response.
+			else:
 
-			# If we trimmed a space at the start of the prompt,
-			# but then the response started with a space, we remove
-			# it because it's reflected in the prompt already.
-			if len(response) >= 1 and response[0] == ' ':
-				response = response[1:]
+				# If the prompt had a space at the end, trim it off,
+				# because it prevents GPT-3 from generating tokens
+				# that normally would include a leading space.
+				trimmedSpace = False
+				if prompt != None and len(prompt) >= 1 and prompt[-1] == ' ':
+					trimmedSpace = True
+					prompt = prompt[:-1]
+				
+					# Generate the response using the lower-level API wrapper.
+				response = thisAPI.core.genString(prompt)
+
+				# If we had trimmed a space at the start of the prompt,
+				# but then the response string started with a space, we remove
+				# it because in reality it's reflected in the prompt already.
+				if trimmedSpace and len(response) >= 1 and response[0] == ' ':
+					response = response[1:]
 
 		except RateLimitError as e:
-			_logger.error(f"[GPT3 API] Out of quota! (msg=[{str(e)}])")
+			_logger.error(f"[GPT3 API] Out of quota or rate limit exceeded! (msg=[{str(e)}])")
 			return ""	# Empty string = no response.
 
-			# Update our record of the API usage statistics.
+			# Update our record of the API usage statistics, if the call succeeded
 		thisAPI._stats = stats()
 
 			# Return the response string.
 		return response
+
 
 	@property
 	def stats(thisAPI:The_GPT3_API):
 		"""Gets a human-readable table of API usage statistics,
 			as a single multi-line string."""
 		return thisAPI._stats
+
 
 	@property
 	def core(thisAPI:The_GPT3_API):
@@ -381,6 +442,7 @@ class The_GPT3_API:
 			to the core GPT-3 servers."""
 
 		return thisAPI._core
+
 
 	def configure(thisAPI:The_GPT3_API):
 
@@ -432,14 +494,31 @@ class The_GPT3_API:
 		if aiConfig.bestOf is not None:
 			kwargs['bestOf'] = aiConfig.bestOf
 
+		# The following are parameters for the new GPT chat API.
+		if aiConfig.messages is not None:
+			kwargs['messages'] = aiConfig.messages
+
+		if aiConfig.logitBias is not None:
+			kwargs['logitBias'] = aiConfig.logitBias
+
+		if aiConfig.user is not None:
+			kwargs['user'] = aiConfig.user
+
+		# This is not a standard API parameter, but we'll use it to
+		# store the name of the AI persona, so that we can reference 
+		# it as needed.
+
 		if aiConfig.personaName is not None:
 			kwargs['name'] = f"GPT-3 API Configuration for '{aiConfig.personaName}' Persona"
 
 			# Create an API config instance from those kwargs we just assembled.
-		gpt3apiConf = GPT3APIConfig(**kwargs)
+		gpt3apiConf = createAPIConfig(**kwargs)
+				# This factory function makes sure the correct subclass of
+				# GPT3APIConfig gets instantiated, based on the engineId.
 
 			# Store that conf for later reference.
 		thisAPI._conf = gpt3apiConf
+
 
 	@property
 	def conf(thisAPI:The_GPT3_API):
@@ -447,8 +526,10 @@ class The_GPT3_API:
 			current configuration of the GPT-3 API."""
 		return thisAPI._conf
 
+
 # $50/mo. / $0.06/1ktok = 833 ktok
 # 833 ktok / 2,048 = 407 fields / mo. = 58 fields/wk. = 8.3 fields/day
+
 
 class MindThread: pass
 class MindThread(ThreadActor):
@@ -585,6 +666,7 @@ class MindThread(ThreadActor):
 	# 		# We set this so that we don't think our refractory period is expired right away when
 	# 		# we start up.
 
+
 	def softPoke(thisMindThread:MindThread):
 
 		"""A "soft poke" (F1) is just enough to get the AI's attention
@@ -593,6 +675,7 @@ class MindThread(ThreadActor):
 
 			# Just raise its attention flag.
 		thisMindThread._attentionFlag.rise()
+
 
 	def poke(thisMindThread:MindThread):
 
@@ -608,6 +691,7 @@ class MindThread(ThreadActor):
 			# We also raise the "wake up" flag.
 		thread._wakeUpFlag.rise()
 
+
 	def hardPoke(thisMindThread:MindThread):
 
 		"""A "hard poke" will wake up the mind thread even if it's hibernating."""
@@ -621,6 +705,7 @@ class MindThread(ThreadActor):
 			# We also raise our "poke the bear" flag.
 		thread._pokeBearFlag.rise()
 
+
 	@property
 	def gpt3(thisMindThread:MindThread):
 		return thisMindThread._gpt3			# The_GPT3_API object.
@@ -633,6 +718,7 @@ class MindThread(ThreadActor):
 	def mode(thisMindThread:MindThread):
 		"""Get's the mind thread's mode: awake, asleep, or hibernating."""
 		return thisMindThread._mode
+
 
 	def _main(thisMindThread:MindThread):
 
@@ -829,6 +915,7 @@ class MindThread(ThreadActor):
 			thread._mode = 'awake'
 			thread._awakeSince = time()
 
+
 	def pollForInput(thisMindThread:MindThread):
 		
 		"""This method checks whether it's time for the mind thread
@@ -841,6 +928,7 @@ class MindThread(ThreadActor):
 			thread.respondNow()
 
 		mode = thread.mode
+
 
 	def needsToRespond(thisMindThread:MindThread):
 
@@ -909,6 +997,7 @@ class MindThread(ThreadActor):
 
 			return poked
 
+
 	def respondNow(thisMindThread:MindThread):
 
 		"""Tells the mind thread to wake up (if asleep or hiberating)
@@ -926,12 +1015,13 @@ class MindThread(ThreadActor):
 		# Call the normal respond method. It does the real work.
 		thread.respond()
 			
+
 	def respond(thisMindThread:MindThread):
 
 		"""This causes the AI to look at the receptive field,
 			generate a response to it, and perform a 'speech
 			action' with the content of that response.  What
-			this done is context-dependent; e.g., if the AI is
+			this does is context-dependent; e.g., if the AI is
 			currently using an application that takes over the
 			whole receptive field, the effect will be different
 			than in a normal mode where the speech action is
@@ -945,7 +1035,6 @@ class MindThread(ThreadActor):
 		mind = thread.mind			# The whole cognitive system.
 		field = mind.field			# Our receptive field.
 		view = field.view			# Our view of the field.
-		text = view.text()			# One big text string with field data.
 		
 		gpt3 = thread.gpt3			# Our Big Daddy AI in the cloud.
 
@@ -959,8 +1048,26 @@ class MindThread(ThreadActor):
 		while True:
 
 			try:
-				response = gpt3.genResponse(text).lstrip().rstrip()
-					# Added the lstrip()/rstrip() because extra spaces mess up command parsing.
+
+				# What we do here depends on whether we're using a text engine 
+				# or a chat engine.
+
+				if gpt3.isChat:	# Chat engine.
+
+					messages = view.messages	
+						# Gets the contents of our view of the field,
+						# represented as a list of messages.
+
+					response = gpt3.genResponse(messages).lstrip().rstrip()
+						# Added the lstrip()/rstrip() because extra spaces mess up command parsing.
+
+				else:	# Text engine.
+
+					text = view.text()	# Gets one big text string with all the field data.
+
+					response = gpt3.genResponse(text).lstrip().rstrip()
+						# Added the lstrip()/rstrip() because extra spaces mess up command parsing.
+
 
 			except PromptTooLargeException as e:
 					# Tell the receptive field it's too large and needs to shrink itself.
@@ -977,12 +1084,14 @@ class MindThread(ThreadActor):
 			else:
 				break
 
+
 		_logger.debug("[Mind/Thread] Got GPT-3 response: [" + response + ']')
 		thread.noteResponse(response)	# Note time & response for later reference.
 
 			# This causes us to process the response. Generally this
 			# just conceives and initiates a corresponding speech action.
 		thread.processResponse(response)
+
 
 	def noteResponse(thisMindThread:MindThread, response:str):
 
@@ -1075,17 +1184,29 @@ class TheCognitiveSystem:
 
 			# First, configure all of the default settings for the mind system.
 		settings = TheMindSettings.config()
+
+			# Next, reset all of the mind settings to their default values.
+			# (Note this is only appropriate because we haven't yet defined
+			# a way to load saved settings from a file.  Once we do, we'll
+			# call a different method here to load the settings from a file
+			# or reset them to their defaults if no saved settings exist.)
+		settings.resetToDefaults()
 		
 			# Now, fetch the particular parameters that we need to know now.
-		personaName = TheMindSettings.personaName
-		personaID	= TheMindSettings.personaID
+		personaName 	= settings.personaName
+		personaID		= settings.personaID
+		personaUsername	= settings.personaUsername
+		modelFamily		= settings.modelFamily
+		modelVersion	= settings.modelVersion
 		
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#| Step 0.5:  Create an object to manage the AI's persona, and an 
 			#|	associated "entity" object to represent the persona.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		mind._persona = persona = TheAIPersona(personaName, personaID)
+		mind._persona = persona = TheAIPersona(name=personaName, ID=personaID,
+					 		username=personaUsername, modelFamily=modelFamily,
+					 		modelVersion=modelVersion)
 		mind._entity = entity = persona.entity
 	
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1097,7 +1218,8 @@ class TheCognitiveSystem:
 			# field).
 		
 		_logger.info(f"        [Mind/Init]     Creating receptive field...")
-		field = TheReceptiveField(entity)		# This figures out its own size.
+		field = TheReceptiveField(entity, modelVersion)
+			# This figures out its own size and which tokenizer to use.
 		mind._field = field				# Stash the field for later reference.
 		
 			# Now is probably a good time to attach ourselves to the console, so 

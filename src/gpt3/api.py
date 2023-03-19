@@ -93,6 +93,9 @@
 				based REST service from OpenAI.	For most applications, you should
 				use one of the below two functions instead. [DEPRECATED]
 
+			createAPIConfig() - Creates a new GPT3APIConfig or GPT3ChatAPIConfig
+				object, depending on the value of the 'engineId' parameter.
+
 			createCoreConnection() - Creates a new GPT3Core or GPT3ChatCore
 				object, depending on the value of the 'engineId' parameter.
 			
@@ -313,6 +316,10 @@ __all__ = [
 			# NOTE: This function is deprecated; use the local_countTokens()
 			# or preferably the tiktokenCount() function instead.
 		
+		'createAPIConfig',		# Function: Creates a GPT-3 API configuration object.
+			# NOTE: This could return either a GPT3APIConfig or a 
+			# GPT3ChatAPIConfig object, depending on the selected engine type.
+
 		'createCoreConnection',	# Function: Creates a GPT-3 API connection object.
 			# NOTE: This could return either a GPT3Core or a GPT3ChatCore object,
 			# depending on the selected engine type.
@@ -999,6 +1006,20 @@ class GPT3ChatAPIConfig(GPT3APIConfig):
 
 		# Now we handle changes for our special chat-related arguments.
 
+		# If the 'messages' keyword argument was provided, and it
+		# is a ChatMessages object, then we need to convert it to
+		# a list of message dictionaries before storing it in the
+		# chat API configuration object.  This is because the chat 
+		# API expects a list of message dictionaries, not a 
+		# ChatMessages object.
+
+		if messages != None:
+			if isinstance(messages, ChatMessages):
+				messages = messages.messageList
+
+		# Now we can store the new values for our special chat-related
+		# arguments.
+
 		if messages		!= None:	chatConf.messages		= messages
 		if logitBias	!= None:	chatConf.logitBias		= logitBias
 		if user			!= None:	chatConf.user			= user
@@ -1601,14 +1622,29 @@ class ChatMessages:
 				role		- One of the global constants CHAT_ROLE_SYSTEM,
 							  CHAT_ROLE_USER, or CHAT_ROLE_AI.
 							
-				content		- The text of the message."""
+				content		- The text of the message.
+
+				name [optional]	- The name of the user or AI.  If 
+							  specified, the API will use it in the
+							  place of the default name for that role.
+				
+			Note that the <msgList> is NOT copied, so if you modify it
+			after passing it to this constructor, the changes will be
+			reflected in the ChatMessages object."""
 		
 		if msgList is None:
 			msgList = []
 
+		# NOTE: It would be a good idea to check the validity of the message 
+		# dicts here, so that we can give a more informative and immediate 
+		# error message if the caller passes in an invalid list of messages,
+		# compared to the error message that the API would return later.  
+		# But we'll leave that for a future version.
+
 		self._messages = msgList		# The underlying list of message dicts.
 
 	#__/ End of class gpt3.api.ChatMessages's constructor.
+
 
 	def messageList(self):
 
@@ -1617,7 +1653,7 @@ class ChatMessages:
 		return self._messages
 	
 
-	def totalTokens(self):
+	def totalTokens(self, model=None):
 		
 		"""Return the total number of tokens in all messages. Note that
 			we include the tokens in the 'role' and 'content' fields of
@@ -1641,7 +1677,7 @@ class ChatMessages:
 
 		for msg in self._messages:
 
-			msgToks = _msg_tokens(msg)	
+			msgToks = _msg_tokens(msg, model=model)	
 				# This function counts the number of tokens in the message.
 
 				# This is too verbose for normal operation. Comment it out after testing.
@@ -1654,10 +1690,11 @@ class ChatMessages:
 	#__/ End instance method ChatMessages.totalTokens().
 
 
-	def addMessage(self, role, content):
+	def addMessage(self, role, content, name=None):
 
-		"""Add a new message with the given role and content to the
-			end of the message list.  The <role> must be one of:
+		"""Add a new message with the given role and content (and name, if
+			provided) to the end of the message list.  The <role> must be 
+			one of:
 			
 				CHAT_ROLE_SYSTEM	- Represents the system as a whole.
 
@@ -1665,14 +1702,20 @@ class ChatMessages:
 
 				CHAT_ROLE_AI		- Represents messages from the AI."""
 
-		# Commenting out this error check temporarily because we want to
-		# see if the chat API can handle arbitrary names in place of 
-		# the predefined roles.
+		# We commented out this error check temporarily earlier to 
+		# confirm that the chat API can't handle arbitrary names in 
+		# place of the predefined roles.
 
-		#if role not in [self.CHAT_ROLE_SYSTEM, self.CHAT_ROLE_USER, self.CHAT_ROLE_AI]:
-		#	raise ValueError(f"Invalid role '{role}' for chat message.")
+		if role not in [self.CHAT_ROLE_SYSTEM, self.CHAT_ROLE_USER, self.CHAT_ROLE_AI]:
+			raise ValueError(f"Invalid role '{role}' for chat message.")
 
-		self._messages.append({'role': role, 'content': content})
+		# Construct the message dict.
+		msgDict = {'role': role, 'content': content}
+		if name is not None:
+			msgDict['name'] = name
+
+		# Add it to the list.
+		self._messages.append(msgDict)
 
 	#__/ End instance method ChatMessages.addMessage().
 
@@ -2180,7 +2223,7 @@ class ChatCompletion(Completion):
 
 			# This function counts the number of tokens in the prompt
 			# without having to do an API call (since calls cost $$).
-		nToks = messages.totalTokens()
+		nToks = messages.totalTokens(model=engine)
 
 		_inputLength = nToks
 
@@ -2203,7 +2246,7 @@ class ChatCompletion(Completion):
 
 		result_msg = complStruct['choices'][0]['message']
 
-		nToks = _msg_tokens(result_msg)	
+		nToks = _msg_tokens(result_msg, model=engine)	
 			# Count the number of tokens in the result message.
 
 		_logger.debug(f"Counted {nToks} tokens in output message [{result_msg}].")
@@ -2717,7 +2760,18 @@ class GPT3ChatCore(GPT3Core):
 			# NOTE: OpenAI used to call this parameter 'engine' but now calls it 'model'.
 			# The old name still works, but is deprecated; we use the new name here in
 			# case they ever remove the old name.
-		
+
+		# If the 'messages' keyword argument is provided, and it
+		# is a ChatMessages object, then we need to convert it to
+		# a list of message dictionaries.  This is because the
+		# chat API expects a list of message dictionaries, not
+		# a ChatMessages object.
+
+		if 'messages' in kwargs:
+			messages = kwargs['messages']
+			if isinstance(messages, ChatMessages):
+				kwargs['messages'] = messages.messageList
+
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| Select the parameter values to use from either the chat configuration
 		#| or the keyword arguments provided to this method, as appropriate.
@@ -2812,9 +2866,9 @@ class GPT3ChatCore(GPT3Core):
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	def genMessage(self):
+	def genMessage(self:GPT3ChatCore, messages=None):
 		"""Generate a new message based on the current messages."""
-		resultCompletion = self.genCompletion()
+		resultCompletion = self.genChatCompletion(messages=messages)
 		newMessage = resultCompletion.message
 		_logger.debug("[GPT-3/API] Server returned new message: [" + newMessage + ']')
 
@@ -2831,26 +2885,30 @@ class GPT3ChatCore(GPT3Core):
 		#|	.genString()							[instance public method]
 		#|
 		#|		This method returns a completion of the current messages,
-		#|		as a single string.	 Uses .genMessage() internally.
+		#|		or the messages argument (if provided), using the chat 
+		#|		core's present API configuration, and returns it as a 
+		#|		single string.	 Uses .genMessage() internally.
 		#|
 		#|		To do: Provide the option to do a temporary modification of
-		#|		one or more API parameters in the argument list.
+		#|		one or more API parameters in the call's argument list.
 		#|
 		#|		NOTE: This method does not update the messages object!  It
 		#|		only returns the completion content.  The caller is
 		#|		responsible for updating the messages object if and when
 		#|		they wish to do so.
 		#|
-		#|		Also note: If you want the result to be automatically
-		#|		timestamped, you should just use .genMessage() directly 
-		#|		instead.
+		#|		Also note: If you want the result message to be 
+		#|		automatically timestamped, you should just use
+		#|		.genMessage() directly instead.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
-	def genString(self):
-		"""Generate a single completion string for the current messages."""
+	def genString(self:GPT3ChatCore, messages=None):
 
-		newMessage = self.genMessage()
+		"""Generate a single completion string for the current messages
+			or the messages argument (if provided)."""
+
+		newMessage = self.genMessage(messages=messages)
 		return newMessage['content']
 
 	#__/ End instance method GPT3Core.genString().
@@ -2905,7 +2963,37 @@ def countTokens(text:str=None):
 #__/ End module public function countTokens().
 
 
-def createCoreConnection(engineId:str=None, **kwargs):
+def createAPIConfig(engineId:str=None, **kwargs):
+
+	"""Creates a new GPT3APIConfig object and returns it. We need to define 
+		this factory function because the choice of which class to 
+		instantiate depends on the engine ID. If the ID denotes a chat 
+		engine, we instantiate a GPT3ChatAPIConfig object; otherwise we 
+		instantiate a GPT3APIConfig object. Keyword arguments are passed
+		through to the constructor of the appropriate class."""
+
+	# If no engine ID was specified, try to get it from the AI persona's config file.
+	if engineId == None:
+		engineId = _aiEngine()	# Gets the AI persona's default engine ID from the config file.
+		if engineId != None:
+			_logger.warning("[GPT-3/API] No engine ID was specified, so we are using the default engine ID for the current AI persona, which is [" + engineId + "].")
+
+	# If we still don't have an engine ID, use the default engine ID.
+	if engineId == None:
+		engineId = DEF_ENGINE
+		_logger.warning("[GPT-3/API] No engine ID specified; using default engine ID [" + engineId + "].")
+
+	# If the engine ID is for a chat engine, create a GPT3ChatAPIConfig object;
+	# otherwise create a GPT3APIConfig object.
+	if _is_chat(engineId):
+		return GPT3ChatAPIConfig(engineId=engineId, **kwargs)
+	else:
+		return GPT3APIConfig(engineId=engineId, **kwargs)
+
+#__/ End module public function createAPIConfig().
+
+
+def createCoreConnection(engineId:str=None, conf:GPT3APIConfig=None, **kwargs):
 
 	"""Creates a new GPT3Core object and returns it.  We need to define 
 		this factory function because the choice of which class to 
@@ -2914,7 +3002,11 @@ def createCoreConnection(engineId:str=None, **kwargs):
 		instantiate a GPT3Core object. Keyword arguments are passed
 		through to the constructor of the appropriate class."""
 
-	# If no engine ID was specified, try to get it from the AI persona's config file.
+	# If no engine ID was specified, get it from the conf object, if provided.
+	if engineId == None and conf != None:
+		engineId = conf.engineId
+	
+	# If we still don't have an engineId, try to get it from the AI persona's config file.
 	if engineId == None:
 		engineId = _aiEngine()	# Gets the AI persona's default engine ID from the config file.
 		if engineId != None:
@@ -2927,21 +3019,25 @@ def createCoreConnection(engineId:str=None, **kwargs):
 
 	# Instantiate the appropriate type of core object.
 	if _is_chat(engineId):
-		newCore = GPT3ChatCore(engineId=engineId, **kwargs)
+		newCore = GPT3ChatCore(engineId=engineId, config=conf, **kwargs)
 	else:
-		newCore = GPT3Core(engineId=engineId, **kwargs)
+		newCore = GPT3Core(engineId=engineId, config=conf, **kwargs)
 
 	return newCore
 
 #__/ End module public function createCoreConnection().
 
 
-def tiktokenCount(text:str=None, encoding:str='gpt2'):
+def tiktokenCount(text:str=None, encoding:str='gpt2', model:str=None):
 
 	"""Counts tokens in the given text using the tiktoken library.
 		This is our currently preferred token-counting function
 		due to its low cost (free), its speed, its accuracy, and
 		its lack of dependence on GPT-2 having been installed."""
+
+	# If the model argument is provided, use it to get the encoding.
+	if model != None:
+		encoding = _get_encoding(model)
 
 	encodingObj = tiktoken.get_encoding(encoding)
 	num_tokens = len(encodingObj.encode(text))
@@ -3217,7 +3313,7 @@ def _recalcDollars():
 #__/ End module function _recalcDollars().
 
 
-def _msg_tokens(msg:dict) -> int:
+def _msg_tokens(msg:dict, model:str=None) -> int:
 	"""Return the number of tokens in the given message dict. Note that
 		we include the tokens in the 'role' and 'content' fields of
 		the message dict, as well as an estimate of the tokens in
@@ -3238,17 +3334,17 @@ def _msg_tokens(msg:dict) -> int:
 
 	msgToks = 0
 	if 'role' in msg:
-		msgToks += tiktokenCount(msg['role'])	
+		msgToks += tiktokenCount(msg['role'], model=model)	
 			# The role field should always be 1 token long.
 	if 'name' in msg:
-		msgToks += tiktokenCount(msg.get('name','')) - 1
+		msgToks += tiktokenCount(msg.get('name',''), model=model) - 1
 			# The name field is optional, and if present, it
 			# overrides the role field.  So if the name field
 			# is present, we subtract 1 from the token count
 			# since the name field is supposed to replace the 
 			# role field & the role field is always 1 token long.
 	if 'content' in msg:
-		msgToks += tiktokenCount(msg['content'])
+		msgToks += tiktokenCount(msg['content'], model=model)
 
 	msgToks += _estimatedFormattingTokens
 
