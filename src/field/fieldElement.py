@@ -68,9 +68,18 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 from	infrastructure.decorators	import	singleton
 from	infrastructure.utils		import	overwrite		# Used for composing horizonal bars.
 
+from	gpt3.api 					import	CHAT_ROLE_SYSTEM
+
 from	entities.entity				import	(
-    			Entity_, 		# Abstract base class for all entities.
+
+    			Entity_, 	
+					# Abstract base class for all entities; used in type hints.
+			    
+				The_GLaDOS_Entity,	
+					# The GLaDOS entity; owns the initial system prompt.
+				
             	AI_Persona,			# Class for our AI persona entity.
+		    
 		    	Receptive_Field		# Owner of standard field elements.
 			)
 
@@ -86,6 +95,8 @@ from	events.event 	import (
 		#MinuteEventFormat,
 		
 	)
+
+from	mind.mindSettings			import	TheMindSettings
 
 from	.fieldSettings				import	TheFieldSettings
 
@@ -425,10 +436,147 @@ class FieldElement_:
 		
 		return image
 
+## NOTE: For chat engines, we have an extra field element that we need
+## to pin to the very top of the receptive field.  This is a system 
+## prompt saying something like this:
+##
+##		GladOS		(Or however the 'system' role/name is rendered)
+##
+##		The below messages communicate a sequence of text elements 
+##		which are arranged vertically in your current field of view 
+##		as you are looking at the display screen of a computer that
+##		is running an operating environment for text-based AIs such
+##		as yourself. You should take the role of the AI user of this 
+##		environment named "<PersonaID>"; and enter a response to the 
+##		AI's current input prompt, which is shown at the bottom of
+##		the field.  You may enter your response in the form of a
+##		command line starting with '/', or a free-form message in
+##		natural language, which will be added to your cognitive 
+##		stream and may be seen by the system operator. You may also 
+##		enter a blank line to indicate that you have nothing to say 
+##		at this time.  Please note that you are free-running in this 
+##		environment, and the clock display updates itself in real 
+##		time.  If you are not sure what to do, you may enter '/' 
+##		followed by the letter 'h' to see some available commands.
+##		
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class TheInitialSystemPrompt: pass
+@singleton
+class TheInitialSystemPrompt(FieldElement_):
+
+	"""This is a special field element that displays a system prompt at the 
+		top of the field."""
+	
+	promptFmt = \
+		"The below messages communicate a sequence of text elements " \
+		"which are arranged vertically in your current field of view " \
+		"as you are looking at the display screen of a computer that " \
+		"is running an operating environment for text-based AIs such " \
+		"as yourself. You should take the role of the AI user of this " \
+		'environment named "{personaID}"; and enter a response to the ' \
+		"AI's current input prompt, which is shown at the bottom of " \
+		"the field.  You may enter your response in the form of a " \
+		"command line starting with '/', or a free-form message in " \
+		"natural language, which will be added to your cognitive " \
+		"stream and may be seen by the system operator. You may also " \
+		"enter a blank line to indicate that you have nothing to say " \
+		"at this time.  Please note that you are free-running in this " \
+		"environment, and the clock display updates itself in real " \
+		"time.  If you are not sure what to do, you may enter '/' " \
+		"followed by the letter 'h' to see some available commands."
+
+	def __init__(newInitSysPrompt:TheInitialSystemPrompt, 
+	      			personaID=None, *args, **kwargs):
+		# NOTE: The personaID is the short name of the AI persona whose
+		# receptive field this is. It is used to fill in the {personaID}
+		# placeholder in the promptFmt string above. If it is not supplied,
+		# we use the current personaID setting from TheMindSettings.
+		"""
+			TheInitialSystemPrompt.__init__()			  [Default instance initializer]
+			
+				This is the instance initialization method that is used by
+				default when constructing the instances of TheInitialSystemPrompt.
+		"""
+
+		nisp = newInitSysPrompt
+
+		if personaID is None:
+			personaID = TheMindSettings.personaID
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| First, we call the superclass initializer to do general initial-
+			#| ization for all field elements.
+
+		super(TheInitialSystemPrompt.__wrapped__, nisp).__init__(
+				name="Initial System Prompt", where=PINNED_TO_TOP, 
+				owner=The_GLaDOS_Entity, *args, **kwargs)
+			# NOTE: We always pin the initial system prompt to the very top 
+			# of the receptive field, because that's where it's supposed to 
+			# appear, by definition.
+		
+		# Assign the ._image private attribute to the text image that we want to
+		# display in the field element's slot. This is the promptFmt string above
+		# with the {personaID} placeholder filled in.
+		nisp._image = nisp.promptFmt.format(personaID=personaID)
+	
+	#__/ End of TheInitialSystemPrompt.__init__() initializer method.
+
+
+## NOTE: For chat engines, we have an extra field element that we need
+## to pin to the very bottom of the receptive field.  This is a system 
+## prompt saying something like this:
+##
+##		GladOS		(Or however the 'system' role/name is rendered)
+##
+##		Respond as <PersonaID>.
+##		
+class TheFinalSystemPrompt: pass
+@singleton
+class TheFinalSystemPrompt(FieldElement_):
+
+	"""This is a special field element that displays a system prompt at the 
+		top of the field."""
+	
+	promptFmt = 'Respond as {personaID}.'
+
+	def __init__(newFinalSysPrompt:TheFinalSystemPrompt, 
+	      			personaID=None, *args, **kwargs):
+		# NOTE: The personaID is the short name of the AI persona whose
+		# receptive field this is. It is used to fill in the {personaID}
+		# placeholder in the promptFmt string above. If it is not supplied,
+		# we use the current personaID setting from TheMindSettings.
+		"""
+			TheInitialSystemPrompt.__init__()			  [Default instance initializer]
+			
+				This is the instance initialization method that is used by
+				default when constructing the instances of TheInitialSystemPrompt.
+		"""
+
+		nfsp = newFinalSysPrompt
+
+		if personaID is None:
+			personaID = TheMindSettings.personaID
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| First, we call the superclass initializer to do general initial-
+			#| ization for all field elements.
+
+		super(TheFinalSystemPrompt.__wrapped__, nfsp).__init__(
+				name="Final System Prompt", where=PINNED_TO_BOTTOM, 
+				owner=The_GLaDOS_Entity, *args, **kwargs)
+			# NOTE: We always pin the final system prompt to the very bottom 
+			# of the receptive field, because that's where it's supposed to 
+			# appear, by definition.
+		
+		# Assign the ._image private attribute to the text image that we want to
+		# display in the field element's slot. This is the promptFmt string above
+		# with the {personaID} placeholder filled in.
+		nfsp._image = nfsp.promptFmt.format(personaID=personaID)
+	
+	#__/ End of TheInitialSystemPrompt.__init__() initializer method.
+
 
 class TheFieldHeader: pass
-
-
 @singleton
 class TheFieldHeader(FieldElement_):
 	
