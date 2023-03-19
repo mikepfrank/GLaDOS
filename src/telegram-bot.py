@@ -935,8 +935,15 @@ class Conversation:
 		chat_messages.append({
 			'role': CHAT_ROLE_SYSTEM,
 
-			'content': f"Respond as {self.bot_name}.\n"
-				# This is simple and seems to work pretty well.
+			# 'content': f"Respond as {self.bot_name}."
+			# # This is simple and seems to work pretty well.
+
+			# Trying this new variation, to facilitate continuations:
+			'content': f'Respond as {self.bot_name}.  (Note: If you run out ' + \
+				'of space, truncate your response and end it with "(cont)"; ' + \
+				'then if the user types "/continue", resume generating your ' + \
+				'prior response where you left off.)\n'
+				
 		})
 
 		# (The back-end language model will be prompted to respond by something like 
@@ -1593,6 +1600,11 @@ def process_response(update, context, response_message):
 			_logger.info(f"Unknown command [{command_name}].")
 			# Send the user a diagnostic message.
 			update.message.reply_text(f"[DIAGNOSTIC: Unknown command [{command_name}].]")
+
+	# One more thing to do here: If the AI's response ends with the string "(cont)" or
+	# "...", then we'll send a message to the user asking them to continue the conversation.
+	if response_message.text.endswith("(cont)") or response_message.text.endswith("..."):
+		update.message.reply_text("[If you want me to continue my response, type '/continue'.]")
 
 #__/ End of process_response() function definition.
 

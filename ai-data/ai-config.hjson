@@ -85,7 +85,7 @@
 			#|		'GPT-2' 			(Samson), 		# Not yet supported.
 			#|		'GPT-3' 			(Gladys, Curie),
 			#|		'GPT-3/Instruct'	(Love),
-			#|		'GPT-3.5' 			(Dante, David, DaVinci),
+			#|		'GPT-3.5' 			(David, Dante, DaVinci),
 			#|		'ChatGPT' 			(Turbo, Lingo, Lingua, etc.),
 			#| 		'GPT-4' 			(Aria).
 			#|
@@ -157,7 +157,8 @@
 
 		#min-replyWin-tokens:	42		# Orig. value; seemed like a reasonable minimum.
 		#min-replywin-toks:		100		# Gladys 2.0 (text-davinci-002) requested this increase.
-		min-replywin-toks:		400		# Turbo (gpt-3.5-turbo) requested this increase.
+		#min-replywin-toks:		400		# Turbo (gpt-3.5-turbo) requested this increase.
+		min-replywin-toks:		800		# Aria (gpt-4) requested this increase.
 
 			#-----------------------------------------------------------------
 			# The example-response parameter is a piece of text that we show
@@ -194,11 +195,13 @@
 				of tokens that will be returned in any single completion.
 				However, we may frequently override this value in different
 				parts of the system, as different-sized responses may be
-				called for when the AI is using different apps, for example. */
+				called for when the AI is using different apps, for example,
+				or when the full space shown here isn't available.				*/
 
 		#max-returned-tokens:	150		# Keep response size reasonable.
 		#max-returned-tokens:	200		# Gladys 2.0 requested this upgrade.
-		max-returned-tokens:	1000	# To give the chat engines more space.
+		#max-returned-tokens:	1000	# To give the chat engines more space.
+		max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window).
 			# (Note the chat API doesn't support extending responses.)
 
 
