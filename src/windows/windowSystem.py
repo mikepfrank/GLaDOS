@@ -563,6 +563,12 @@ class Window:	# A text window within the GLaDOS window system.
 
 		self._snapshots		= set()
 
+	@property
+	def owner(win):
+		"""Returns the entity that owns this window. """
+		return win._app.entity
+			# It's just the entity representing the app that manages this window.
+
 	def notifyOfFocus(win):
 		"""Notify window it has been assigned the command focus. """
 		pass

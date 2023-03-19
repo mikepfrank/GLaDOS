@@ -195,7 +195,9 @@ from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF
 				# Function names:
 
 			createCoreConnection,	# Returns a GPT3Core object, which represents a specific
-									#	"connection" to the core GPT-3 model.
+				#	"connection" to the core GPT-3 model. This factory function
+                #   selects the appropriate subclass of GPT3Core to instantiate, 
+                #   based on the engineId parameter.
 
 		)
 
