@@ -3333,17 +3333,30 @@ def _msg_repr(msg:dict) -> str:
 		model. It's not documented anywhere, but we're guessing that
 		it's probably something like this:
 
-			[STX] <role> '\n' <content> '\n' [ETX]
+			[STX] <role> '\n' 
+			<content> [ETX] '\n'
 
 		where <role> and <content> are the values of the 'role' and
 		'content' fields of the message dict, respectively, and [STX]
 		and [ETX] are the start-of-text and end-of-text tokens used
 		by the underlying language model. From what we know, the length
 		(in tokens) of the message representation is 4 + len(role) + 
-		len(content)
+		len(content). Also, if the 'name' field is present in the message
+		dict, then it overrides the 'role' field.
 		"""
 	
-	rep = chr(STX) + msg['role'] + '\n' + msg['content'] + '\n' + chr(ETX)
+	# If the message has a 'name' field, then this overrides the
+	# more generic 'role' field.
+	if 'name' in msg:
+		role = msg['name']
+	else:
+		role = msg['role']
+
+	# First line: 			(start-of-text token) + role + newline;
+	# Remaining line(s): 	content + (end-of-text token) + newline.
+	rep = \
+		chr(STX) + role + '\n' + \
+		msg['content'] + chr(ETX)+ '\n' 
 
 	return rep
 

@@ -10,11 +10,11 @@
 #
 #	Please note that conceptually, this module is considered part of the AI,
 #	since some of its basic properties, such as its size, are associated with
-#	the AI.  However, we place it in its own package since much the rest of the 
-#	system talks to it directly (and to the rest of the AI, less directly).
+#	the AI.  However, we place it in its own package since much of the rest of the 
+#	system "talks" to it directly (and to the rest of the AI, less directly).
 #
 # 	This module implements the input to the AI's main receptive field; 
-# 	that it, it displays everything that the A.I. can "see."  This generally
+# 	that is, it displays everything that the A.I. can "see."  This generally
 # 	consists of the following:
 #
 #		1. Any windows that are anchored to the top of the receptive field.
@@ -135,11 +135,13 @@ from	.fieldSettings				import	TheFieldSettings, TheFieldSettingsModule
 from .fieldElement import (
 
 	FieldSlot,
-	FieldElement_,
-	TheFieldHeader,
-	ThePromptSeparator,
-	TheInputArea,
-	TextEventElement,
+	FieldElement_,				# Abstract base class for field elements.
+	TheInitialSystemPrompt,		# First field element displayed to chat engines.
+	TheFieldHeader,				# Field header element (shown to all engines).
+	TextEventElement,			# Field element for a text event.
+	ThePromptSeparator,			# Separator bar between prompt and input area.
+	TheInputArea,				# Input area field element.
+	TheFinalSystemPrompt,		# Final field element displayed to chat engines.
 
 )
 	
@@ -889,7 +891,10 @@ class TheReceptiveField(ReceptiveField_):
 		##		followed by the letter 'h' to see some available commands.
 		##
 		
+		if isChatEngine(modelVersion):
+			_logger.debug("                    [Field] Creating the chat engine system prompt element...")
 
+			field._initialSystemPrompt = TheInitialSystemPrompt(field)
 
 				#|--------------------------------------------------------------
 				#| Create the "field header" element, which automatically pins
@@ -907,7 +912,7 @@ class TheReceptiveField(ReceptiveField_):
 
 		if isChatEngine(modelVersion):
 			_logger.debug("                    [Field] Creating the chat engine prompt element...")
-			field._chatEnginePrompt = TheChatEnginePrompt(field)
+			field._finalSystemPrompt = TheFinalSystemPrompt(field)
 
 				#|--------------------------------------------------------------
 				#| Create the "input area" element, which automatically pins 

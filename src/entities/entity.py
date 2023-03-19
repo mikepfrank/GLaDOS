@@ -339,9 +339,8 @@ class System_Entity_(Entity_):
 @singleton
 class The_GLaDOS_Entity(System_Entity_):
 	_isAbstract = False
-	_ENTITY_NAME = "GLaDOS System"
-	_ENTITY_CHAT_NAME = "GLaDOS"
-
+	_ENTITY_NAME = "GladOS System"
+	_ENTITY_CHAT_NAME = "GladOS"
 
 class Subsystem_Entity(System_Entity_):
 
