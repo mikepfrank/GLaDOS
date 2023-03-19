@@ -537,7 +537,7 @@ class TheFinalSystemPrompt(FieldElement_):
 	"""This is a special field element that displays a system prompt at the 
 		top of the field."""
 	
-	promptFmt = 'Respond as {personaID}.'
+	promptFmt = "Respond as {personaID}."
 
 	def __init__(newFinalSysPrompt:TheFinalSystemPrompt, 
 	      			personaID=None, *args, **kwargs):
