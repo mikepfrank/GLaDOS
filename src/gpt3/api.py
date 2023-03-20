@@ -1666,7 +1666,7 @@ class ChatMessages:
 		
 		msgList = self._messages
 
-		_logger.debug(f"In ChatMessages.messageList(): The current messageList is: [{msgList}]")
+		#_logger.debug(f"In ChatMessages.messageList(): The current messageList is: {msgList}")
 
 		return msgList
 	
