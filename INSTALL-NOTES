@@ -140,7 +140,7 @@ Step 7. - Test the connection to the OpenAI API.
 
 From the AI's user account, in their GLaDOS directory, do:
 
-	$ make test-api
+	$ make run-test
 
 This should run a simple API test.
 
