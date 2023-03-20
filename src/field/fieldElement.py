@@ -68,7 +68,20 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 from	infrastructure.decorators	import	singleton
 from	infrastructure.utils		import	overwrite		# Used for composing horizonal bars.
 
-from	entities.entity				import	AI_Persona		# Class for our AI persona entity.
+from	gpt3.api 					import	CHAT_ROLE_SYSTEM
+
+from	entities.entity				import	(
+
+    			Entity_, 	
+					# Abstract base class for all entities; used in type hints.
+			    
+				The_GLaDOS_Entity,	
+					# The GLaDOS entity; owns the initial system prompt.
+				
+            	AI_Persona,			# Class for our AI persona entity.
+		    
+		    	Receptive_Field		# Owner of standard field elements.
+			)
 
 from	events.event 	import (
 
@@ -82,6 +95,8 @@ from	events.event 	import (
 		#MinuteEventFormat,
 		
 	)
+
+from	mind.mindSettings			import	TheMindSettings
 
 from	.fieldSettings				import	TheFieldSettings
 
@@ -180,7 +195,7 @@ class FieldSlot:
 		name	= f"Field slot for element: '{forElement}'"
 		slot.name = name
 
-		
+		# Really we should do some error-checking here; make sure field isn't None.
 		base	= field.base
 
 		# Remember the given placement.
@@ -348,11 +363,14 @@ class FieldElement_:
 	#	- A slot that it's assigned to on the receptive field.
 	#	- A (current) height. in rows of text. (Some elements can have adjustable heights.)
 	#	- An "image" member, which is the actual text data to display for this element.
+	#	- A "placement" member, which indicates where this element should be placed on the field.
+	#	- A "role" member, which indicates what kind of entity owns this element.
 	#
 	# And the following methods:
 	# 	- An "update" method, which advises the element to update its current image if it needs to.
 
-	def __init__(thisFE, name:str="(Unnamed Element)", where:Placement=None, field:ReceptiveField_=None):
+	def __init__(thisFE, name:str="(Unnamed Element)", where:Placement=None, 
+	      field:ReceptiveField_=None, owner:Entity_=None):
 		"""
 			FieldElement_.__init__()			  [Default instance initializer]
 			
@@ -374,6 +392,7 @@ class FieldElement_:
 			# Remember our initial requested placement.
 		thisFE._initPlacement	= where
 		thisFE._image			= None		# No image data exists by default.
+		thisFE._owner			= owner		# Remember who owns this element.
 
 			# Go ahead and create a field slot to contain this field element.
 		slot = FieldSlot(thisFE, where, field)
@@ -383,6 +402,10 @@ class FieldElement_:
 	@property
 	def name(elem):
 		return elem._name
+	
+	@property
+	def owner(elem):
+		return elem._owner
 
 	def resetPlacement(elem):
 		"""Reset this element's placement back to its initial placement."""
@@ -413,10 +436,150 @@ class FieldElement_:
 		
 		return image
 
+## NOTE: For chat engines, we have an extra field element that we need
+## to pin to the very top of the receptive field.  This is a system 
+## prompt saying something like this:
+##
+##		GladOS		(Or however the 'system' role/name is rendered)
+##
+##		The below messages communicate a sequence of text elements 
+##		which are arranged vertically in your current field of view 
+##		as you are looking at the display screen of a computer that
+##		is running an operating environment for text-based AIs such
+##		as yourself. You should take the role of the AI user of this 
+##		environment named "<PersonaID>"; and enter a response to the 
+##		AI's current input prompt, which is shown at the bottom of
+##		the field.  You may enter your response in the form of a
+##		command line starting with '/', or a free-form message in
+##		natural language, which will be added to your cognitive 
+##		stream and may be seen by the system operator. You may also 
+##		enter a blank line to indicate that you have nothing to say 
+##		at this time.  Please note that you are free-running in this 
+##		environment, and the clock display updates itself in real 
+##		time.  If you are not sure what to do, you may enter '/' 
+##		followed by the letter 'h' to see some available commands.
+##		
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class TheInitialSystemPrompt: pass
+@singleton
+class TheInitialSystemPrompt(FieldElement_):
+
+	"""This is a special field element that displays a system prompt at the 
+		top of the field."""
+	
+	promptFmt = \
+		"The below messages communicate a sequence of text elements " \
+		"which are arranged vertically in your current field of view " \
+		"as you are looking at the display screen of a computer that " \
+		"is running an operating environment for text-based AIs such " \
+		"as yourself. You should take the role of the AI user of this " \
+		'environment named "{personaID}"; and enter a response to the ' \
+		"AI's current input prompt, which is shown at the bottom of " \
+		"the field.  You may enter your response in the form of a " \
+		"command line starting with '/', or a free-form message in " \
+		"natural language, which will be added to your cognitive " \
+		"stream and may be seen by the system operator. You may also " \
+		"enter a blank line to indicate that you have nothing to say " \
+		"at this time.  Please note that you are free-running in this " \
+		"environment, and the clock display updates itself in real " \
+		"time.  If you are not sure what to do, you may enter '/' " \
+		"followed by the letter 'h' to see some available commands."
+
+	def __init__(newInitSysPrompt:TheInitialSystemPrompt, 
+	      			personaID=None, *args, **kwargs):
+		# NOTE: The personaID is the short name of the AI persona whose
+		# receptive field this is. It is used to fill in the {personaID}
+		# placeholder in the promptFmt string above. If it is not supplied,
+		# we use the current personaID setting from TheMindSettings.
+		"""
+			TheInitialSystemPrompt.__init__()			  [Default instance initializer]
+			
+				This is the instance initialization method that is used by
+				default when constructing the instances of TheInitialSystemPrompt.
+		"""
+
+		nisp = newInitSysPrompt
+
+		if personaID is None:
+			personaID = TheMindSettings.personaID
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| First, we call the superclass initializer to do general initial-
+			#| ization for all field elements.
+
+		super(TheInitialSystemPrompt.__wrapped__, nisp).__init__(
+				name="Initial System Prompt", where=PINNED_TO_TOP, 
+				owner=The_GLaDOS_Entity(), *args, **kwargs)
+			# NOTE: We always pin the initial system prompt to the very top 
+			# of the receptive field, because that's where it's supposed to 
+			# appear, by definition.
+			# NOTE ALSO: We have to instantiate The_GLaDOS_Entity!
+		
+		# Assign the ._image private attribute to the text image that we want to
+		# display in the field element's slot. This is the promptFmt string above
+		# with the {personaID} placeholder filled in.
+		nisp._image = image = nisp.promptFmt.format(personaID=personaID)
+
+		_logger.debug(f"The initSysPrompt image is: [{image}]")
+	
+	#__/ End of TheInitialSystemPrompt.__init__() initializer method.
+
+
+## NOTE: For chat engines, we have an extra field element that we need
+## to pin to the very bottom of the receptive field.  This is a system 
+## prompt saying something like this:
+##
+##		GladOS		(Or however the 'system' role/name is rendered)
+##
+##		Respond as <PersonaID>.
+##		
+class TheFinalSystemPrompt: pass
+@singleton
+class TheFinalSystemPrompt(FieldElement_):
+
+	"""This is a special field element that displays a system prompt at the 
+		top of the field."""
+	
+	promptFmt = "Respond as {personaID}."
+
+	def __init__(newFinalSysPrompt:TheFinalSystemPrompt, 
+	      			personaID=None, *args, **kwargs):
+		# NOTE: The personaID is the short name of the AI persona whose
+		# receptive field this is. It is used to fill in the {personaID}
+		# placeholder in the promptFmt string above. If it is not supplied,
+		# we use the current personaID setting from TheMindSettings.
+		"""
+			TheInitialSystemPrompt.__init__()			  [Default instance initializer]
+			
+				This is the instance initialization method that is used by
+				default when constructing the instances of TheInitialSystemPrompt.
+		"""
+
+		nfsp = newFinalSysPrompt
+
+		if personaID is None:
+			personaID = TheMindSettings.personaID
+
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| First, we call the superclass initializer to do general initial-
+			#| ization for all field elements.
+
+		super(TheFinalSystemPrompt.__wrapped__, nfsp).__init__(
+				name="Final System Prompt", where=PINNED_TO_BOTTOM, 
+				owner=The_GLaDOS_Entity(), *args, **kwargs)
+			# NOTE: We always pin the final system prompt to the very bottom 
+			# of the receptive field, because that's where it's supposed to 
+			# appear, by definition.
+		
+		# Assign the ._image private attribute to the text image that we want to
+		# display in the field element's slot. This is the promptFmt string above
+		# with the {personaID} placeholder filled in.
+		nfsp._image = nfsp.promptFmt.format(personaID=personaID)
+	
+	#__/ End of TheInitialSystemPrompt.__init__() initializer method.
+
 
 class TheFieldHeader: pass
-
-
 @singleton
 class TheFieldHeader(FieldElement_):
 	
@@ -427,8 +590,8 @@ class TheFieldHeader(FieldElement_):
 	bgChar = "="	# Fill top line with this character.
 	
 		# Need to get this from sys config instead.
-	fieldTitle = "GLaDOS Main Screen / GPT-3 Receptive Field"
-			# - Except, fetch 'GPT-3' from the name of the cognitive system's 
+	fieldTitle = "GladOS Main Screen / GPT-4 Receptive Field"
+			# - Except, fetch 'GPT-3' from the model family name of the cognitive system's 
 			#   associated language model.
 			# - Maybe also have a config variable for 'GLaDOS'.
 
@@ -441,7 +604,7 @@ class TheFieldHeader(FieldElement_):
 	titlePos = int((headerWidth - len(fieldTitle))/2)
 	
 		# Construct the full text string for the header bar.
-	headerStr = overwrite('/' + bgChar*(headerWidth-2) + '\\', titlePos, fieldTitle) + '\n\n'
+	headerStr = overwrite('/' + bgChar*(headerWidth-2) + '\\', titlePos, fieldTitle) # + '\n\n' 
 			# Note we add an extra newline at the end to give some vertical whitespace.
 
 	def __init__(newHeaderElem:TheFieldHeader, *args, **kwargs):
@@ -453,7 +616,8 @@ class TheFieldHeader(FieldElement_):
 			#| ization for all field elements.
 
 		super(TheFieldHeader.__wrapped__, nhe).__init__(
-				"Field Header", PINNED_TO_TOP, *args, **kwargs)
+				name="Field Header", where=PINNED_TO_TOP, owner=Receptive_Field(),
+				*args, **kwargs)
 			# NOTE: We always pin the field header to the very top of the 
 			# receptive field, because that's where it's supposed to appear, 
 			# by definition.
@@ -486,14 +650,16 @@ class ThePromptSeparator(FieldElement_):
 	instrPos = int((sepBarWidth - len(sepInstrs))/2)
 	
 		# Construct the full text string for the topper row.
-	sepBarStr = overwrite(bgChar*(sepBarWidth), instrPos, sepInstrs) + '\n'
+	sepBarStr = overwrite(bgChar*(sepBarWidth), instrPos, sepInstrs) # + '\n'
 	
 	def __init__(psElem:ThePromptSeparator, *args, **kwargs):
 			# Mostly handled by FieldElement_ superclass, except that we specify
 			# the element placement.
 
 		super(ThePromptSeparator.__wrapped__, psElem).__init__(
-				"Prompt Separator", PINNED_TO_BOTTOM, *args, **kwargs)
+				name="Prompt Separator", where=PINNED_TO_BOTTOM, 
+				owner=Receptive_Field(),
+				*args, **kwargs)
 			# NOTE: We always pin the prompt separator to the bottom of the 
 			# receptive field, except this will really end up being just above
 			# the actual prompt area, which should have been previously pinned.
@@ -533,7 +699,8 @@ class TheInputArea(FieldElement_):
 		inputArea._aiTextEvent = aiTextEvent
 		
 		super(TheInputArea.__wrapped__, inputArea).__init__(
-			"Input Area", PINNED_TO_BOTTOM, field)
+			name="Input Area", where=PINNED_TO_BOTTOM, field=field,
+			owner=personaEntity)
 			# NOTE: The input area must be pinned to the very bottom of the receptive
 			# field, so that the AI will perceive the prompt as what it's completing.
 
@@ -585,7 +752,8 @@ class TextEventElement(FieldElement_):
 
 		# General field element initialization.
 		super(TextEventElement, teElem).__init__(
-			f"Text Event #{seqno}", SLIDE_TO_BOTTOM, field)
+			name=f"Text Event #{seqno}", where=SLIDE_TO_BOTTOM, field=field,
+			owner=event.creator)
 			# NOTE: We slide new text events to the bottom (above anchored elements),
 			# but then allow them to subsequently float upwards.
 
@@ -604,7 +772,7 @@ class TextEventElement(FieldElement_):
 		teElem = thisTextEventElement
 		event = teElem.textEvent
 
-		return teElem._textEvent.display() + '\n'
+		return teElem._textEvent.display() #+ '\n'
 
 
 class WindowElement(FieldElement_):
@@ -622,7 +790,8 @@ class WindowElement(FieldElement_):
 					  f"window '{win.title}' with placement '{where}',")
 
 		super(WindowElement, wElem).__init__(
-			f"Window '{win.title}'", win.placement, field)
+			name=f"Window '{win.title}'", where=win.placement, field=field,
+			owner=win.owner)
 
 	@property
 	def image(thisWinElem):
@@ -638,7 +807,7 @@ class WindowElement(FieldElement_):
 			# image.view() method now tabifies the view; this is done
 			# in hopes of reducing its length in tokens.
 
-		viewTxt = win.view() + '\n'
+		viewTxt = win.view() #+ '\n'
 			# This asks the window to give us a view of its present
 			# image as a text string.  We append a newline to it to
 			# add a blank line after the window.

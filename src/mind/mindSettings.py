@@ -34,15 +34,15 @@ class	TheMindSettings:
 			#|------------------------------------------------------------------
 			#| Identifying information for the specific AI persona we're running.
 	
-	_DEFAULT_PERSONA_NAME		=	"GPT-3.5 Turbo"	# Because we built GLaDOS for her.
-	_DEFAULT_PERSONA_ID			=	"Turbo"		# Use this in her input prompts.
-	_DEFAULT_PERSONA_USERNAME	=	"turbo"		# Unix user account to run GLaDOS under.
+	_DEFAULT_PERSONA_NAME		=	"Aria Turing"	# Because we built GLaDOS for her.
+	_DEFAULT_PERSONA_ID			=	"Aria"		# Use this in her input prompts.
+	_DEFAULT_PERSONA_USERNAME	=	"aria"		# Unix user account to run GLaDOS under.
 	
 			#|------------------------------------------------------------------
 			#| Information about the underlying statistical NLP model we're using.
 	
-	_DEFAULT_MODEL_FAMILY		=	"gpt-3"			# GPT-3 is the only one we have available right now anyway.
-	_DEFAULT_MODEL_VERSION		=	"gpt-3.5-turbo"		# This is the largest, most expensive version of GPT-3.
+	_DEFAULT_MODEL_FAMILY		=	"GPT-4"		# This isn't really used yet.
+	_DEFAULT_MODEL_VERSION		=	"gpt-4"		# New GPT-4 text chat model, 8K tokens.
 
 
 		#|======================================================================
@@ -69,6 +69,7 @@ class	TheMindSettings:
 	@classmethod
 	def config(theMindSettingsClass:ClassVar):
 		theMindSettingsClass.reconfigure()		# Just a synonym.
+		return theMindSettingsClass
 
 	@classmethod
 	def reconfigure(theMindSettingsClass:ClassVar):
@@ -88,9 +89,9 @@ class	TheMindSettings:
 			# Update each of our specific configurable parameters.
 			tmsc.configDefaultPersonaName(mindConf)
 			tmsc.configDefaultPersonaID(mindConf)
-			#tmsc.configDefaultPersonaUsername(mindConf)
-			#tmsc.configDefaultModelFamily(mindConf)
-			#tmsc.configDefaultModelVersion(mindConf)
+			tmsc.configDefaultPersonaUsername(mindConf)
+			tmsc.configDefaultModelFamily(mindConf)
+			tmsc.configDefaultModelVersion(mindConf)
 		
 		# Retrieve the mind conf sub-structure, if any, from the AI config file.
 		mindConf = TheAIPersonaConfig().mindConf
@@ -98,9 +99,9 @@ class	TheMindSettings:
 			# Update each of our specific configurable parameters.
 			tmsc.configDefaultPersonaName(mindConf)
 			tmsc.configDefaultPersonaID(mindConf)
-			#tmsc.configDefaultPersonaUsername(mindConf)
-			#tmsc.configDefaultModelFamily(mindConf)
-			#tmsc.configDefaultModelVersion(mindConf)
+			tmsc.configDefaultPersonaUsername(mindConf)
+			tmsc.configDefaultModelFamily(mindConf)
+			tmsc.configDefaultModelVersion(mindConf)
 
 
 		#|===============================================================
@@ -108,6 +109,7 @@ class	TheMindSettings:
 		#| parameters during configuration or reconfiguration.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		
+
 	@classmethod
 	def configDefaultPersonaName(theMindSettingsClass:ClassVar, mindConf):
 
@@ -146,7 +148,67 @@ class	TheMindSettings:
 			# After this is done, the corresponding Setting object can be
 			# created, and it will inherit the updated default loaded from 
 			# the config file.
-		
+	
+
+	@classmethod
+	def configDefaultPersonaUsername(theMindSettingsClass:ClassVar, mindConf):
+
+		"""This method replaces the above hard-coded default value for
+			the username of the AI persona with the value loaded from
+			a config file."""
+
+			# OK, let the default AI persona username for the cognitive system
+			# be the one given by this config data.
+
+		personaUsername = mindConf['persona-user-account']
+
+			# Change the default value of the setting to the value given.
+			# This will then take effect next time we reset to defaults.
+		theMindSettingsClass._DEFAULT_PERSONA_USERNAME = personaUsername
+			# After this is done, the corresponding Setting object can be
+			# created, and it will inherit the updated default loaded from
+			# the config file.
+
+
+	@classmethod
+	def configDefaultModelFamily(theMindSettingsClass:ClassVar, mindConf):
+
+		"""This method replaces the above hard-coded default value for
+			the family of the AI model with the value loaded from
+			a config file."""
+
+			# OK, let the default AI model family for the cognitive system
+			# be the one given by this config data.
+
+		modelFamily = mindConf['model-family']
+
+			# Change the default value of the setting to the value given.
+			# This will then take effect next time we reset to defaults.
+		theMindSettingsClass._DEFAULT_MODEL_FAMILY = modelFamily
+			# After this is done, the corresponding Setting object can be
+			# created, and it will inherit the updated default loaded from
+			# the config file.
+
+
+	@classmethod
+	def configDefaultModelVersion(theMindSettingsClass:ClassVar, mindConf):
+
+		"""This method replaces the above hard-coded default value for
+			the version of the AI model with the value loaded from
+			a config file."""
+
+			# OK, let the default AI model version for the cognitive system
+			# be the one given by this config data.
+
+		modelVersion = mindConf['model-version']
+
+			# Change the default value of the setting to the value given.
+			# This will then take effect next time we reset to defaults.
+		theMindSettingsClass._DEFAULT_MODEL_VERSION = modelVersion
+			# After this is done, the corresponding Setting object can be
+			# created, and it will inherit the updated default loaded from
+			# the config file.
+
 
 		#|============================================================
 		#| Below are class methods for updating our current settings.
@@ -162,20 +224,77 @@ class	TheMindSettings:
 			personaName = theMindSettingsClass._DEFAULT_PERSONA_NAME
 			
 			# Update our class variable
-		mindSettingsClass.personaName = personaName
+		theMindSettingsClass.personaName = personaName
 
 	@classmethod
 	def updatePersonaID(theMindSettingsClass,
 			personaID:str=None,
 		):
 
-		# If newWidth is not specified, just set it to the default.
+		# If personaID is not specified, just set it to the default.
 		if personaID is None:
 			personaID = theMindSettingsClass._DEFAULT_PERSONA_ID
 
 			# Update our class variable
-		mindSettingsClass.personaID = personaID
+		theMindSettingsClass.personaID = personaID
 		# We should probably do more stuff here to propagate this change throughout the system.
+
+	@classmethod
+	def updatePersonaUsername(theMindSettingsClass,
+			personaUsername:str=None,
+		):
+
+		# If personaUsername is not specified, just set it to the default.
+		if personaUsername is None:
+			personaUsername = theMindSettingsClass._DEFAULT_PERSONA_USERNAME
+
+			# Update our class variable
+		theMindSettingsClass.personaUsername = personaUsername
+		# We should probably do more stuff here to propagate this change throughout the system.
+
+	@classmethod
+	def updateModelFamily(theMindSettingsClass,
+			modelFamily:str=None,
+		):
+
+		# If modelFamily is not specified, just set it to the default.
+		if modelFamily is None:
+			modelFamily = theMindSettingsClass._DEFAULT_MODEL_FAMILY
+
+			# Update our class variable
+		theMindSettingsClass.modelFamily = modelFamily
+		# We should probably do more stuff here to propagate this change throughout the system.
+
+	@classmethod
+	def updateModelVersion(theMindSettingsClass,
+			modelVersion:str=None,
+		):
+
+		# If modelVersion is not specified, just set it to the default.
+		if modelVersion is None:
+			modelVersion = theMindSettingsClass._DEFAULT_MODEL_VERSION
+
+			# Update our class variable
+		theMindSettingsClass.modelVersion = modelVersion
+
+
+	#|============================================================
+	#| To reset all settings to their default values, we need to
+	#| define a method that will do this for us.
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	@classmethod
+	def resetToDefaults(theMindSettingsClass:ClassVar):
+
+		"""This method resets all settings to their default values."""
+
+		# Reset the various settings to their default values.
+		theMindSettingsClass.updatePersonaName()
+		theMindSettingsClass.updatePersonaID()
+		theMindSettingsClass.updatePersonaUsername()
+		theMindSettingsClass.updateModelFamily()
+		theMindSettingsClass.updateModelVersion()
+		# We should probably do more stuff here to propagate this change throughout the system.
+
 
 # Note the below settings module needs to get installed at the
 # time that the receptive field facility is initialized.

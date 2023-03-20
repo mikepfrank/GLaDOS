@@ -131,6 +131,9 @@ from processes.processSystem	import	SubProcess	# Apps need to create their subpr
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+class	Application_Entity_:	pass
+	# Placeholder for abstract base class for application entities.
+
 class	Application_:	pass	# Abstract base class for applications.
 
 
@@ -188,6 +191,8 @@ class Application_:
 	#|	--------------------
 	#|
 	#|		.name [string]	- Short name for the application.
+	#|
+	#|		.entity [Application_Entity_]	- The entity (descriptor) for the application.
 	#|
 	#|		.state [string]	- State of the application.  One of:
 	#|
@@ -259,7 +264,10 @@ class Application_:
 			loudUpdate:bool,		# Whether the app's window updates should wake up the AI.
 			placement:Placement,	# Where to place the app window in the receptive field.
 			
-			conf:dict				# Application-specific dictionary structure.
+			conf:dict,				# Application-specific dictionary structure.
+
+			entity:Application_Entity_=None	# The entity (descriptor) for the application.
+				# Abstract applications don't have entities, but concrete subclasses do.
 		):
 		
 		"""Default initializer for new instances of concrete subclasses of the Application_ abstract class.
@@ -285,6 +293,7 @@ class Application_:
 			#| Remember the name of this application, & other arguments to our constructor.
 
 		newApp.name 				= name			# The name of the application object.
+		newApp.entity				= entity		# The entity (descriptor) for the application.
 		
 		newApp.autoStart			= autoStart		# Whether to start up the app automatically on system startup.
 		newApp.autoOpen				= autoOpen		# Whether to open app automatically when receptive field exists.

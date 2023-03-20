@@ -18,6 +18,8 @@ from	infrastructure.decorators	import	singleton
 from	infrastructure.time		import	envTZ, timeZone, tznow, tzAbbr
 		# Time-zone related functions we use in the Clock app.
 
+from	entities.entity			import	The_ClockApp_Entity
+
 from	.application			import	Application_
 		# Base class from which we derive subclasses for specific applications.
 
@@ -95,6 +97,9 @@ class The_Clock_App(Clock_App_):
 			for the Clock application, at app creation time."""
 
 		app = thisClockApp
+
+		app.entity = The_ClockApp_Entity()	# Create & store our entity.
+
 		win = app.window		# Gets our window (already created).
 
 		app._lock = RLock()		# Reentrant mutex lock.

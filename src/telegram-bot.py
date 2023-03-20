@@ -5,7 +5,11 @@
 #|	  FILENAME:		telegram-bot.py				   [Python 3 program source]   |
 #|	  =========																   |
 #|																			   |
-#|	  SUMMARY:	 This is a Telegram bot that uses GPT-3 to generate text.	   |
+#|	  SUMMARY:	 This is a Telegram bot that uses GPT-3 (or GPT-4) to          |
+#|                  generate text. (Note that, throughout this file,           |
+#|                  whenever we say GPT-3, we mean any models in the           |
+#|                  whole GPT-3 line of models, including GPT-4.)              |
+#|                                                                             |
 #|																			   |
 #|	  DESCRIPTION:															   |
 #|	  ~~~~~~~~~~~~															   |
@@ -191,7 +195,11 @@ from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF
 				# Function names:
 
 			createCoreConnection,	# Returns a GPT3Core object, which represents a specific
-									#	"connection" to the core GPT-3 model.
+				#	"connection" to the core GPT-3 model. This factory function
+                #   selects the appropriate subclass of GPT3Core to instantiate, 
+                #   based on the engineId parameter.
+
+			messageRepr,	# Generates text representation of a chat message dict.
 
 		)
 
@@ -402,7 +410,7 @@ stop_seq = ['\n' + MESSAGE_DELIMITER]
 # the selected engine name. We also go ahead and configure important API 
 # parameters here.
 
-gpt3core = createCoreConnection(ENGINE_NAME, maxTokens=maxRetToks, 
+gptCore = createCoreConnection(ENGINE_NAME, maxTokens=maxRetToks, 
 	temperature=temperature, presPen=presPen, freqPen=freqPen, 
 	stop=stop_seq)
 
@@ -929,8 +937,16 @@ class Conversation:
 		chat_messages.append({
 			'role': CHAT_ROLE_SYSTEM,
 
-			'content': f"Respond as {self.bot_name}.\n"
-				# This is simple and seems to work pretty well.
+			# 'content': f"Respond as {self.bot_name}."
+			# # This is simple and seems to work pretty well.
+
+			# Trying this new variation, to facilitate continuations:
+			'content': f'Respond as {self.bot_name}. (Note: If you need more '	\
+				'space to respond, then instead of condensing your response, '	\
+				'just truncate it at some point and end it with "(cont.)"; '	\
+				'then if the user types "/continue", resume generating your '	\
+				'response where you left off.)\n'
+				
 		})
 
 		# (The back-end language model will be prompted to respond by something like 
@@ -1012,12 +1028,19 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 
 	# Give the user a system warning if their first name contains unsupported characters or is too long.
 	if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", update.message.from_user.first_name):
+		
+            # Log the warning.
 		_logger.warning(f"User {update.message.from_user.first_name} has an unsupported first name.")
+		
+            # Add the warning message to the conversation, so the AI can see it.
 		warning_msg = f"WARNING: Your first name \"{update.message.from_user.first_name}\" contains " \
 			"unsupported characters (or is too long). The AI only supports names with <=64 alphanumeric " \
 			"characters (a-z, 0-9), dashes (-) or underscores (_)."
-		reply_msg = f"[SYSTEM {warning_msg}]"
 		conversation.add_message(Message(SYS_NAME, warning_msg))
+		
+            # Also send the warning message to the user. (Making it clear that 
+            # it's a system message, not from the AI persona itself.)
+		reply_msg = f"[SYSTEM {warning_msg}]"
 		update.message.reply_text(reply_msg)
 
 	return
@@ -1026,8 +1049,18 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 
 
 # Below is the help string for the bot. (Displayed when '/help' is typed in the chat.)
+
+# First calculate the model family, which is mentioned in the help string. 
+# We'll get it from the core object's .modelFamily property.
+MODEL_FAMILY = gptCore.modelFamily
+
+# Note the below would have been the original way to get the model family,
+# but this method is now obsolete, since the core objects know their own 
+# model family.
+#MODEL_FAMILY = TheAIPersonaConfig().modelFamily
+
 HELP_STRING = f"""
-{BOT_NAME} bot powered by GPT-3/{ENGINE_NAME}.
+{BOT_NAME} bot powered by {MODEL_FAMILY}/{ENGINE_NAME}.
 Available commands:
 	/start - Start a new conversation.
 	/help - Show this help message.
@@ -1218,7 +1251,7 @@ def get_user_name(user):
 
 	# If we're using the GPT-3 Chat API, we'll also need to make sure that the user's name
 	# is a valid identifier that's accepted by that API as a user name.
-	if user_name is not None and gpt3core.isChat:
+	if user_name is not None and gptCore.isChat:
 		# If the user's first name contains characters the GPT-3 Chat API won't accept 
 		# (or is too long or an empty string), we'll invalidate it by setting it to None.
 		if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", user_name):
@@ -1257,7 +1290,7 @@ def process_message(update, context):
 	# If the currently selected engine is a chat engine, we'll dispatch the rest
 	# of the message processing to a different function that's specialized to use 
 	# OpenAI's new chat API.
-	if gpt3core.isChat:
+	if gptCore.isChat:
 		process_chat_message(update, context)
 		return
 
@@ -1320,7 +1353,7 @@ def process_message(update, context):
 
 			try:
 				# Get the response from GPT-3, as a Completion object.
-				completion = gpt3core.genCompletion(context_string)
+				completion = gptCore.genCompletion(context_string)
 				response_text = completion.text
 				break
 
@@ -1571,6 +1604,13 @@ def process_response(update, context, response_message):
 			# Send the user a diagnostic message.
 			update.message.reply_text(f"[DIAGNOSTIC: Unknown command [{command_name}].]")
 
+	# One more thing to do here: If the AI's response ends with the string "(cont)" or "(cont.)"
+	# or "(more)" or "...", then we'll send a message to the user asking them to continue the 
+	# conversation.
+	if response_message.text.endswith("(cont)") or response_message.text.endswith("(cont.)") or \
+	   response_message.text.endswith("(more)") or response_message.text.endswith("..."):
+		update.message.reply_text("[If you want me to continue my response, type '/continue'.]")
+
 #__/ End of process_response() function definition.
 
 
@@ -1600,13 +1640,15 @@ def process_chat_message(update, context):
 		with open(f"{LOG_DIR}/latest-messages.txt", "w") as f:
 			for chat_message in chat_messages:
 
-				if 'role' in chat_message:
-					roleOrName = chat_message['role']
-				# Note 'name' overrides 'role' if both are present.
-				if 'name' in chat_message:
-					roleOrName = chat_message['name']
-
-				f.write(f"{roleOrName}: {chat_message['content']}\n")  # Write the message to the file.
+				f.write(messageRepr(chat_message))
+				
+				#if 'role' in chat_message:
+				#	roleOrName = chat_message['role']
+				## Note 'name' overrides 'role' if both are present.
+				#if 'name' in chat_message:
+				#	roleOrName = chat_message['name']
+				#
+				#f.write(f"{roleOrName}: {chat_message['content']}\n")  # Write the message to the file.
 
 		# Now we'll try actually calling the API.
 		try:
@@ -1625,8 +1667,8 @@ def process_chat_message(update, context):
 			# We'll do this by subtracting the length of the chat messages from 
 			# the context window size.
 
-			# Get the context window size from the gpt3core object.
-			contextWinSizeToks = gpt3core.fieldSize
+			# Get the context window size from the gptCore object.
+			contextWinSizeToks = gptCore.fieldSize
 
 			# Get the length of the chat messages in tokens.
 			msgsSizeToks = ChatMessages(chat_messages).totalTokens()
@@ -1656,7 +1698,7 @@ def process_chat_message(update, context):
 			_logger.debug(f"process_chat_message(): maxTokens = {maxTokens}, minReplyWinToks = {minReplyWinToks}, maxRetToks = {maxRetToks}, availSpaceToks = {availSpaceToks}")
 
 			# Get the response from GPT-3, as a ChatCompletion object.
-			chatCompletion = gpt3core.genChatCompletion(	# Call the API.
+			chatCompletion = gptCore.genChatCompletion(	# Call the API.
 				
 				maxTokens=maxTokens,	# Max. number of tokens to return.
 					# We went to a lot of trouble to set this up properly above!
