@@ -937,16 +937,17 @@ class TheReceptiveField(ReceptiveField_):
 			_logger.debug("                    [Field] Creating the chat engine prompt element...")
 			field._finalSystemPrompt = TheFinalSystemPrompt(field=field)
 
-				#|--------------------------------------------------------------
-				#| Create the "input area" element, which automatically pins 
-				#| itself to the very bottom edge of the receptive field.
-				
-		_logger.debug("                    [Field] Creating the input area element...")
-	
-		field._inputArea	= TheInputArea(field, personaEntity)
-			# We pass in the entity for the AI persona because its entity-id
-			# (e.g., "Gladys") will be displayed in the prompt, to remind the
-			# AI which persona it's supposed to be responding as.
+		# We comment out the input area for chat models; it seems to cause confusion.
+		# 		#|--------------------------------------------------------------
+		# 		#| Create the "input area" element, which automatically pins 
+		# 		#| itself to the very bottom edge of the receptive field.
+		#		
+		# _logger.debug("                    [Field] Creating the input area element...")
+		#
+		# field._inputArea	= TheInputArea(field, personaEntity)
+		# 	# We pass in the entity for the AI persona because its entity-id
+		# 	# (e.g., "Gladys") will be displayed in the prompt, to remind the
+		#	# AI which persona it's supposed to be responding as.
 		
 				#|------------------------------------------------------------
 				#| Create the "prompt separator" element, which separates the
