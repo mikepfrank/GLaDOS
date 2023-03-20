@@ -202,7 +202,8 @@ from	gpt3.api				import	(
 			#-----------
 			# Functions.
 
-		createAPIConfig, createCoreConnection, loadStatsIfNeeded, stats
+		createAPIConfig, createCoreConnection,
+		isChatEngine, loadStatsIfNeeded, stats
 	)
 
 from 	config.configuration 	import	TheAIPersonaConfig
@@ -274,8 +275,12 @@ class TheAIPersona:
 		persona._modelVers = modelVers		# The model version. (E.g., "ada")
 		
 			# Create and store an Entity object for it.
-		persona._entity = AI_Persona(name=name, eid=ID, username=username,
-			modelFamily=modelFamily, modelVers=modelVers)
+		persona._entity = AI_Persona(name=name, eid=ID, chatName=ID)
+			# We were thinking of storing the below in the entity, but it isn't
+			# really needed. Just store them here in the persona object instead.
+			#username=username, # Not yet used
+			#modelFamily=modelFamily,
+			#modelVers=modelVers)
 
 	@property
 	def name(persona):
@@ -366,7 +371,7 @@ class The_GPT3_API:
 		api.configure()
 
 			# Creates a new "core connection" using that configuration.
-		api._core = createCoreConnection(api.conf)
+		api._core = createCoreConnection(conf=api.conf)
 
 			# Loads API usage statistics from the filesystem if needed.
 		loadStatsIfNeeded()
@@ -459,7 +464,7 @@ class The_GPT3_API:
 		kwargs = dict()
 		
 		if aiConfig.modelVersion is not None:
-			kwargs['engineId'] = aiConfig.modelVersion
+			kwargs['engineId'] = engID = aiConfig.modelVersion
 
 		if aiConfig.maxReturnedTokens is not None:
 			kwargs['maxTokens'] = aiConfig.maxReturnedTokens
@@ -476,12 +481,6 @@ class The_GPT3_API:
 		if aiConfig.doStream is not None:
 			kwargs['stream'] = aiConfig.doStream
 
-		if aiConfig.logProbs is not None:
-			kwargs['logProbs'] = aiConfig.logProbs
-
-		if aiConfig.doEcho is not None:
-			kwargs['echo'] = aiConfig.doEcho
-
 		if aiConfig.stopSequences is not None:
 			kwargs['stop'] = aiConfig.stopSequences
 
@@ -491,18 +490,31 @@ class The_GPT3_API:
 		if aiConfig.frequencyPenalty is not None:
 			kwargs['freqPen'] = aiConfig.frequencyPenalty
 
-		if aiConfig.bestOf is not None:
-			kwargs['bestOf'] = aiConfig.bestOf
+		if isChatEngine(engID):
 
-		# The following are parameters for the new GPT chat API.
-		if aiConfig.messages is not None:
-			kwargs['messages'] = aiConfig.messages
+			# The following are parameters for the new GPT chat API.
 
-		if aiConfig.logitBias is not None:
-			kwargs['logitBias'] = aiConfig.logitBias
+			if aiConfig.messages is not None:
+				kwargs['messages'] = aiConfig.messages
 
-		if aiConfig.user is not None:
-			kwargs['user'] = aiConfig.user
+			if aiConfig.logitBias is not None:
+				kwargs['logitBias'] = aiConfig.logitBias
+
+			if aiConfig.userID is not None:
+				kwargs['user'] = aiConfig.userID
+
+		else:	# Not a chat engine.
+
+			# These three are NOT present in the GPT chat API, only in the text API.
+
+			if aiConfig.logProbs is not None:
+				kwargs['logProbs'] = aiConfig.logProbs
+
+			if aiConfig.doEcho is not None:
+				kwargs['echo'] = aiConfig.doEcho
+
+			if aiConfig.bestOf is not None:
+				kwargs['bestOf'] = aiConfig.bestOf
 
 		# This is not a standard API parameter, but we'll use it to
 		# store the name of the AI persona, so that we can reference 
@@ -1038,7 +1050,10 @@ class MindThread(ThreadActor):
 		
 		gpt3 = thread.gpt3			# Our Big Daddy AI in the cloud.
 
+		text = view.text	# Gets one big text string with all the field data.
+
 		_logger.debug("[Mind/Thread] Asking GPT-3 to respond to prompt\n" + text)
+			# Should we display this debug message differently for chat engines?
 
 			# This asks GPT-3 to generate a response to the field text,
 			# using the current API parameters.  If our API wrapper
@@ -1054,16 +1069,14 @@ class MindThread(ThreadActor):
 
 				if gpt3.isChat:	# Chat engine.
 
-					messages = view.messages	
+					messages = view.messages()
 						# Gets the contents of our view of the field,
 						# represented as a list of messages.
 
-					response = gpt3.genResponse(messages).lstrip().rstrip()
+					response = gpt3.genResponse(messages=messages).lstrip().rstrip()
 						# Added the lstrip()/rstrip() because extra spaces mess up command parsing.
 
 				else:	# Text engine.
-
-					text = view.text()	# Gets one big text string with all the field data.
 
 					response = gpt3.genResponse(text).lstrip().rstrip()
 						# Added the lstrip()/rstrip() because extra spaces mess up command parsing.
@@ -1206,8 +1219,9 @@ class TheCognitiveSystem:
 
 		mind._persona = persona = TheAIPersona(name=personaName, ID=personaID,
 					 		username=personaUsername, modelFamily=modelFamily,
-					 		modelVersion=modelVersion)
-		mind._entity = entity = persona.entity
+					 		modelVers=modelVersion)
+
+		mind._entity = persEntity = persona.entity
 	
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#| Step 1:  Create (the input interface to) our AI's receptive field.
@@ -1218,7 +1232,7 @@ class TheCognitiveSystem:
 			# field).
 		
 		_logger.info(f"        [Mind/Init]     Creating receptive field...")
-		field = TheReceptiveField(entity, modelVersion)
+		field = TheReceptiveField(personaEntity=persEntity, modelVersion=modelVersion)
 			# This figures out its own size and which tokenizer to use.
 		mind._field = field				# Stash the field for later reference.
 		

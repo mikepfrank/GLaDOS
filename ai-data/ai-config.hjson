@@ -311,6 +311,15 @@
 
 		best-of:				null	# Don't bother doing this.
 		
+			/* Extra params for chat models */
+
+		#messages:		null	# list of dict of 'role', 'content', {'name'}...
+		#logit-bias:	null	# integer
+		#user-id:		null	# unique ID
+
+			# ^ Commented out since None is the default anyway
+
+
 	} # End of api-conf substructure.
 
 	

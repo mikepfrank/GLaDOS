@@ -95,10 +95,30 @@
 #		|
 #		+-> External_Entity (abstract)
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+from	os	import path
+
 from	infrastructure.decorators import singleton, classproperty
 	# This provides a @classproperty (getter) decorator.
 
-from	api.gpt3 	import	CHAT_ROLE_SYSTEM, CHAT_ROLE_USER, CHAT_ROLE_AI
+				#-------------------------------------------------------------
+				# The logmaster module defines our logging framework; we
+				# import specific definitions we need from it.	(This is a
+				# little cleaner stylistically than "from ... import *".)
+
+from infrastructure.logmaster	import getComponentLogger
+
+	# Go ahead and create or access the logger for this module.
+
+global _component, _logger	# Software component name, logger for component.
+
+_component = path.basename(path.dirname(__file__))	# Our package name.
+_logger = getComponentLogger(_component)			# Create the component logger.
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+from	gpt3.api 	import	CHAT_ROLE_SYSTEM, CHAT_ROLE_USER, CHAT_ROLE_AI
 
 from	auth.authority import (
 			theBaseAuthority,
@@ -261,7 +281,13 @@ class Entity_:
 		return thisEntity._chatName
 
 	def __str__(thisEntity):
-		return thisEntity.ID	# Return the short ID string.
+
+		# Preferentially, use the entity's short ID.
+		if thisEntity.ID is not None:
+			return thisEntity.ID	# Return the short ID string.
+
+		# If we don't have a short ID, use the entity's name instead.
+		return thisEntity.name
 
 	#/--------------------------------------------------------------------------
 	#|	Private instance data members.					   [class documentation]
@@ -293,8 +319,12 @@ class Entity_:
 		if chatRole is None:
 			chatRole = inst._ENTITY_CHAT_ROLE
 
+		# Default chatName to the entity ID if not specified in argument or subclass.
 		if chatName is None:
-			chatName = inst._ENTITY_CHAT_NAME
+			if inst._ENTITY_CHAT_NAME is None:
+				chatName = eid
+			else:
+				chatName = inst._ENTITY_CHAT_NAME
 
 			# Remember our name and ID & authority list, etc.
 		inst._name		= name
@@ -302,6 +332,8 @@ class Entity_:
 		inst._auths		= auths
 		inst._chatRole	= chatRole
 		inst._chatName	= chatName
+
+		_logger.debug(f"Entity.__init__(): Created entity [{name}], ID [{eid}], chatRole [{chatRole}], chatName [{chatName}]")
 
 	# Move this closer to top of class
 	partOf = None
@@ -338,9 +370,10 @@ class System_Entity_(Entity_):
 
 @singleton
 class The_GLaDOS_Entity(System_Entity_):
-	_isAbstract = False
-	_ENTITY_NAME = "GladOS System"
-	_ENTITY_CHAT_NAME = "GladOS"
+	_isAbstract			= False
+	_ENTITY_NAME		= "GladOS System"
+	_ENTITY_ID			= "GladOS"
+	_ENTITY_CHAT_NAME	= "GladOS"
 
 class Subsystem_Entity(System_Entity_):
 
@@ -677,10 +710,14 @@ class Cognitive_Stream(AI_Subsystem):
 	
 	partOf = Cognitive_System
 
+@singleton
 class Receptive_Field(AI_Subsystem):
 	_isAbstract = False
-	_ENTITY_NAME = "Receptive Field"
-	_ENTITY_CHAT_NAME = "Field"
+
+	_ENTITY_NAME		= "Receptive Field"
+	_ENTITY_ID			= "Field"
+	_ENTITY_CHAT_NAME	= "Field"
+
 	partOf = AI_System
 
 class Memory_System(AI_Subsystem):
