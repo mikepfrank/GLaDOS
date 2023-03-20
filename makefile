@@ -5,9 +5,13 @@
 default:
 	make run-glados
 
+# Run the test application.
+run-test:
+	./run-test.sh
+
 # Launch the experimental GladOS server process.
 run-glados:
-	./test-server.sh
+	./run-server.sh
 
 # Launch the Telegram bot server.
 run-bot:
