@@ -316,7 +316,7 @@ __all__ = [
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| Module public functions.
 
-		'countTokens'			# Function: Counts tokens in a string. (Costs!)
+		'countTokens',			# Function: Counts tokens in a string. (Costs!)
 			# NOTE: This function is deprecated; use the local_countTokens()
 			# or preferably the tiktokenCount() function instead.
 		
