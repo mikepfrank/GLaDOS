@@ -1103,7 +1103,7 @@ class MindThread(ThreadActor):
 		# In any case, we generate a warning and abort further processing.
 
 		if response == "":	# Empty string.
-			_logger.warn("[Mind/Thread] GPT API returned an empty response; ignoring."
+			_logger.warn("[Mind/Thread] GPT API returned an empty response; ignoring.")
 			return
 
 		# If we get here, then we got a non-empty response. Note & process it.
