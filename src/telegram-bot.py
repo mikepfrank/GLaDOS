@@ -618,6 +618,7 @@ class Conversation:
 	def read_memory(self):
 
 		global PERSISTENT_DATA	# We declare this global so we can modify it.
+		global _anyMemories
 
 		# Boolean to keep track of whether we've already read any lines from the persistent memory file.
 		read_lines = False
@@ -682,10 +683,12 @@ class Conversation:
 	def add_memory(self, new_memory:str):
 
 		global PERSISTENT_DATA	# We declare this global so we can modify it.
+		global _anyMemories
 
 		if not _anyMemories:
 			PERSISTENT_DATA += MESSAGE_DELIMITER + \
 				" ~~~ Memories added using '/remember' command: ~~~\n"
+			_anyMemories = True		# So we only add one new section header!
 
 		# Make sure the new memory ends in a newline.
 		if new_memory[-1] != '\n':
