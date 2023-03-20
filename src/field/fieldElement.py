@@ -195,7 +195,7 @@ class FieldSlot:
 		name	= f"Field slot for element: '{forElement}'"
 		slot.name = name
 
-		
+		# Really we should do some error-checking here; make sure field isn't None.
 		base	= field.base
 
 		# Remember the given placement.
@@ -509,15 +509,18 @@ class TheInitialSystemPrompt(FieldElement_):
 
 		super(TheInitialSystemPrompt.__wrapped__, nisp).__init__(
 				name="Initial System Prompt", where=PINNED_TO_TOP, 
-				owner=The_GLaDOS_Entity, *args, **kwargs)
+				owner=The_GLaDOS_Entity(), *args, **kwargs)
 			# NOTE: We always pin the initial system prompt to the very top 
 			# of the receptive field, because that's where it's supposed to 
 			# appear, by definition.
+			# NOTE ALSO: We have to instantiate The_GLaDOS_Entity!
 		
 		# Assign the ._image private attribute to the text image that we want to
 		# display in the field element's slot. This is the promptFmt string above
 		# with the {personaID} placeholder filled in.
-		nisp._image = nisp.promptFmt.format(personaID=personaID)
+		nisp._image = image = nisp.promptFmt.format(personaID=personaID)
+
+		_logger.debug(f"The initSysPrompt image is: [{image}]")
 	
 	#__/ End of TheInitialSystemPrompt.__init__() initializer method.
 
@@ -563,7 +566,7 @@ class TheFinalSystemPrompt(FieldElement_):
 
 		super(TheFinalSystemPrompt.__wrapped__, nfsp).__init__(
 				name="Final System Prompt", where=PINNED_TO_BOTTOM, 
-				owner=The_GLaDOS_Entity, *args, **kwargs)
+				owner=The_GLaDOS_Entity(), *args, **kwargs)
 			# NOTE: We always pin the final system prompt to the very bottom 
 			# of the receptive field, because that's where it's supposed to 
 			# appear, by definition.
@@ -587,8 +590,8 @@ class TheFieldHeader(FieldElement_):
 	bgChar = "="	# Fill top line with this character.
 	
 		# Need to get this from sys config instead.
-	fieldTitle = "GLaDOS Main Screen / GPT-3 Receptive Field"
-			# - Except, fetch 'GPT-3' from the name of the cognitive system's 
+	fieldTitle = "GladOS Main Screen / GPT-4 Receptive Field"
+			# - Except, fetch 'GPT-3' from the model family name of the cognitive system's 
 			#   associated language model.
 			# - Maybe also have a config variable for 'GLaDOS'.
 
@@ -613,7 +616,7 @@ class TheFieldHeader(FieldElement_):
 			#| ization for all field elements.
 
 		super(TheFieldHeader.__wrapped__, nhe).__init__(
-				name="Field Header", where=PINNED_TO_TOP, owner=Receptive_Field,
+				name="Field Header", where=PINNED_TO_TOP, owner=Receptive_Field(),
 				*args, **kwargs)
 			# NOTE: We always pin the field header to the very top of the 
 			# receptive field, because that's where it's supposed to appear, 
@@ -655,7 +658,7 @@ class ThePromptSeparator(FieldElement_):
 
 		super(ThePromptSeparator.__wrapped__, psElem).__init__(
 				name="Prompt Separator", where=PINNED_TO_BOTTOM, 
-				owner=Receptive_Field,
+				owner=Receptive_Field(),
 				*args, **kwargs)
 			# NOTE: We always pin the prompt separator to the bottom of the 
 			# receptive field, except this will really end up being just above
@@ -697,7 +700,7 @@ class TheInputArea(FieldElement_):
 		
 		super(TheInputArea.__wrapped__, inputArea).__init__(
 			name="Input Area", where=PINNED_TO_BOTTOM, field=field,
-			owner=AI_Persona)
+			owner=personaEntity)
 			# NOTE: The input area must be pinned to the very bottom of the receptive
 			# field, so that the AI will perceive the prompt as what it's completing.
 
