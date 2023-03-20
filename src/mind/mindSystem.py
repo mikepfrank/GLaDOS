@@ -1097,6 +1097,16 @@ class MindThread(ThreadActor):
 			else:
 				break
 
+		# If we get here, then we got a response from our The_GPT3_API class.
+		# However, if the response was an empty string, we interpret this as no 
+		# response. This could just mean that there was a rate limit error.
+		# In any case, we generate a warning and abort further processing.
+
+		if response == "":	# Empty string.
+			_logger.warn("[Mind/Thread] GPT API returned an empty response; ignoring."
+			return
+
+		# If we get here, then we got a non-empty response. Note & process it.
 
 		_logger.debug("[Mind/Thread] Got GPT-3 response: [" + response + ']')
 		thread.noteResponse(response)	# Note time & response for later reference.
