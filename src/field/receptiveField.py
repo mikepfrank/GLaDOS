@@ -612,10 +612,10 @@ class TheAIFieldView(FieldView_):
 		if owner is None:
 			_logger.error(f"In theAIFieldView.elemMessage(): element owner is None.")
 
-		_logger.debug("In theAIFieldView.elemMessage():")
-		_logger.debug(f"\t\telement name = [{str(elemName)}],")
-		_logger.debug(f"\t\towner = [{str(owner)}],")
-		_logger.debug(f"\t\timage = [{str(image)}].")
+		#_logger.debug("In theAIFieldView.elemMessage():")
+		#_logger.debug(f"\t\telement name = [{str(elemName)}],")
+		#_logger.debug(f"\t\towner = [{str(owner)}],")
+		#_logger.debug(f"\t\timage = [{str(image)}].")
 
 		role = owner.chatRole	# Get the role (CHAT_ROLE_{SYSTEM,USER,AI}).
 		name = owner.chatName	# Get the name to be used for the owner entity in chat, if any.

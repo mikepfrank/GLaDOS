@@ -747,12 +747,12 @@ class TextEventElement(FieldElement_):
 
 		# Thread-safely increment class's sequence counter.
 		with teElem.lock:
-			seqno = teElem.seqNo
-			teElem.seqNo = seqno + 1
+			TextEventElement.seqNo = teElem.seqNo + 1
+				# Note here we have to explicitly access the class variable.
 
 		# General field element initialization.
 		super(TextEventElement, teElem).__init__(
-			name=f"Text Event #{seqno}", where=SLIDE_TO_BOTTOM, field=field,
+			name=f"Text Event #{teElem.seqNo}", where=SLIDE_TO_BOTTOM, field=field,
 			owner=event.creator)
 			# NOTE: We slide new text events to the bottom (above anchored elements),
 			# but then allow them to subsequently float upwards.
