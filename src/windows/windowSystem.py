@@ -283,7 +283,7 @@ class WindowImage:
 		tabbedWinView = tabify(winView, tab_width)
 			# Note this assumes the view will be displayed starting at column 0.
 		
-		return tabbedWinView + '\n'
+		return tabbedWinView #+ '\n'
 			# Add final newline because textbuffer doesn't by default.
 
 	def repaint(self):
