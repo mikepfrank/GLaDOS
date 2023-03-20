@@ -13,8 +13,8 @@
 from pprint 	import pprint	# Pretty-printer function.
 
 import appdefs
-appdefs.selectApp("glados-server")		# Tell appdefs module which application we are in.
-	# NOTE: Need to add a test app, really
+appdefs.selectApp('glados-test')
+	# Tell appdefs module which application we are in.
 
 from infrastructure.logmaster import configLogMaster
 configLogMaster(logdebug	= True,

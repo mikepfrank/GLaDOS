@@ -95,16 +95,38 @@
 #		|
 #		+-> External_Entity (abstract)
 
-from infrastructure.decorators import singleton, classproperty
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+from	os	import path
+
+from	infrastructure.decorators import singleton, classproperty
 	# This provides a @classproperty (getter) decorator.
 
-from auth.authority import (
-		theBaseAuthority,
-		theAIUserAuthority,
-		theHumanUserAuthority,
-		theOperatorAuthority,
-		theSystemAuthority,
-	)
+				#-------------------------------------------------------------
+				# The logmaster module defines our logging framework; we
+				# import specific definitions we need from it.	(This is a
+				# little cleaner stylistically than "from ... import *".)
+
+from infrastructure.logmaster	import getComponentLogger
+
+	# Go ahead and create or access the logger for this module.
+
+global _component, _logger	# Software component name, logger for component.
+
+_component = path.basename(path.dirname(__file__))	# Our package name.
+_logger = getComponentLogger(_component)			# Create the component logger.
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+from	gpt3.api 	import	CHAT_ROLE_SYSTEM, CHAT_ROLE_USER, CHAT_ROLE_AI
+
+from	auth.authority import (
+			theBaseAuthority,
+			theAIUserAuthority,
+			theHumanUserAuthority,
+			theOperatorAuthority,
+			theSystemAuthority,
+		)
 
 #=====================================================
 # Forward class declarations. (For use in type hints.)
@@ -138,6 +160,7 @@ class	The_AppSystem_Entity:			pass	#	- This is a subsystem of GLaDOS.
 class	Application_Entity_:		pass	# ABC for entities representing applications within GLaDOS.
 
 class	The_InfoApp_Entity:			pass	#	- This is a specific application within GLaDOS.
+class	The_ClockApp_Entity:		pass
 class	The_HelpApp_Entity:			pass
 class	The_GoalsApp_Entity:		pass
 class	The_SettingsApp_Entity:		pass
@@ -188,6 +211,8 @@ class Entity_:
 	_ENTITY_NAME = None		# Instances of an abstract class don't have names.
 	_ENTITY_ID = None		# No ID's either
 	_ENTITY_AUTHS = {theBaseAuthority}	# We only have the base authority by default.
+	_ENTITY_CHAT_ROLE = None	# No chat role by default.
+	_ENTITY_CHAT_NAME = None	# No chat name by default.
 
 		#|----------------------------------------------------------------------
 		#|	Entity_._isAbstract						 [private class data member]
@@ -242,9 +267,27 @@ class Entity_:
 	@property
 	def ID(thisEntity):
 		return thisEntity._id
+	
+	@property
+	def auths(thisEntity):
+		return thisEntity._auths
+	
+	@property
+	def chatRole(thisEntity):
+		return thisEntity._chatRole
+	
+	@property
+	def chatName(thisEntity):
+		return thisEntity._chatName
 
 	def __str__(thisEntity):
-		return thisEntity.ID	# Return the short ID string.
+
+		# Preferentially, use the entity's short ID.
+		if thisEntity.ID is not None:
+			return thisEntity.ID	# Return the short ID string.
+
+		# If we don't have a short ID, use the entity's name instead.
+		return thisEntity.name
 
 	#/--------------------------------------------------------------------------
 	#|	Private instance data members.					   [class documentation]
@@ -258,7 +301,7 @@ class Entity_:
 	#|
 	#\--------------------------------------------------------------------------
 	
-	def __init__(inst, name=None, eid=None, auths=None):
+	def __init__(inst, name=None, eid=None, auths=None, chatRole=None, chatName=None):
 
 		if name is None:
 			name = inst._ENTITY_NAME
@@ -273,10 +316,24 @@ class Entity_:
 		# (in case we're in a subclass that left it out).
 		auths.add(theBaseAuthority)
 
-			# Remember our name and ID & authority list.
-		inst._name = name
-		inst._id = eid
-		inst._auths = auths
+		if chatRole is None:
+			chatRole = inst._ENTITY_CHAT_ROLE
+
+		# Default chatName to the entity ID if not specified in argument or subclass.
+		if chatName is None:
+			if inst._ENTITY_CHAT_NAME is None:
+				chatName = eid
+			else:
+				chatName = inst._ENTITY_CHAT_NAME
+
+			# Remember our name and ID & authority list, etc.
+		inst._name		= name
+		inst._id		= eid
+		inst._auths		= auths
+		inst._chatRole	= chatRole
+		inst._chatName	= chatName
+
+		_logger.debug(f"Entity.__init__(): Created entity [{name}], ID [{eid}], chatRole [{chatRole}], chatName [{chatName}]")
 
 	# Move this closer to top of class
 	partOf = None
@@ -295,6 +352,9 @@ class System_Entity_(Entity_):
 	
 	_ENTITY_TYPE_NAME = "system"	
 	_ENTITY_AUTHS = {theSystemAuthority}
+
+	_ENTITY_CHAT_ROLE = CHAT_ROLE_SYSTEM
+	_ENTITY_CHAT_NAME = "System"
 	
 		#|----------------------------------------------------------------------
 		#|	.entityType									 [public class property]
@@ -310,8 +370,10 @@ class System_Entity_(Entity_):
 
 @singleton
 class The_GLaDOS_Entity(System_Entity_):
-	_isAbstract = False
-	_ENTITY_NAME = "GLaDOS System"
+	_isAbstract			= False
+	_ENTITY_NAME		= "GladOS System"
+	_ENTITY_ID			= "GladOS"
+	_ENTITY_CHAT_NAME	= "GladOS"
 
 class Subsystem_Entity(System_Entity_):
 
@@ -329,13 +391,18 @@ class Subsystem_Entity(System_Entity_):
 @singleton
 class The_SettingsFacility_Entity(Subsystem_Entity):
 	_isAbstract = False
+	
 	_ENTITY_NAME = "Settings Facility"
+	_ENTITY_CHAT_NAME = "Settings"
+
 	partOf = The_GLaDOS_Entity()
+
 
 @singleton
 class The_ConfigSystem_Entity(Subsystem_Entity):
 	_isAbstract = False
 	_ENTITY_NAME = "Configuration System"
+	_ENTITY_CHAT_NAME = "ConfigSys"
 	partOf = The_GLaDOS_Entity()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -367,6 +434,8 @@ class The_Supervisor_Entity(Subsystem_Entity):
 	_ENTITY_NAME	= "Supervisory Subsystem"
 	_ENTITY_ID		= "Supervisor"	# The ID is a short name used e.g. in prompts.
 
+	_ENTITY_CHAT_NAME = "Supervisor"	# The chat name is the name used in chat API.
+
 	partOf			= The_GLaDOS_Entity()	# This system is a subsytem of GLaDOS.
 
 #__/ End singleton subsystem entity class The_Supervisor_Entity.
@@ -374,22 +443,27 @@ class The_Supervisor_Entity(Subsystem_Entity):
 
 @singleton
 class The_CommandInterface_Entity(Subsystem_Entity):
-	_isAbstract = False
-	_ENTITY_NAME = "Command Interface"
-	_ENTITY_ID = "CmdIface"
-	partOf = The_GLaDOS_Entity()
+	_isAbstract 		= False
+	_ENTITY_NAME 		= "Command Interface"
+	_ENTITY_ID 			= "CmdIface"
+	_ENTITY_CHAT_NAME 	= "CmdIface"
+	partOf 				= The_GLaDOS_Entity()
 	
 @singleton
 class The_ProcessSystem_Entity(Subsystem_Entity):
-	_isAbstract = False
-	_ENTITY_NAME = "Process System"
-	partOf = The_GLaDOS_Entity()
+	_isAbstract 		= False
+	_ENTITY_NAME 		= "Process System"
+	_ENTITY_ID 			= "ProcessSys"
+	_ENTITY_CHAT_NAME 	= "ProcessSys"
+	partOf 				= The_GLaDOS_Entity()
 	
 @singleton
 class The_WindowSystem_Entity(Subsystem_Entity):
-	_isAbstract = False
-	_ENTITY_NAME = "Window System"
-	partOf = The_GLaDOS_Entity()
+	_isAbstract 		= False
+	_ENTITY_NAME 		= "Window System"
+	_ENTITY_ID 			= "WindowSys"
+	_ENTITY_CHAT_NAME 	= "WindowSys"
+	partOf 				= The_GLaDOS_Entity()
 	
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 @singleton
@@ -422,6 +496,8 @@ class The_AppSystem_Entity(Subsystem_Entity):
 	_ENTITY_NAME	= "Applications System"
 	_ENTITY_ID		= "AppSystem"	# The ID is a short name used e.g. in prompts.
 
+	_ENTITY_CHAT_NAME = "AppSystem"	# The chat name is the name used in chat API.
+
 	partOf			= The_GLaDOS_Entity()	# This system is a subsytem of GLaDOS.
 	
 #__/ End singleton subsystem entity class.
@@ -433,17 +509,58 @@ class Application_Entity_(Subsystem_Entity):
 
 	_isAbstract		= True
 
+	_ENTITY_TYPE_NAME = "application"
+
+	partOf			= The_AppSystem_Entity()	# Each application is a subsystem of the AppSystem.
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Entity singletons representing the various applications within GLaDOS.
+
+@singleton
+class The_InfoApp_Entity(Application_Entity_):
+
+	"""Entity singleton representing the Info app."""
+
+	_isAbstract			= False
+
+	_ENTITY_NAME		= "Info App"
+	_ENTITY_ID			= "InfoApp"
+	_ENTITY_CHAT_NAME 	= "InfoApp"
+
+@singleton
+class The_ClockApp_Entity(Application_Entity_):
+
+	"""Entity singleton representing the Clock app."""
+
+	_isAbstract			= False
+
+	_ENTITY_NAME		= "Clock App"
+	_ENTITY_ID			= "ClockApp"
+	_ENTITY_CHAT_NAME 	= "ClockApp"
+
+@singleton
+class The_HelpApp_Entity(Application_Entity_):
+
+	"""Entity singleton representing the Clock app."""
+
+	_isAbstract			= False
+
+	_ENTITY_NAME		= "Help App"
+	_ENTITY_ID			= "HelpApp"
+	_ENTITY_CHAT_NAME 	= "HelpApp"
+
 @singleton
 class The_GoalsApp_Entity(Application_Entity_):
 
 	"""Entity singleton representing the Goals app."""
 
-	_isAbstract		= False
+	_isAbstract			= False
 
-	_ENTITY_NAME	= "Goals App"
-	_ENTITY_ID		= "GoalsApp"
+	_ENTITY_NAME		= "Goals App"
+	_ENTITY_ID			= "GoalsApp"
+	_ENTITY_CHAT_NAME 	= "GoalsApp"
 
-	partOf			= The_GLaDOS_Entity()	# Each application is a subsystem of GLaDOS.
+	#partOf			= The_GLaDOS_Entity()	# Each application is a subsystem of GLaDOS.
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -453,6 +570,8 @@ class AI_Entity_(Entity_):
 	
 	_ENTITY_TYPE_NAME = "artificial intelligence"
 	_ENTITY_AUTHS = {theAIUserAuthority}
+
+	_ENTITY_CHAT_ROLE = CHAT_ROLE_AI
 	
 		#|----------------------------------------------------------------------
 		#|	.entityType									 [public class property]
@@ -534,6 +653,7 @@ class Cognitive_System(AI_Subsystem, Subsystem_Entity):
 
 	_ENTITY_NAME	= "Cognitive System"
 	_ENTITY_ID		= "MindSys"	# The ID is a short name used e.g. in prompts.
+	_ENTITY_CHAT_NAME = "MindSys"	# The chat name is the name used in chat API.
 	
 	# Note: The .partof attribute for this class is initialized on an
 	# instance-by-instance basis in the instance initializer method, below.
@@ -590,9 +710,14 @@ class Cognitive_Stream(AI_Subsystem):
 	
 	partOf = Cognitive_System
 
+@singleton
 class Receptive_Field(AI_Subsystem):
 	_isAbstract = False
-	_ENTITY_NAME = "Receptive Field"
+
+	_ENTITY_NAME		= "Receptive Field"
+	_ENTITY_ID			= "Field"
+	_ENTITY_CHAT_NAME	= "Field"
+
 	partOf = AI_System
 
 class Memory_System(AI_Subsystem):
@@ -602,7 +727,7 @@ class Memory_System(AI_Subsystem):
 
 class History_Buffer(AI_Subsystem):
 	_isAbstract = False
-	_ENTITY_NAME = "Memory System"
+	_ENTITY_NAME = "History Buffer"
 	partOf = AI_System
 
 #=====================================================================
@@ -649,6 +774,8 @@ class Human_Entity_(Entity_):
 
 	_ENTITY_TYPE_NAME = "human"
 	_ENTITY_AUTHS = {theHumanUserAuthority}
+
+	_ENTITY_CHAT_ROLE = CHAT_ROLE_USER
 	
 		#|----------------------------------------------------------------------
 		#|	.entityType									 [public class property]
@@ -662,8 +789,18 @@ class Human_Entity_(Entity_):
 		"""By default, just return Human_Entity_.  Subclasses can override this."""
 		return Human_Entity_
 	
+# Instead of hard-coding the ID of the Operator entity, we really
+# should get it from the config file.  But for now, we'll just
+# hard-code it here.  (Note that this is a singleton entity, so
+# it doesn't matter if we have multiple instances of the Operator
+# class, they will all refer to the same entity.)
+
+@singleton
 class Operator_Entity(Human_Entity_):
-	_isAbstract = False
-	_ENTITY_NAME = "System Operator"
-	_ENTITY_ID = "Mike" #"Operator"
-	_ENTITY_AUTHS = {theOperatorAuthority}
+	_isAbstract		= False
+	_ENTITY_NAME	= "System Operator"
+	_ENTITY_ID		= "Mike" #"Operator"
+	_ENTITY_AUTHS	= {theOperatorAuthority}
+
+	_ENTITY_CHAT_NAME = _ENTITY_ID
+		# We'll also use the ID as the chat name, for now.

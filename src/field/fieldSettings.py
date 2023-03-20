@@ -85,7 +85,7 @@ class TheFieldSettings:
 			#| Default maximum field size, in tokens. This is actually 
 			#| determined by the choice of underlying AI (NLP model). 
 	
-	_DEFAULT_MAX_SIZE		= 2048		# This is the actual maximum for GPT-3.
+	_DEFAULT_MAX_SIZE		= 8192		# This is the actual maximum for GPT-4 (small version).
 		
 			#------------------------------------------------------------------
 			# Default nominal displayed width of field elements, in characters.
@@ -134,6 +134,7 @@ class TheFieldSettings:
 	@classmethod
 	def config(theFieldSettingsClass:ClassVar):
 		theFieldSettingsClass.reconfigure()		# Just a synonym.
+		return theFieldSettingsClass
 
 	@classmethod
 	def reconfigure(theFieldSettingsClass:ClassVar):
@@ -209,10 +210,10 @@ class TheFieldSettings:
 			maxSize = theFieldSettingsClass._DEFAULT_MAX_SIZE
 			
 			# Update our class variable
-		fieldSettingsClass.maxSize = maxSize
+		theFieldSettingsClass.maxSize = maxSize
 
 	@classmethod
-	def updateNominalWidth(theFieldSettingsClass,
+	def updateNominalWidth(theFieldSettingsClass:ClassVar,
 			newWidth:int=None,
 		):
 
@@ -221,8 +222,27 @@ class TheFieldSettings:
 			newWidth = theFieldSettingsClass._DEFAULT_NOMINAL_WIDTH
 
 			# Update our class variable
-		fieldSettingsClass.nominalWidth = newWidth
+		theFieldSettingsClass.nominalWidth = newWidth
 		# We should probably do more stuff here to propagate this change throughout the system.
+
+	
+	#|============================================================
+	#| To reset all settings to their default values, we need to
+	#| define a method that will do this for us.
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	@classmethod
+	def resetToDefaults(theFieldSettingsClass:ClassVar):
+
+		"""This method resets all settings to their default values."""
+
+		tfsc = theFieldSettingsClass
+
+		# Reset the various settings to their default values.
+		tfsc.updateMaximumSize()
+		tfsc.updateNominalWidth()
+		# We should probably do more stuff here to propagate this change throughout the system.
+
+
 
 
 # Note the below settings module needs to get installed at the

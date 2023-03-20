@@ -1,6 +1,30 @@
 INSTALLATION NOTES.
 ===================
 
+Instructions to set up & run GladOS and/or the Telegram bot.
+
+
+Step 1. [Optional] - Create the Telegram bot for your AI persona.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This is done using the BotFather bot on Telegram.  The 
+command list can be found in ``src/telegram-bot.py`` 
+(search for ``COMMAND_LIST``).  Make a note of your bot's 
+token; it will be needed to run the bot server.
+
+
+Step 2. - Clone the git repo.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+0a. It's recommended to set up a new user account for the AI on your host.
+0b. Login as that user & configure git.
+0c. git clone git@github.com:mikepfrank/GLaDOS.git
+0d. cd GLaDOS; git checkout <branch>
+
+
+Step 3. - Install dependencies.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 The current Python version being used for development is 3.8.5.
 
 Note that GLaDOS requires the following optional Python packages
@@ -8,24 +32,129 @@ to have previously been installed:
 
 
     Used by gpt3.api module:
-    ~~~~~~~~~~~~~~~~~~~~~~~~
-        pip3 install openai             (I'm currently using vers. 0.27.0)
-        pip3 install backoff            (I'm currently using vers. 1.10.0)
-        pip3 install tiktoken           (I'm currently using vers. 0.2.0)
+    ------------------------
+        pip3 install openai             (I'm using vers. 0.27.0)
+        pip3 install backoff            (I'm using vers. 1.10.0)
+        pip3 install tiktoken           (I'm using vers. 0.2.0)
 
 
     Used by the config package:
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        pip3 install hjson              (I'm currently using vers. 3.0.2)
+    ---------------------------
+        pip3 install hjson              (I'm using vers. 3.0.2)
             (Needed to parse config files.)
 
 
     Used by the infrastructure.time module:
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        pip3 install python-dateutil    (I'm currently using vers. 2.8.2)
+    ---------------------------------------
+        pip3 install python-dateutil    (I'm using vers. 2.8.2)
             (Needed to get time zone abbreviations right.)
 
 
-ALSO NOTE: You have to install a GPT-2 directory tree (except model weights) to use the tokenizer; see instructions in src/tokenizer/README.md
-    ^-- Except we are in the process of migrating away from this to use tiktoken.
+ALSO NOTE: You will have to install a GPT-2 directory tree (except for 
+model weights) in order to use the tokenizer; see instructions in 
+src/tokenizer/README.md.  HOWEVER: On the newer branches of GLaDOS 
+(e.g. turbo, aria), the GPT-2 tokenizer is in the process of being 
+phased out in favor of the tiktoken library.
 
+
+Step 4. - Customize as desired.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+4a. [Optional] General GladOS customizations can be found in 
+    ``glados-config.json``, but you should not need to change these.
+
+4b. Primary AI persona customizations may be found in the file 
+    ``ai-data/ai-config.json``. In particular, see:
+
+    * mind-conf.{persona-name,persona-id,persona-user-account,model-version} -- Self-explanatory.
+    * field-conf.max-visible-tokens -- Usually you would just set this to match the model's context window size.
+    * telegram-conf.{bot-name,context} -- Configures the Telegram bot.
+
+4c. The ``ai-data/info.txt`` file customizes the contents of the 
+    Info window in GladOS.
+
+4d. [Optional.] Give the AI persona some initial goals in the 
+    ``ai-data/init-goals.hjson`` file; this initializes the 
+    Goals app in GladOS.
+
+4e. You may need to modify the following attributes in 
+    ``src/mindSettings.py``, class ``TheMindSettings``, for use in 
+    GladOS.  These are supposed to be overridden by values loaded 
+    from the config file on startup, but if the AI or operator ever 
+    reverts settings to "factory defaults", these are the values 
+    that will be used. (This feature isn't implemented yet, though.)
+
+    * _DEFAULT_PERSONA_NAME
+    * _DEFAULT_PERSONA_ID
+    * _DEFAULT_PERSONA_USERNAME
+    * _DEFAULT_MODEL_VERSION
+
+4f. In ``src/entities/entity.py`` class ``Operator_Entity``, update 
+    ``_ENTITY_ID`` to the name of the system operator.  (Eventually, 
+    this should probably come from an environment variable and/or
+    config file parameter instead.)
+    
+4g. In ``src/gpt3/api.py``, make sure the specific AI engine (LLM) 
+    you want to use is included in these dicts:
+
+    * _ENGINE_ATTRIBS
+    * inputToks - Note this and following are initialized automatically in newer branches.
+    * outputToks
+    * expenditures
+    
+
+Step 5. - Set up environment variables.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You should make sure that the following environment variables are 
+all defined in the AI's user environment:
+
+    * AI_NAME - This is usually the same as the username of the 
+        AI's user account on the server host machine.
+
+    * AI_DATADIR - Suggested value: ``/opt/AIs/${AI_NAME}``.
+        This will be where (most) run-time data will be kept.
+    
+    * TELEGRAM_TOKEN, TELEGRAM_BOT_TOKEN - Token for the AIs 
+        Telegram bot. (Set both of these.)
+    
+    * TZ - Preferred time zone string. E.g., 'America/Denver'.
+    
+    * OPENAI_API_KEY - Your access key to the OpenAI API.
+
+
+Step 6. - Install the AI's data files in its ops directory.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+From the AI's user account, in their GLaDOS directory, do:
+
+    $ make install-data
+
+(The point of doing this is so that you can switch around
+between development branches without necessarily affecting
+any currently-running AI server applications.)
+
+
+Step 7. - Test the connection to the OpenAI API.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+From the AI's user account, in their GLaDOS directory, do:
+
+	$ make run-test
+
+This should run a simple API test.
+
+
+Step 8. - Launch AI server programs.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You may want to do the following in separate terminal
+or tmux windows.
+
+5a. [Optional] Launch the experimental GladOS server app.
+
+    $ make run-glados
+    
+5b. [Optional] Launch your AI persona's Telegram bot.
+
+    $ make run-bot

@@ -1306,6 +1306,28 @@ class	TheAIPersonaConfig:
 		#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
+		if 'messages' in apiConf:
+			theAIConfig.messages = messages = apiConf['messages']
+			_logger.normal(f"    [Config/AI]     AI config:    messages = {messages}.")
+		else:	# No default value was provided in config file.
+			theAIConfig.messages = None
+				# No default value is being provided at AI configuration time.
+
+		if 'logit-bias' in apiConf:
+			theAIConfig.logitBias = logitBias = apiConf['logit-bias']
+			_logger.normal(f"    [Config/AI]     AI config:    logit-bias = {logitBias}.")
+		else:	# No default value was provided in config file.
+			theAIConfig.logitBias = None
+				# No default value is being provided at AI configuration time.
+
+		if 'user-id' in apiConf:
+			theAIConfig.userID = userID = apiConf['user-id']
+			_logger.normal(f"    [Config/AI]     AI config:    user-id = {userID}.")
+		else:	# No default value was provided in config file.
+			theAIConfig.userID = None
+				# No default value is being provided at AI configuration time.
+
+
 				#|======================================
 				#| Parse the telegram-conf substructure.
 				#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv

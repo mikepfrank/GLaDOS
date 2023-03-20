@@ -169,6 +169,7 @@ Thus, to avoid getting confused by import circularities, we try to eschew the "i
 
 Note that there are other possible approaches; for example, a.Aux could have been defined early in module a, before the import of b, and then b could import that name from a and be able to see it, at least, but this could create other forms of confusion.  (To me, it's confusing to have imports sprinkled throughout a module's code, instead of all being collected together at the top.)  However, for future reference, here's an example implementation of that approach:
 
+
 	Module a.py:
 	------------
 	
@@ -212,6 +213,7 @@ Note that there are other possible approaches; for example, a.Aux could have bee
 			def other(bo):
 				bo.aux = Aux()
 
+
 	Demonstration:
 	--------------
 	
@@ -229,10 +231,11 @@ Note that there are other possible approaches; for example, a.Aux could have bee
 		Creating Aux object.
 		>>>
 
+
 3. Layer-cake structure of GLaDOS modules, high to low.
 -------------------------------------------------------
 
-The following table will expand out to include every module within GLaDOS, organized into layers, from highest to lowest.  Again, modules at a given layer may only invoke "from <module> import <names>" for lower-level (deeper, higher-numbered) modules.  
+The following table will expand out to include every module within GLaDOS, organized into layers, from highest to lowest.  Again, modules at a given layer may only invoke "from <module> import <names>" for lower-level (deeper, higher-numbered) modules.  [NOTE: The below may go out of date as code changes occur; it should be updated periodically.]
 
 Lower-level modules *may* do "import <module>" on higher-level modules, *if* we keep in mind that names from the higher-level module aren't necessarily available yet, and can't be referenced in type hints or top-level function/method calls.
 
@@ -264,6 +267,7 @@ Lower-level modules *may* do "import <module>" on higher-level modules, *if* we 
 		Layer 11 (doesn't import anything above layer 10):
 		 (imported/constructed only by application system)
 		--------------------------------------------------
+
 			apps.appActions
 			apps.infoApp
 			apps.clockApp
@@ -273,6 +277,7 @@ Lower-level modules *may* do "import <module>" on higher-level modules, *if* we 
 		
 		Layer 10 (doesn't import anything above layer 9):
 		-------------------------------------------------
+
 			apps.application
 		
 		
@@ -373,7 +378,7 @@ Lower-level modules *may* do "import <module>" on higher-level modules, *if* we 
 			infrastructure.desque
 			infrastructure.flag
 			text.tabify
-			tokenizer.encoder	[from OpenAI]
+			tokenizer.encoder		[from OpenAI] <-- Now deprecated in GLaDOS.
 
 
 3. Layer span structure of GLaDOS packages.
@@ -381,43 +386,44 @@ Lower-level modules *may* do "import <module>" on higher-level modules, *if* we 
 
 The following diagram illustrates what levels of the GLaDOS layer-cake diagram are spanned by each of its packages.
 
-				[ #00 ]	[ #01 ]	[ #02 ]	[ #03 ]	[ #04 ]	[ #05 ]	[ #06 ]	[ #07 ]	[ #08 ]	[ #09 ]	[ #10 ]	[ #11 ]	[ #12 ]	[ #13 ]	[ #14 ]
-				=======	=======	=======	=======	=======	=======	=======	=======	=======	=======	=======	=======	=======	=======	=======	
 
-appdefs:		####### 
-
-auth:			####### ####### 			
-
-tokenizer:		####### #######
-
-infrastructure:	####### ####### ####### 		####### 
-
-events:			####### 								####### 
-
-display:		####### #######	#######	#######	#######	#######	#######	
-
-console:		#######													#######	#######	
-
-text:							####### 
-
-settings:						####### 
-
-helpsys:						####### 
-
-processes:						####### 
-
-field:							####### 		####### ####### 				####### 
-
-mind:									####### 				####### ####### 		####### 
-
-gpt3:											####### 
-
-supervisor:														####### 												####### 
-
-commands:																		####### 
-
-windows:																				####### 
-
-apps:																					####### ####### ####### ####### 
-
-glados-server:																													####### 
+			    |  #00  |  #01  |  #02  |  #03  |  #04  |  #05  |  #06  |  #07  |  #08  |  #09  |  #10  |  #11  |  #12  |  #13  |  #14  |
+			    |=======|=======|=======|=======|=======|=======|=======|=======|=======|=======|=======|=======|=======|=======|=======|
+appdefs:	    |#######|		|		|		|		|		|		|		|		|		|		|		|		|		|		|
+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+auth:		    |#######|#######|       |       |       |       |       |       |       |       |       |       |       |       |       |
+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+tokenizer:		|#######|#######|       |       |       |       |       |       |       |		|		|		|		|		|		|
+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+infrastructure:	|#######|#######|#######|		|#######|		|		|		|		|		|		|		|		|		|		|
+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+events:			|#######		|		|		|		|#######|		|		|		|		|		|		|		|		|		|
+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+display:		|#######|#######|#######|#######|#######|#######|#######|		|		|		|		|		|		|		|		|
+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+console:		|#######|		|		|		|		|		|		|#######|#######|		|		|		|		|		|		|
+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+text:			|		|		|#######|		|		|		|		|		|		|		|		|		|		|		|		|
+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+settings:		|		|		|#######|		|		|		|		|		|		|		|		|		|		|		|		|
+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+helpsys:		|		|		|#######|		|		|		|		|		|		|		|		|		|		|		|		|
+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+processes:		|		|		|#######|		|		|		|		|		|		|		|		|		|		|		|		|
+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+field:			|		|		|#######|		|#######|#######|		|		|#######|		|		|		|		|		|		|
+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+mind:			|		|		|		|#######|		|		|#######|#######|		|#######|		|		|		|		|		|
+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+gpt3:			|		|		|		|		|#######|		|		|		|		|		|		|		|		|		|		|
+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+supervisor:		|		|		|		|		|		|		|#######|		|		|		|		|		|		|#######|		|
+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+commands:		|		|		|		|		|		|		|		|		|#######|		|		|		|		|		|		|
+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+windows:		|		|		|		|		|		|		|		|		|		|#######|		|		|		|		|		|
+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+apps:			|		|		|		|		|		|		|		|		|		|#######|#######|#######|#######|		|		|
+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+glados-server.py|		|		|		|		|		|		|		|		|		|		|		|		|		|		|#######|
+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
