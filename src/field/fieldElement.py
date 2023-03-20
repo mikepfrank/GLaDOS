@@ -604,7 +604,7 @@ class TheFieldHeader(FieldElement_):
 	titlePos = int((headerWidth - len(fieldTitle))/2)
 	
 		# Construct the full text string for the header bar.
-	headerStr = overwrite('/' + bgChar*(headerWidth-2) + '\\', titlePos, fieldTitle) + '\n\n'
+	headerStr = overwrite('/' + bgChar*(headerWidth-2) + '\\', titlePos, fieldTitle) # + '\n\n' 
 			# Note we add an extra newline at the end to give some vertical whitespace.
 
 	def __init__(newHeaderElem:TheFieldHeader, *args, **kwargs):
@@ -650,7 +650,7 @@ class ThePromptSeparator(FieldElement_):
 	instrPos = int((sepBarWidth - len(sepInstrs))/2)
 	
 		# Construct the full text string for the topper row.
-	sepBarStr = overwrite(bgChar*(sepBarWidth), instrPos, sepInstrs) + '\n'
+	sepBarStr = overwrite(bgChar*(sepBarWidth), instrPos, sepInstrs) # + '\n'
 	
 	def __init__(psElem:ThePromptSeparator, *args, **kwargs):
 			# Mostly handled by FieldElement_ superclass, except that we specify
@@ -772,7 +772,7 @@ class TextEventElement(FieldElement_):
 		teElem = thisTextEventElement
 		event = teElem.textEvent
 
-		return teElem._textEvent.display() + '\n'
+		return teElem._textEvent.display() #+ '\n'
 
 
 class WindowElement(FieldElement_):
@@ -807,7 +807,7 @@ class WindowElement(FieldElement_):
 			# image.view() method now tabifies the view; this is done
 			# in hopes of reducing its length in tokens.
 
-		viewTxt = win.view() + '\n'
+		viewTxt = win.view() #+ '\n'
 			# This asks the window to give us a view of its present
 			# image as a text string.  We append a newline to it to
 			# add a blank line after the window.

@@ -52,7 +52,8 @@ from infrastructure.decorators import singleton
 from entities.entity import System_Entity_
 
 from events.event import (
-		BriefEventFormat,
+		PlainEventFormat,
+		#BriefEventFormat,
 		#SecondEventFormat,
 		#DateEventFormat,
 		TextEvent
@@ -70,8 +71,9 @@ class TheCognitiveStream:
 		of events."""
 
 	#defaultEventFormat = SecondEventFormat		# Gladys finds this distracting.
-	defaultEventFormat = BriefEventFormat
+	#defaultEventFormat = BriefEventFormat
 		# Default format for new events.
+	defaultEventFormat = PlainEventFormat		# Use this one with GPT chat API.
 
 	def __init__(newCogStream:TheCognitiveStream, cogSys:TheCognitiveSystem):
 

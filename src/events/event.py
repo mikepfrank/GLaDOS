@@ -176,6 +176,10 @@ class TextEvent:
 		else:
 			inst.creationTime	= when
 		
+		# Strip at most one newline off the end of the text.
+		if len(text)>=1 and text[-1]=='\n':
+			text = text[:-1]
+
 		inst.creator		= author
 		inst.text			= text
 		inst.defaultFormat	= defaultFormat
