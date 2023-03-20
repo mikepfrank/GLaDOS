@@ -32,3 +32,7 @@ install-data:
 # Update the models.json file.
 update-models:
 	$(shell curl https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY" > models.json)
+
+# Clean up the API stats.
+clean-stats:
+	rm $(AI_DATADIR)/api-stats.*
