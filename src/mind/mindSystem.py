@@ -583,7 +583,11 @@ class MindThread(ThreadActor):
 	
 	_DEFAULT_POLLING_INTERVAL = 1	# One second between checks.
 
-	_DEFAULT_MIN_ACTION_INTERVAL = 60	# 60 minutes = 1 hours
+	_DEFAULT_MIN_ACTION_INTERVAL = 1	# Once per 1 minute = 60 seconds.
+		# For Turbo, $0.002/1Ktok * (4 Ktok/query) * (1 query/1 min)
+		#	* (60 min/hr) * (16 hr/day) * (30 day/mo) = $230.40.
+
+	#_DEFAULT_MIN_ACTION_INTERVAL = 60	# 60 minutes = 1 hours
 		# To limit costs, by default we only do 1 davinci query
 		# per hour, which is about $4 worth over a 16-hour day.
 		# (Assuming each one is a full 2,048-token query & reply.)
