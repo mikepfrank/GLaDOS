@@ -2924,7 +2924,7 @@ class GPT3ChatCore(GPT3Core):
 	def genMessage(self:GPT3ChatCore, messages=None):
 		"""Generate a new message based on the current messages."""
 
-		_logger.debug(f"In GPT3ChatCore.genMessage() with {len(messages)} messages...")
+		#_logger.debug(f"In GPT3ChatCore.genMessage() with {len(messages)} messages...")
 
 		resultCompletion = self.genChatCompletion(messages=messages)
 
