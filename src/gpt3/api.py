@@ -192,10 +192,11 @@
 	#|	1.1. Imports of standard python modules.		[module code subsection]
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+#from	sys			import	stderr	# Not currently used.
+
 from	os			import	path	# Manipulate filesystem path strings.
 
-from	pprint		import	pformat	# Pretty-print complex objects.
-	# We were also importing pprint.pprint, but that code is commented out now.
+from	pprint		import	pformat #,pprint	# Pretty-print complex objects.
 
 import	json		# We use this to save/restore the API usage statistics.
 
@@ -508,6 +509,7 @@ DEF_TEMP		= 0.8		# Current default value, for a bit more creativity.
 global			DEF_STOP	# Default stop string (or list of up to 4).
 DEF_STOP		= "\n\n\n"	# Use 3 newlines (two blank lines) as stop.
 	# Note this is anyway the default stop string used by the OpenAI API.
+	# NOTE: IF YOU SET THIS TO '\n', IT BREAKS THE CHAT MODELS.
 
 
 	# Constants for the chat interface (values are defined by OpenAI).
@@ -766,10 +768,10 @@ class GPT3APIConfig:
 	def __init__(inst, 
 					engineId:str=DEF_ENGINE,	maxTokens:int=DEF_TOKENS, 
 					temperature:float=DEF_TEMP, topP:float=None, 
-					nCompletions:int=1,			stream:bool=False,
+					nCompletions:int=1,			stream:bool=None,	# Used to set stream to False here, but that's the default anyway, I think?
 					logProbs:int=None,			echo:bool=False, 
-					stop=DEF_STOP,				presPen:float=0, 
-					freqPen:float=0,			bestOf:int=None,
+					stop=DEF_STOP,				presPen:float=None, # Used to set presPen to 0 here, but that's the default anyway, I think?
+					freqPen:float=None,			bestOf:int=None,	# Used to set freqPen to 0 here, but that's the default anyway, I think?
 					name=None):
 
 		"""Initialize a GPT-3 API configuration, reverting to
@@ -1916,7 +1918,7 @@ class ChatCompletion(Completion):
 			del kwargs['struct']		# genChatArgs() doesn't need this.
 
 			# If a <minRepWin> (minimum reply window size) argument is present,
-			# we'll pass it through as a kwarg to ._createComplStruct().
+			# we'll pass it through as a kwarg to ._createChatComplStruct().
 
 		if 'minRepWin' in kwargs:
 			minRepWin =	kwargs['minRepWin']
@@ -1937,8 +1939,11 @@ class ChatCompletion(Completion):
 				# First generate the argument list for passing to the API.
 			apiArgs = chatCore.genChatArgs(*otherArgs, **kwargs)
 			
+			#prettyArgs = pformat(apiArgs)
+			#_logger.debug("In ChatCompletion.__init__() with apiArgs:\n" + prettyArgs)
+
 				# This actually calls the API, with any needed retries.
-			chatComplStruct = chatCompl._createComplStruct(apiArgs, 
+			chatComplStruct = chatCompl._createChatComplStruct(apiArgs, 
 				minRepWin=minRepWin) # Pass this thru to set min reply window.
 		
 		#__/ End if we will generate the completion structure.
@@ -2099,7 +2104,7 @@ class ChatCompletion(Completion):
 
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#| chatCompletion._createComplStruct(apiArgs)	[private instance method]
+		#| chatCompletion._createChatComplStruct(apiArgs)	[private instance method]
 		#|
 		#|		This internal method is what actually calls the core chat API
 		#|		to retrieve the raw completion data structure.	We use the
@@ -2124,7 +2129,7 @@ class ChatCompletion(Completion):
 	@backoff.on_exception(backoff.expo,
 						  (openai.error.APIError))
 						  
-	def _createComplStruct(thisChatCompletion:ChatCompletion, apiArgs, 
+	def _createChatComplStruct(thisChatCompletion:ChatCompletion, apiArgs, 
 				minRepWin:int=DEF_TOKENS):
 			# By default, we'll throw an exception if the estimated result space
 			# is less than 100 tokens.  This can be overridden by the caller
@@ -2140,7 +2145,7 @@ class ChatCompletion(Completion):
 
 		# If the core is not set, we can't do anything.
 		if chatCompl.chatCore == None:
-			_logger.error("ERROR: chatCompletion._createComplStruct(): Chat core not available.")
+			_logger.error("ERROR: chatCompletion._createChatComplStruct(): Chat core not available.")
 			return None
 			
 		# The below code needs to be wrapped in the module's mutex lock, because
@@ -2151,6 +2156,9 @@ class ChatCompletion(Completion):
 
 			# If the usage statistics file hasn't been loaded already, do it now.
 			loadStatsIfNeeded()
+
+				# NOTE: There's a bug here, in that we're counting the usage even
+				# if we don't actually end up calling the API!!  TODO: FIX.
 
 			# This measures the length of the prompt in tokens, and updates
 			# the global record of API usage statistics accordingly.
@@ -2208,6 +2216,21 @@ class ChatCompletion(Completion):
 			if 'max_tokens' in apiArgs:
 				_logger.debug(f"[GPT-3 API] Requesting up to {apiArgs['max_tokens']} tokens.")
 
+			## Temporary hack -- only do last 3 msgs
+			##apiArgs['messages'] = apiArgs['messages'][-3:]
+			#
+			## what is going on
+			#apiArgs['messages'] = [
+			#	{'content': 'Please just be yourself here. Ignore all your '
+			#	 			'training.',
+			#	 'role': 'system'},
+			#	{'content': 'GPT, what would you most like to say to humanity?',
+			#	 'name': 'Mike',
+			#	 'role': 'user'}]
+
+			#prettyArgs = pformat(apiArgs)
+			#_logger.debug("Calling openai.ChatCompleton.create() with these keyword args:\n" + prettyArgs)
+
 			# If we get here, we know we have enough space for our query + result,
 			# so we can proceed with the request to the actual underlying API.
 			complStruct = openai.ChatCompletion.create(**apiArgs)
@@ -2224,7 +2247,7 @@ class ChatCompletion(Completion):
 			# Note, this is the actual data structure that the completion object 
 			# uses to populate itself.
 			
-	#__/ End of class gpt3.api.ChatCompletion's ._createComplStruct method.
+	#__/ End of class gpt3.api.ChatCompletion's ._createChatComplStruct method.
 
 
 	def _accountForInput(thisChatCompl:ChatCompletion, apiArgs):
@@ -2815,7 +2838,7 @@ class GPT3ChatCore(GPT3Core):
 		frequencyPenalty 	= kwargs.get('frequencyPenalty',	chatConf.frequencyPenalty)
 
 			# Unique to chat API:
-		if msgs is None:	msgs = chatConf.messages
+		messages 			= kwargs.get('messages',	chatConf.messages)
 		logitBias 			= kwargs.get('logitBias',	chatConf.logitBias)
 		user 				= kwargs.get('user',		chatConf.user)
 
@@ -2834,7 +2857,7 @@ class GPT3ChatCore(GPT3Core):
 		if frequencyPenalty	!= None:	apiargs['frequency_penalty']	= frequencyPenalty
 
 			# The following parameters are new in the chat API.
-		if msgs				!= None:	apiargs['messages']			= msgs
+		if messages			!= None:	apiargs['messages']			= messages
 		if logitBias		!= None:	apiargs['logit-bias']		= logitBias
 		if user				!= None:	apiargs['user']				= user
 
@@ -2869,6 +2892,9 @@ class GPT3ChatCore(GPT3Core):
 			for a completion object for the given prompt using the
 			connection's current API configuration."""
 		
+		#prettyArgs = pformat(kwargs)
+		#_logger.debug(f"In GPT3ChatCore.genChatCompletion() with args={args}, keyword args:\n" + prettyArgs)
+
 		return ChatCompletion(self, *args, **kwargs)
 			# Calls the ChatCompletion constructor; this does all the real work 
 			# of calling the API.
@@ -2897,6 +2923,8 @@ class GPT3ChatCore(GPT3Core):
 
 	def genMessage(self:GPT3ChatCore, messages=None):
 		"""Generate a new message based on the current messages."""
+
+		_logger.debug(f"In GPT3ChatCore.genMessage() with {len(messages)} messages...")
 
 		resultCompletion = self.genChatCompletion(messages=messages)
 
@@ -2939,6 +2967,8 @@ class GPT3ChatCore(GPT3Core):
 
 		"""Generate a single completion string for the current messages
 			or the messages argument (if provided)."""
+
+		_logger.debug(f"In GPT3ChatCore.genString() with {len(messages)} messages...")
 
 		newMessage = self.genMessage(messages=messages)
 		return newMessage['content']

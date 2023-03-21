@@ -134,6 +134,8 @@ from	threading	import	RLock
 from	time		import	sleep, time
 from	os			import	path
 
+#from	pprint		import	pprint, pformat
+
 		#|======================================================================
 		#|	1.2. Imports of external python modules.	[module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -719,7 +721,7 @@ class MindThread(ThreadActor):
 
 
 	@property
-	def gpt3(thisMindThread:MindThread):
+	def gptAPI(thisMindThread:MindThread):
 		return thisMindThread._gpt3			# The_GPT3_API object.
 
 	@property
@@ -1048,12 +1050,9 @@ class MindThread(ThreadActor):
 		field = mind.field			# Our receptive field.
 		view = field.view			# Our view of the field.
 		
-		gpt3 = thread.gpt3			# Our Big Daddy AI in the cloud.
+		gptAPI = thread.gptAPI		# Our Big Daddy AI in the cloud.
 
 		text = view.text	# Gets one big text string with all the field data.
-
-		_logger.debug("[Mind/Thread] Asking GPT-3 to respond to prompt\n" + text)
-			# Should we display this debug message differently for chat engines?
 
 			# This asks GPT-3 to generate a response to the field text,
 			# using the current API parameters.  If our API wrapper
@@ -1067,18 +1066,26 @@ class MindThread(ThreadActor):
 				# What we do here depends on whether we're using a text engine 
 				# or a chat engine.
 
-				if gpt3.isChat:	# Chat engine.
+				if gptAPI.isChat:	# Chat engine.
 
 					messages = view.messages()
 						# Gets the contents of our view of the field,
 						# represented as a list of messages.
 
-					response = gpt3.genResponse(messages=messages).lstrip().rstrip()
+					# Temporary hack for debugging -- truncate down to last 3 messages
+					#messages = messages[-3:]
+
+					#prettyMsgs = pformat(messages)
+					#_logger.debug("[Mind/Thread] Asking GPT chat API to respond to messages:\n" + prettyMsgs)
+
+					response = gptAPI.genResponse(messages=messages).lstrip().rstrip()
 						# Added the lstrip()/rstrip() because extra spaces mess up command parsing.
 
 				else:	# Text engine.
 
-					response = gpt3.genResponse(text).lstrip().rstrip()
+					_logger.debug("[Mind/Thread] Asking GPT text API to respond to prompt:\n" + text)
+
+					response = gptAPI.genResponse(text).lstrip().rstrip()
 						# Added the lstrip()/rstrip() because extra spaces mess up command parsing.
 
 

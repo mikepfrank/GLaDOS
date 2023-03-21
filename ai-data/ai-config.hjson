@@ -273,8 +273,10 @@
 				where we may want the AI to be able to compose large,
 				multi-paragraph blocks of text all at once. */
 
-		stop-sequences:			'\n'	# Just get one line at a time.
-		#stop-sequences:		'\n\n'	# This waits for a blank line.
+		#stop-sequences:			'\n'	# Just get one line at a time.
+		#  NOTE: A SINGLE NEWLINE BREAKS THE CHAT MODELS FOR SOME FRICKIN REASON!!!
+
+		stop-sequences:		'\n\n'	# This waits for a blank line.
 
 
 			/*------------------------------------------------------------------
