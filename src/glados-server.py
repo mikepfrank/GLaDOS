@@ -185,12 +185,12 @@ global CONS_DEBUG, LOG_DEBUG	# These control debug-level output to console & log
 CONS_DEBUG = False	# Tell logmaster: Don't diplay debug-level output on console.
 #CONS_DEBUG = True	# Tell logmaster: Do diplay debug-level output on console.
 
-LOG_DEBUG = True	# Tell logmaster: Do save debug-level output to log file.
-#LOG_DEBUG = False	# Tell logmaster: Don't save debug-level output to log file.
+#LOG_DEBUG = True	# Tell logmaster: Do save debug-level output to log file.
+LOG_DEBUG = False	# Tell logmaster: Don't save debug-level output to log file.
 
 global CONS_INFO	# This controls info-level output to console.
-#CONS_INFO = False	# Tell logmaster: Don't diplay info-level output on console.
-CONS_INFO = True	# Tell logmaster: Do diplay info-level output on console.
+CONS_INFO = False	# Tell logmaster: Don't diplay info-level output on console.
+#CONS_INFO = True	# Tell logmaster: Do diplay info-level output on console.
 
 
 	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
