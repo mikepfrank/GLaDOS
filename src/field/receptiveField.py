@@ -80,10 +80,12 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 from	gpt3.api				import	(
-						ChatMessages,	# Class: Encapsulates a list of chat messages.
-						isChatEngine,	# Function: Is the specified model a chat engine?
-						messageRepr,	# Function: Gets back-end representation of a message.
-						tiktokenCount, 	# Function: Count the number of tokens in a string.
+
+						#CHAT_ROLE_SYSTEM,	# 'system' role in chat API
+						ChatMessages,		# Class: Encapsulates a list of chat messages.
+						isChatEngine,		# Function: Is the specified model a chat engine?
+						messageRepr,		# Function: Gets back-end representation of a message.
+						tiktokenCount, 		# Function: Count the number of tokens in a string.
 					)
 
 from	events.event			import	TextEvent
@@ -624,8 +626,12 @@ class TheAIFieldView(FieldView_):
 			'role': 	role,
 			'content':	image
 		}
+
 		if name is not None:	# If there's a name...
 			message['name'] = name	# ...add it to the message.
+
+		#if name is not None and role is not CHAT_ROLE_SYSTEM:	# If there's a name...
+			# ^ At one point I thought giving 'system' a name was causing problems.
 
 		return message
 

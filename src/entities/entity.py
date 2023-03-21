@@ -572,6 +572,8 @@ class AI_Entity_(Entity_):
 	_ENTITY_AUTHS = {theAIUserAuthority}
 
 	_ENTITY_CHAT_ROLE = CHAT_ROLE_AI
+	#_ENTITY_CHAT_ROLE = CHAT_ROLE_USER
+		# Tried this temporarily while debugging.
 	
 		#|----------------------------------------------------------------------
 		#|	.entityType									 [public class property]
@@ -587,7 +589,9 @@ class AI_Entity_(Entity_):
 
 class AI_Persona(AI_Entity_):
 	_isAbstract = False
+
 	_ENTITY_TYPE_NAME = "The AI's persona"
+
 	@classproperty
 	def entityType(dynClass):
 		return AI_Persona
@@ -614,9 +618,14 @@ class AI_System(AI_Entity_):
 
 
 class AI_Subsystem(AI_Entity_):
+
 	"""An entity that is a subsystem of an AI system."""
+
 	_isAbstract = False
 	_ENTITY_TYPE_NAME = "subsystem of an AI"
+
+	#_ENTITY_CHAT_ROLE = CHAT_ROLE_SYSTEM
+		# Tried this temporarily while debugging.
 
 	@classproperty
 	def entityType(dynamicClass):
