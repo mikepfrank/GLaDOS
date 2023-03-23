@@ -1792,12 +1792,12 @@ class ChatMessages:
 #|			including the prompt.
 #|
 #|
-#|		promptLen = compl.promptLen		   	   	   [read-only instance property]
+#|		promptLen = chatCompl.promptLen		   	   [read-only instance property]
 #|
 #|			Returns the length of the prompt in tokens.
 #|		
 #|
-#|		complLen = compl.resultLen	   	   	   	   [read-only instance property]
+#|		complLen = chatCompl.resultLen	   	   	   [read-only instance property]
 #|
 #|			Returns the length of the result message content text
 #|			(i.e., not including the prompt) in tokens.
@@ -3434,9 +3434,9 @@ def _msg_repr(msg:dict) -> str:
 		"""
 	
 	# If the message has a 'name' field, then this overrides the
-	# more generic 'role' field.
+	# more generic 'role' field. NOTE: For GPT-4, we think it's added!
 	if 'name' in msg:
-		role = msg['name']
+		role = msg['role'] + ':' + msg['name']
 	else:
 		role = msg['role']
 
