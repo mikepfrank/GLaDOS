@@ -1101,7 +1101,7 @@ class MindThread(ThreadActor):
 
 				field.shrink(e.byHowMuch)
 
-				text = field.view.text()
+				text = field.view.text
 
 				continue	# Try again.
 
