@@ -320,7 +320,8 @@ class Entity_:
 			chatRole = inst._ENTITY_CHAT_ROLE
 
 		# Default chatName to the entity ID if not specified in argument or subclass.
-		if chatName is None:
+		# Except for system role.
+		if chatName is None and chatRole is not CHAT_ROLE_SYSTEM:
 			if inst._ENTITY_CHAT_NAME is None:
 				chatName = eid
 			else:
@@ -354,7 +355,7 @@ class System_Entity_(Entity_):
 	_ENTITY_AUTHS = {theSystemAuthority}
 
 	_ENTITY_CHAT_ROLE = CHAT_ROLE_SYSTEM
-	_ENTITY_CHAT_NAME = "System"
+	#_ENTITY_CHAT_NAME = "System"			# No name by default.
 	
 		#|----------------------------------------------------------------------
 		#|	.entityType									 [public class property]
@@ -373,7 +374,7 @@ class The_GLaDOS_Entity(System_Entity_):
 	_isAbstract			= False
 	_ENTITY_NAME		= "GladOS System"
 	_ENTITY_ID			= "GladOS"
-	_ENTITY_CHAT_NAME	= "GladOS"
+	#_ENTITY_CHAT_NAME	= "GladOS"	# Let's just call it 'system'
 
 class Subsystem_Entity(System_Entity_):
 
@@ -804,7 +805,7 @@ class Human_Entity_(Entity_):
 # it doesn't matter if we have multiple instances of the Operator
 # class, they will all refer to the same entity.)
 
-@singleton
+#@singleton
 class Operator_Entity(Human_Entity_):
 	_isAbstract		= False
 	_ENTITY_NAME	= "System Operator"
