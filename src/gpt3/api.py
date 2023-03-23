@@ -507,7 +507,8 @@ global			DEF_TEMP	# Default temperature value.
 DEF_TEMP		= 0.8		# Current default value, for a bit more creativity.
 
 global			DEF_STOP	# Default stop string (or list of up to 4).
-DEF_STOP		= "\n\n\n"	# Use 3 newlines (two blank lines) as stop.
+DEF_STOP		= None		# Let's try no stop.
+#DEF_STOP		= "\n\n\n"	# Use 3 newlines (two blank lines) as stop.
 	# Note this is anyway the default stop string used by the OpenAI API.
 	# NOTE: IF YOU SET THIS TO '\n', IT BREAKS THE CHAT MODELS.
 
@@ -1272,7 +1273,7 @@ class Completion:
 			
 				# This actually calls the API, with any needed retries.
 			complStruct = inst._createComplStruct(apiArgs)
-		
+
 		#__/ End if we will generate the completion structure.
 		
 		inst.complStruct = complStruct		# Remember the completion structure.
@@ -1950,13 +1951,48 @@ class ChatCompletion(Completion):
 		
 		chatCompl.chatComplStruct = chatComplStruct		# Remember the completion structure.
 	
+		chatCompl._gotMsg = False	# For a stream, haven't yet gathered the whole message.
+		chatCompl._msg = None
+
 	#__/ End of class gpt3.api.ChatCompletion's instance initializer.
+
+
+	def _msgFromGen(thisChatCompletion:ChatCompletion):
+
+		tcc = thisChatCompletion
+		if not tcc._gotMsg:
+			
+			role = None
+			response = ""
+			
+			for chunk in tcc.complStruct:
+				delta = chunk['choices'][0]['delta']
+				if 'role' in delta:
+					role = delta['role']
+					_logger.debug("Got role: {role}")
+				if 'content' in delta:
+					chunkText = delta['content']
+					_logger.debug("Got text chunk: {chunkText}")
+					response += chunkText
+
+			msg = {
+				'role': role,
+				'content': response
+			}
+
+			tcc._gotMsg = True
+			tcc._msg = msg
+		
+		return tcc._msg
 
 
 	@property
 	def message(thisChatCompletion:ChatCompletion):
 
 		"""Returns the result message dict of this chat completion."""
+
+		#msg = thisChatCompletion._msgFromGen()
+		#return msg
 
 		return thisChatCompletion.chatComplStruct \
 				['choices'][0]['message']

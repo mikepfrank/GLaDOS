@@ -147,6 +147,8 @@ from os			import	getenv, path		# Access environment variables, build paths.
 from hjson		import	load, OrderedDict 	# For loading data from .hjson files.
 from pprint		import	pformat			  	# For pretty-printing structures for diagnostics.
 
+#from curses		import	ascii
+
 		#|======================================================================
 		#|	1.2. Imports of custom application modules. [module code subsection]
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -1245,6 +1247,8 @@ class	TheAIPersonaConfig:
 			# so we use repr() instead of str().
 			_logger.normal(f"    [Config/AI]     AI config:    stop-sequences = {repr(stopSeqs)}.")
 		else:	# No default value was provided in config file.
+			#theAIConfig.stopSequences = chr(ascii.ETX)+'\n'
+			#theAIConfig.stopSequences = '\n' + chr(ascii.RS)
 			theAIConfig.stopSequences = None
 				# No default value is being provided at AI configuration time.
 

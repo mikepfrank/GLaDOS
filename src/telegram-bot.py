@@ -95,6 +95,8 @@ import	os
 import	regex as re		
 	# We use the regex library for unescaping saved conversation data.
 
+import json
+
 from curses import ascii
 	# The only thing we use from this is ascii.RS (record separator character)
 
@@ -1658,6 +1660,10 @@ def process_chat_message(update, context):
 				#	roleOrName = chat_message['name']
 				#
 				#f.write(f"{roleOrName}: {chat_message['content']}\n")  # Write the message to the file.
+
+		# Also do a json dump
+		with open(f"{LOG_DIR}/latest-messages.json", "w") as outfile:
+			json.dump(chat_messages, outfile)
 
 		# Now we'll try actually calling the API.
 		try:
