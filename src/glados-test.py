@@ -23,7 +23,8 @@ configLogMaster(logdebug	= True,
 
 from gpt3.api	import *		# Import all public symbols from API module.
 
-gptCore = createCoreConnection(engineId='gpt-3.5-turbo')
+#gptCore = createCoreConnection(engineId='gpt-3.5-turbo')
+gptCore = createCoreConnection(engineId='gpt-4')
 	# This automatically creates a connection suitable for the chat models.
 
 #gpt3 = GPT3Core()

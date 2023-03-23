@@ -2228,8 +2228,8 @@ class ChatCompletion(Completion):
 			#	 'name': 'Mike',
 			#	 'role': 'user'}]
 
-			#prettyArgs = pformat(apiArgs)
-			#_logger.debug("Calling openai.ChatCompleton.create() with these keyword args:\n" + prettyArgs)
+			prettyArgs = pformat(apiArgs)
+			_logger.debug("Calling openai.ChatCompleton.create() with these keyword args:\n" + prettyArgs)
 
 			# If we get here, we know we have enough space for our query + result,
 			# so we can proceed with the request to the actual underlying API.
@@ -2852,13 +2852,15 @@ class GPT3ChatCore(GPT3Core):
 		if topP				!= None:	apiargs['top_p']				= topP
 		if nCompletions		!= None:	apiargs['n']					= nCompletions
 		if stream			!= None:	apiargs['stream']				= stream
+		#apiargs['stop'] = chr(ETX)
 		if stop				!= None:	apiargs['stop']					= stop
+			# Don't set stop at all for chat models. It breaks things.
 		if presencePenalty	!= None:	apiargs['presence_penalty']		= presencePenalty
 		if frequencyPenalty	!= None:	apiargs['frequency_penalty']	= frequencyPenalty
 
 			# The following parameters are new in the chat API.
 		if messages			!= None:	apiargs['messages']			= messages
-		if logitBias		!= None:	apiargs['logit-bias']		= logitBias
+		if logitBias		!= None:	apiargs['logit_bias']		= logitBias
 		if user				!= None:	apiargs['user']				= user
 
 			# Make sure we don't set both temperature and top_p.		
