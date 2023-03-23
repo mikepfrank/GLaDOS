@@ -475,7 +475,11 @@ class Message:
 		# First, we'll replace all backslashes with '\\'.
 		# Then, we'll replace all newlines with '\n'.
 
-		escaped_text = self.text.replace('\\', '\\\\').replace('\n', '\\n')
+		text = self.text
+		if text is None:	# Null text? (Shouldn't happen, but...)
+			text = ""		# Message is empty string.
+
+		escaped_text = text.replace('\\', '\\\\').replace('\n', '\\n')
 
 		# Now, we'll return the serialized representation of the message.
 		return f"{self.sender}> {escaped_text}\n"
