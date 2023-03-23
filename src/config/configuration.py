@@ -1192,7 +1192,7 @@ class	TheAIPersonaConfig:
 
 		if 'max-returned-tokens' in apiConf:
 			theAIConfig.maxReturnedTokens = maxRetTok = apiConf['max-returned-tokens']
-			_logger.normal(f"    [Config/AI]     AI config:    max-returned-token = {maxRetTok}.")
+			_logger.normal(f"    [Config/AI]     AI config:    max-returned-tokens = {maxRetTok}.")
 		else:
 			theAIConfig.maxReturnedTokens = None
 				# No default value is being provided at AI configuration time.
