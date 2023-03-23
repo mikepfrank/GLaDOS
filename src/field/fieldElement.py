@@ -68,7 +68,7 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 from	infrastructure.decorators	import	singleton
 from	infrastructure.utils		import	overwrite		# Used for composing horizonal bars.
 
-from	gpt3.api 					import	CHAT_ROLE_SYSTEM
+#from	gpt3.api 					import	CHAT_ROLE_SYSTEM
 
 from	entities.entity				import	(
 
@@ -80,7 +80,9 @@ from	entities.entity				import	(
 				
             	AI_Persona,			# Class for our AI persona entity.
 		    
-		    	Receptive_Field		# Owner of standard field elements.
+		    	Receptive_Field,	# Owner of standard field elements.
+
+				Operator_Entity		# Entity for the (human) system operator.
 			)
 
 from	events.event 	import (
@@ -508,8 +510,9 @@ class TheInitialSystemPrompt(FieldElement_):
 			#| ization for all field elements.
 
 		super(TheInitialSystemPrompt.__wrapped__, nisp).__init__(
-				name="Initial System Prompt", where=PINNED_TO_TOP, 
-				owner=The_GLaDOS_Entity(), *args, **kwargs)
+				name="Initial System Prompt", where=PINNED_TO_TOP,
+				owner=Operator_Entity(), *args, **kwargs)
+				#owner=The_GLaDOS_Entity(), *args, **kwargs)
 			# NOTE: We always pin the initial system prompt to the very top 
 			# of the receptive field, because that's where it's supposed to 
 			# appear, by definition.
@@ -549,10 +552,10 @@ class TheFinalSystemPrompt(FieldElement_):
 		# placeholder in the promptFmt string above. If it is not supplied,
 		# we use the current personaID setting from TheMindSettings.
 		"""
-			TheInitialSystemPrompt.__init__()			  [Default instance initializer]
+			TheFinalSystemPrompt.__init__()			  [Default instance initializer]
 			
 				This is the instance initialization method that is used by
-				default when constructing the instances of TheInitialSystemPrompt.
+				default when constructing the instances of TheFinalSystemPrompt.
 		"""
 
 		nfsp = newFinalSysPrompt

@@ -922,7 +922,7 @@ class TheReceptiveField(ReceptiveField_):
 		
 		if isChatEngine(modelVersion):
 			_logger.debug("                    [Field] Creating the chat engine system prompt element...")
-
+		
 			field._initialSystemPrompt = TheInitialSystemPrompt(field=field)
 
 				#|--------------------------------------------------------------

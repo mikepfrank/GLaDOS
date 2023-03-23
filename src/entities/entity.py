@@ -211,6 +211,7 @@ class Entity_:
 	_ENTITY_NAME = None		# Instances of an abstract class don't have names.
 	_ENTITY_ID = None		# No ID's either
 	_ENTITY_AUTHS = {theBaseAuthority}	# We only have the base authority by default.
+
 	_ENTITY_CHAT_ROLE = None	# No chat role by default.
 	_ENTITY_CHAT_NAME = None	# No chat name by default.
 
@@ -320,8 +321,8 @@ class Entity_:
 			chatRole = inst._ENTITY_CHAT_ROLE
 
 		# Default chatName to the entity ID if not specified in argument or subclass.
-		# Except for system role.
-		if chatName is None and chatRole is not CHAT_ROLE_SYSTEM:
+		# Except for system role. <-- Trying this for system roles again.
+		if chatName is None: #and chatRole is not CHAT_ROLE_SYSTEM:
 			if inst._ENTITY_CHAT_NAME is None:
 				chatName = eid
 			else:
@@ -373,8 +374,9 @@ class System_Entity_(Entity_):
 class The_GLaDOS_Entity(System_Entity_):
 	_isAbstract			= False
 	_ENTITY_NAME		= "GladOS System"
+
 	_ENTITY_ID			= "GladOS"
-	#_ENTITY_CHAT_NAME	= "GladOS"	# Let's just call it 'system'
+	_ENTITY_CHAT_NAME	= "GladOS"	# Comment this out to just call it 'system'
 
 class Subsystem_Entity(System_Entity_):
 
@@ -559,6 +561,7 @@ class The_GoalsApp_Entity(Application_Entity_):
 
 	_ENTITY_NAME		= "Goals App"
 	_ENTITY_ID			= "GoalsApp"
+
 	_ENTITY_CHAT_NAME 	= "GoalsApp"
 
 	#partOf			= The_GLaDOS_Entity()	# Each application is a subsystem of GLaDOS.
@@ -663,7 +666,9 @@ class Cognitive_System(AI_Subsystem, Subsystem_Entity):
 
 	_ENTITY_NAME	= "Cognitive System"
 	_ENTITY_ID		= "MindSys"	# The ID is a short name used e.g. in prompts.
-	_ENTITY_CHAT_NAME = "MindSys"	# The chat name is the name used in chat API.
+
+	_ENTITY_CHAT_ROLE	= CHAT_ROLE_SYSTEM	# Error workaround?
+	_ENTITY_CHAT_NAME	= "MindSys"	# The chat name is the name used in chat API.
 	
 	# Note: The .partof attribute for this class is initialized on an
 	# instance-by-instance basis in the instance initializer method, below.
@@ -726,6 +731,8 @@ class Receptive_Field(AI_Subsystem):
 
 	_ENTITY_NAME		= "Receptive Field"
 	_ENTITY_ID			= "Field"
+
+	_ENTITY_CHAT_ROLE	= CHAT_ROLE_SYSTEM	# Error workaround?
 	_ENTITY_CHAT_NAME	= "Field"
 
 	partOf = AI_System

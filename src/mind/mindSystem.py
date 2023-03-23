@@ -134,7 +134,9 @@ from	threading	import	RLock
 from	time		import	sleep, time
 from	os			import	path
 
-#from	pprint		import	pprint, pformat
+from	pprint		import	pformat #, pprint
+
+import	json
 
 		#|======================================================================
 		#|	1.2. Imports of external python modules.	[module code subsection]
@@ -159,7 +161,7 @@ from	infrastructure.decorators	import	singleton
 				# import specific definitions we need from it.	(This is a
 				# little cleaner stylistically than "from ... import *".)
 
-from 	infrastructure.logmaster 	import sysName, getComponentLogger, ThreadActor
+from 	infrastructure.logmaster 	import sysName, getComponentLogger, ThreadActor, LOG_DIR
 
 	# Go ahead and create or access the logger for this module.
 
@@ -1075,8 +1077,16 @@ class MindThread(ThreadActor):
 					# Temporary hack for debugging -- truncate down to last 3 messages
 					#messages = messages[-3:]
 
-					#prettyMsgs = pformat(messages)
+					prettyMsgs = pformat(messages)
+					with open(f"{LOG_DIR}/latest-field.txt", "w") as f:
+						# Write the GLaDOS field messages to the file.
+						f.write(prettyMsgs)
+
 					#_logger.debug("[Mind/Thread] Asking GPT chat API to respond to messages:\n" + prettyMsgs)
+
+					# Steal the latest messages from the Telegram app. (FOR DEBUGGING!)
+					#with open(f"{LOG_DIR}/latest-messages.json", "r") as infile:
+					#	messages = json.load(infile)
 
 					response = gptAPI.genResponse(messages=messages).lstrip().rstrip()
 						# Added the lstrip()/rstrip() because extra spaces mess up command parsing.
