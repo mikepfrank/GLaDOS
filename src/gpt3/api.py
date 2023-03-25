@@ -3486,7 +3486,17 @@ def _msg_repr(msg:dict) -> str:
 	#| ASCII Record Separator control character (ctrl-^, 0x1e).
 	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	role = msg['role'] + ':'
+	#_logger.debug(f"gpt3.api._msg_repr(): Generating representation for message: {pformat(msg)}.")
+
+	# Make sure there's a non-empty 'role' field in the message; if so, start with it.
+
+	if 'role' in msg and msg['role'] != None:
+		role = msg['role'] + ':'
+
+	else:	# Role is missing or None.
+		# This should never happen, but just in case...
+		_logger.error("gpt3.api._msg_repr(): Missing 'role' field in message:\n" + pformat(msg))
+		role = ""
 
 	# If the message has a 'name' field, then this is appended to the
 	# 'role' field. NOTE: In chat GPT-3.5, it may take the place of 'role'.
