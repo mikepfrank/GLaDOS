@@ -1147,16 +1147,20 @@ def remember(update, context):
 
 	chat_id = update.message.chat.id
 
-	# Send a reply to the user.
-	update.message.reply_text(f"[DIAGNOSTIC: Sorry, the /remember command is disabled.]\n")
-	return	# Quit early
-
 	# Make sure the thread component is set to this application (for logging).
 	logmaster.setComponent(_appName)
 
 	# Assume we're in a thread associated with a conversation.
 	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
+
+	# Get the name that we'll use for the user.
+	user_name = get_user_name(update.message.from_user)
+
+	# Block /remember command for users other than Mike.
+	if user_name != 'Michael':
+		update.message.reply_text(f"[DIAGNOSTIC: Sorry, the /remember command is currently disabled.]\n")
+		return	# Quit early
 
 	# Retrieve the Conversation object from the Telegram context.
 	conversation = context.chat_data['conversation']
@@ -1166,9 +1170,6 @@ def remember(update, context):
 
 	# Tell the conversation object to add the given message to the AI's persistent memory.
 	conversation.add_memory(text)
-
-	# Get the name that we'll use for the user.
-	user_name = get_user_name(update.message.from_user)
 
 	# We'll also add the whole command line to the conversation, so that the AI can see it.
 	conversation.add_message(Message(user_name, update.message.text))
