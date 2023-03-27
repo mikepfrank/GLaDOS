@@ -539,6 +539,9 @@ class ConversationError(Exception):
 global _anyMemories
 _anyMemories = False
 
+global _lastError
+_lastError = ""
+
 # Next, let's define a class for conversations that remembers the messages in the conversation.
 #  We'll use a list of Message objects to store the messages.
 # TO DO: Add support for archiving/restoring conversation data.
@@ -728,6 +731,10 @@ class Conversation:
 
 		global PERSISTENT_DATA	# We declare this global so we can modify it.
 
+		if text_to_remove == None or len(text_to_remove) == 0:
+			self.report_error("/remember command needs a non-empty argument.")
+			return False
+
 		# Make sure the text to remove ends in a newline.
 		# (This avoids leaving blank lines in the persistent data string.)
 		if text_to_remove[-1] != '\n':
@@ -736,7 +743,8 @@ class Conversation:
 		# If the text to remove isn't present in the persistent data string,
 		# we need to report this as an error to both the AI and the user.
 		if text_to_remove not in PERSISTENT_DATA:
-			self.add_message(Message(SYS_NAME, f"Error: [{text_to_remove.rstrip()}] not found in persistent memory."))
+
+			self.report_error(f"[{text_to_remove.rstrip()}] not found in persistent memory.")
 			return False	# Return false to indicate that the memory wasn't removed.
 			# This will tell the caller to report failure to the user.
 
@@ -813,6 +821,21 @@ class Conversation:
 		print("Oldest message was:", self.messages[0])
 		self.messages.pop(0)
 		self.expand_context()	# Update the context string.
+
+
+	def report_error(self, errmsg):
+
+		"""Adds an error report to the conversation."""
+
+		global _lastError
+
+		msg = f"Error: {errmsg}"
+
+		self.add_message(Message(SYS_NAME, msg))
+
+		_logger.error(msg)	# Log the error.
+
+		_lastError = msg	# So higher-level callers can access it.
 
 
 	def add_message(self, message, finalize=True):
@@ -1229,12 +1252,14 @@ def forget(update, context):
 	# If the operation was not successful, send a different reply to the user.
 	else:
 		
+		errmsg = _lastError
+
 		# Generate an error-level report to include in the application log.
 		_logger.error(f"{user_name} failed to remove memory: [{text.strip()}]")
 	
 		# Send a reply to the user.
 		update.message.reply_text(f"[DIAGNOSTIC: Could not remove [{text.strip()}] from persistent memory. "
-									"(This probably means it isn't present.)]\n")
+								  f"Error message was: \"{errmsg}\"]\n")
 
 	# Copilot wrote the following amusing diagnostic code. But we don't really need it.
 	## Now, let's see if the AI has any memories left.
@@ -1296,6 +1321,10 @@ def process_message(update, context):
 	# Assume we're in a thread associated with a conversation.
 	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
+
+	if not 'conversation' in context.chat_data:
+		update.message.reply_text("[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.")
+		start(update,context)
 
 	conversation = context.chat_data['conversation']
 
