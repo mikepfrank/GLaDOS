@@ -142,7 +142,7 @@ class SecondEventFormat(TimedEventFormat_):
 	formatStr = '%I:%M:%S %p'	# 12-hour time,, down to the second.
 
 	
-	#|--------------------------------------------------------------------------
+	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#|	events.event.Event								[module public class]
 	#|
 	#|		This is a class whose instances keep track of the date, time,
@@ -150,8 +150,9 @@ class SecondEventFormat(TimedEventFormat_):
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
-class TextEvent: pass
-
+class TextEvent: pass	
+	# Forward declaration just so we can use it as a type descriptor in class body.
+	
 class TextEvent:
 	
 	"""Class for objects that track the date, time, and creator of a 
