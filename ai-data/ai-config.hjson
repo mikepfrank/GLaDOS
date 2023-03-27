@@ -67,15 +67,15 @@
 			# persona-id is a shortened version to be used (in event records
 			# and prompts) to refer to the AI's persona.
 		
-		persona-name:					"GPT-3.5 Turbo"
-		persona-id:						"Turbo"
+		persona-name:					"Aria Turing"
+		persona-id:						"Aria"
 
 
 			#-----------------------------------------------------------------
 			# The persona-user-account is the user account name on the host 
 			# system under which the server process should be run.
 		
-		persona-user-account:			"turbo"		# Not yet used.
+		persona-user-account:			"aria"		# Not yet used.
 
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -95,8 +95,8 @@
 			#|	this config parameter around for now in case it's referenced.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		model-family:					'GPT-3'		# Used for Gladys
-		#model-family:					'GPT-4'		# Used for Aria
+		#model-family:					'GPT-3'		# Used for Gladys
+		model-family:					'GPT-4'		# Used for Aria
 			# NOTE: This parameter is deprecated. (See comment above.)
 
 
@@ -121,11 +121,11 @@
 		#model-version:					'text-davinci-002'	# Upgraded davinci with 4K tokens (GPT-3.5). ("Gladys 2.0") Used for Dante.
 		#model-version:					'code-davinci-002'	# Starting model for GPT-3.5 RLHF series. Used for David. (Also Codex.)
 		#model-version:					'text-davinci-003'	# GPT-3.5 RLHF-aligned model. Used for DaVinci.
-		model-version:					'gpt-3.5-turbo'		# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
+		#model-version:					'gpt-3.5-turbo'		# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
 
 			# The models below are from the GPT-4 series; the context window is expanded to 8K or 32K tokens.
 
-		#model-version:					'gpt-4'				# GPT-4 fine-tuned chat model. 8K tokens. Used for Aria.
+		model-version:					'gpt-4'				# GPT-4 fine-tuned chat model. 8K tokens. Used for Aria.
 
 
 			#-----------------------------------------------------------------------
@@ -201,8 +201,8 @@
 
 		#max-returned-tokens:	150		# Keep response size reasonable.
 		#max-returned-tokens:	200		# Gladys 2.0 requested this upgrade.
-		max-returned-tokens:	1000	# To give the chat engines more space.
-		#max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window).
+		#max-returned-tokens:	1000	# To give the chat engines more space.
+		max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window).
 			# (Note the chat API doesn't support extending responses.)
 
 
@@ -276,7 +276,7 @@
 		#stop-sequences:			'\n'	# Just get one line at a time.
 		#  NOTE: A SINGLE NEWLINE BREAKS THE CHAT MODELS FOR SOME FRICKIN REASON!!!
 
-		stop-sequences:		'\n\n'	# This waits for a blank line.
+		#stop-sequences:		'\n\n'	# This waits for a blank line.
 
 
 			/*------------------------------------------------------------------
@@ -344,8 +344,8 @@
 		#max-visible-tokens:	2048	# Comes from paper, n_ctx model parameter.
 		#max-visible-tokens:	4000
 				# This value is appropriate for text-davinci-002.
-		max-visible-tokens:		4096	# Appropriate for gpt-3.5-turbo model
-		#max-visible-tokens:	8192	# Appropriate for gpt-4 model.
+		#max-visible-tokens:		4096	# Appropriate for gpt-3.5-turbo model
+		max-visible-tokens:	8192	# Appropriate for gpt-4 model.
 	
 	} # End of field-conf substructure.
 

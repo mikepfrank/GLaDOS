@@ -4,6 +4,7 @@ INSTALLATION NOTES.
 Instructions to set up & run GladOS and/or the Telegram bot.
 
 
+=================================================================
 Step 1. [Optional] - Create the Telegram bot for your AI persona.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -13,15 +14,17 @@ command list can be found in ``src/telegram-bot.py``
 token; it will be needed to run the bot server.
 
 
+=============================
 Step 2. - Clone the git repo.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-0a. It's recommended to set up a new user account for the AI on your host.
-0b. Login as that user & configure git.
-0c. git clone git@github.com:mikepfrank/GLaDOS.git
-0d. cd GLaDOS; git checkout <branch>
+    2a. It's recommended to set up a new user account for the AI on your host.
+    2b. Login as that user & configure git.
+    2c. git clone git@github.com:mikepfrank/GLaDOS.git
+    2d. cd GLaDOS; git checkout <branch>
 
 
+===============================
 Step 3. - Install dependencies.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -50,18 +53,24 @@ to have previously been installed:
             (Needed to get time zone abbreviations right.)
 
 
+You should also make sure that you have a working curses library (some 
+versions of ncurses may be suitable).
+
 ALSO NOTE: You will have to install a GPT-2 directory tree (except for 
 model weights) in order to use the tokenizer; see instructions in 
 src/tokenizer/README.md.  HOWEVER: On the newer branches of GLaDOS 
 (e.g. turbo, aria), the GPT-2 tokenizer is in the process of being 
-phased out in favor of the tiktoken library.
+phased out in favor of the tiktoken library.  Eventually this 
+dependency will no longer exist.
 
 
+===============================
 Step 4. - Customize as desired.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-4a. [Optional] General GladOS customizations can be found in 
-    ``glados-config.json``, but you should not need to change these.
+4a. [Optional] General GladOS configuration parameters can be 
+    found in ``glados-config.json``, but you should not need to 
+    change any of these.
 
 4b. Primary AI persona customizations may be found in the file 
     ``ai-data/ai-config.json``. In particular, see:
@@ -77,17 +86,18 @@ Step 4. - Customize as desired.
     ``ai-data/init-goals.hjson`` file; this initializes the 
     Goals app in GladOS.
 
-4e. You may need to modify the following attributes in 
+4e. You may also need/want to modify the following attributes in 
     ``src/mindSettings.py``, class ``TheMindSettings``, for use in 
     GladOS.  These are supposed to be overridden by values loaded 
     from the config file on startup, but if the AI or operator ever 
     reverts settings to "factory defaults", these are the values 
-    that will be used. (This feature isn't implemented yet, though.)
+    that will be used. (However, reset-to-defaults isn't an available
+    command yet at this time.)
 
-    * _DEFAULT_PERSONA_NAME
-    * _DEFAULT_PERSONA_ID
-    * _DEFAULT_PERSONA_USERNAME
-    * _DEFAULT_MODEL_VERSION
+        * _DEFAULT_PERSONA_NAME
+        * _DEFAULT_PERSONA_ID
+        * _DEFAULT_PERSONA_USERNAME
+        * _DEFAULT_MODEL_VERSION
 
 4f. In ``src/entities/entity.py`` class ``Operator_Entity``, update 
     ``_ENTITY_ID`` to the name of the system operator.  (Eventually, 
@@ -97,12 +107,13 @@ Step 4. - Customize as desired.
 4g. In ``src/gpt3/api.py``, make sure the specific AI engine (LLM) 
     you want to use is included in these dicts:
 
-    * _ENGINE_ATTRIBS
-    * inputToks - Note this and following are initialized automatically in newer branches.
-    * outputToks
-    * expenditures
+        * _ENGINE_ATTRIBS
+        * inputToks - Note this and following are initialized automatically in newer branches.
+        * outputToks
+        * expenditures
     
 
+=======================================
 Step 5. - Set up environment variables.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -114,15 +125,18 @@ all defined in the AI's user environment:
 
     * AI_DATADIR - Suggested value: ``/opt/AIs/${AI_NAME}``.
         This will be where (most) run-time data will be kept.
+        (The reason for this is so the AI's persistent data 
+        won't get blown away if you rebuild your working 
+        directory.)
     
-    * TELEGRAM_TOKEN, TELEGRAM_BOT_TOKEN - Token for the AIs 
-        Telegram bot. (Set both of these.)
+    * TELEGRAM_BOT_TOKEN - Token for the AI's Telegram bot. 
     
     * TZ - Preferred time zone string. E.g., 'America/Denver'.
     
     * OPENAI_API_KEY - Your access key to the OpenAI API.
 
 
+===========================================================
 Step 6. - Install the AI's data files in its ops directory.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -135,6 +149,7 @@ between development branches without necessarily affecting
 any currently-running AI server applications.)
 
 
+================================================
 Step 7. - Test the connection to the OpenAI API.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -145,6 +160,7 @@ From the AI's user account, in their GLaDOS directory, do:
 This should run a simple API test.
 
 
+====================================
 Step 8. - Launch AI server programs.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -158,3 +174,64 @@ or tmux windows.
 5b. [Optional] Launch your AI persona's Telegram bot.
 
     $ make run-bot
+
+5c. [Optional] Open new terminal windows to view log output.
+
+    [in new terminal]
+    $ tail -n 200 -f ~/GLaDOS/log/GLaDOS.server.log
+
+    [in new terminal]
+    $ tail -n 200 -f ~/GLaDOS/log/TelegramBot.log
+
+
+==================================
+Step 9. - Start using the servers.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The bot is used like any Telegram bot. It understands text
+messages only. You may want to adjust the following settings 
+pertaining to behavior in group chats:
+
+    * Allow Groups? - Set this to ON/ENABLED if you want people
+                        to be able to add your bot to groups.
+
+    * Group Privacy - Set this to OFF/DISABLED if you want the
+                        bot to respond to every message in a 
+                        group chat.  If ON/ENABLED, the bot will
+                        only respond if a user addresses it with 
+                        @<bot_username> ...
+
+As for GLaDOS, here are a few points on usage to note:
+
+    1. In the Operator panel, the Enter key inserts a literal
+        newline. To enter text from the operator panel, hit F2.
+
+    2. You can edit text in the operator panel using these 
+        (Emacs-style) key bindings:
+
+        * Arrow keys or Ctrl-f,b,p,n -- Cursor movement.
+        * Alt-f,b - Forward or back a word at a time.
+        * Home, End; Ctrl-a,e - Beginning or end of line.
+        * BKSP, Ctrl-d -- Delete character before/under cursor.
+        * Alt-BKSP, Alt-d -- Delete word before/under cursor.
+        * Ctrl-k -- Kill text from cursor to end-of-line.
+        * Insert -- Insert newline after cursor.
+        
+    3. Without entering text, F1 prompts the AI to respond anyway.
+
+    4. The AI will respond by itself periodically, after a number
+        of minutes given in MindThread._DEFAULT_MIN_ACTION_INTERVAL
+        in src/mind/mindSystem.py. 
+        
+        NOTE THAT THIS WILL RUN UP COSTS IF YOU LEAVE GLADOS RUNNING.
+
+    5. After 16 hours awake, the AI will "run out of energy" and
+        "fall asleep." While asleep, it won't spontaneously act.
+        Its "energy" will gradually replenish when sleeping. After 
+        8 hours, it will reach full energy and will wake up.
+
+    6. Various actions/events will also wake up the AI. (However,
+        be aware that if you wake it up, it won't be back at full 
+        energy yet).
+
+    7. The only app that is fully implemented so far is /Goals.
