@@ -2232,7 +2232,7 @@ class ChatCompletion(Completion):
 					# Calculate the effective maximum prompt length, in tokens.
 				effMax = fieldSize - minRepWin
 
-				_logger.warn(f"[GPT chat API] Prompt length of {_inputLength} exceeds"
+				_logger.warn(f"[GPT chat API] Prompt length of {estInputLen} exceeds"
 							 f" our effective maximum of {effMax}. Requesting message list shrink.")
 
 				e = PromptTooLargeException(_inputLength, effMax)
