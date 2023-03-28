@@ -1177,8 +1177,8 @@ def remember(update, context):
 	chat_id = update.message.chat.id
 
 	# Send a reply to the user.
-	update.message.reply_text(f"[DIAGNOSTIC: Sorry, the /remember command is disabled.]\n")
-	return	# Quit early
+	#update.message.reply_text(f"[DIAGNOSTIC: Sorry, the /remember command is disabled.]\n")
+	#return	# Quit early
 
 	# Make sure the thread component is set to this application (for logging).
 	logmaster.setComponent(_appName)
@@ -1323,7 +1323,7 @@ def process_message(update, context):
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	if not 'conversation' in context.chat_data:
-		update.message.reply_text("[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.")
+		update.message.reply_text("[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.]")
 		start(update,context)
 
 	conversation = context.chat_data['conversation']
