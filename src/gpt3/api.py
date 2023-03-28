@@ -1493,8 +1493,8 @@ class Completion:
 						# Calculate the effective maximum prompt length, in tokens.
 					effMax = fieldSize - minRepWin
 
-					_logger.warn(f"[GPT-3 API] Prompt length of {_inputLength} exceeds"
-								 f" our effective maximum of {effMax}. Requesting field shrink.")
+					_logger.debug(f"[GPT-3 API] Prompt length of {_inputLength} exceeds"
+								  f" our effective maximum of {effMax}. Requesting field shrink.")
 
 					e = PromptTooLargeException(_inputLength, effMax)
 					raise e		# Complain to our caller hierarchy.
@@ -2232,8 +2232,10 @@ class ChatCompletion(Completion):
 					# Calculate the effective maximum prompt length, in tokens.
 				effMax = fieldSize - minRepWin
 
-				_logger.warn(f"[GPT chat API] Prompt length of {estInputLen} exceeds"
-							 f" our effective maximum of {effMax}. Requesting message list shrink.")
+				_logger.debug("[GPT chat API] Prompt length of "
+							  f"{estInputLen} exceeds our effective "
+							  f"maximum of {effMax}. Requesting "
+							  "message list shrink.")
 
 				e = PromptTooLargeException(_inputLength, effMax)
 				raise e		# Complain to our caller hierarchy.
@@ -3277,13 +3279,15 @@ def _loadStats():
 		# This constructs the full filesystem pathname to the stats file.
 	statsPath = _statsPathname()
 
+	_logger.info(f"Loading usage statistics from {statsPath}...")
+
 	try:
 		with open(statsPath) as inFile:
 
 			stats 			= json.load(inFile)
 
 			_inputToks 		= stats['input-tokens']
-			_outputToks 		= stats['output-tokens']
+			_outputToks 	= stats['output-tokens']
 			_expenditures 	= stats['expenditures']
 			_totalCost 		= stats['total-cost']
 		
@@ -3392,6 +3396,8 @@ def _saveStats():
 
 		# This constructs the full filesystem pathname to the stats file.
 	statsPath = _statsPathname()
+
+	_logger.info(f"Saving API usage stats to {statsPath}...")
 
 	with open(statsPath, 'w') as outFile:
 
