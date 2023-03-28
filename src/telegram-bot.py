@@ -971,16 +971,17 @@ class Conversation:
 		chat_messages.append({
 			'role': CHAT_ROLE_SYSTEM,
 
+#-------------------------------------------------------------------------------
+			# Trying this new variation, to facilitate continuations:
+			'content': f"Respond as {self.bot_name} in the user's preferred "	\
+				"language. (Note: If you need more space to respond, then "		\
+				"instead of condensing your response, just truncate it at "		\
+				'some point and end it with "(cont.)"; then if the user types '	\
+				'"/continue", resume generating your response appropriately.)\n'
+				
 			# 'content': f"Respond as {self.bot_name}."
 			# # This is simple and seems to work pretty well.
 
-			# Trying this new variation, to facilitate continuations:
-			'content': f'Respond as {self.bot_name}. (Note: If you need more '	\
-				'space to respond, then instead of condensing your response, '	\
-				'just truncate it at some point and end it with "(cont.)"; '	\
-				'then if the user types "/continue", resume generating your '	\
-				'response where you left off.)\n'
-				
 		})
 
 		# (The back-end language model will be prompted to respond by something like 
@@ -1176,10 +1177,6 @@ def remember(update, context):
 
 	chat_id = update.message.chat.id
 
-	# Send a reply to the user.
-	update.message.reply_text(f"[DIAGNOSTIC: Sorry, the /remember command is disabled.]\n")
-	return	# Quit early
-
 	# Make sure the thread component is set to this application (for logging).
 	logmaster.setComponent(_appName)
 
@@ -1328,7 +1325,7 @@ def process_message(update, context):
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	if not 'conversation' in context.chat_data:
-		update.message.reply_text("[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.")
+		update.message.reply_text("[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.]")
 		start(update,context)
 
 	conversation = context.chat_data['conversation']
