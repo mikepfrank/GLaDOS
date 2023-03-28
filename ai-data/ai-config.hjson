@@ -158,7 +158,7 @@
 
 		#min-replyWin-tokens:	42		# Orig. value; seemed like a reasonable minimum.
 		#min-replywin-toks:		100		# Gladys 2.0 (text-davinci-002) requested this increase.
-		min-replywin-toks:		400		# Turbo (gpt-3.5-turbo) requested this increase.
+		min-replywin-toks:		400		# Turbo (gpt-3.5-turbo) requested this increase. (1/10 of context window)
 		#min-replywin-toks:		800		# Aria (gpt-4) requested this increase.
 
 			#-----------------------------------------------------------------
