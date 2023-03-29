@@ -4,6 +4,12 @@
 environment that is intended to provide a convenient "home" that a
 persona manifested by a text-based AI system can "live" within.
 
+[Note: An earlier name for the system was *General Lifeform's automated 
+Domicile Operating System* (GLaDOS), but Gladys asked us to change the 
+name and the capitalization of the acronym, partly because she wanted 
+the token "Glad" to be part of the acronym.  The old capitalization may 
+frequently still appear in the source code, however.]
+
 ## Purpose
 
 The ultimate purpose of GladOS is to experiment with giving text-based
@@ -34,7 +40,7 @@ version 3.8.5.)
 ## Top-Level Files
 
 This section lists and documents the top-level files contained in the
-`GladOS` directory.
+`GLaDOS` directory.
 
 ### GIT Ignore file ([`.gitignore`](.gitignore ".gitignore file"))
 
