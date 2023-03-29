@@ -817,8 +817,8 @@ class Conversation:
 
 		# If we get here, we can safely pop the oldest message.
 
-		print("Expunging oldest message from conversation:", self.chat_id)
-		print("Oldest message was:", self.messages[0])
+		_logger.debug(f"Expunging oldest message from {len(self.messages)}-message conversation:", self.chat_id)
+		#print("Oldest message was:", self.messages[0])
 		self.messages.pop(0)
 		self.expand_context()	# Update the context string.
 
@@ -1040,7 +1040,7 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Print diagnostic information.
-	print(f"Starting conversation with {chat_id}.")
+	_logger.normal(f"Starting conversation with {chat_id}.")
 
 	# Create a new conversation object and link it from the Telegram context object.
 	# NOTE: It needs to go in the context.chat_data dictionary, because that way it
@@ -1108,14 +1108,6 @@ Available commands:
 def help(update, context):
 	"""Display the help string when the command /help is issued."""
 	update.message.reply_text(HELP_STRING)
-
-#		 f"{BOT_NAME} bot powered by GPT-3/{ENGINE_NAME}.\n" +
-#		 f"Available commands:\n" +
-#		 f"\t/start - Start a new conversation.\n" +
-#		 f"\t/help - Show this help message.\n" +
-#		 f"\t/remember <text> - Add <text> to AI's persistent memory.\n" +
-#		 f"\t/forget <text> - Remove <text> from AI's persistent memory.\n" +
-#		 f"\t/reset - Clear the AI's short-term conversational memory.\n")
 
 
 # Now, let's define a function to handle the /echo command.
@@ -1259,9 +1251,14 @@ def forget(update, context):
 		# Generate an error-level report to include in the application log.
 		_logger.error(f"{user_name} failed to remove memory: [{text.strip()}]")
 	
-		# Send a reply to the user.
-		update.message.reply_text(f"[DIAGNOSTIC: Could not remove [{text.strip()}] from persistent memory. "
-								  f"Error message was: \"{errmsg}\"]\n")
+		diagMsg = f"[DIAGNOSTIC: Could not remove [{text.strip()}] from persistent memory. " \
+				  f"Error message was: \"{errmsg}\"]\n"
+
+		# Add the diagnostic message to the conversation.
+		conversation.add_message(SYS_NAME, diagMsg)
+
+		# Send the diagnostic message to the user.
+		update.message.reply_text(diagMsg)
 
 	# Copilot wrote the following amusing diagnostic code. But we don't really need it.
 	## Now, let's see if the AI has any memories left.
@@ -1325,6 +1322,7 @@ def process_message(update, context):
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	if not 'conversation' in context.chat_data:
+		_logger.info(f"Automatically restarting conversation {chat_id} after reboot.")
 		update.message.reply_text("[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.]")
 		start(update,context)
 
@@ -1823,12 +1821,16 @@ def process_chat_message(update, context):
 		# This was also suggested by Copilot; we'll go ahead and use it.
 		except Exception as e:
 			# We've hit some other exception, so we need to log it and send a diagnostic message to the user.
+			# (And also add it to the conversation so the AI can see it.)
 			
+			_report_error(f"Exception while getting response: {type(e).__name__} ({e})")
+
 			# First, we'll log this at the ERROR level, and include the exception traceback if at debug level.
-			_logger.error(f"Exception while getting response: {type(e).__name__} ({e})", exc_info=logmaster.doDebug)
-			
+			#_logger.error(f"Exception while getting response: {type(e).__name__} ({e})", exc_info=logmaster.doDebug)
+			#
 			# Then, we'll send a diagnostic message to the user.
-			update.message.reply_text(f"[DIAGNOSTIC: Exception while getting response: {type(e).__name__} ({e})]")
+			#update.message.reply_text(f"[ERROR: Exception while getting response: {type(e).__name__} ({e})]")
+
 			return
 
 	# If we get here, we've successfully gotten a response from the API.
@@ -1887,6 +1889,31 @@ def process_chat_message(update, context):
 	process_response(update, context, response_message)	   # Defined above.
 
 #__/ End of process_chat_message() function definition.
+
+
+def _report_error(convo:Conversation, telegramMessage,
+				 errMsg:str, logIt:bool=True,
+				 showAI:bool=True, showUser:bool=True):
+
+	"""Report a given error response to a Telegram message. Flags
+		<logIt>, <showAI>, <showUser> control where the error is
+		reported."""
+
+	if logIt:
+		# Record the error in the log file.
+		_logger.error(errMsg, exc_info=logmaster.doDebug)
+			# The exc_info option includes a stack trace if we're in debug mode.
+
+	# Compose formatted error message.
+	msg = f"[ERROR: {errMsg}]"
+
+	if showAI:
+		# Add the error message to the conversation.
+		convo.add_message(Message(SYS_NAME, msg))
+
+	if showUser:
+		# Show the error message to the user.
+		telegramMessage.reply_text(msg)
 
 
 # Question from human programmer to Copilot: Do you know who you are, Copilot?
