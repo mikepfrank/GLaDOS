@@ -3509,8 +3509,21 @@ def _msg_repr(msg:dict) -> str:
 	if 'name' in msg:
 		role += msg['name'] + ':'
 
+	# Get the message content.
+	content = msg['content']
+
+	# Make sure role isn't still None at this point
+	if role is None:
+		_logger.error("gpt3.api._msg_repr(): Somehow role is None at this line, and it shouldn't be.")
+		role = ""
+
+	# Ditto with content
+	if content is None:
+		_logger.error("gpt3.api._msg_repr(): Message content is None, and it shouldn't be.")
+		content = ""
+
 	rep = role + '\n' + \
-		  msg['content'] + chr(RS) + '\n'
+		  content + chr(RS) + '\n'
 
 	return rep
 
