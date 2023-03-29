@@ -817,7 +817,7 @@ class Conversation:
 
 		# If we get here, we can safely pop the oldest message.
 
-		print(f"Expunging oldest message from {len(self.messages)}-message conversation:", self.chat_id)
+		_logger.debug(f"Expunging oldest message from {len(self.messages)}-message conversation:", self.chat_id)
 		#print("Oldest message was:", self.messages[0])
 		self.messages.pop(0)
 		self.expand_context()	# Update the context string.
