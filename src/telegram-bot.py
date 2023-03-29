@@ -456,8 +456,9 @@ class Message:
 		_logger.debug(f"Creating message object for: {sender}> {text}")
 		self.sender	  = sender
 		self.text	  = text
-		self.archived = False	# Has this message been written to the archive file yet?
-	
+		self.archived = False
+			# Has this message been written to the archive file yet?
+
 	def __str__(self):
 		"""A string representation of the message object.
 			It is properly delimited for reading by the GPT-3 model."""
@@ -479,7 +480,10 @@ class Message:
 		if text is None:	# Null text? (Shouldn't happen, but...)
 			text = ""		# Message is empty string.
 
-		escaped_text = text.replace('\\', '\\\\').replace('\n', '\\n')
+		escaped_text = text.replace('\\', '\\\\').replace('\n', '\\n')\
+			.translate(str.maketrans({chr(i): f"\\x{format(i, '02x')}" \
+						for i in list(range(0, 9)) + list(range(11, 32))}))\
+			.replace('\ufffd', '\\ufffd')
 
 		# Now, we'll return the serialized representation of the message.
 		return f"{self.sender}> {escaped_text}\n"
@@ -498,25 +502,39 @@ class Message:
 		# Remove the trailing newline.
 		text = text.rstrip('\n')
 
-		# To unescape the backslash and newline characters correctly, we'll
-		# first replace all '\n' sequences NOT preceded by a '\' with a
-		# literal '\n'. Then, we'll replace all '\\' sequences with a
-		# literal '\'.
+		# First, we'll replace all '\\' sequences with a temporary 
+		# placeholder (Unicode replacement character, which should
+		# (ideally) not occur in the serialized file).
 
-		# I think we need a regular-expression-based approach here.
-		# The following regex pattern will match all '\n' sequences
-		# that are NOT preceded by a '\'.
-		pattern = r'(?<!\\)\\n'
+		repl_char = '\ufffd'	# Unicode replacement character.
+		text = text.replace("\\\\", repl_char)
 
-		# Now, we'll replace all '\n' sequences NOT preceded by a '\'
+		# Pattern to match encoded newlines.
+		pattern_enc_newline = r'\\n'
+
+		# Now, we'll replace all encoded newlines
 		# with a literal newline character.
-		text = re.sub(pattern, '\n', text)
+		text = re.sub(pattern_enc_newline, '\n', text)
 
-		# Now, we'll replace all '\\' sequences with a literal '\'.
-		text = text.replace('\\\\', '\\')
+		# Pattern to match encoded other controls.
+		pattern_enc_ctrl = r'\\x([0-9a-fA-F]{2})'
+
+		# Now, we'll replace all encoded other controls
+		# with the literal control characters.
+
+		def replace_enc_ctrl(match):
+			return chr(int(match.group(1), 16))
+
+		text = re.sub(pattern_enc_ctrl, replace_enc_ctrl, text)
+
+		# Now, we'll revert the placeholders back to literal '\'.
+		text = text.replace(repl_char, '\\')
+
+		# Finally, we'll restore any escaped replacement characters.
+		text = text.replace('\\ufffd', repl_char)
 
 		# Return the message object.
-		return Message(sender, text)	# Q: Is the class name in scope here? A: Yes.
+		return Message(sender, text)
 	
 	#__/ End of message.deserialize() instance method definition.
 
@@ -1324,7 +1342,12 @@ def process_message(update, context):
 	if not 'conversation' in context.chat_data:
 		_logger.info(f"Automatically restarting conversation {chat_id} after reboot.")
 		update.message.reply_text("[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.]")
+
+		# Temporarily pretend user entered '/start', and process that.
+		_tmpText = update.message.text
+		update.message.text = '/start'
 		start(update,context)
+		update.message.text = _tmpText
 
 	conversation = context.chat_data['conversation']
 
@@ -1823,7 +1846,7 @@ def process_chat_message(update, context):
 			# We've hit some other exception, so we need to log it and send a diagnostic message to the user.
 			# (And also add it to the conversation so the AI can see it.)
 			
-			_report_error(f"Exception while getting response: {type(e).__name__} ({e})")
+			_report_error(conversation, update.message, f"Exception while getting response: {type(e).__name__} ({e})")
 
 			# First, we'll log this at the ERROR level, and include the exception traceback if at debug level.
 			#_logger.error(f"Exception while getting response: {type(e).__name__} ({e})", exc_info=logmaster.doDebug)
