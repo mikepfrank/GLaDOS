@@ -51,24 +51,23 @@ Emacs, the `log/` directory, and the `err.out` file.
 
 While the system is running, any output that is sent to the system
 stderr stream is also appended to this file.  This can be useful
-e.g. for seeing the call stack trace from a thread that has exited due
-to throwing an exception.
+for debugging; e.g. for seeing the call stack trace from a thread 
+that has exited due to throwing an exception.
 
 ### GladOS System Configuration File ([`glados-config.hjson`](glados-config.hjson "glados-config.hjson file"))
 
 This is the main configuration file for the GladOS system, in
-human-readable JSON format (see
-[hjson.github.io](https://hjson.github.io/)).  If you would like to
-maintain a customized version of the config file in some other
-location, simply set the environment variable `GLADOS_PATH` to point
-to the directory where it is located before launching
-`glados-server.py`.  If you want to keep around several alternative
-configuration files, simply set `GLADOS_CONFIG_FILENAME` to the name
-of the specific one that you want to use on a given invocation of the
-system.  Alternatively, just set `GLADOS_CONFIG_PATH` to the full
-pathname (directory and file) of the config file you want to use.  (If
-`GLADOS_CONFIG_PATH` is set, then `GLADOS_CONFIG_FILENAME` will be
-ignored.)
+human-readable JSON format (see [hjson.github.io](https://hjson.github.io/)).  
+If you would like to maintain a customized version of the config file 
+in some other location, simply set the environment variable 
+`GLADOS_PATH` to point to the directory where it is located before 
+launching `glados-server.py`.  If you want to keep around several 
+alternative configuration files, simply set `GLADOS_CONFIG_FILENAME` 
+to the name of the specific one that you want to use on a given 
+invocation of the system.  Alternatively, just set `GLADOS_CONFIG_PATH` 
+to the full pathname (directory and file) of the config file you want 
+to use.  (If `GLADOS_CONFIG_PATH` is set, then `GLADOS_CONFIG_FILENAME` 
+will be ignored.)
 
 ### Installation Notes ([`INSTALL-NOTES`](INSTALL-NOTES "INSTALL-NOTES file"))
 
