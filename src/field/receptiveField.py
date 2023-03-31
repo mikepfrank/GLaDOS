@@ -10,11 +10,11 @@
 #
 #	Please note that conceptually, this module is considered part of the AI,
 #	since some of its basic properties, such as its size, are associated with
-#	the AI.  However, we place it in its own package since much the rest of the 
-#	system talks to it directly (and to the rest of the AI, less directly).
+#	the AI.  However, we place it in its own package since much of the rest of the 
+#	system "talks" to it directly (and to the rest of the AI, less directly).
 #
 # 	This module implements the input to the AI's main receptive field; 
-# 	that it, it displays everything that the A.I. can "see."  This generally
+# 	that is, it displays everything that the A.I. can "see."  This generally
 # 	consists of the following:
 #
 #		1. Any windows that are anchored to the top of the receptive field.
@@ -79,6 +79,15 @@ _logger = getComponentLogger(_component)			# Create the component logger.
 			#|	1.2.2. The following modules are specific to GLaDOS.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+from	gpt3.api				import	(
+
+						#CHAT_ROLE_SYSTEM,	# 'system' role in chat API
+						ChatMessages,		# Class: Encapsulates a list of chat messages.
+						isChatEngine,		# Function: Is the specified model a chat engine?
+						messageRepr,		# Function: Gets back-end representation of a message.
+						tiktokenCount, 		# Function: Count the number of tokens in a string.
+					)
+
 from	events.event			import	TextEvent
 
 from	text.buffer				import	TextBuffer
@@ -92,6 +101,10 @@ from	entities.entity			import	AI_Persona
 from 	mind.aiActions			import 	ActionByAI_
 	# This is an abstract class for actions that we might want to take,
 	# which should then be automatically handled by the Supervisor.
+
+from	mind.mindSettings		import	TheMindSettings, TheMindSettingsModule
+	# TheMindSettings - This uninstantiated class object holds our settings in class variables.
+	# TheMindSettingsModule - A settings module for plugging into the settings facility.
 
 			#|----------------------------------------------------------------
 			#|	1.2.3. The following modules are "sibling" modules to the 
@@ -124,11 +137,13 @@ from	.fieldSettings				import	TheFieldSettings, TheFieldSettingsModule
 from .fieldElement import (
 
 	FieldSlot,
-	FieldElement_,
-	TheFieldHeader,
-	ThePromptSeparator,
-	TheInputArea,
-	TextEventElement,
+	FieldElement_,				# Abstract base class for field elements.
+	TheInitialSystemPrompt,		# First field element displayed to chat engines.
+	TheFieldHeader,				# Field header element (shown to all engines).
+	TextEventElement,			# Field element for a text event.
+	ThePromptSeparator,			# Separator bar between prompt and input area.
+	TheInputArea,				# Input area field element.
+	TheFinalSystemPrompt,		# Final field element displayed to chat engines.
 
 )
 	
@@ -492,7 +507,15 @@ class TheAIFieldView: pass
 class TheAIFieldView(FieldView_):
 	
 	"""Derived class for views of the receptive field to be sent to AIs."""
-	
+
+	# We need to extend our superclass's default initialize to take and
+	# extra argument 'modelVersion', which is the version of GPT-3/4
+	# that the AI is using.  This is needed because the AI's view of the
+	# field is measured using a tokenizer that depends on the model version.
+	def __init__(inst, base:_TheBaseFieldData, modelVersion:str):
+		super().__init__(base)
+		inst._modelVersion = modelVersion
+
 	def render(view:TheAIFieldView):
 		# This works by iterating through elements in the base data,
 		# and just adding their images as items in the data set.
@@ -511,53 +534,200 @@ class TheAIFieldView(FieldView_):
 		data = []	# Initialize data array to empty list.
 		for slot in slots:
 			element = slot.element		# Get the field element.
-			image = element.image		# Get that element's (text) image.
-			data.append(image)			# Append it to our list.
+
+			# If our .modelVersion is a chat engine, then we need to
+			# render the element as a delimited chat message using 
+			# api._msg_repr(). Otherwise, we just render it as a
+			# plain text string.
+
+			if isChatEngine(view.modelVersion):
+
+				_logger.debug(f"In AIFieldView.render(): Rendering field element [{element.name}]...")
+
+				rendering = messageRepr(view.elemMessage(element))	
+					# Get the (guessed) back-end representation of the 
+					# chat message representing this field element.
+			else:
+				rendering = element.image		
+					# Get that element's (plain text) image.
+
+			data.append(rendering)			# Append it to our list.
 			
 		text = ''.join(data)		# Here's the data as one huge string.
 
-		view._data = data			# Remember the data array.
-		view._text = text
-		view._nChars = None			# Mark nChars as not-yet-computed.
-		view._nTokens = None		# Mark nTokens as not-yet-computed.
+		#_logger.debug(f"aiFieldView.render(): Just rendered field view as: [[{text}]]")
+
+		view._data = data		# Remember the data array.
+		view._text = text		# Remember the text string.
+
+		view._nChars = None
+			# Invalidate nChars (mark it as not-yet-computed).
+
+		view._nTokens = None		
+			# Invalidate nTokens (mark it as not-yet-computed).
 	
+		# We don't bother to pre-generate the message list here, 
+		# because this AI might not even be using a chat engine.  
+		# Instead, we just invalidate it so that it will be 
+		# regenerated if and when needed.
+		view._messages = None
+
 			# Mark the base data as having been seen now (by us at least).
 		base.markSeen()
 
 		#_logger.debug(f"aiFieldView.render(): Just rendered field view as: [[{text}]]")
 
+
 	@property
-	def data(inst):
+	def data(inst:TheAIFieldView):
 		return inst._data
 
-	def text(inst):
+
+	@property
+	def modelVersion(inst:TheAIFieldView):
+		return inst._modelVersion
+
+
+	@property
+	def text(inst:TheAIFieldView):
+		
 		"""Returns the field view as one huge text string."""
+		
 		text = inst._text
 		if text is None:		# Not computed yet?
 			data = inst.data
 			inst._text = text = ''.join(data)
 		return text
 
+
+	def elemMessage(inst:TheAIFieldView, element:FieldElement_):
+		"""Converts a given field element into a message dictionary
+			(in the format expected by the GPT-3 chat API)."""
+		
+		elemName  = element.name	# Get the name of the element.
+		owner = element.owner	# Get the element's owner (an entity).
+		image = element.image	# Get that element's (text) image.
+
+		if elemName is None:
+			_logger.error(f"In theAIFieldView.elemMessage(): element name is None.")
+
+		if owner is None:
+			_logger.error(f"In theAIFieldView.elemMessage(): element owner is None.")
+
+		#_logger.debug("In theAIFieldView.elemMessage():")
+		#_logger.debug(f"\t\telement name = [{str(elemName)}],")
+		#_logger.debug(f"\t\towner = [{str(owner)}],")
+		#_logger.debug(f"\t\timage = [{str(image)}].")
+
+		role = owner.chatRole	# Get the role (CHAT_ROLE_{SYSTEM,USER,AI}).
+		name = owner.chatName	# Get the name to be used for the owner entity in chat, if any.
+
+		message = {				# Construct the message dictionary.
+			'role': 	role,
+			'content':	image
+		}
+
+		if name is not None:	# If there's a name...
+			message['name'] = name	# ...add it to the message.
+
+		#if name is not None and role is not CHAT_ROLE_SYSTEM:	# If there's a name...
+			# ^ At one point I thought giving 'system' a name was causing problems.
+
+		return message
+
+	def messages(inst:TheAIFieldView):
+
+		"""Returns the field view as a list of message dictionaries
+			(in the format expected by the GPT-3 chat API)."""
+		
+		msgs = inst._messages
+		if msgs is None:		# Not computed yet?
+
+			# We'll build up the list of messages by iterating through
+			# the field slots, and for each one, we'll construct an
+			# appropriate message dictionary.
+
+			msgs = []		# Initialize list of messages.
+
+			slots = inst.baseData.slots		# Get the list of field slots.
+			for slot in slots:
+				
+				element = slot.element	# Get the field element.
+				
+				message = inst.elemMessage(element)
+					# Convert the element into a message dictionary.
+
+				# image = element.image	# Get that element's (text) image.
+
+				# role = element.owner.chatRole
+				# 	# Get the role (CHAT_ROLE_{SYSTEM,USER,AI}).
+
+				# name = element.owner.chatName	
+				# 	# Get the name to be used for the owner entity in the chat API (may be None).
+
+				# message = {				# Construct the message dictionary.
+				# 	"role": 	role,
+				# 	"content":	image
+				# }
+				# if name is not None:	# If there's a name...
+				# 	message["name"] = name	# ...add it to the message.
+
+				msgs.append(message)	# Add the message to the list.
+
+			inst._messages = msgs	# Remember the list of messages.
+
+		return msgs
+	
+
 	def nChars(inst):
 		"""Returns the number of characters in the current field view."""
 		nChars = inst._nChars
 		if nChars is None:		# Not calculated yet?
-			text = inst.text()
-			inst._nChars = nChars = len(text)
+			text = inst.text					# Get the text string.
+			inst._nChars = nChars = len(text)	# Remember the number of characters.
 		return nChars
-		
+	
+
+	# Note: The following method really needs to be updated, because
+	# the tokenizer to use depends on the AI engine being used.
+	# For now, we'll just use the default tokenizer.
+
 	def nTokens(inst):
 		"""Returns the number of tokens in the current field view."""
-		# This works by concatenating together all the rows of 
-		# the text buffer, and then we run that
-		# through the tokenizer.
+		
 		nTokens = inst._nTokens
+		
 		if nTokens is None:		# Not calculated yet?
-			text = inst.text()	# Put together the complete text.
 
-			#_logger.debug(f"About to count tokens in text: [{text}]")
+			# First, check to see if we're using a chat engine.
+			# If so, we need to count up the tokens in the messages,
+			# not the text.
+			engineId = inst.modelVersion
 
-			inst._nTokens = nTokens = countTokens(text)
+			if isChatEngine(engineId):
+				msgs = inst.messages()			# Get the raw list of messages.
+				chatMsgs = ChatMessages(msgs)	# Convert to ChatMessages object.
+				nTokens = chatMsgs.totalTokens(model=engineId)
+					# This is the total number of tokens in all the messages.
+					# Note we have to pass in the model version, because
+					# the tokenizer to use depends on the model version.
+			
+			else:	# Not using a chat engine.
+
+				# This works by concatenating together all the data strings
+				# making up the total view, and then we run that through the 
+				# appropriate tokenizer.
+
+				text = inst.text()	# Put together the complete text.
+
+				#_logger.debug(f"About to count tokens in text: [{text}]")
+
+				nTokens = tiktokenCount(text, model=engineId)
+					# Note we have to pass in the model version, because
+					# the tokenizer to use depends on the model version.
+
+			inst._nTokens = nTokens		# Remember the number of tokens.
+
 		return nTokens
 		
 		
@@ -565,11 +735,21 @@ class TheAIFieldView(FieldView_):
 # to the system viewing the field and maybe they each have their views
 # configured slightly differently.
 
-class HumanFieldView(FieldView_):
-	"""Derived class for views of the receptive field to be shown to
-		human users."""
-	def render(inst):
-		pass
+# class HumanFieldView(FieldView_):
+# 	"""Derived class for views of the receptive field to be shown to
+# 		human users."""
+	
+# 	# We need to extend our superclass's default initializer to take an
+# 	# extra argument 'modelVersion', which is the version of GPT-3/4
+# 	# that the AI is using.  This is needed because the AI's view of the
+# 	# field is measured using a tokenizer that depends on the model version.
+# 	def __init__(inst, base:_TheBaseFieldData, modelVersion:str):
+# 		super().__init__(base)
+# 		inst._modelVersion = modelVersion
+
+# 	def render(inst):
+# 		pass	# Don't bother pre-rendering the human view, because
+# 				# it will be rendered on demand on display refresh.
 
 # In the following design pattern, before designing a singleton class,
 # we put as much of that class's functionality as possible into an abstract
@@ -607,19 +787,22 @@ class TheReceptiveField(ReceptiveField_):
 	"""Singleton class for the entire receptive field management system."""
 	
 	def __init__(theReceptiveField:TheReceptiveField, 
-			entity:AI_Persona,		# Caller must specify an AI persona entity.
+			personaEntity:AI_Persona,		# Caller must specify an AI persona entity.
 			fieldSize:int=None, 	# If supplied, this overrides config data.
 			nominalWidth:int=None,	# If supplied, this overrides config data.
+			modelVersion:str=None,	# If supplied, this overrides config data.
 		):
 		
 		"""Arguments:
 		
-			entity - This entity represents the AI's persona.
+			personaEntity - This entity represents the AI's persona.
 		
 			fieldSize - Specifies the maximum size of the receptive field in tokens.
 			
 			nominalWidth - Specifies the nominal width of the receptive field in 
 				(assumed) fixed-width character columns.
+
+			modelVersion - Specifies the version of the GPT-3 (or 4) model to use.
 		
 		"""
 	
@@ -635,28 +818,53 @@ class TheReceptiveField(ReceptiveField_):
 			#| current field settings.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 			
-			# First, configure all of the default settings for the field facility.
-		settings = TheFieldSettings.config()
-		
+		# First, configure all of the default settings for the field facility.
+		settings = TheFieldSettings.config()	# Get the configured settings.
+			# NOTE: The settings variable is currently unused, but we'll
+			# keep it around in case we need it later. 
+
+			# Next, reset all of the field settings to their default values.
+			# (Note this is only appropriate because we haven't yet defined
+			# a way to load saved settings from a file.  Once we do, we'll
+			# call a different method here to load the settings from a file
+			# or reset them to their defaults if no saved settings exist.)
+		settings.resetToDefaults()
+
 		if fieldSize is None:
-			fieldSize = TheFieldSettings.maxSize
+			fieldSize = settings.maxSize
 		else:	# Change the maxSize setting to the value provided.
-			TheFieldSettings.maxSize = fieldSize
+			settings.maxSize = fieldSize
 			#TheFieldSettings.updateMaximumSize(fieldSize)	# Don't need this yet.
 		
 		if nominalWidth is None:
-			nominalWidth = TheFieldSettings.nominalWidth
+			nominalWidth = settings.nominalWidth
 		else:
-			TheFieldSettings.nominalWidth = nominalWidth
-			#TheFieldSettings.updateNominalWidth(nominalWidth)	# Don't need yet
-	
+			settings.nominalWidth = nominalWidth
+			#settings.updateNominalWidth(nominalWidth)	# Don't need yet
+
+		# We also need to make sure all of the AI's mind settings are
+		# configured properly, because the receptive field size will be
+		# measured in tokens, and the tokenizer to use depends on the
+		# AI's mind settings (in particular on the modelVersion setting).
+		mindSettings = TheMindSettings.config()	# Get the configured settings.
+			# NOTE: The mindSettings variable is currently unused, but we'll
+			# keep it around in case we need it later.
+
+		if modelVersion is None:
+			modelVersion = mindSettings.modelVersion
+		else:
+			mindSettings.modelVersion = modelVersion
+			#mindSettings.updateModelVersion(modelVersion)	# Don't need yet
+
 		_logger.info("                [Field] Initializing with the following settings:")
 		_logger.info(f"                    Field size = {fieldSize} tokens.")
 		_logger.info(f"                    Nominal width = {nominalWidth} characters.")
+		_logger.info(f"                    Model version = '{modelVersion}'.")
 	
 			# Stash the important settings in instance data members.
 		field._fieldSize		= fieldSize
 		field._nominalWidth		= nominalWidth
+		field._modelVersion		= modelVersion
 	
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#| 2. Next, we initialize core sub-structures. Primarily, these are
@@ -675,7 +883,7 @@ class TheReceptiveField(ReceptiveField_):
 		_logger.debug("                [Field] Creating the AI's field view...")
 	
 			# Create and store field views for the AI & for humans.
-		field._aiFieldView		= TheAIFieldView(baseFieldData)
+		field._aiFieldView		= TheAIFieldView(baseFieldData, modelVersion)
 		#field._humanFieldView	= HumanFieldView(baseFieldData)
 
 
@@ -686,7 +894,36 @@ class TheReceptiveField(ReceptiveField_):
 			#| operator. They will also be shown to the AI in its main loop.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		_logger.info("                [Field] Creating initial field elements...")
+		_logger.info(f"                [Field] Creating initial field elements for [{modelVersion}] engine...")
+
+		## NOTE: For chat engines, we have an extra field element that we need
+		## to pin to the very top of the receptive field.  This is a system 
+		## prompt saying something like this:
+		##
+		##		SYSTEM				(Or however the 'system' role is rendered)
+		##
+		##		The below messages communicate a sequence of text elements 
+		##		which are arranged vertically in your current field of view 
+		##		as you are looking at the display screen of a computer that
+		##		is running an operating environment for text-based AIs such
+		##		as yourself. You should take the role of the AI user of this 
+		##		environment named "<PersonaID>"; and enter a response to the 
+		##		AI's current input prompt, which is shown at the bottom of
+		##		the field.  You may enter your response in the form of a
+		##		command line starting with '/', or a free-form message in
+		##		natural language, which will be added to your cognitive 
+		##		stream and may be seen by the system operator. You may also 
+		##		enter a blank line to indicate that you have nothing to say 
+		##		at this time.  Please note that you are free-running in this 
+		##		environment, and the clock display updates itself in real 
+		##		time.  If you are not sure what to do, you may enter '/' 
+		##		followed by the letter 'h' to see some available commands.
+		##
+		
+		if isChatEngine(modelVersion):
+			_logger.debug("                    [Field] Creating the chat engine system prompt element...")
+		
+			field._initialSystemPrompt = TheInitialSystemPrompt(field=field)
 
 				#|--------------------------------------------------------------
 				#| Create the "field header" element, which automatically pins
@@ -694,18 +931,29 @@ class TheReceptiveField(ReceptiveField_):
 				
 		_logger.debug("                    [Field] Creating the field header element...")
 	
-		field._fieldHeader	= TheFieldHeader(field)
+		field._fieldHeader	= TheFieldHeader(field=field)
 		
-				#|--------------------------------------------------------------
-				#| Create the "input area" element, which automatically pins 
-				#| itself to the very bottom edge of the receptive field.
-				
-		_logger.debug("                    [Field] Creating the input area element...")
-	
-		field._inputArea	= TheInputArea(field, entity)
-			# We pass in the entity for the AI persona because its entity-id
-			# (e.g., "Gladys") will be displayed in the prompt, to remind the
-			# AI which persona it's supposed to be responding as.
+
+		## NOTE: For chat engines, we have an extra field element that we need
+		## to pin to the very bottom of the receptive field.  This is the
+		## system prompt "Respond as <PersonaID>." to remind the AI which
+		## role it's supposed to be taking.  We'll create this element
+
+		if isChatEngine(modelVersion):
+			_logger.debug("                    [Field] Creating the chat engine prompt element...")
+			field._finalSystemPrompt = TheFinalSystemPrompt(field=field)
+
+		# We comment out the input area for chat models; it seems to cause confusion.
+		# 		#|--------------------------------------------------------------
+		# 		#| Create the "input area" element, which automatically pins 
+		# 		#| itself to the very bottom edge of the receptive field.
+		#		
+		# _logger.debug("                    [Field] Creating the input area element...")
+		#
+		# field._inputArea	= TheInputArea(field, personaEntity)
+		# 	# We pass in the entity for the AI persona because its entity-id
+		# 	# (e.g., "Gladys") will be displayed in the prompt, to remind the
+		#	# AI which persona it's supposed to be responding as.
 		
 				#|------------------------------------------------------------
 				#| Create the "prompt separator" element, which separates the
@@ -716,7 +964,8 @@ class TheReceptiveField(ReceptiveField_):
 
 		_logger.debug("                    [Field] Creating the prompt separator element...")
 	
-		field._promptSeparator	= ThePromptSeparator(field)
+		field._promptSeparator	= ThePromptSeparator(field=field)
+
 
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -746,6 +995,7 @@ class TheReceptiveField(ReceptiveField_):
 		# Since we just changed the field, tell the view to re-render itself.
 		field.updateView()
 
+
 	@property
 	def base(field:TheReceptiveField):
 		return field._baseFieldData
@@ -755,6 +1005,7 @@ class TheReceptiveField(ReceptiveField_):
 	def console(field:TheReceptiveField):
 		return field._console	# Our console client.
 
+
 	def setConsole(field:TheReceptiveField, console:ConsoleClient):
 	
 		"""Tells the field where to find the system console.  We 
@@ -763,6 +1014,7 @@ class TheReceptiveField(ReceptiveField_):
 			
 		field._console = console
 	
+
 	def place(field:TheReceptiveField, slot:FieldSlot, where:Placement):
 	
 		"""This method tells the field to place the given slot onto itself.
@@ -771,7 +1023,7 @@ class TheReceptiveField(ReceptiveField_):
 		base = field.base
 		
 			# Tell our base data structure to place this slot inside itself.
-		base.place(slot, placement)
+		base.place(slot, where)
 
 
 	@property
@@ -840,7 +1092,11 @@ class TheReceptiveField(ReceptiveField_):
 			the field.  The format of the returned value is a simple list
 			of items, each of which is a string.  Each item is conceptually
 			a single, indivisible unit; however, they are concatenated 
-			together for purposes of displaying them to the AI, or a human."""
+			together for purposes of displaying them to the AI, or a human.
+			
+			NOTE: For chat engines, the individual data items are in a
+			special format,
+			"""
 			
 		field	= theReceptiveField
 		view	= field.view

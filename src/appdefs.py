@@ -8,6 +8,11 @@
 #|		FULL PATH:      $GIT_ROOT/GLaDOS/src/appdefs.py
 #|		MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
 #|
+#|		SYSTEM NAME:	GLaDOS (Gladys' Lovely and Dynamic Operating System)
+#|
+#|		CODE LAYER:		Layer #0 (bottom; no imports of custom modules)
+#|
+#|
 #|	FILE DESCRIPTION:
 #|	=================
 #|
@@ -158,11 +163,19 @@ __all__ = [
 
 _appDict = {
 
+	'glados-test': {	# Test application -- currently just does an API test.
+
+		'systemName':	'GLaDOS',               # The test application is part of the GLaDOS system.
+		'appName':		'GLaDOS.testApp',		# We use the <system>.<component> naming scheme for the server app.
+		'topFile':		"glados-test"			# Top-level file of this application is glados-test.py.
+
+	},
+
     'glados-server': {  # Main GLaDOS server application.
 
         'systemName':   'GLaDOS',               # The server application is part of the GLaDOS system.
         'appName':      'GLaDOS.server',        # We use the <system>.<component> naming scheme for the server app.
-        'topFile':      'glados-server'         # Top-level file of this application is glados-server.py.
+        'topFile':      "glados-server"         # Top-level file of this application is glados-server.py.
 
     },
     
@@ -170,9 +183,10 @@ _appDict = {
 
         'systemName':   'GLaDOS',               # The Telegram bot application uses some GLaDOS-specific features.
         'appName':      'TelegramBot',          # However, it's conceptually a separate application from the GLaDOS system.
-        'topFile':      'telegram-bot'   # Top-level file of this application is gladys-telegram-bot.py.
+        'topFile':      "telegram-bot"			# Top-level file of this application is telegram-bot.py.
 
     }
+
 }
 
 
@@ -293,13 +307,16 @@ def selectApp(appID:str) -> None:
         raise ValueError("Invalid application name: " + appID)
 
     # Set the system name.
-    systemName = _appDict[appID]['systemName']
+
+    systemName	= _appDict[appID]['systemName']
 
     # Set the application name.
-    appName = _appDict[appID]['appName']
+
+    appName		= _appDict[appID]['appName']
 
     # Set the top-level file name.
-    topFile = _appDict[appID]['topFile']
+
+    topFile		= _appDict[appID]['topFile']
 
     # Return. (Technically, this statement is not needed, but it
     # makes the code more readable.)

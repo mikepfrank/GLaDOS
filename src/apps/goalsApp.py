@@ -583,6 +583,8 @@ class The_Goals_App(Application_):
 
 		_logger.debug("goalsApp.appSpecificInit(): Initializing Goals app...")
 
+		app.entity = The_GoalsApp_Entity()
+
 			#----------------------------------------------------------
 			# First, get the AI persona configuration, because it
 			# contains key information we need, such as the location

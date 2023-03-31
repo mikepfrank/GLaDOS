@@ -5,7 +5,11 @@
 #|	  FILENAME:		telegram-bot.py				   [Python 3 program source]   |
 #|	  =========																   |
 #|																			   |
-#|	  SUMMARY:	 This is a Telegram bot that uses GPT-3 to generate text.	   |
+#|	  SUMMARY:	 This is a Telegram bot that uses GPT-3 (or GPT-4) to          |
+#|                  generate text. (Note that, throughout this file,           |
+#|                  whenever we say GPT-3, we mean any models in the           |
+#|                  whole GPT-3 line of models, including GPT-4.)              |
+#|                                                                             |
 #|																			   |
 #|	  DESCRIPTION:															   |
 #|	  ~~~~~~~~~~~~															   |
@@ -90,6 +94,8 @@ import	os
 
 import	regex as re		
 	# We use the regex library for unescaping saved conversation data.
+
+import json
 
 from curses import ascii
 	# The only thing we use from this is ascii.RS (record separator character)
@@ -191,7 +197,11 @@ from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF
 				# Function names:
 
 			createCoreConnection,	# Returns a GPT3Core object, which represents a specific
-									#	"connection" to the core GPT-3 model.
+				#	"connection" to the core GPT-3 model. This factory function
+                #   selects the appropriate subclass of GPT3Core to instantiate, 
+                #   based on the engineId parameter.
+
+			messageRepr,	# Generates text representation of a chat message dict.
 
 		)
 
@@ -209,10 +219,12 @@ logmaster.configLogMaster(
 		component	= _appName,		# Name of the system component being logged.
 		role		= 'bot',		# Sets the main thread's role string to 'bot'.
 		consdebug	= False,		# Turn off full debug logging on the console.
-		consinfo	= True,			# Turn on info-level logging on the console.
-		#consinfo	 = False,		 # Turn off info-level logging on the console.
-		logdebug	= True			# Turn on full debug logging in the log file.
-		#logdebug	 = False		 # Turn off full debug logging in the log file.
+
+		#consinfo	= True,			# Turn on info-level logging on the console.
+		consinfo	 = False,		 # Turn off info-level logging on the console.
+
+		#logdebug	= True			# Turn on full debug logging in the log file.
+		logdebug	 = False		 # Turn off full debug logging in the log file.
 	)
 # NOTE: Debug logging is currently turned off to save disk space.
 
@@ -291,7 +303,7 @@ def initializePersistentContext():
 		PERSISTENT_DATA + \
 		MESSAGE_DELIMITER + " ~~~ Available commands: ~~~\n" + \
 		"  /remember <text> - Adds <text> to persistent context data.\n" + \
-		"  /forget <text>	- Removes <text> from persistent context data.\n" + \
+		"  /forget <text>   - Removes <text> from persistent context data.\n" + \
 		MESSAGE_DELIMITER + " ~~~ Recent Telegram messages: ~~~"
 
 # Go ahead and call it now.
@@ -402,7 +414,7 @@ stop_seq = ['\n' + MESSAGE_DELIMITER]
 # the selected engine name. We also go ahead and configure important API 
 # parameters here.
 
-gpt3core = createCoreConnection(ENGINE_NAME, maxTokens=maxRetToks, 
+gptCore = createCoreConnection(ENGINE_NAME, maxTokens=maxRetToks, 
 	temperature=temperature, presPen=presPen, freqPen=freqPen, 
 	stop=stop_seq)
 
@@ -443,9 +455,15 @@ class Message:
 		# Print diagnostic information.
 		_logger.debug(f"Creating message object for: {sender}> {text}")
 		self.sender	  = sender
+
+		if text is None:
+			_logger.warn("""Can't initialize Message from {sender} with text of None; using "" instead.""")
+			text = ""
+
 		self.text	  = text
-		self.archived = False	# Has this message been written to the archive file yet?
-	
+		self.archived = False
+			# Has this message been written to the archive file yet?
+
 	def __str__(self):
 		"""A string representation of the message object.
 			It is properly delimited for reading by the GPT-3 model."""
@@ -463,7 +481,14 @@ class Message:
 		# First, we'll replace all backslashes with '\\'.
 		# Then, we'll replace all newlines with '\n'.
 
-		escaped_text = self.text.replace('\\', '\\\\').replace('\n', '\\n')
+		text = self.text
+		if text is None:	# Null text? (Shouldn't happen, but...)
+			text = ""		# Message is empty string.
+
+		escaped_text = text.replace('\\', '\\\\').replace('\n', '\\n')\
+			.translate(str.maketrans({chr(i): f"\\x{format(i, '02x')}" \
+						for i in list(range(0, 9)) + list(range(11, 32))}))\
+			.replace('\ufffd', '\\ufffd')
 
 		# Now, we'll return the serialized representation of the message.
 		return f"{self.sender}> {escaped_text}\n"
@@ -482,25 +507,39 @@ class Message:
 		# Remove the trailing newline.
 		text = text.rstrip('\n')
 
-		# To unescape the backslash and newline characters correctly, we'll
-		# first replace all '\n' sequences NOT preceded by a '\' with a
-		# literal '\n'. Then, we'll replace all '\\' sequences with a
-		# literal '\'.
+		# First, we'll replace all '\\' sequences with a temporary 
+		# placeholder (Unicode replacement character, which should
+		# (ideally) not occur in the serialized file).
 
-		# I think we need a regular-expression-based approach here.
-		# The following regex pattern will match all '\n' sequences
-		# that are NOT preceded by a '\'.
-		pattern = r'(?<!\\)\\n'
+		repl_char = '\ufffd'	# Unicode replacement character.
+		text = text.replace("\\\\", repl_char)
 
-		# Now, we'll replace all '\n' sequences NOT preceded by a '\'
+		# Pattern to match encoded newlines.
+		pattern_enc_newline = r'\\n'
+
+		# Now, we'll replace all encoded newlines
 		# with a literal newline character.
-		text = re.sub(pattern, '\n', text)
+		text = re.sub(pattern_enc_newline, '\n', text)
 
-		# Now, we'll replace all '\\' sequences with a literal '\'.
-		text = text.replace('\\\\', '\\')
+		# Pattern to match encoded other controls.
+		pattern_enc_ctrl = r'\\x([0-9a-fA-F]{2})'
+
+		# Now, we'll replace all encoded other controls
+		# with the literal control characters.
+
+		def replace_enc_ctrl(match):
+			return chr(int(match.group(1), 16))
+
+		text = re.sub(pattern_enc_ctrl, replace_enc_ctrl, text)
+
+		# Now, we'll revert the placeholders back to literal '\'.
+		text = text.replace(repl_char, '\\')
+
+		# Finally, we'll restore any escaped replacement characters.
+		text = text.replace('\\ufffd', repl_char)
 
 		# Return the message object.
-		return Message(sender, text)	# Q: Is the class name in scope here? A: Yes.
+		return Message(sender, text)
 	
 	#__/ End of message.deserialize() instance method definition.
 
@@ -522,6 +561,9 @@ class ConversationError(Exception):
 
 global _anyMemories
 _anyMemories = False
+
+global _lastError
+_lastError = ""
 
 # Next, let's define a class for conversations that remembers the messages in the conversation.
 #  We'll use a list of Message objects to store the messages.
@@ -610,6 +652,7 @@ class Conversation:
 	def read_memory(self):
 
 		global PERSISTENT_DATA	# We declare this global so we can modify it.
+		global _anyMemories
 
 		# Boolean to keep track of whether we've already read any lines from the persistent memory file.
 		read_lines = False
@@ -674,10 +717,16 @@ class Conversation:
 	def add_memory(self, new_memory:str):
 
 		global PERSISTENT_DATA	# We declare this global so we can modify it.
+		global _anyMemories
+
+		if new_memory is None or new_memory == "" or new_memory == "\n":
+			self.report_error("/remember command needs a non-empty argument.")
+			return
 
 		if not _anyMemories:
 			PERSISTENT_DATA += MESSAGE_DELIMITER + \
 				" ~~~ Memories added using '/remember' command: ~~~\n"
+			_anyMemories = True		# So we only add one new section header!
 
 		# Make sure the new memory ends in a newline.
 		if new_memory[-1] != '\n':
@@ -709,6 +758,10 @@ class Conversation:
 
 		global PERSISTENT_DATA	# We declare this global so we can modify it.
 
+		if text_to_remove == None or len(text_to_remove) == 0:
+			self.report_error("/forget command needs a non-empty argument.")
+			return False
+
 		# Make sure the text to remove ends in a newline.
 		# (This avoids leaving blank lines in the persistent data string.)
 		if text_to_remove[-1] != '\n':
@@ -717,7 +770,8 @@ class Conversation:
 		# If the text to remove isn't present in the persistent data string,
 		# we need to report this as an error to both the AI and the user.
 		if text_to_remove not in PERSISTENT_DATA:
-			self.add_message(Message(SYS_NAME, f"Error: [{text_to_remove.rstrip()}] not found in persistent memory."))
+
+			self.report_error(f"[{text_to_remove.rstrip()}] not found in persistent memory.")
 			return False	# Return false to indicate that the memory wasn't removed.
 			# This will tell the caller to report failure to the user.
 
@@ -790,10 +844,26 @@ class Conversation:
 
 		# If we get here, we can safely pop the oldest message.
 
-		print("Expunging oldest message from conversation:", self.chat_id)
-		print("Oldest message was:", self.messages[0])
+		_logger.debug(f"Expunging oldest message from {len(self.messages)}-message conversation:", self.chat_id)
+		#print("Oldest message was:", self.messages[0])
 		self.messages.pop(0)
 		self.expand_context()	# Update the context string.
+
+
+	def report_error(self, errmsg):
+
+		"""Adds an error report to the conversation. Also logs the error."""
+
+		global _lastError
+
+		msg = f"Error: {errmsg}"
+
+		# Add the error report to the conversation.
+		self.add_message(Message(SYS_NAME, msg))
+
+		_logger.error(msg)	# Log the error.
+
+		_lastError = msg	# So higher-level callers can access it.
 
 
 	def add_message(self, message, finalize=True):
@@ -929,8 +999,17 @@ class Conversation:
 		chat_messages.append({
 			'role': CHAT_ROLE_SYSTEM,
 
-			'content': f"Respond as {self.bot_name}.\n"
-				# This is simple and seems to work pretty well.
+#-------------------------------------------------------------------------------
+			# Trying this new variation, to facilitate continuations:
+			'content': f"Respond as {self.bot_name} in the user's preferred "	\
+				"language. (Note: If you need more space to respond, then "		\
+				"instead of condensing your response, just truncate it at "		\
+				'some point and end it with "(cont.)"; then if the user types '	\
+				'"/continue", resume generating your response appropriately.)\n'
+				
+			# 'content': f"Respond as {self.bot_name}."
+			# # This is simple and seems to work pretty well.
+
 		})
 
 		# (The back-end language model will be prompted to respond by something like 
@@ -989,7 +1068,7 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Print diagnostic information.
-	print(f"Starting conversation with {chat_id}.")
+	_logger.normal(f"Starting conversation with {chat_id}.")
 
 	# Create a new conversation object and link it from the Telegram context object.
 	# NOTE: It needs to go in the context.chat_data dictionary, because that way it
@@ -1012,12 +1091,19 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 
 	# Give the user a system warning if their first name contains unsupported characters or is too long.
 	if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", update.message.from_user.first_name):
+		
+            # Log the warning.
 		_logger.warning(f"User {update.message.from_user.first_name} has an unsupported first name.")
+		
+            # Add the warning message to the conversation, so the AI can see it.
 		warning_msg = f"WARNING: Your first name \"{update.message.from_user.first_name}\" contains " \
 			"unsupported characters (or is too long). The AI only supports names with <=64 alphanumeric " \
 			"characters (a-z, 0-9), dashes (-) or underscores (_)."
-		reply_msg = f"[SYSTEM {warning_msg}]"
 		conversation.add_message(Message(SYS_NAME, warning_msg))
+		
+            # Also send the warning message to the user. (Making it clear that 
+            # it's a system message, not from the AI persona itself.)
+		reply_msg = f"[SYSTEM {warning_msg}]"
 		update.message.reply_text(reply_msg)
 
 	return
@@ -1026,8 +1112,18 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 
 
 # Below is the help string for the bot. (Displayed when '/help' is typed in the chat.)
+
+# First calculate the model family, which is mentioned in the help string. 
+# We'll get it from the core object's .modelFamily property.
+MODEL_FAMILY = gptCore.modelFamily
+
+# Note the below would have been the original way to get the model family,
+# but this method is now obsolete, since the core objects know their own 
+# model family.
+#MODEL_FAMILY = TheAIPersonaConfig().modelFamily
+
 HELP_STRING = f"""
-{BOT_NAME} bot powered by GPT-3/{ENGINE_NAME}.
+{BOT_NAME} bot powered by {MODEL_FAMILY}/{ENGINE_NAME}.
 Available commands:
 	/start - Start a new conversation.
 	/help - Show this help message.
@@ -1040,14 +1136,6 @@ Available commands:
 def help(update, context):
 	"""Display the help string when the command /help is issued."""
 	update.message.reply_text(HELP_STRING)
-
-#		 f"{BOT_NAME} bot powered by GPT-3/{ENGINE_NAME}.\n" +
-#		 f"Available commands:\n" +
-#		 f"\t/start - Start a new conversation.\n" +
-#		 f"\t/help - Show this help message.\n" +
-#		 f"\t/remember <text> - Add <text> to AI's persistent memory.\n" +
-#		 f"\t/forget <text> - Remove <text> from AI's persistent memory.\n" +
-#		 f"\t/reset - Clear the AI's short-term conversational memory.\n")
 
 
 # Now, let's define a function to handle the /echo command.
@@ -1116,20 +1204,25 @@ def remember(update, context):
 	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
+	# Get the name that we'll use for the user.
+	user_name = get_user_name(update.message.from_user)
+
+	# Block /remember command for users other than Mike.
+	if user_name != 'Michael':
+		update.message.reply_text(f"[DIAGNOSTIC: Sorry, the /remember command is currently disabled.]\n")
+		return	# Quit early
+
 	# Retrieve the Conversation object from the Telegram context.
 	conversation = context.chat_data['conversation']
+
+	# First, we'll add the whole command line to the conversation, so that the AI can see it.
+	conversation.add_message(Message(user_name, update.message.text))
 
 	# Get the command's argument, which is the text to remember.
 	text = ' '.join(update.message.text.split(' ')[1:])
 
 	# Tell the conversation object to add the given message to the AI's persistent memory.
 	conversation.add_memory(text)
-
-	# Get the name that we'll use for the user.
-	user_name = get_user_name(update.message.from_user)
-
-	# We'll also add the whole command line to the conversation, so that the AI can see it.
-	conversation.add_message(Message(user_name, update.message.text))
 
 	_logger.info(f"{user_name} added memory: [{text.strip()}]")
 
@@ -1181,12 +1274,19 @@ def forget(update, context):
 	# If the operation was not successful, send a different reply to the user.
 	else:
 		
+		errmsg = _lastError
+
 		# Generate an error-level report to include in the application log.
 		_logger.error(f"{user_name} failed to remove memory: [{text.strip()}]")
 	
-		# Send a reply to the user.
-		update.message.reply_text(f"[DIAGNOSTIC: Could not remove [{text.strip()}] from persistent memory. "
-									"(This probably means it isn't present.)]\n")
+		diagMsg = f"[DIAGNOSTIC: Could not remove [{text.strip()}] from persistent memory. " \
+				  f"Error message was: \"{errmsg}\"]\n"
+
+		# Add the diagnostic message to the conversation.
+		conversation.add_message(SYS_NAME, diagMsg)
+
+		# Send the diagnostic message to the user.
+		update.message.reply_text(diagMsg)
 
 	# Copilot wrote the following amusing diagnostic code. But we don't really need it.
 	## Now, let's see if the AI has any memories left.
@@ -1218,7 +1318,7 @@ def get_user_name(user):
 
 	# If we're using the GPT-3 Chat API, we'll also need to make sure that the user's name
 	# is a valid identifier that's accepted by that API as a user name.
-	if user_name is not None and gpt3core.isChat:
+	if user_name is not None and gptCore.isChat:
 		# If the user's first name contains characters the GPT-3 Chat API won't accept 
 		# (or is too long or an empty string), we'll invalidate it by setting it to None.
 		if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", user_name):
@@ -1240,6 +1340,10 @@ def process_message(update, context):
 		# Note that <context>, in this context, denotes the Telegram context object.
 	"""Process a message."""
 
+	if update.message is None:
+		_logger.error("Null message received; ignoring...")
+		return
+
 	chat_id = update.message.chat.id
 
 	# Make sure the thread component is set to this application (for logging).
@@ -1249,6 +1353,16 @@ def process_message(update, context):
 	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
+	if not 'conversation' in context.chat_data:
+		_logger.info(f"Automatically restarting conversation {chat_id} after reboot.")
+		update.message.reply_text("[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.]")
+
+		# Temporarily pretend user entered '/start', and process that.
+		_tmpText = update.message.text
+		update.message.text = '/start'
+		start(update,context)
+		update.message.text = _tmpText
+
 	conversation = context.chat_data['conversation']
 
 	# Add the message just received to the conversation.
@@ -1257,7 +1371,7 @@ def process_message(update, context):
 	# If the currently selected engine is a chat engine, we'll dispatch the rest
 	# of the message processing to a different function that's specialized to use 
 	# OpenAI's new chat API.
-	if gpt3core.isChat:
+	if gptCore.isChat:
 		process_chat_message(update, context)
 		return
 
@@ -1320,7 +1434,7 @@ def process_message(update, context):
 
 			try:
 				# Get the response from GPT-3, as a Completion object.
-				completion = gpt3core.genCompletion(context_string)
+				completion = gptCore.genCompletion(context_string)
 				response_text = completion.text
 				break
 
@@ -1571,6 +1685,13 @@ def process_response(update, context, response_message):
 			# Send the user a diagnostic message.
 			update.message.reply_text(f"[DIAGNOSTIC: Unknown command [{command_name}].]")
 
+	# One more thing to do here: If the AI's response ends with the string "(cont)" or "(cont.)"
+	# or "(more)" or "...", then we'll send a message to the user asking them to continue the 
+	# conversation.
+	if response_message.text.endswith("(cont)") or response_message.text.endswith("(cont.)") or \
+	   response_message.text.endswith("(more)") or response_message.text.endswith("..."):
+		update.message.reply_text("[If you want me to continue my response, type '/continue'.]")
+
 #__/ End of process_response() function definition.
 
 
@@ -1600,13 +1721,19 @@ def process_chat_message(update, context):
 		with open(f"{LOG_DIR}/latest-messages.txt", "w") as f:
 			for chat_message in chat_messages:
 
-				if 'role' in chat_message:
-					roleOrName = chat_message['role']
-				# Note 'name' overrides 'role' if both are present.
-				if 'name' in chat_message:
-					roleOrName = chat_message['name']
+				f.write(messageRepr(chat_message))
+				
+				#if 'role' in chat_message:
+				#	roleOrName = chat_message['role']
+				## Note 'name' overrides 'role' if both are present.
+				#if 'name' in chat_message:
+				#	roleOrName = chat_message['name']
+				#
+				#f.write(f"{roleOrName}: {chat_message['content']}\n")  # Write the message to the file.
 
-				f.write(f"{roleOrName}: {chat_message['content']}\n")  # Write the message to the file.
+		# Also do a json dump
+		with open(f"{LOG_DIR}/latest-messages.json", "w") as outfile:
+			json.dump(chat_messages, outfile)
 
 		# Now we'll try actually calling the API.
 		try:
@@ -1625,8 +1752,8 @@ def process_chat_message(update, context):
 			# We'll do this by subtracting the length of the chat messages from 
 			# the context window size.
 
-			# Get the context window size from the gpt3core object.
-			contextWinSizeToks = gpt3core.fieldSize
+			# Get the context window size from the gptCore object.
+			contextWinSizeToks = gptCore.fieldSize
 
 			# Get the length of the chat messages in tokens.
 			msgsSizeToks = ChatMessages(chat_messages).totalTokens()
@@ -1656,7 +1783,7 @@ def process_chat_message(update, context):
 			_logger.debug(f"process_chat_message(): maxTokens = {maxTokens}, minReplyWinToks = {minReplyWinToks}, maxRetToks = {maxRetToks}, availSpaceToks = {availSpaceToks}")
 
 			# Get the response from GPT-3, as a ChatCompletion object.
-			chatCompletion = gpt3core.genChatCompletion(	# Call the API.
+			chatCompletion = gptCore.genChatCompletion(	# Call the API.
 				
 				maxTokens=maxTokens,	# Max. number of tokens to return.
 					# We went to a lot of trouble to set this up properly above!
@@ -1731,12 +1858,16 @@ def process_chat_message(update, context):
 		# This was also suggested by Copilot; we'll go ahead and use it.
 		except Exception as e:
 			# We've hit some other exception, so we need to log it and send a diagnostic message to the user.
+			# (And also add it to the conversation so the AI can see it.)
 			
+			_report_error(conversation, update.message, f"Exception while getting response: {type(e).__name__} ({e})")
+
 			# First, we'll log this at the ERROR level, and include the exception traceback if at debug level.
-			_logger.error(f"Exception while getting response: {type(e).__name__} ({e})", exc_info=logmaster.doDebug)
-			
+			#_logger.error(f"Exception while getting response: {type(e).__name__} ({e})", exc_info=logmaster.doDebug)
+			#
 			# Then, we'll send a diagnostic message to the user.
-			update.message.reply_text(f"[DIAGNOSTIC: Exception while getting response: {type(e).__name__} ({e})]")
+			#update.message.reply_text(f"[ERROR: Exception while getting response: {type(e).__name__} ({e})]")
+
 			return
 
 	# If we get here, we've successfully gotten a response from the API.
@@ -1795,6 +1926,31 @@ def process_chat_message(update, context):
 	process_response(update, context, response_message)	   # Defined above.
 
 #__/ End of process_chat_message() function definition.
+
+
+def _report_error(convo:Conversation, telegramMessage,
+				 errMsg:str, logIt:bool=True,
+				 showAI:bool=True, showUser:bool=True):
+
+	"""Report a given error response to a Telegram message. Flags
+		<logIt>, <showAI>, <showUser> control where the error is
+		reported."""
+
+	if logIt:
+		# Record the error in the log file.
+		_logger.error(errMsg, exc_info=logmaster.doDebug)
+			# The exc_info option includes a stack trace if we're in debug mode.
+
+	# Compose formatted error message.
+	msg = f"[ERROR: {errMsg}]"
+
+	if showAI:
+		# Add the error message to the conversation.
+		convo.add_message(Message(SYS_NAME, msg))
+
+	if showUser:
+		# Show the error message to the user.
+		telegramMessage.reply_text(msg)
 
 
 # Question from human programmer to Copilot: Do you know who you are, Copilot?

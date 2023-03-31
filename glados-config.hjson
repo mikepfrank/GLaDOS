@@ -1,11 +1,11 @@
-#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#/==============================================================================
 #|                      TOP OF FILE:    glados-config.hjson
 #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #|  FILE NAME:      glados-config.hjson               [Human-readable JSON file]
 #|
 #|  FULL PATH:      $GIT_ROOT/GLaDOS/src/glados-config.hjson
 #|  MASTER REPO:    https://github.com/mikepfrank/GLaDOS.git
-#|  SYSTEM NAME:    GLaDOS (Generic Lifeform and Domicile Operating System)
+#|  SYSTEM NAME:    GLaDOS (Gladys' Lovely and Dynamic Operating System)
 #|  APP NAME:       GLaDOS.server (GLaDOS server application)
 #|
 #|  DESCRIPTION:
@@ -25,8 +25,9 @@
 #|      precedence over the values contained in this file if it's present.
 #|      However, that feature has not yet been implemented.
 #|
-#|      NOTE: This module is distinguished from the dynamical settings
-#|      management facility in the 'settings' package in several respects:
+#|      NOTE: The config package is distinguished from the dynamical 
+#|      settings management facility in the 'settings' package in several
+#|      respects:
 #|
 #|          - The purpose of adding a parameter to the settings facility
 #|              is to enable users (human or AI) to view and change that
@@ -53,7 +54,7 @@
 #|
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-    #|----------------------------------------------------------------------
+    #/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #| In the context of config files, we refer to JSON/hJSON dicts/maps as
     #| "records."  The top-level structure in the config file is a record
     #| that contains a number of individual parameter settings, as well as
@@ -105,9 +106,10 @@
             page 2500-257F).  If so, then the console can try to use
             them, and the field display might also use them. */
 
-    has-box-chars:  True    # E.g., Everson Mono Bold font looks good.
+    has-box-chars:  True    
+            # E.g., Everson Mono Bold font looks good.
 
-        #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        #/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         #| The configuration structure for the text windowing system that
         #| we provide to the AI in its field display.  Note that these
         #| settings can be overridden by preferences within the AI
@@ -128,7 +130,7 @@
         }
 
 
-        #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        #/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         #| The basic configuration structure for the receptive field.
         #| Note that these settings can be overridden in the AI-specific
         #| configuration file.
@@ -142,7 +144,8 @@
                     coded" into it; someday, if we have more models available,
                     we may want to specify this as a separate parameter. */
 
-            title:                  "GLaDOS Main Screen / GPT-3 Receptive Field"
+            title:              "GladOS Main Screen / GPT-3 Receptive Field"
+                # I think this parameter is currently unused anyway...
 
                 /* The nominal width of the receptive field, in (assumed
                     fixed-width) characters.  (Note that not all field views
@@ -173,7 +176,8 @@
                     format style. */
         }
 
-        #|----------------------------------------------------------------------
+
+        #/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         #| The app-list attribute specifies the list of GLaDOS applications
         #| that are (potentially) available to the AI, and gives configuration
         #| details for each.  Each element of this list includes the following
@@ -287,6 +291,7 @@
                 #               \
                 # This means, initially place the app's window near the top
                 # edge of the receptive field (just below the field header).
+                # It will then stay there unless moved.
 
             auto-focus:     true
                 #             \
@@ -294,7 +299,7 @@
                 # it first opens its window on the field.  The only reason
                 # we do this is to allow the AI to practice using window
                 # commands (like '/Minimize,' or '/Close') on this window
-                # if it wants to.
+                # if it wants to. (These aren't implemented yet, though.)
 
             quiet-update:   true
                 #             \
@@ -401,10 +406,12 @@
             auto-open:      false	# Don't open Goals Window automatically.
 			auto-focus:		true	# Grab command focus when window opens.
 			#placement:		'pinned-to-top'	
+            # Commented out because we'll just use default placement.
 
 			app-config: {
 
 				goals-filename:		cur-goals.json
+                    # To be used to persistently record current goal list.
 
 			}
 
@@ -416,8 +423,9 @@
 
             available:      true    # This app is implemented and available to the AI.
 
-			#auto-start:     false
+			#auto-start:     false  # I don't think the help app needs this?
 			auto-start:		true	# Just doing this temporarily for testing.
+                # Should this also start the whole help system?
 
             auto-open:      false
 			#auto-open:		true	# Just doing this temporarily for testing.
@@ -437,7 +445,7 @@
                     #--------1---------2---------3---------4---------5---------6
                     '''
 
-                        This is the top-level Help screen for GladOS, the General Lifeform's automated Domicile Operating System, Copyright (c) 2020-22 Metaversal Constructions.
+                        This is the top-level Help screen for GladOS, Gladys' Lovely and Dynamic Operating System, Copyright (c) 2020-23 Metaversal Constructions.
 
                         At the prompt, you may enter a command line starting with '/', or type a free-form paragraph of text to add to your cognitive history.  Available command words include:
 
@@ -558,4 +566,4 @@
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #|                      END OF FILE:    glados-config.hjson
-#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#|==============================================================================

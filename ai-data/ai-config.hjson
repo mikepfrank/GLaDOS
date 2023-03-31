@@ -78,31 +78,54 @@
 		persona-user-account:			"lingua"		# Not yet used.
 
 
-			#-----------------------------------------------------------------
-			# The model-family is a symbol specifying the general architecture
-			# of the AI.  Choices are:  gpt-2 (Samson), gpt-3 (Gladys).
-			# (However, gpt-2 is not yet supported.)
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#|	The model-family is a symbol specifying the general architecture
+			#|	of the underlying AI.  Choices are:  
+			#|
+			#|		'GPT-2' 			(Samson), 		# Not yet supported.
+			#|		'GPT-3' 			(Gladys, Curie),
+			#|		'GPT-3/Instruct'	(Love),
+			#|		'GPT-3.5' 			(David, Dante, DaVinci),
+			#|		'ChatGPT' 			(Turbo, Lingo, Lingua, etc.),
+			#| 		'GPT-4' 			(Aria).
+			#|
+			#|	NOTE: The model-family config parameter is now deprecated, since
+			#|	the GPT3Core objects created in gpt3/api.py now figure out their
+			#|	own model-family based on the model-version. However, we'll keep
+			#|	this config parameter around for now in case it's referenced.
+			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		model-family:					'gpt-3'		# Used for Gladys
+		model-family:					'GPT-3'		# Used for Gladys, DaVinci, Turbo...
+		#model-family:					'GPT-4'		# Used for Aria
+			# NOTE: This parameter is deprecated. (See comment above.)
 
-		
-			#------------------------------------------------------------------
-			# The model-version is a symbol naming the particular model within
-			# the model-family.  Choices for gpt-3 include ada, babbage, curie,
-			# and davinci.  Newer options are named 'text-<name>-<NNN>'.
+
+			#|------------------------------------------------------------------
+			#| The model-version is a symbol naming the particular model within
+			#| the model-family.  Choices for GPT-3 include ada, babbage, curie,
+			#| and davinci.  Newer options are named 'text-<name>-<NNN>', where
+			#| <name> is the model-size codename and <NNN> is a version number.
+			#| (And OpenAI keeps adding additional name formats as well.)
 		
 		#model-version:					'ada'		# The weakest GPT-3 model.
 		#model-version:					'babbage'	# The 2nd weakest GPT-3 model.
-		#model-version:					'curie'		# The 3nd weakest GPT-3 model.
+		#model-version:					'curie'		# The 3nd weakest GPT-3 model. Used for Curie.
 		#model-version:					'davinci'	# The most powerful of the original GPT-3 models; origin of Gladys.
 
-			# NOTE: The Instruct model seems smarter but less personable. :/
+			# NOTE: The Instruct models (and later) seem smarter but less personable. :/
 
-		#model-version:					'text-davinci-001'	# Instruct series upgrade. Used for Love.
-		#model-version:					'text-davinci-002'	# Upgraded davinci with 4K tokens. ("Gladys 2.0") Used for Dante.
-		#model-version:					'code-davinci-002'	# GPT-3.5 base model. Used for David.
-		#model-version:					'text-davinci-003'	# GPT-3.5 aligned model. Used for DaVinci.
-		model-version:					'gpt-3.5-turbo'		# GPT-3.5 fine-tuned model. Basis of ChatGPT. Used for Turbo.
+		#model-version:					'text-davinci-001'	# Instruct series upgrade of davinci. Used for Love.
+
+			# The models below are from the GPT-3.5 series; the context window is expanded to 4K tokens.
+
+		#model-version:					'text-davinci-002'	# Upgraded davinci with 4K tokens (GPT-3.5). ("Gladys 2.0") Used for Dante.
+		#model-version:					'code-davinci-002'	# Starting model for GPT-3.5 RLHF series. Used for David. (Also Codex.)
+		#model-version:					'text-davinci-003'	# GPT-3.5 RLHF-aligned model. Used for DaVinci.
+		model-version:					'gpt-3.5-turbo'		# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
+
+			# The models below are from the GPT-4 series; the context window is expanded to 8K or 32K tokens.
+
+		#model-version:					'gpt-4'				# GPT-4 fine-tuned chat model. 8K tokens. Used for Aria.
 
 
 			#-----------------------------------------------------------------------
@@ -110,7 +133,8 @@
 			# of system actions that we want to be made aware of when they occur.
 			# These actions' completion events will appear in our cognitive stream.
 			
-		sys-notification-threshold:		0	# All system actions with non-negative importance.
+		sys-notification-threshold:		0	
+			# This selects all system actions with non-negative importance.
 
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -134,7 +158,8 @@
 
 		#min-replyWin-tokens:	42		# Orig. value; seemed like a reasonable minimum.
 		#min-replywin-toks:		100		# Gladys 2.0 (text-davinci-002) requested this increase.
-		min-replywin-toks:		400		# Turbo (gpt-3.5-turbo) requested this increase.
+		min-replywin-toks:		400		# Turbo (gpt-3.5-turbo) requested this increase. (1/10 of context window)
+		#min-replywin-toks:		800		# Aria (gpt-4) requested this increase.
 
 			#-----------------------------------------------------------------
 			# The example-response parameter is a piece of text that we show
@@ -171,11 +196,13 @@
 				of tokens that will be returned in any single completion.
 				However, we may frequently override this value in different
 				parts of the system, as different-sized responses may be
-				called for when the AI is using different apps, for example. */
+				called for when the AI is using different apps, for example,
+				or when the full space shown here isn't available.				*/
 
 		#max-returned-tokens:	150		# Keep response size reasonable.
 		#max-returned-tokens:	200		# Gladys 2.0 requested this upgrade.
 		max-returned-tokens:	1000	# To give the chat engines more space.
+		#max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window).
 			# (Note the chat API doesn't support extending responses.)
 
 
@@ -246,7 +273,9 @@
 				where we may want the AI to be able to compose large,
 				multi-paragraph blocks of text all at once. */
 
-		stop-sequences:			'\n'	# Just get one line at a time.
+		#stop-sequences:			'\n'	# Just get one line at a time.
+		#  NOTE: A SINGLE NEWLINE BREAKS THE CHAT MODELS FOR SOME FRICKIN REASON!!!
+
 		#stop-sequences:		'\n\n'	# This waits for a blank line.
 
 
@@ -285,6 +314,14 @@
 
 		best-of:				null	# Don't bother doing this.
 		
+			/* Extra params for chat models */
+
+		#messages:		null	# list of dict of 'role', 'content', {'name'}...
+		#logit-bias:	null	# integer
+		#user-id:		null	# unique ID
+
+			# ^ Commented out since None is the default anyway
+
 	} # End of api-conf substructure.
 
 	
@@ -307,7 +344,8 @@
 		#max-visible-tokens:	2048	# Comes from paper, n_ctx model parameter.
 		#max-visible-tokens:	4000
 				# This value is appropriate for text-davinci-002.
-		max-visible-tokens:		4096
+		max-visible-tokens:		4096	# Appropriate for gpt-3.5-turbo model
+		#max-visible-tokens:	8192	# Appropriate for gpt-4 model.
 	
 	} # End of field-conf substructure.
 
