@@ -130,6 +130,11 @@ sure `python3` is in your path and that it invokes the Python version
 directory of the repo (since it looks for the GladOS code in the `src/`
 subdirectory).
 
+Currently, the server application just brings up the GladOS system 
+console display; there is no server functionality yet.
+
+**NOTE:** Presently the GladOS console doesn't support terminal resizing.
+
 ## Usage & Testing
 
 This section describes the various application programs and tests that can be run.
