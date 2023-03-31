@@ -107,6 +107,7 @@ from curses import ascii
 # The following packages are from the python-telegram-bot library.
 import telegram
 import telegram.ext	   # Needed for ExtBot, Dispatcher, Updater.
+from telegram.error import BadRequest
 
 # The following packages are from the openai library.
 from openai.error import RateLimitError			# Detects quota exceeded.
@@ -455,6 +456,11 @@ class Message:
 		# Print diagnostic information.
 		_logger.debug(f"Creating message object for: {sender}> {text}")
 		self.sender	  = sender
+
+		if text is None:
+			_logger.warn("""Can't initialize Message from {sender} with text of None; using "" instead.""")
+			text = ""
+
 		self.text	  = text
 		self.archived = False
 			# Has this message been written to the archive file yet?
@@ -714,6 +720,10 @@ class Conversation:
 		global PERSISTENT_DATA	# We declare this global so we can modify it.
 		global _anyMemories
 
+		if new_memory is None or new_memory == "" or new_memory == "\n":
+			self.report_error("/remember command needs a non-empty argument.")
+			return
+
 		if not _anyMemories:
 			PERSISTENT_DATA += MESSAGE_DELIMITER + \
 				" ~~~ Memories added using '/remember' command: ~~~\n"
@@ -839,7 +849,7 @@ class Conversation:
 
 		# If we get here, we can safely pop the oldest message.
 
-		_logger.debug(f"Expunging oldest message from {len(self.messages)}-message conversation:", self.chat_id)
+		_logger.debug(f"Expunging oldest message from {len(self.messages)}-message conversation #{self.chat_id}.")
 		#print("Oldest message was:", self.messages[0])
 		self.messages.pop(0)
 		self.expand_context()	# Update the context string.
@@ -847,12 +857,13 @@ class Conversation:
 
 	def report_error(self, errmsg):
 
-		"""Adds an error report to the conversation."""
+		"""Adds an error report to the conversation. Also logs the error."""
 
 		global _lastError
 
 		msg = f"Error: {errmsg}"
 
+		# Add the error report to the conversation.
 		self.add_message(Message(SYS_NAME, msg))
 
 		_logger.error(msg)	# Log the error.
@@ -1081,7 +1092,10 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 		# Also record the initial message in our conversation data structure.
 		conversation.add_message(Message(conversation.bot_name, START_MESSAGE))
 	else:
-		update.message.reply_text(f"[DIAGNOSTIC: Restarted bot with last {len(conversation.messages)} messages from archive.]")
+		try:
+			update.message.reply_text(f"[DIAGNOSTIC: Restarted bot with last {len(conversation.messages)} messages from archive.]")
+		except BadRequest as e:
+			_logger.error(f"Got a BadRequest from Telegram; ignoring.")
 
 	# Give the user a system warning if their first name contains unsupported characters or is too long.
 	if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", update.message.from_user.first_name):
@@ -1161,6 +1175,10 @@ def reset(update, context):
 	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
+	if 'conversaation' not in context.chat_data:
+		_logger.error("Can't reset conversation {chat_id} because it's not loaded.")
+		return
+
 	conversation = context.chat_data['conversation']
 
 	# Print diagnostic information.
@@ -1209,14 +1227,14 @@ def remember(update, context):
 	# Retrieve the Conversation object from the Telegram context.
 	conversation = context.chat_data['conversation']
 
+	# First, we'll add the whole command line to the conversation, so that the AI can see it.
+	conversation.add_message(Message(user_name, update.message.text))
+
 	# Get the command's argument, which is the text to remember.
 	text = ' '.join(update.message.text.split(' ')[1:])
 
 	# Tell the conversation object to add the given message to the AI's persistent memory.
 	conversation.add_memory(text)
-
-	# We'll also add the whole command line to the conversation, so that the AI can see it.
-	conversation.add_message(Message(user_name, update.message.text))
 
 	_logger.info(f"{user_name} added memory: [{text.strip()}]")
 
@@ -1334,6 +1352,10 @@ def process_message(update, context):
 		# Note that <context>, in this context, denotes the Telegram context object.
 	"""Process a message."""
 
+	if update.message is None:
+		_logger.error("Null message received; ignoring...")
+		return
+
 	chat_id = update.message.chat.id
 
 	# Make sure the thread component is set to this application (for logging).
@@ -1345,7 +1367,10 @@ def process_message(update, context):
 
 	if not 'conversation' in context.chat_data:
 		_logger.info(f"Automatically restarting conversation {chat_id} after reboot.")
-		update.message.reply_text("[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.]")
+		try:
+			update.message.reply_text("[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.]")
+		except BadRequest as e:
+			_logger.error(f"Got a BadRequest from Telegram; ignoring.")
 
 		# Temporarily pretend user entered '/start', and process that.
 		_tmpText = update.message.text
