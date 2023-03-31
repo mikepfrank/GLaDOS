@@ -85,7 +85,7 @@ Currently this supports the following make rules, which can be invoked using the
 * ``run-test`` - Test the connection to the OpenAI API.
 * ``default``, ``run-glados`` - Launch the experimental GladOS server program.
 * ``run-bot`` - Launch the Telegram bot server program.
-* ``clean-states`` - Make sure the API statistics files have been cleared to prep for a new run.
+* ``clean-stats`` - Make sure the API statistics files have been cleared to prep for a new run.
 
 ### Models JSON file ([`models.json`](models.json "models.json file"))
 
