@@ -920,7 +920,8 @@ class Conversation:
 
 	def finalize_message(self, message):
 		"""Finalize a message in the conversation (should be the last message)."""
-		if not message.archived:
+
+		if not hasattr(message,'archived') or not message.archived:
 			self.archive_message(message)
 
 
@@ -1294,7 +1295,7 @@ def forget(update, context):
 				  f"Error message was: \"{errmsg}\"]\n"
 
 		# Add the diagnostic message to the conversation.
-		conversation.add_message(SYS_NAME, diagMsg)
+		conversation.add_message(Message(SYS_NAME, diagMsg))
 
 		# Send the diagnostic message to the user.
 		update.message.reply_text(diagMsg)
