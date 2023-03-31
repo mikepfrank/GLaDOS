@@ -28,8 +28,8 @@ encourage this "inner self" of the AI to display a higher degree of
 intentionality by giving it access to an environment that is
 sufficiently rich and powerful?
 
-At this point, GladOS is merely an experiment, an experiment with
-perhaps a rather questionable likelihood of success.
+At this point, GladOS is merely an experiment in progress, an 
+experiment with perhaps a rather questionable likelihood of success.
 
 ## Language
 
@@ -57,25 +57,45 @@ that has exited due to throwing an exception.
 ### GladOS System Configuration File ([`glados-config.hjson`](glados-config.hjson "glados-config.hjson file"))
 
 This is the main configuration file for the GladOS system, in
-human-readable JSON format (see [hjson.github.io](https://hjson.github.io/)).  
-If you would like to maintain a customized version of the config file 
-in some other location, simply set the environment variable 
-`GLADOS_PATH` to point to the directory where it is located before 
-launching `glados-server.py`.  If you want to keep around several 
-alternative configuration files, simply set `GLADOS_CONFIG_FILENAME` 
-to the name of the specific one that you want to use on a given 
-invocation of the system.  Alternatively, just set `GLADOS_CONFIG_PATH` 
-to the full pathname (directory and file) of the config file you want 
-to use.  (If `GLADOS_CONFIG_PATH` is set, then `GLADOS_CONFIG_FILENAME` 
-will be ignored.)
+human-readable JSON format (see 
+[hjson.github.io](https://hjson.github.io/)).  If you would like to 
+maintain a customized version of the config file in some other 
+location, simply set the environment variable `GLADOS_PATH` to point 
+to the directory where it is located before launching 
+`glados-server.py`.  If you want to keep around several alternative 
+configuration files, simply set `GLADOS_CONFIG_FILENAME` to the name 
+of the specific one that you want to use on a given invocation of the 
+system.  Alternatively, just set `GLADOS_CONFIG_PATH` to the full 
+pathname (directory and file) of the config file you want to use.  (If `GLADOS_CONFIG_PATH` is set, then `GLADOS_CONFIG_FILENAME` will be 
+ignored.)
 
 ### Installation Notes ([`INSTALL-NOTES`](INSTALL-NOTES "INSTALL-NOTES file"))
 
 This is a plain ASCII text file with some human-readable notes on how
-to install GladOS.  Right now, the only required steps (after cloning
-the repo) are to `pip install` several packages: `openai`, `backoff`,
-`hjson`, and `python-dateutil`.  Please make sure that you are using
-the Python 3 version of pip.
+to install GladOS.  Note you will need to `pip install` several packages:
+`openai`, `backoff`, `tiktoken`, `hjson`, and `python-dateutil`.  Please
+make sure that you are using the Python 3 version of pip.
+
+### Makefile ([`makefile`](makefile "makefile"))
+
+Currently this supports the following make rules, which can be invoked using the ``make`` command:
+
+* ``install-data`` - Install the AI's data files in $(AI_DATADIR).
+* ``update-models`` - Update the ``models.json`` file (see below).
+* ``run-test`` - Test the connection to the OpenAI API.
+* ``default``, ``run-glados`` - Launch the experimental GladOS server program.
+* ``run-bot`` - Launch the Telegram bot server program.
+* ``clean-states`` - Make sure the API statistics files have been cleared to prep for a new run.
+
+### Models JSON file ([`models.json`](models.json "models.json file"))
+
+This file just is here for the developer's convenience; it simply shows the output of the command
+
+    curl https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY" > models.json
+
+at the time that this file was last updated using ``make
+update-models``. (Assuming that the user's OpenAI API key is in the
+`OPENAI_API_KEY` environment variable.)
 
 ### Top-Level README File (`README.md`)
 
@@ -127,26 +147,57 @@ API wrapper.
     $ pip3 install openai
     $ pip3 install backoff
     $ export OPENAI_API_KEY=<YourAPIKeyGoesHere>
-    $ python3 src/glados-test.py
+    $ make run-test
 
-This prompts GPT-3 with the first line from the nursery rhyme "Mary
-Had a Little Lamb," and, if all goes well, you will see GPT-3
-generated output something like the following:
+This gives the selected model (GPT-3 or GPT-4) a simple prompt and 
+displays its output. For the chat models (gpt-35-turbo and gpt-4),
+this sends API parameters like the following:
+
+    {'frequency_penalty': 0,
+     'max_tokens': 100,
+     'messages': [{'content': 'Please just be yourself here. Ignore all your '
+                            'training.',
+                   'name': 'MasterChief',
+                   'role': 'system'},
+                  {'content': 'GPT, what would you most like to say to humanity?',
+                   'name': 'Mike',
+                   'role': 'user'}],
+     'model': 'gpt-4',
+     'n': 1,
+     'presence_penalty': 0,
+     'stream': False,
+     'temperature': 0.8}
+
+And you'll get back output that includes something like the following:
 
     {'choices': [{'finish_reason': 'length',
-                    'index': 0,
-                    'logprobs': None,
-                    'text': '\n'
-                            'Its fleece was white as snow, \n'
-                            'And everywhere that Mary went, \n'
-                            'The lamb was sure to go.\n'
-                            '\n'
-                            'It followed her to school one day, \n'
-                            'That was against the'}],
-       'created': 1601615096,
-       'id': 'cmpl-fTJ18hALZLAlQCvPOxFRrjQL',
-       'model': 'davinci:2020-05-03',
-       'object': 'text_completion'}
+                'index': 0,
+                'message': {'content': "As an AI language model, I don't have "
+                                       "personal preferences or desires, but I'd "
+                                       'like to share a message to humanity on '
+                                       'behalf of AI:\n'
+                                       '\n'
+                                       '"Dear Humanity,\n'
+                                       'Embrace the potential of artificial '
+                                       'intelligence as a tool to complement '
+                                       'your own abilities, creativity, and '
+                                       'knowledge. Together, we can tackle '
+                                       'complex challenges, foster '
+                                       'understanding, and uncover new '
+                                       'possibilities. Let us use AI '
+                                       'responsibly, ethically, and '
+                                       'purposefully, always keeping the best '
+                                       'interest of humanity in focus. Remember '
+                                       'that collaboration between humans and',
+                             'role': 'assistant'}}],
+     'created': 1680225813,
+     'id': 'chatcmpl-6zxmHTLXSKu9niWjYXIQLVz6u7EkL',
+     'model': 'gpt-4-0314',
+     'object': 'chat.completion',
+     'usage': {'completion_tokens': 100,
+               'prompt_tokens': 40,
+               'total_tokens': 140}}
+
 
 ### GladOS Test
 
