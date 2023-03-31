@@ -1643,10 +1643,24 @@ def process_response(update, context, response_message):
 		#	which is the correct maximum.
 
 	while len(response_text) > MAX_MESSAGE_LENGTH:
-		update.message.reply_text(response_text[:MAX_MESSAGE_LENGTH])
+
+		try:
+			update.message.reply_text(response_text[:MAX_MESSAGE_LENGTH])
+		except BadRequest as e:
+			_logger.error(f"Got a BadRequest from Telegram; aborting response.")
+			return
+			# Note: Eventually we need to do something smarter here -- like, if we've been
+			# banned from replying in a group chat or something, then leave it.
+			
 		response_text = response_text[MAX_MESSAGE_LENGTH:]
 
-	update.message.reply_text(response_text)
+	try:
+		update.message.reply_text(response_text)
+	except BadRequest as e:
+		_logger.error(f"Got a BadRequest from Telegram; aborting response.")
+		return
+		# Note: Eventually we need to do something smarter here -- like, if we've been
+		# banned from replying in a group chat or something, then leave it.
 
 	# Finally, we check to see if the AI's message is a command line; that is, if it starts with '/'
 	# followed by an identifier (e.g., '/remember'). If so, we'll process it as a command.
