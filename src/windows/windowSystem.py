@@ -283,7 +283,7 @@ class WindowImage:
 		tabbedWinView = tabify(winView, tab_width)
 			# Note this assumes the view will be displayed starting at column 0.
 		
-		return tabbedWinView + '\n'
+		return tabbedWinView #+ '\n'
 			# Add final newline because textbuffer doesn't by default.
 
 	def repaint(self):
@@ -562,6 +562,12 @@ class Window:	# A text window within the GLaDOS window system.
 		self.createImage()
 
 		self._snapshots		= set()
+
+	@property
+	def owner(win):
+		"""Returns the entity that owns this window. """
+		return win._app.entity
+			# It's just the entity representing the app that manages this window.
 
 	def notifyOfFocus(win):
 		"""Notify window it has been assigned the command focus. """

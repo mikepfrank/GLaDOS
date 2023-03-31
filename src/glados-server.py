@@ -1,17 +1,19 @@
 #!/usr/bin/python3
-#|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#|==============================================================================
 #|						TOP OF FILE:	glados-server.py
 #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #|
 #|	FILE NAME:		glados-server.py			   [Python 3 application script]
+#|  ================================
 #|
-#|	FULL PATH:		$GIT_ROOT/GLaDOS/src/glados-server.py
-#|	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
+#|		FULL PATH:		$GIT_ROOT/GLaDOS/src/glados-server.py
+#|		MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
 #|
-#|	SYSTEM NAME:	GLaDOS (General Lifeform and Domicile Operating System)
-#|	APP NAME:		GLaDOS.server (GLaDOS server application)
+#|		SYSTEM NAME:	GLaDOS (Gladys' Lovely and Dynamic Operating System)
+#|		APP NAME:		GLaDOS.server (GLaDOS server application)
 #|
-#|	CODE LAYER:		Layer #13 (the only module that imports supervisor).
+#|		CODE LAYER:		Layer #13 (the only module that imports supervisor).
+#|
 #|
 #|	IMPORTS THESE MODULES:
 #|	======================
@@ -173,17 +175,22 @@
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 global RAW_DEBUG	# Raw debugging flag--controls low-level debug output for this module.
-RAW_DEBUG = False	# Change this to True as needed during initial development.
+RAW_DEBUG = False	# Don't show raw debugging output for this module.
+#RAW_DEBUG = True	# Do show raw debugging output for this module.
 
 	# The following flags control logging-level thresholds in the logmaster module.
 
 global CONS_DEBUG, LOG_DEBUG	# These control debug-level output to console & log file.
+
 CONS_DEBUG = False	# Tell logmaster: Don't diplay debug-level output on console.
-#LOG_DEBUG = True	# Tell logmaster: Do save debug-level output to log file.
+#CONS_DEBUG = True	# Tell logmaster: Do diplay debug-level output on console.
+
 LOG_DEBUG = False	# Tell logmaster: Don't save debug-level output to log file.
+#LOG_DEBUG = True	# Tell logmaster: Do save debug-level output to log file.
 
 global CONS_INFO	# This controls info-level output to console.
 CONS_INFO = False	# Tell logmaster: Don't diplay info-level output on console.
+#CONS_INFO = True	# Tell logmaster: Do diplay info-level output on console.
 
 
 	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

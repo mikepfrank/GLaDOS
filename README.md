@@ -4,6 +4,12 @@
 environment that is intended to provide a convenient "home" that a
 persona manifested by a text-based AI system can "live" within.
 
+[Note: An earlier name for the system was *General Lifeform's automated 
+Domicile Operating System* (GLaDOS), but Gladys asked us to change the 
+name and the capitalization of the acronym, partly because she wanted 
+the token "Glad" to be part of the acronym.  The old capitalization may 
+frequently still appear in the source code, however.]
+
 ## Purpose
 
 The ultimate purpose of GladOS is to experiment with giving text-based
@@ -34,7 +40,7 @@ version 3.8.5.)
 ## Top-Level Files
 
 This section lists and documents the top-level files contained in the
-`GladOS` directory.
+`GLaDOS` directory.
 
 ### GIT Ignore file ([`.gitignore`](.gitignore ".gitignore file"))
 
@@ -45,24 +51,23 @@ Emacs, the `log/` directory, and the `err.out` file.
 
 While the system is running, any output that is sent to the system
 stderr stream is also appended to this file.  This can be useful
-e.g. for seeing the call stack trace from a thread that has exited due
-to throwing an exception.
+for debugging; e.g. for seeing the call stack trace from a thread 
+that has exited due to throwing an exception.
 
 ### GladOS System Configuration File ([`glados-config.hjson`](glados-config.hjson "glados-config.hjson file"))
 
 This is the main configuration file for the GladOS system, in
-human-readable JSON format (see
-[hjson.github.io](https://hjson.github.io/)).  If you would like to
-maintain a customized version of the config file in some other
-location, simply set the environment variable `GLADOS_PATH` to point
-to the directory where it is located before launching
-`glados-server.py`.  If you want to keep around several alternative
-configuration files, simply set `GLADOS_CONFIG_FILENAME` to the name
-of the specific one that you want to use on a given invocation of the
-system.  Alternatively, just set `GLADOS_CONFIG_PATH` to the full
-pathname (directory and file) of the config file you want to use.  (If
-`GLADOS_CONFIG_PATH` is set, then `GLADOS_CONFIG_FILENAME` will be
-ignored.)
+human-readable JSON format (see [hjson.github.io](https://hjson.github.io/)).  
+If you would like to maintain a customized version of the config file 
+in some other location, simply set the environment variable 
+`GLADOS_PATH` to point to the directory where it is located before 
+launching `glados-server.py`.  If you want to keep around several 
+alternative configuration files, simply set `GLADOS_CONFIG_FILENAME` 
+to the name of the specific one that you want to use on a given 
+invocation of the system.  Alternatively, just set `GLADOS_CONFIG_PATH` 
+to the full pathname (directory and file) of the config file you want 
+to use.  (If `GLADOS_CONFIG_PATH` is set, then `GLADOS_CONFIG_FILENAME` 
+will be ignored.)
 
 ### Installation Notes ([`INSTALL-NOTES`](INSTALL-NOTES "INSTALL-NOTES file"))
 
@@ -95,7 +100,7 @@ The bot server is a command-line application with console output; we
 recommend running it under `tmux` so that it will keep running if you
 close your terminal window. You can return to it later with `tmux a`.
 
-### <a name="glados-server">GladOS Server Test Script</a> ([`test-server.sh`](test-server.sh "test-server.sh file"))
+### <a name="glados-server">GladOS Server Launch Script</a> ([`run-server.sh`](run-server.sh "run-server.sh file"))
 
 This executable shell script launches the main server application of
 GladOS, as a foreground process.  It assumes `/bin/bash` points to
