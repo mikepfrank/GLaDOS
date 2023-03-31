@@ -455,6 +455,11 @@ class Message:
 		# Print diagnostic information.
 		_logger.debug(f"Creating message object for: {sender}> {text}")
 		self.sender	  = sender
+
+		if text is None:
+			_logger.warn("""Can't initialize Message from {sender} with text of None; using "" instead.""")
+			text = ""
+
 		self.text	  = text
 		self.archived = False
 			# Has this message been written to the archive file yet?
@@ -714,6 +719,10 @@ class Conversation:
 		global PERSISTENT_DATA	# We declare this global so we can modify it.
 		global _anyMemories
 
+		if new_memory is None or new_memory == "" or new_memory == "\n":
+			self.report_error("/remember command needs a non-empty argument.")
+			return
+
 		if not _anyMemories:
 			PERSISTENT_DATA += MESSAGE_DELIMITER + \
 				" ~~~ Memories added using '/remember' command: ~~~\n"
@@ -750,7 +759,7 @@ class Conversation:
 		global PERSISTENT_DATA	# We declare this global so we can modify it.
 
 		if text_to_remove == None or len(text_to_remove) == 0:
-			self.report_error("/remember command needs a non-empty argument.")
+			self.report_error("/forget command needs a non-empty argument.")
 			return False
 
 		# Make sure the text to remove ends in a newline.
@@ -843,12 +852,13 @@ class Conversation:
 
 	def report_error(self, errmsg):
 
-		"""Adds an error report to the conversation."""
+		"""Adds an error report to the conversation. Also logs the error."""
 
 		global _lastError
 
 		msg = f"Error: {errmsg}"
 
+		# Add the error report to the conversation.
 		self.add_message(Message(SYS_NAME, msg))
 
 		_logger.error(msg)	# Log the error.
@@ -1205,14 +1215,14 @@ def remember(update, context):
 	# Retrieve the Conversation object from the Telegram context.
 	conversation = context.chat_data['conversation']
 
+	# First, we'll add the whole command line to the conversation, so that the AI can see it.
+	conversation.add_message(Message(user_name, update.message.text))
+
 	# Get the command's argument, which is the text to remember.
 	text = ' '.join(update.message.text.split(' ')[1:])
 
 	# Tell the conversation object to add the given message to the AI's persistent memory.
 	conversation.add_memory(text)
-
-	# We'll also add the whole command line to the conversation, so that the AI can see it.
-	conversation.add_message(Message(user_name, update.message.text))
 
 	_logger.info(f"{user_name} added memory: [{text.strip()}]")
 
@@ -1329,6 +1339,10 @@ def get_user_name(user):
 def process_message(update, context):
 		# Note that <context>, in this context, denotes the Telegram context object.
 	"""Process a message."""
+
+	if update.message is None:
+		_logger.error("Null message received; ignoring...")
+		return
 
 	chat_id = update.message.chat.id
 
