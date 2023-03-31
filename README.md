@@ -108,13 +108,13 @@ Markdown format (see
 This executable shell script `runbot.sh` launches the Python program 
 [`src/telegram-bot.py`](src/telegram-bot.py "src/telegram-bot.py file"), 
 which is an auxilliary application that implements a Telegram chatbot 
-server that utilizes GPT-3 to generate responses.  To run this, you 
-need to have first created the Telegram bot (e.g., using the BotFather 
-bot) and assigned the `TELEGRAM_BOT_TOKEN` environment variable to its 
-access token. Note that the Telegram bot server is a separate 
-application from GladOS proper (other than in the sense of piggybacking 
-on part of its codebase) and it does not require the main GladOS server 
-application to be running.
+server that utilizes GPT-3 (or GPT-4) to generate responses.  To run 
+this, you need to have first created the Telegram bot (e.g., using the 
+BotFather bot) and assigned the `TELEGRAM_BOT_TOKEN` environment 
+variable to its access token. Note that the Telegram bot server is a 
+separate application from GladOS proper (other than in the sense of 
+piggybacking on part of its codebase) and it does not require the main 
+GladOS server application to be running.
 
 The bot server is a command-line application with console output; we 
 recommend running it under `tmux` so that it will keep running if you
