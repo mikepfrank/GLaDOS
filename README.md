@@ -14,8 +14,8 @@ frequently still appear in the source code, however.]
 
 The ultimate purpose of GladOS is to experiment with giving text-based
 AIs (such as, personas being emulated by statistical language models
-such as GPT-3) a "user environment" that they can manipulate, to see
-if the right kind of environment can get them to exhibit some
+such as GPT-3 or GPT-4) a "user environment" that they can manipulate, 
+to see if the right kind of environment can get them to exhibit some
 higher-level degree of intentionality, cognition, and perhaps even
 personhood.
 
