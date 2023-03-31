@@ -107,6 +107,7 @@ from curses import ascii
 # The following packages are from the python-telegram-bot library.
 import telegram
 import telegram.ext	   # Needed for ExtBot, Dispatcher, Updater.
+from telegram.error import BadRequest
 
 # The following packages are from the openai library.
 from openai.error import RateLimitError			# Detects quota exceeded.
@@ -844,7 +845,7 @@ class Conversation:
 
 		# If we get here, we can safely pop the oldest message.
 
-		_logger.debug(f"Expunging oldest message from {len(self.messages)}-message conversation:", self.chat_id)
+		_logger.debug(f"Expunging oldest message from {len(self.messages)}-message conversation #{self.chat_id}.")
 		#print("Oldest message was:", self.messages[0])
 		self.messages.pop(0)
 		self.expand_context()	# Update the context string.
@@ -1087,7 +1088,10 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 		# Also record the initial message in our conversation data structure.
 		conversation.add_message(Message(conversation.bot_name, START_MESSAGE))
 	else:
-		update.message.reply_text(f"[DIAGNOSTIC: Restarted bot with last {len(conversation.messages)} messages from archive.]")
+		try:
+			update.message.reply_text(f"[DIAGNOSTIC: Restarted bot with last {len(conversation.messages)} messages from archive.]")
+		except BadRequest as e:
+			_logger.error(f"Got a BadRequest from Telegram; ignoring.")
 
 	# Give the user a system warning if their first name contains unsupported characters or is too long.
 	if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", update.message.from_user.first_name):
@@ -1166,6 +1170,10 @@ def reset(update, context):
 	# Assume we're in a thread associated with a conversation.
 	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
+
+	if 'conversaation' not in context.chat_data:
+		_logger.error("Can't reset conversation {chat_id} because it's not loaded.")
+		return
 
 	conversation = context.chat_data['conversation']
 
@@ -1355,7 +1363,10 @@ def process_message(update, context):
 
 	if not 'conversation' in context.chat_data:
 		_logger.info(f"Automatically restarting conversation {chat_id} after reboot.")
-		update.message.reply_text("[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.]")
+		try:
+			update.message.reply_text("[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.]")
+		except BadRequest as e:
+			_logger.error(f"Got a BadRequest from Telegram; ignoring.")
 
 		# Temporarily pretend user entered '/start', and process that.
 		_tmpText = update.message.text
