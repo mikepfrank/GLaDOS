@@ -458,7 +458,7 @@ class Message:
 		self.sender	  = sender
 
 		if text is None:
-			_logger.warn("""Can't initialize Message from {sender} with text of None; using "" instead.""")
+			_logger.warn(f"""Can't initialize Message from {sender} with text of None; using "" instead.""")
 			text = ""
 
 		self.text	  = text
@@ -905,10 +905,11 @@ class Conversation:
 	# (This is normally only done if the message is empty, since Telegram
 	# will not send an empty message anyway.)
 	def delete_last_message(self):
+
 		# First, make sure the message has not already been finalized.
-		if self.messages[-1].archived:
-			print("ERROR: Tried to delete an already-archived message.")
-			return
+		#if self.messages[-1].archived:
+		#	print("ERROR: Tried to delete an already-archived message.")
+		#	return
 
 		# Delete the last message.
 		self.messages.pop()
@@ -1365,6 +1366,11 @@ def process_message(update, context):
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	if not 'conversation' in context.chat_data:
+
+		if chat_id == -1001815681152:
+			_logger.warn(f"Ignoring chat {chat_id} which hasn't been restarted.")
+			return	# Don't auto-restart this chat (are we banned)?
+		
 		_logger.info(f"Automatically restarting conversation {chat_id} after reboot.")
 		try:
 			update.message.reply_text("[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.]")
@@ -1935,9 +1941,13 @@ def process_chat_message(update, context):
 		# Delete the last message from the conversation.
 		conversation.delete_last_message()
 		# Send the user a diagnostic message (doing this temporarily during development).
-		update.message.reply_text(f"[DIAGNOSTIC: Suppressing response [{response_text}]; it's a repeat.]")
+
+		try:
+			update.message.reply_text(f"[DIAGNOSTIC: Suppressing response [{response_text}]; it's a repeat.]")
 			# Note that this message doesn't get added to the conversation, so it won't be
 			# visible to the AI, only to the user.
+		except BadRequest as e:
+			_logger.error(f"Got a BadRequest from Telegram; ignoring.")
 		
 		return		# This means the bot is simply not responding to the message
 
