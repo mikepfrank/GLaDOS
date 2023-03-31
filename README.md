@@ -251,7 +251,9 @@ appropriate to a sample AI persona named "Gladys."
 ### System log directory ([`log/`](log "log/ subdirectory"))
 
 This directory will contain the main system log file, called
-`GladOS.server.log`.
+`GladOS.server.log`. Various log files for the Telegram bot 
+(including conversation archives) are also kept here. 
+Eventually, these should be maintained in `$AI_DATADIR` instead.
 
 ### Mock-ups directory ([`mockups/`](mockups "mockups/ subdirectory"))
 
