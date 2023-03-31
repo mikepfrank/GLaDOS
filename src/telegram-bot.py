@@ -719,6 +719,10 @@ class Conversation:
 				" ~~~ Memories added using '/remember' command: ~~~\n"
 			_anyMemories = True		# So we only add one new section header!
 
+		if new_memory is None or new_memory == "" or new_memory == "\n":
+			self.report_error("/remember command needs a non-empty argument.")
+			return
+
 		# Make sure the new memory ends in a newline.
 		if new_memory[-1] != '\n':
 			new_memory += '\n'
@@ -750,7 +754,7 @@ class Conversation:
 		global PERSISTENT_DATA	# We declare this global so we can modify it.
 
 		if text_to_remove == None or len(text_to_remove) == 0:
-			self.report_error("/remember command needs a non-empty argument.")
+			self.report_error("/forget command needs a non-empty argument.")
 			return False
 
 		# Make sure the text to remove ends in a newline.
