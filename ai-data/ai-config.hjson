@@ -344,8 +344,8 @@
 		#max-visible-tokens:	2048	# Comes from paper, n_ctx model parameter.
 		#max-visible-tokens:	4000
 				# This value is appropriate for text-davinci-002.
-		#max-visible-tokens:	4096	# Appropriate for gpt-3.5-turbo model
-		max-visible-tokens:		8192	# Appropriate for gpt-4 model.
+		max-visible-tokens:		4096	# Appropriate for gpt-3.5-turbo model
+		#max-visible-tokens:	8192	# Appropriate for gpt-4 model.
 	
 	} # End of field-conf substructure.
 
