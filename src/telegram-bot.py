@@ -1004,13 +1004,12 @@ class Conversation:
 		chat_messages.append({
 			'role': CHAT_ROLE_SYSTEM,
 
-#-------------------------------------------------------------------------------
 			# Trying this new variation, to facilitate continuations:
 			'content': f"Respond as {self.bot_name} in the user's preferred "	\
 				"language. (Note: If you need more space to respond, then "		\
-				"instead of condensing your response, just truncate it at "		\
-				'some point and end it with "(cont.)"; then if the user types '	\
-				'"/continue", resume generating your response appropriately.)\n'
+				"just truncate your response at some point and end it with "	\
+				'"(cont.)"; then if the user types "/continue", resume '		\
+				"generating your response appropriately.)\n"
 				
 			# 'content': f"Respond as {self.bot_name}."
 			# # This is simple and seems to work pretty well.
