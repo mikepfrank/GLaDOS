@@ -1089,14 +1089,22 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 	#	a restart of the bot. In this case, we don't want to send the
 	#	start message.
 	if len(conversation.messages) == 0:
-		update.message.reply_text(START_MESSAGE)
-		# Also record the initial message in our conversation data structure.
+
 		conversation.add_message(Message(conversation.bot_name, START_MESSAGE))
+		# Also record the initial message in our conversation data structure.
+
+		try:
+			update.message.reply_text(START_MESSAGE)
+		except BadRequest as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+			return
+
 	else:
 		try:
 			update.message.reply_text(f"[DIAGNOSTIC: Restarted bot with last {len(conversation.messages)} messages from archive.]")
 		except BadRequest as e:
-			_logger.error(f"Got a BadRequest from Telegram; ignoring.")
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+			return
 
 	# Give the user a system warning if their first name contains unsupported characters or is too long.
 	if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", update.message.from_user.first_name):
@@ -1113,7 +1121,10 @@ def start(update, context):			# Context, in this context, is the Telegram contex
             # Also send the warning message to the user. (Making it clear that 
             # it's a system message, not from the AI persona itself.)
 		reply_msg = f"[SYSTEM {warning_msg}]"
-		update.message.reply_text(reply_msg)
+		try:
+			update.message.reply_text(reply_msg)
+		except BadRequest as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 
 	return
 
@@ -1144,19 +1155,31 @@ Available commands:
 # Now, let's define a function to handle the /help command.
 def help(update, context):
 	"""Display the help string when the command /help is issued."""
-	update.message.reply_text(HELP_STRING)
+	chat_id = update.message.chat.id
+	try:
+		update.message.reply_text(HELP_STRING)
+	except BadRequest as e:
+		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 
 
 # Now, let's define a function to handle the /echo command.
 def echo(update, context):
 	"""Echo the user's message."""
-	update.message.reply_text(update.message.text)
+	chat_id = update.message.chat.id
+	try:
+		update.message.reply_text(update.message.text)
+	except BadRequest as e:
+		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 
 
 # Now, let's define a function to handle the /greet command.
 def greet(update, context):
 	"""Greet the user."""
-	update.message.reply_text("Hello! I'm glad you're here. I'm glad you're here.\n")
+	chat_id = update.message.chat.id
+	try:
+		update.message.reply_text("Hello! I'm glad you're here. I'm glad you're here.\n")
+	except BadRequest as e:
+		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 
 
 # Now, let's define a function to handle the /reset command.
@@ -1189,13 +1212,21 @@ def reset(update, context):
 	conversation.clear()
 
 	# Send a diagnostic message.
-	update.message.reply_text(f"[DIAGNOSTIC: Cleared conversation with {chat_id}.]")
+	try:
+		update.message.reply_text(f"[DIAGNOSTIC: Cleared conversation with {chat_id}.]")
+	except BadRequest as e:
+		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+		return
 
 	# Send 
 	reset_message = f"This is {BOT_NAME}. I've cleared my memory of our previous conversation."
 
 	# Send an initial message to the user.
-	update.message.reply_text(reset_message)
+	try:
+		update.message.reply_text(reset_message)
+	except BadRequest as e:
+		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+		return
 
 	# Also record the initial message in our conversation data structure.
 	conversation.add_message(Message(conversation.bot_name, reset_message))
@@ -1222,7 +1253,11 @@ def remember(update, context):
 
 	# Block /remember command for users other than Mike.
 	if user_name != 'Michael':
-		update.message.reply_text(f"[DIAGNOSTIC: Sorry, the /remember command is currently disabled.]\n")
+		try:
+			update.message.reply_text(f"[DIAGNOSTIC: Sorry, the /remember command is currently disabled.]\n")
+		except BadRequest as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+			
 		return	# Quit early
 
 	# Retrieve the Conversation object from the Telegram context.
@@ -1240,7 +1275,10 @@ def remember(update, context):
 	_logger.info(f"{user_name} added memory: [{text.strip()}]")
 
 	# Send a reply to the user.
-	update.message.reply_text(f"[DIAGNOSTIC: Added [{text.strip()}] to persistent memory.]\n")
+	try:
+		update.message.reply_text(f"[DIAGNOSTIC: Added [{text.strip()}] to persistent memory.]\n")
+	except BadRequest as e:
+		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 
 #__/ End definition of /remember command handler.
 
@@ -1282,7 +1320,11 @@ def forget(update, context):
 		_logger.info(f"{user_name} removed memory: [{text.strip()}]")
 
 		# Send a reply to the user.
-		update.message.reply_text(f"[DIAGNOSTIC: Removed [{text.strip()}] from persistent memory.]\n")
+		try:
+			update.message.reply_text(f"[DIAGNOSTIC: Removed [{text.strip()}] from persistent memory.]\n")
+		except BadRequest as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+			
 	
 	# If the operation was not successful, send a different reply to the user.
 	else:
@@ -1299,7 +1341,11 @@ def forget(update, context):
 		conversation.add_message(Message(SYS_NAME, diagMsg))
 
 		# Send the diagnostic message to the user.
-		update.message.reply_text(diagMsg)
+		try:
+			update.message.reply_text(diagMsg)
+		except BadRequest as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+			
 
 	# Copilot wrote the following amusing diagnostic code. But we don't really need it.
 	## Now, let's see if the AI has any memories left.
@@ -1376,7 +1422,8 @@ def process_message(update, context):
 		try:
 			update.message.reply_text("[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.]")
 		except BadRequest as e:
-			_logger.error(f"Got a BadRequest from Telegram; ignoring.")
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+			return
 
 		# Temporarily pretend user entered '/start', and process that.
 		_tmpText = update.message.text
@@ -1487,7 +1534,12 @@ def process_message(update, context):
 
 				_logger.error("process_message(): OpenAI quota or rate limit exceeded.")
 
-				update.message.reply_text("[DIAGNOSTIC: Out of monthly quota for AI service, or rate limit exceeded. Please try again later.]")
+				try:
+					update.message.reply_text("[DIAGNOSTIC: Out of monthly quota for AI "
+						"service, or rate limit exceeded. Please try again later.]")
+
+				except BadRequest as e:
+					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 				
 				return	# That's all she wrote.
 
@@ -1544,9 +1596,13 @@ def process_message(update, context):
 
 				# Send the user a diagnostic message indicating that we're extending the response.
 				# (Doing this temporarily during development.)
-				update.message.reply_text("[DIAGNOSTIC: Length limit reached; extending response.]")
+				try:
+					update.message.reply_text("[DIAGNOSTIC: Length limit reached; extending response.]")
 					# Note that this message doesn't get added to the conversation, so it won't be
 					# visible to the AI, only to the user.
+				except BadRequest as e:
+					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					return
 
 				continue	# Loop back and get another response extending the existing one.
 
@@ -1580,7 +1636,11 @@ def process_message(update, context):
 			conversation.delete_last_message()
 			# Send the user a diagnostic message indicating that the response was empty.
 			# (Doing this temporarily during development.)
-			update.message.reply_text("[DIAGNOSTIC: Response was empty.]")
+			try:
+				update.message.reply_text("[DIAGNOSTIC: Response was empty.]")
+			except BadRequest as e:
+				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+			
 				# Note that this message doesn't get added to the conversation, so it won't be
 				# visible to the AI, only to the user.
 			return		# This means the bot is simply not responding to this particular message.
@@ -1610,9 +1670,12 @@ def process_message(update, context):
 			# Delete the last message from the conversation.
 			conversation.delete_last_message()
 			# Send the user a diagnostic message (doing this temporarily during development).
-			update.message.reply_text(f"[DIAGNOSTIC: Suppressing response [{response_text}]; it's a repeat.]")
+			try:
+				update.message.reply_text(f"[DIAGNOSTIC: Suppressing response [{response_text}]; it's a repeat.]")
 				# Note that this message doesn't get added to the conversation, so it won't be
 				# visible to the AI, only to the user.
+			except BadRequest as e:
+				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 			
 			return		# This means the bot is simply not responding to the message
 
@@ -1637,6 +1700,7 @@ def process_message(update, context):
 
 def process_response(update, context, response_message):
 
+	chat_id = update.message.chat.id
 	conversation = context.chat_data['conversation']
 	response_text = response_message.text
 
@@ -1653,7 +1717,7 @@ def process_response(update, context, response_message):
 		try:
 			update.message.reply_text(response_text[:MAX_MESSAGE_LENGTH])
 		except BadRequest as e:
-			_logger.error(f"Got a BadRequest from Telegram; aborting response.")
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 			return
 			# Note: Eventually we need to do something smarter here -- like, if we've been
 			# banned from replying in a group chat or something, then leave it.
@@ -1663,7 +1727,7 @@ def process_response(update, context, response_message):
 	try:
 		update.message.reply_text(response_text)
 	except BadRequest as e:
-		_logger.error(f"Got a BadRequest from Telegram; aborting response.")
+		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 		return
 		# Note: Eventually we need to do something smarter here -- like, if we've been
 		# banned from replying in a group chat or something, then leave it.
@@ -1691,7 +1755,11 @@ def process_response(update, context, response_message):
 
 			_logger.info(f"Added [{command_args}] to persistent memory.")
 			# Also notify the user that we're remembering the given statement.
-			update.message.reply_text(f"[DIAGNOSTIC: Added [{command_args}] to persistent memory.]")
+			try:
+				update.message.reply_text(f"[DIAGNOSTIC: Added [{command_args}] to persistent memory.]")
+			except BadRequest as e:
+				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+				return
 
 		# Check to see if the AI typed the '/forget' command.
 		elif command_name == 'forget':
@@ -1705,27 +1773,42 @@ def process_response(update, context, response_message):
 				_logger.info(f"Removed [{command_args}] from persistent memory.")
 
 				# Also notify the user that we're forgetting the given statement.
-				update.message.reply_text(f"[DIAGNOSTIC: Removed [{command_args}] from persistent memory.]")
+				try:
+					update.message.reply_text(f"[DIAGNOSTIC: Removed [{command_args}] from persistent memory.]")
+				except BadRequest as e:
+					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					return
 			
 			else:
 				# Log this at ERROR level.
 				_logger.error(f"Could not remove [{command_args}] from persistent memory.")
 
 				# Also notify the user that we couldn't forget the given statement.
-				update.message.reply_text(f"[DIAGNOSTIC: Could not remove [{command_args}] from persistent memory.]")
+				try:
+					update.message.reply_text(f"[DIAGNOSTIC: Could not remove [{command_args}] from persistent memory.]")
+				except BadRequest as e:
+					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					return
 
 		else:
 			# This is a command that we don't recognize.
 			_logger.info(f"Unknown command [{command_name}].")
 			# Send the user a diagnostic message.
-			update.message.reply_text(f"[DIAGNOSTIC: Unknown command [{command_name}].]")
+			try:
+				update.message.reply_text(f"[DIAGNOSTIC: Unknown command [{command_name}].]")
+			except BadRequest as e:
+				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+				return
 
 	# One more thing to do here: If the AI's response ends with the string "(cont)" or "(cont.)"
 	# or "(more)" or "...", then we'll send a message to the user asking them to continue the 
 	# conversation.
 	if response_message.text.endswith("(cont)") or response_message.text.endswith("(cont.)") or \
 	   response_message.text.endswith("(more)") or response_message.text.endswith("..."):
-		update.message.reply_text("[If you want me to continue my response, type '/continue'.]")
+		try:
+			update.message.reply_text("[If you want me to continue my response, type '/continue'.]")
+		except BadRequest as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 
 #__/ End of process_response() function definition.
 
@@ -1735,6 +1818,8 @@ def process_chat_message(update, context):
 	"""We dispatch to this function to process messages from the user
 		if our selected engine is for OpenAI's chat endpoint."""
 	
+	chat_id = update.message.chat.id
+
 	# Get our Conversation object.
 	conversation = context.chat_data['conversation']
 
@@ -1868,8 +1953,12 @@ def process_chat_message(update, context):
 
 			_logger.error("process_chat_message(): OpenAI quota or rate limit exceeded.")
 
-			update.message.reply_text("[DIAGNOSTIC: Out of monthly quota for AI "
-					"service, or rate limit exceeded. Please try again later.]")
+			try:
+				update.message.reply_text("[DIAGNOSTIC: Out of monthly quota for AI "
+						"service, or rate limit exceeded. Please try again later.]")
+
+			except BadRequest as e:
+				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 			
 			return	# That's all she wrote.
 
@@ -1897,12 +1986,6 @@ def process_chat_message(update, context):
 			
 			_report_error(conversation, update.message, f"Exception while getting response: {type(e).__name__} ({e})")
 
-			# First, we'll log this at the ERROR level, and include the exception traceback if at debug level.
-			#_logger.error(f"Exception while getting response: {type(e).__name__} ({e})", exc_info=logmaster.doDebug)
-			#
-			# Then, we'll send a diagnostic message to the user.
-			#update.message.reply_text(f"[ERROR: Exception while getting response: {type(e).__name__} ({e})]")
-
 			return
 
 	# If we get here, we've successfully gotten a response from the API.
@@ -1919,13 +2002,20 @@ def process_chat_message(update, context):
 
 	# If the response is empty, then return early. (Can't even send an empty message anyway.)
 	if response_text == "":
+
+		_logger.warn("Got an empty response! Ignoring...")
+
 		# Delete the last message from the conversation.
 		conversation.delete_last_message()
 		# Send the user a diagnostic message indicating that the response was empty.
 		# (Doing this temporarily during development.)
-		update.message.reply_text("[DIAGNOSTIC: Response was empty.]")
+		try:
+			update.message.reply_text("[DIAGNOSTIC: Response was empty.]")
 			# Note that this message doesn't get added to the conversation, so it won't be
 			# visible to the AI, only to the user.
+		except BadRequest as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+			
 		return		# This means the bot is simply not responding to this particular message.
 	
 	# Update the message object, and the context.
@@ -1948,7 +2038,7 @@ def process_chat_message(update, context):
 			# Note that this message doesn't get added to the conversation, so it won't be
 			# visible to the AI, only to the user.
 		except BadRequest as e:
-			_logger.error(f"Got a BadRequest from Telegram; ignoring.")
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 		
 		return		# This means the bot is simply not responding to the message
 
@@ -1975,6 +2065,8 @@ def _report_error(convo:Conversation, telegramMessage,
 		<logIt>, <showAI>, <showUser> control where the error is
 		reported."""
 
+	chat_id = convo.chat_id
+
 	if logIt:
 		# Record the error in the log file.
 		_logger.error(errMsg, exc_info=logmaster.doDebug)
@@ -1989,7 +2081,12 @@ def _report_error(convo:Conversation, telegramMessage,
 
 	if showUser:
 		# Show the error message to the user.
-		telegramMessage.reply_text(msg)
+		try:
+			telegramMessage.reply_text(msg)
+		except BadRequest as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+
+#__/ End private function _report_error().
 
 
 # Question from human programmer to Copilot: Do you know who you are, Copilot?
