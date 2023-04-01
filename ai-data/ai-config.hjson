@@ -95,8 +95,8 @@
 			#|	this config parameter around for now in case it's referenced.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		model-family:					'GPT-3'		# Used for Gladys, DaVinci, Turbo...
-		#model-family:					'GPT-4'		# Used for Aria
+		#model-family:					'GPT-3'		# Used for Gladys, DaVinci, Turbo...
+		model-family:					'GPT-4'		# Used for Aria
 			# NOTE: This parameter is deprecated. (See comment above.)
 
 
@@ -223,7 +223,7 @@
 				answers to be restricted to the top percentage of proba-
 				bility mass. NOTE: Do not specify both this and temperature. */
 
-		top-p:					null	# Not used currently.
+		#top-p:					null	# Not used currently.
 
 
 			/*------------------------------------------------------------------
@@ -233,7 +233,7 @@
 				waste money, and the mind system won't know what to do with
 				multiple answers anyway.) */
 
-		n-completions:			1		# Don't change this!
+		#n-completions:			1		# Don't change this!
 
 
 			/*------------------------------------------------------------------
@@ -241,7 +241,7 @@
 				incrementally rather than all at once.  This is irrelevant
 				currently, since we only obtain one result. */
 
-		do-stream:				false	# Don't change this.
+		#do-stream:				false	# Don't change this.
 
 
 			/*------------------------------------------------------------------
@@ -252,7 +252,7 @@
 				then the log-probability is reported for each returned
 				token. */
 
-		log-probs:				null	# Don't change this!
+		#log-probs:				null	# Don't change this!
 
 
 			/*------------------------------------------------------------------
@@ -260,7 +260,7 @@
 				back with the completion appended.  (This is not useful
 				for our application, and would just waste money.) */
 
-		do-echo:				false	# Don't change this!
+		#do-echo:				false	# Don't change this!
 
 
 			/*------------------------------------------------------------------
