@@ -107,7 +107,7 @@ from curses import ascii
 # The following packages are from the python-telegram-bot library.
 import telegram
 import telegram.ext	   # Needed for ExtBot, Dispatcher, Updater.
-from telegram.error import BadRequest
+from telegram.error import BadRequest	# We use this a lot.
 
 # The following packages are from the openai library.
 from openai.error import RateLimitError			# Detects quota exceeded.
@@ -1007,11 +1007,7 @@ class Conversation:
 			'role': CHAT_ROLE_SYSTEM,
 
 			# Trying this new variation, to facilitate continuations:
-			'content': f"Respond as {self.bot_name} in the user's preferred "	\
-				"language. (Note: If you need more space to respond, then "		\
-				"just truncate your response at some point and end it with "	\
-				'"(cont.)"; then if the user types "/continue", resume '		\
-				"generating your response appropriately.)\n"
+			'content': f"Respond as {self.bot_name}, in the user's language if possible."
 				
 			# 'content': f"Respond as {self.bot_name}."
 			# # This is simple and seems to work pretty well.
@@ -1078,7 +1074,7 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 
 	# Create a new conversation object and link it from the Telegram context object.
 	# NOTE: It needs to go in the context.chat_data dictionary, because that way it
-	# will be specific to this chat_id. The will also allow updates from different
+	# will be specific to this chat_id. This will also allow updates from different
 	# users in the same chat to all appear in the same conversation.
 	conversation = Conversation(chat_id)
 	context.chat_data['conversation'] = conversation
@@ -1199,8 +1195,8 @@ def reset(update, context):
 	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
-	if 'conversaation' not in context.chat_data:
-		_logger.error("Can't reset conversation {chat_id} because it's not loaded.")
+	if 'conversation' not in context.chat_data:
+		_logger.error(f"Can't reset conversation {chat_id} because it's not loaded.")
 		return
 
 	conversation = context.chat_data['conversation']
@@ -1261,6 +1257,9 @@ def remember(update, context):
 		return	# Quit early
 
 	# Retrieve the Conversation object from the Telegram context.
+	if not 'conversation' in context.chat_data:
+		_logger.error(f"Ignoring /remember command for conversation {chat_id} because conversation not loaded.")
+
 	conversation = context.chat_data['conversation']
 
 	# First, we'll add the whole command line to the conversation, so that the AI can see it.
@@ -1298,6 +1297,9 @@ def forget(update, context):
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Retrieve the Conversation object from the Telegram context.
+	if not 'conversation' in context.chat_data:
+		_logger.error(f"Ignoring /forget command for conversation {chat_id} because conversation not loaded.")
+
 	conversation = context.chat_data['conversation']
 
 	# Get the command's argument, which is the text to forget.
