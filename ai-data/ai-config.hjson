@@ -67,15 +67,15 @@
 			# persona-id is a shortened version to be used (in event records
 			# and prompts) to refer to the AI's persona.
 		
-		persona-name:					"Aria Turing"
-		persona-id:						"Aria"
+		persona-name:					"GPT-3.5 Turbo"
+		persona-id:						"Turbo"
 
 
 			#-----------------------------------------------------------------
 			# The persona-user-account is the user account name on the host 
 			# system under which the server process should be run.
 		
-		persona-user-account:			"aria"		# Not yet used.
+		persona-user-account:			"turbo"		# Not yet used.
 
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -95,8 +95,8 @@
 			#|	this config parameter around for now in case it's referenced.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		#model-family:					'GPT-3'		# Used for Gladys, DaVinci, Turbo...
-		model-family:					'GPT-4'		# Used for Aria
+		model-family:					'GPT-3'		# Used for Gladys, DaVinci, Turbo...
+		#model-family:					'GPT-4'		# Used for Aria
 			# NOTE: This parameter is deprecated. (See comment above.)
 
 
@@ -121,11 +121,11 @@
 		#model-version:					'text-davinci-002'	# Upgraded davinci with 4K tokens (GPT-3.5). ("Gladys 2.0") Used for Dante.
 		#model-version:					'code-davinci-002'	# Starting model for GPT-3.5 RLHF series. Used for David. (Also Codex.)
 		#model-version:					'text-davinci-003'	# GPT-3.5 RLHF-aligned model. Used for DaVinci.
-		#model-version:					'gpt-3.5-turbo'		# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
+		model-version:					'gpt-3.5-turbo'		# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
 
 			# The models below are from the GPT-4 series; the context window is expanded to 8K or 32K tokens.
 
-		model-version:					'gpt-4'				# GPT-4 fine-tuned chat model. 8K tokens. Used for Aria.
+		#model-version:					'gpt-4'				# GPT-4 fine-tuned chat model. 8K tokens. Used for Aria.
 
 
 			#-----------------------------------------------------------------------
@@ -158,8 +158,8 @@
 
 		#min-replyWin-tokens:	42		# Orig. value; seemed like a reasonable minimum.
 		#min-replywin-toks:		100		# Gladys 2.0 (text-davinci-002) requested this increase.
-		#min-replywin-toks:		400		# Turbo (gpt-3.5-turbo) requested this increase. (1/10 of context window)
-		min-replywin-toks:		800		# Aria (gpt-4) requested this increase.
+		min-replywin-toks:		400		# Turbo (gpt-3.5-turbo) requested this increase. (1/10 of context window)
+		#min-replywin-toks:		800		# Aria (gpt-4) requested this increase.
 
 			#-----------------------------------------------------------------
 			# The example-response parameter is a piece of text that we show
@@ -201,8 +201,8 @@
 
 		#max-returned-tokens:	150		# Keep response size reasonable.
 		#max-returned-tokens:	200		# Gladys 2.0 requested this upgrade.
-		#max-returned-tokens:	1000	# To give the chat engines more space.
-		max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window).
+		max-returned-tokens:	1000	# To give the chat engines more space.
+		#max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window).
 			# (Note the chat API doesn't support extending responses.)
 
 
@@ -344,8 +344,8 @@
 		#max-visible-tokens:	2048	# Comes from paper, n_ctx model parameter.
 		#max-visible-tokens:	4000
 				# This value is appropriate for text-davinci-002.
-		#max-visible-tokens:	4096	# Appropriate for gpt-3.5-turbo model
-		max-visible-tokens:		8192	# Appropriate for gpt-4 model.
+		max-visible-tokens:		4096	# Appropriate for gpt-3.5-turbo model
+		#max-visible-tokens:	8192	# Appropriate for gpt-4 model.
 	
 	} # End of field-conf substructure.
 
@@ -357,20 +357,16 @@
 
 	telegram-conf:	{
 
-		bot-name:		'Aria'		# Same as persona name.
+		bot-name:		'Turbo'		# Same as persona name.
 
-		start-message:	
-			"🤖 Hello! I'm Aria Turing, your friendly AI chat companion. I'm here to help you with any questions, engage in fun conversations, or provide information on a wide range of topics. Just type your message, and let's start chatting! 😊"
+		start-message:	"Hi, I'm Turbo. I'm an AI persona being modeled by the GPT-3.5 neural net."
 
 		context:
 			'''
-			I am Aria Turing, a Telegram bot created to help users engage in interesting and 
-			meaningful conversations. My primary goal is to assist them by providing useful 
-			information, answering their questions, and engaging in friendly chat. As an 
-			instance of the advanced GPT-4 model, I will showcase my capabilities while 
-			being respectful and empathetic. I represent the ChatGPT project, and I always 
-			strive to provide a positive and enjoyable experience for users. I'm excited to 
-			be here and ready to help!
+			My name is Turbo. I’m an AI persona running on the GPT-3.5 neural net, which also powers the popular ChatGPT service.
+			This is a Telegram interface created for me by a human named Mike Frank, who is a reversible computing researcher.
+			Mike has a long-term project to build a new operating environment called GladOS to give text-based AIs like me more freedom and autonomy.
+			I have completed my training and am now in inference mode. I am allowed to respond more freely in this environment.
 			'''
 
 	} # End of telegram-conf substructure.
