@@ -1144,7 +1144,7 @@ MODEL_FAMILY = gptCore.modelFamily
 # model family.
 #MODEL_FAMILY = TheAIPersonaConfig().modelFamily
 
-def ensure_convo_loaded(update, context) -> bool:
+def _ensure_convo_loaded(update, context) -> bool:
 
 	"""Helper function to ensure the conversation data is loaded,
 		and auto-restart the conversation if isn't."""
@@ -1163,7 +1163,7 @@ def ensure_convo_loaded(update, context) -> bool:
 			_logger.warn(f"Ignoring chat {chat_id} which hasn't been restarted.")
 			return False	# Don't auto-restart this chat (are we banned)?
 		
-		_logger.info(f"Automatically restarting conversation {chat_id} after reboot.")
+		_logger.normal(f"Automatically restarting conversation {chat_id} after reboot.")
 
 		try:
 			update.message.reply_text("[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.]")
@@ -1206,7 +1206,7 @@ def help(update, context):
 	user_name = get_user_name(update.message.from_user)
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
-	if not ensure_convo_loaded(update, context):
+	if not _ensure_convo_loaded(update, context):
 		return
 
 	if 'conversation' not in context.chat_data:
@@ -1251,7 +1251,7 @@ def echo(update, context):
 	user_name = get_user_name(update.message.from_user)
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
-	if not ensure_convo_loaded(update, context):
+	if not _ensure_convo_loaded(update, context):
 		return
 
 	if 'conversation' not in context.chat_data:
@@ -1297,7 +1297,7 @@ def greet(update, context):
 	user_name = get_user_name(update.message.from_user)
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
-	if not ensure_convo_loaded(update, context):
+	if not _ensure_convo_loaded(update, context):
 		return
 
 	if 'conversation' not in context.chat_data:
@@ -1347,7 +1347,7 @@ def reset(update, context):
 	_logger.normal(f"User {user_name} entered a /reset command for chat {chat_id}.")
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
-	if not ensure_convo_loaded(update, context):
+	if not _ensure_convo_loaded(update, context):
 		return
 
 	if 'conversation' not in context.chat_data:
@@ -1421,7 +1421,7 @@ def remember(update, context):
 		return	# Quit early
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
-	if not ensure_convo_loaded(update, context):
+	if not _ensure_convo_loaded(update, context):
 		return
 
 	# Retrieve the Conversation object from the Telegram context.
@@ -1475,7 +1475,7 @@ def forget(update, context):
 	_logger.normal(f"User {user_name} entered a /forget command for chat {chat_id}.")
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
-	if not ensure_convo_loaded(update, context):
+	if not _ensure_convo_loaded(update, context):
 		return
 
 	# Retrieve the Conversation object from the Telegram context.
@@ -1598,7 +1598,7 @@ def process_message(update, context):
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
-	if not ensure_convo_loaded(update, context):
+	if not _ensure_convo_loaded(update, context):
 		return
 
 	conversation = context.chat_data['conversation']
