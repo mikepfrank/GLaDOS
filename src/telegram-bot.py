@@ -1174,7 +1174,7 @@ def _ensure_convo_loaded(update, context) -> bool:
 			_logger.warn(f"Ignoring chat {chat_id} which hasn't been restarted.")
 			return False	# Don't auto-restart this chat (are we banned)?
 		
-		_logger.info(f"Automatically restarting conversation {chat_id} after reboot.")
+		_logger.normal(f"Automatically restarting conversation {chat_id} after reboot.")
 
 		try:
 			update.message.reply_text("[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.]")
