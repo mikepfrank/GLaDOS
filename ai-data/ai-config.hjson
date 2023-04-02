@@ -156,10 +156,11 @@
 			#|	tation for the application in question to see how/whether it
 			#|	uses this parameter..
 
-		#min-replyWin-tokens:	42		# Orig. value; seemed like a reasonable minimum.
-		#min-replywin-toks:		100		# Gladys 2.0 (text-davinci-002) requested this increase.
-		#min-replywin-toks:		400		# Turbo (gpt-3.5-turbo) requested this increase. (1/10 of context window)
-		min-replywin-toks:		800		# Aria (gpt-4) requested this increase.
+		#min-replyWin-toks:	42	# Orig. value; seemed like a reasonable minimum.
+		#min-replywin-toks:	100	# Gladys 2.0 (text-davinci-002) requested this increase.
+		#min-replywin-toks:	400	# Turbo (gpt-3.5-turbo) requested this increase (1/10 of context window).
+		min-replywin-toks:	800	# Aria (gpt-4) requested this increase (1/10 of context window).
+
 
 			#-----------------------------------------------------------------
 			# The example-response parameter is a piece of text that we show
@@ -199,6 +200,7 @@
 				called for when the AI is using different apps, for example,
 				or when the full space shown here isn't available.				*/
 
+		#max-returned-tokens:	100		# Trying a small value while debugging GPT-4 with GladOS
 		#max-returned-tokens:	150		# Keep response size reasonable.
 		#max-returned-tokens:	200		# Gladys 2.0 requested this upgrade.
 		#max-returned-tokens:	1000	# To give the chat engines more space.
@@ -233,7 +235,7 @@
 				waste money, and the mind system won't know what to do with
 				multiple answers anyway.) */
 
-		#n-completions:			1		# Don't change this!
+		#n-completions:			1		# Don't change this! (Default.)
 
 
 			/*------------------------------------------------------------------
@@ -241,7 +243,8 @@
 				incrementally rather than all at once.  This is irrelevant
 				currently, since we only obtain one result. */
 
-		#do-stream:				false	# Don't change this.
+		#do-stream:				false	# Don't change this (default value).
+		#do-stream:				true	# Only used for debugging
 
 
 			/*------------------------------------------------------------------
@@ -273,10 +276,13 @@
 				where we may want the AI to be able to compose large,
 				multi-paragraph blocks of text all at once. */
 
-		#stop-sequences:			'\n'	# Just get one line at a time.
-		#  NOTE: A SINGLE NEWLINE BREAKS THE CHAT MODELS FOR SOME FRICKIN REASON!!!
+		#stop-sequences:	'\n'	# Just get one line at a time.  
+			# NOTE: Breaks chat API!!!!
 
-		#stop-sequences:		'\n\n'	# This waits for a blank line.
+			# NOTE: Not setting to any of the following right now either.
+		#stop-sequences:	'\n\n'		# This waits for a blank line.
+		#stop-sequences:	'\n\n\n'	# This waits for two blank lines.
+			# I think this is normally the default? Maybe not for chat models...
 
 
 			/*------------------------------------------------------------------
@@ -342,10 +348,9 @@
 			#|	 based on the model-version parameter from above.
 			
 		#max-visible-tokens:	2048	# Comes from paper, n_ctx model parameter.
-		#max-visible-tokens:	4000
-				# This value is appropriate for text-davinci-002.
-		#max-visible-tokens:		4096	# Appropriate for gpt-3.5-turbo model
-		max-visible-tokens:	8192	# Appropriate for gpt-4 model.
+		#max-visible-tokens:	4000	# Appropriate for text-davinci-002.
+		#max-visible-tokens:	4096	# Appropriate for gpt-3.5-turbo model
+		max-visible-tokens:		8192	# Appropriate for gpt-4 model.
 	
 	} # End of field-conf substructure.
 
