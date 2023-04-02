@@ -1069,8 +1069,11 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
+	# Get user_name
+	user_name = get_user_name(update.message.from_user)
+
 	# Print diagnostic information.
-	_logger.normal(f"Starting conversation with {chat_id}.")
+	_logger.normal(f"User {user_name} started conversation {chat_id}.")
 
 	# Create a new conversation object and link it from the Telegram context object.
 	# NOTE: It needs to go in the context.chat_data dictionary, because that way it
@@ -1078,6 +1081,9 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 	# users in the same chat to all appear in the same conversation.
 	conversation = Conversation(chat_id)
 	context.chat_data['conversation'] = conversation
+
+	# Add the /start command itself to the conversation archive.
+	conversation.add_message(Message(user_name, update.message.text))
 
 	# Send an initial message to the user.
 	# NOTE: If messages were read from the conversation archive file,
@@ -1138,6 +1144,41 @@ MODEL_FAMILY = gptCore.modelFamily
 # model family.
 #MODEL_FAMILY = TheAIPersonaConfig().modelFamily
 
+def ensure_convo_loaded(update, context) -> bool:
+
+	"""Helper function to ensure the conversation data is loaded,
+		and auto-restart the conversation if isn't."""
+
+	# Get the chat ID.
+	chat_id = update.message.chat.id
+
+	# Get the user's name.
+	user_name = get_user_name(update.message.from_user)
+
+	if not 'conversation' in context.chat_data:
+
+		_logger.normal(f"User {user_name} sent a message in an uninitialized conversation {chat_id}.")
+
+		if chat_id == -1001815681152:
+			_logger.warn(f"Ignoring chat {chat_id} which hasn't been restarted.")
+			return False	# Don't auto-restart this chat (are we banned)?
+		
+		_logger.info(f"Automatically restarting conversation {chat_id} after reboot.")
+
+		try:
+			update.message.reply_text("[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.]")
+		except BadRequest as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+			return False
+
+		# Temporarily pretend user entered '/start', and process that.
+		_tmpText = update.message.text
+		update.message.text = '/start'
+		start(update,context)
+		update.message.text = _tmpText
+	
+	return True
+
 HELP_STRING = f"""
 {BOT_NAME} bot powered by {MODEL_FAMILY}/{ENGINE_NAME}.
 Available commands:
@@ -1151,40 +1192,6 @@ Available commands:
 # Now, let's define a function to handle the /help command.
 def help(update, context):
 	"""Display the help string when the command /help is issued."""
-	chat_id = update.message.chat.id
-	try:
-		update.message.reply_text(HELP_STRING)
-	except BadRequest as e:
-		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
-
-
-# Now, let's define a function to handle the /echo command.
-def echo(update, context):
-	"""Echo the user's message."""
-	chat_id = update.message.chat.id
-	try:
-		update.message.reply_text(update.message.text)
-	except BadRequest as e:
-		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
-
-
-# Now, let's define a function to handle the /greet command.
-def greet(update, context):
-	"""Greet the user."""
-	chat_id = update.message.chat.id
-	try:
-		update.message.reply_text("Hello! I'm glad you're here. I'm glad you're here.\n")
-	except BadRequest as e:
-		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
-
-
-# Now, let's define a function to handle the /reset command.
-def reset(update, context):
-	"""Reset the conversation."""
-
-	# Need to reinitialize this global because we're in a new thread???
-	#global START_MESSAGE
-	#START_MESSAGE = globals()['START_MESSAGE']
 
 	chat_id = update.message.chat.id
 
@@ -1195,14 +1202,166 @@ def reset(update, context):
 	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
+	# Get user name to use in message records.
+	user_name = get_user_name(update.message.from_user)
+
+	# Attempt to ensure the conversation is loaded; if we failed, bail.
+	if not ensure_convo_loaded(update, context):
+		return
+
+	if 'conversation' not in context.chat_data:
+		_logger.error(f"Can't add /help command to conversation {chat_id} because it's not loaded.")
+		return
+
+	_logger.normal(f"User {user_name} entered a /help command for chat {chat_id}.")
+
+	# Fetch the conversation object.
+	conversation = context.chat_data['conversation']
+
+	# Add the /help command itself to the conversation archive.
+	conversation.add_message(Message(user_name, update.message.text))
+
+	# Log diagnostic information.
+	_logger.normal(f"Displaying help in conversation {chat_id}.")
+
+	try:
+		update.message.reply_text(HELP_STRING)
+	except BadRequest as e:
+		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+		return
+
+	# Also record the help string in our conversation data structure.
+	conversation.add_message(Message(SYS_NAME, HELP_STRING))
+
+
+# Now, let's define a function to handle the /echo command.
+def echo(update, context):
+	"""Echo the user's message."""
+
+	chat_id = update.message.chat.id
+
+	# Make sure the thread component is set to this application (for logging).
+	logmaster.setComponent(_appName)
+
+	# Assume we're in a thread associated with a conversation.
+	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
+	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
+
+	# Get user name to use in message records.
+	user_name = get_user_name(update.message.from_user)
+
+	# Attempt to ensure the conversation is loaded; if we failed, bail.
+	if not ensure_convo_loaded(update, context):
+		return
+
+	if 'conversation' not in context.chat_data:
+		_logger.error(f"Can't add /echo command line to conversation {chat_id} because it's not loaded.")
+		return
+
+	_logger.normal(f"User {user_name} entered an /echo command for chat {chat_id}.")
+
+	# Fetch the conversation object.
+	conversation = context.chat_data['conversation']
+
+	# Add the /echo command itself to the conversation archive.
+	conversation.add_message(Message(user_name, update.message.text))
+
+	# Log diagnostic information.
+	_logger.normal(f"Echoing [{update.message.text}] in conversation {chat_id}.")
+
+	try:
+		update.message.reply_text(update.message.text)
+	except BadRequest as e:
+		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+		return
+
+	# Also record the echo text in our conversation data structure.
+	conversation.add_message(Message(SYS_NAME, update.message.text))
+
+
+# Now, let's define a function to handle the /greet command.
+def greet(update, context):
+
+	"""Greet the user."""
+
+	chat_id = update.message.chat.id
+
+	# Make sure the thread component is set to this application (for logging).
+	logmaster.setComponent(_appName)
+
+	# Assume we're in a thread associated with a conversation.
+	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
+	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
+
+	# Get user name to use in message records.
+	user_name = get_user_name(update.message.from_user)
+
+	# Attempt to ensure the conversation is loaded; if we failed, bail.
+	if not ensure_convo_loaded(update, context):
+		return
+
+	if 'conversation' not in context.chat_data:
+		_logger.error(f"Can't add /greet command line to conversation {chat_id} because it's not loaded.")
+		return
+
+	_logger.normal(f"User {user_name} entered a /greet command for chat {chat_id}.")
+
+	# Fetch the conversation object.
+	conversation = context.chat_data['conversation']
+
+	# Add the /greet command itself to the conversation archive.
+	conversation.add_message(Message(user_name, update.message.text))
+
+	# Log diagnostic information.
+	_logger.normal(f"Sending greeting in conversation {chat_id}.")
+
+	GREETING_TEXT = "Hello! I'm glad you're here. I'm glad you're here.\n"
+		# Copilot composed this. 
+
+	try:
+		update.message.reply_text(GREETING_TEXT)
+	except BadRequest as e:
+		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+		return
+
+	# Also record the echo text in our conversation data structure.
+	conversation.add_message(Message(conversation.bot_name, GREETING_TEXT))
+
+
+# Now, let's define a function to handle the /reset command.
+def reset(update, context):
+	"""Reset the conversation."""
+
+	chat_id = update.message.chat.id
+
+	# Make sure the thread component is set to this application (for logging).
+	logmaster.setComponent(_appName)
+
+	# Assume we're in a thread associated with a conversation.
+	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
+	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
+
+	# Get user name to use in message records.
+	user_name = get_user_name(update.message.from_user)
+
+	_logger.normal(f"User {user_name} entered a /reset command for chat {chat_id}.")
+
+	# Attempt to ensure the conversation is loaded; if we failed, bail.
+	if not ensure_convo_loaded(update, context):
+		return
+
 	if 'conversation' not in context.chat_data:
 		_logger.error(f"Can't reset conversation {chat_id} because it's not loaded.")
 		return
 
+	# Fetch the conversation object.
 	conversation = context.chat_data['conversation']
 
+	# Add the /reset command itself to the conversation archive.
+	conversation.add_message(Message(user_name, update.message.text))
+
 	# Print diagnostic information.
-	print(f"Resetting conversation with {chat_id}.")
+	_logger.normal(f"Resetting conversation {chat_id}.")
 
 	# Clear the conversation.
 	conversation.clear()
@@ -1224,7 +1383,7 @@ def reset(update, context):
 		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 		return
 
-	# Also record the initial message in our conversation data structure.
+	# Also record the reset message in our conversation data structure.
 	conversation.add_message(Message(conversation.bot_name, reset_message))
 
 #__/ End definition of reset() function.
@@ -1247,8 +1406,13 @@ def remember(update, context):
 	# Get the name that we'll use for the user.
 	user_name = get_user_name(update.message.from_user)
 
+	_logger.normal(f"User {user_name} entered a /remember command for chat {chat_id}.")
+
 	# Block /remember command for users other than Mike.
 	if user_name != 'Michael':
+
+		_logger.warn("NOTE: Currently ignoring /remember command for all users besides Michael.")
+
 		try:
 			update.message.reply_text(f"[DIAGNOSTIC: Sorry, the /remember command is currently disabled.]\n")
 		except BadRequest as e:
@@ -1256,13 +1420,18 @@ def remember(update, context):
 			
 		return	# Quit early
 
+	# Attempt to ensure the conversation is loaded; if we failed, bail.
+	if not ensure_convo_loaded(update, context):
+		return
+
 	# Retrieve the Conversation object from the Telegram context.
 	if not 'conversation' in context.chat_data:
 		_logger.error(f"Ignoring /remember command for conversation {chat_id} because conversation not loaded.")
+		return
 
 	conversation = context.chat_data['conversation']
 
-	# First, we'll add the whole command line to the conversation, so that the AI can see it.
+	# First, we'll add the whole /remember command line to the conversation, so that the AI can see it.
 	conversation.add_message(Message(user_name, update.message.text))
 
 	# Get the command's argument, which is the text to remember.
@@ -1271,13 +1440,17 @@ def remember(update, context):
 	# Tell the conversation object to add the given message to the AI's persistent memory.
 	conversation.add_memory(text)
 
-	_logger.info(f"{user_name} added memory: [{text.strip()}]")
+	_logger.normal(f"{user_name} added memory: [{text.strip()}]")
 
 	# Send a reply to the user.
+	DIAG_MSG = f"[DIAGNOSTIC: Added [{text.strip()}] to persistent memory.]\n"
 	try:
-		update.message.reply_text(f"[DIAGNOSTIC: Added [{text.strip()}] to persistent memory.]\n")
+		update.message.reply_text(DIAG_MSG)
 	except BadRequest as e:
-		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+
+	# Also record the diagnostic message in our conversation data structure.
+	conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 
 #__/ End definition of /remember command handler.
 
@@ -1296,20 +1469,26 @@ def forget(update, context):
 	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
+	# Get the name that we'll use for the user.
+	user_name = get_user_name(update.message.from_user)
+
+	_logger.normal(f"User {user_name} entered a /forget command for chat {chat_id}.")
+
+	# Attempt to ensure the conversation is loaded; if we failed, bail.
+	if not ensure_convo_loaded(update, context):
+		return
+
 	# Retrieve the Conversation object from the Telegram context.
 	if not 'conversation' in context.chat_data:
 		_logger.error(f"Ignoring /forget command for conversation {chat_id} because conversation not loaded.")
 
 	conversation = context.chat_data['conversation']
 
+	# First, we'll add the whole /forget command line to the conversation, so that the AI can see it.
+	conversation.add_message(Message(user_name, update.message.text))
+
 	# Get the command's argument, which is the text to forget.
 	text = ' '.join(update.message.text.split(' ')[1:])
-
-	# Get the name that we'll use for the user.
-	user_name = get_user_name(update.message.from_user)
-
-	# We'll also add the whole command line to the conversation, so that the AI can see it.
-	conversation.add_message(Message(user_name, update.message.text))
 
 	# Tell the conversation object to remove the given message from the AI's persistent memory.
 	# This returns a boolean indicating whether the operation was successful.
@@ -1318,15 +1497,18 @@ def forget(update, context):
 	# If the operation was successful, send a reply to the user.
 	if success:
 
-		# Generate an info-level report to include in the application log.
-		_logger.info(f"{user_name} removed memory: [{text.strip()}]")
+		# Generate a normal-level report to include in the application log.
+		_logger.normal(f"{user_name} removed memory: [{text.strip()}]")
 
 		# Send a reply to the user.
+		DIAG_MSG = f"[DIAGNOSTIC: Removed [{text.strip()}] from persistent memory.]\n"
 		try:
-			update.message.reply_text(f"[DIAGNOSTIC: Removed [{text.strip()}] from persistent memory.]\n")
+			update.message.reply_text(DIAG_MSG)
 		except BadRequest as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 			
+		# Also record the diagnostic message in our conversation data structure.
+		conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 	
 	# If the operation was not successful, send a different reply to the user.
 	else:
@@ -1339,15 +1521,15 @@ def forget(update, context):
 		diagMsg = f"[DIAGNOSTIC: Could not remove [{text.strip()}] from persistent memory. " \
 				  f"Error message was: \"{errmsg}\"]\n"
 
-		# Add the diagnostic message to the conversation.
-		conversation.add_message(Message(SYS_NAME, diagMsg))
-
 		# Send the diagnostic message to the user.
 		try:
 			update.message.reply_text(diagMsg)
 		except BadRequest as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+			return
 			
+		# Add the diagnostic message to the conversation.
+		conversation.add_message(Message(SYS_NAME, diagMsg))
 
 	# Copilot wrote the following amusing diagnostic code. But we don't really need it.
 	## Now, let's see if the AI has any memories left.
@@ -1405,6 +1587,7 @@ def process_message(update, context):
 		_logger.error("Null message received; ignoring...")
 		return
 
+	# Get the chat ID.
 	chat_id = update.message.chat.id
 
 	# Make sure the thread component is set to this application (for logging).
@@ -1414,24 +1597,9 @@ def process_message(update, context):
 	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
-	if not 'conversation' in context.chat_data:
-
-		if chat_id == -1001815681152:
-			_logger.warn(f"Ignoring chat {chat_id} which hasn't been restarted.")
-			return	# Don't auto-restart this chat (are we banned)?
-		
-		_logger.info(f"Automatically restarting conversation {chat_id} after reboot.")
-		try:
-			update.message.reply_text("[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.]")
-		except BadRequest as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-			return
-
-		# Temporarily pretend user entered '/start', and process that.
-		_tmpText = update.message.text
-		update.message.text = '/start'
-		start(update,context)
-		update.message.text = _tmpText
+	# Attempt to ensure the conversation is loaded; if we failed, bail.
+	if not ensure_convo_loaded(update, context):
+		return
 
 	conversation = context.chat_data['conversation']
 
