@@ -179,7 +179,7 @@ from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF
 
 			CHAT_ROLE_SYSTEM,		# The name of the system's chat role.
 			CHAT_ROLE_USER,			# The name of the user's chat role.
-			#CHAT_ROLE_AI,			 # The name of the AI's chat role. (Not yet used.)
+			CHAT_ROLE_AI,			# The name of the AI's chat role.
 
 				#--------------
 				# Class names:
@@ -992,10 +992,21 @@ class Conversation:
 		# attribute of the chat message, and we'll use the .text attribute
 		# of the Message object as the 'content' attribute of the chat message.
 		for message in self.messages:
+
+			sender = message.sender
+
+			if sender == SYS_NAME:
+				role = CHAT_ROLE_SYSTEM
+			elif sender == botName:
+				role = CHAT_ROLE_AI
+			else:
+				role = CHAT_ROLE_USER
+			
 			chat_messages.append({
-				'role': CHAT_ROLE_USER,		# Note: The role field is always required.
-				'name': message.sender,		
-					# Note: When this is present, the API uses it in place of the role.
+				'role': role,		# Note: The role field is always required.
+				'name': sender,		
+					# Note: When 'name' is present, the API uses it in place of
+					# (or in addition to!) the role.
 				'content': message.text
 			})
 
@@ -1007,7 +1018,7 @@ class Conversation:
 			'role': CHAT_ROLE_SYSTEM,
 
 			# Trying this new variation, to facilitate continuations:
-			'content': f"Respond as {self.bot_name}, in the user's language if possible."
+			'content': f"Respond as {botName}, in the user's language if possible."
 				
 			# 'content': f"Respond as {self.bot_name}."
 			# # This is simple and seems to work pretty well.
@@ -1144,7 +1155,7 @@ MODEL_FAMILY = gptCore.modelFamily
 # model family.
 #MODEL_FAMILY = TheAIPersonaConfig().modelFamily
 
-def ensure_convo_loaded(update, context) -> bool:
+def _ensure_convo_loaded(update, context) -> bool:
 
 	"""Helper function to ensure the conversation data is loaded,
 		and auto-restart the conversation if isn't."""
@@ -1206,7 +1217,7 @@ def help(update, context):
 	user_name = get_user_name(update.message.from_user)
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
-	if not ensure_convo_loaded(update, context):
+	if not _ensure_convo_loaded(update, context):
 		return
 
 	if 'conversation' not in context.chat_data:
@@ -1251,7 +1262,7 @@ def echo(update, context):
 	user_name = get_user_name(update.message.from_user)
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
-	if not ensure_convo_loaded(update, context):
+	if not _ensure_convo_loaded(update, context):
 		return
 
 	if 'conversation' not in context.chat_data:
@@ -1297,7 +1308,7 @@ def greet(update, context):
 	user_name = get_user_name(update.message.from_user)
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
-	if not ensure_convo_loaded(update, context):
+	if not _ensure_convo_loaded(update, context):
 		return
 
 	if 'conversation' not in context.chat_data:
@@ -1347,7 +1358,7 @@ def reset(update, context):
 	_logger.normal(f"User {user_name} entered a /reset command for chat {chat_id}.")
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
-	if not ensure_convo_loaded(update, context):
+	if not _ensure_convo_loaded(update, context):
 		return
 
 	if 'conversation' not in context.chat_data:
@@ -1421,7 +1432,7 @@ def remember(update, context):
 		return	# Quit early
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
-	if not ensure_convo_loaded(update, context):
+	if not _ensure_convo_loaded(update, context):
 		return
 
 	# Retrieve the Conversation object from the Telegram context.
@@ -1475,7 +1486,7 @@ def forget(update, context):
 	_logger.normal(f"User {user_name} entered a /forget command for chat {chat_id}.")
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
-	if not ensure_convo_loaded(update, context):
+	if not _ensure_convo_loaded(update, context):
 		return
 
 	# Retrieve the Conversation object from the Telegram context.
@@ -1598,7 +1609,7 @@ def process_message(update, context):
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
-	if not ensure_convo_loaded(update, context):
+	if not _ensure_convo_loaded(update, context):
 		return
 
 	conversation = context.chat_data['conversation']
