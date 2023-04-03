@@ -1290,20 +1290,29 @@ def echo(update, context):
 	# Fetch the conversation object.
 	conversation = context.chat_data['conversation']
 
+	cmdLine = update.message.text
+
 	# Add the /echo command itself to the conversation archive.
-	conversation.add_message(Message(user_name, update.message.text))
+	conversation.add_message(Message(user_name, cmdLine))
+
+	if len(cmdLine) > 6:
+		textToEcho = cmdLine[6:]
+	else:
+		textToEcho = ""
+
+	responseText = f'Response: "{textToEcho}"'
 
 	# Log diagnostic information.
-	_logger.normal(f"Echoing [{update.message.text}] in conversation {chat_id}.")
+	_logger.normal(f"Echoing [{textToEcho}] in conversation {chat_id}.")
 
 	try:
-		update.message.reply_text(update.message.text)
+		update.message.reply_text(responseText)
 	except BadRequest as e:
 		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 		return
 
 	# Also record the echo text in our conversation data structure.
-	conversation.add_message(Message(SYS_NAME, update.message.text))
+	conversation.add_message(Message(SYS_NAME, responseText))
 
 
 # Now, let's define a function to handle the /greet command.
@@ -1394,16 +1403,18 @@ def reset(update, context):
 	conversation.clear()
 
 	# Send a diagnostic message.
+	DIAG_MSG = f"[DIAGNOSTIC: Cleared conversation {chat_id}.]"
 	try:
-		update.message.reply_text(f"[DIAGNOSTIC: Cleared conversation with {chat_id}.]")
+		update.message.reply_text(DIAG_MSG)
 	except BadRequest as e:
 		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 		return
 
-	# Send 
-	reset_message = f"This is {BOT_NAME}. I've cleared my memory of our previous conversation."
+	# If that succeeded, show it to the AI also.
+	conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 
 	# Send an initial message to the user.
+	reset_message = f"This is {BOT_NAME}. I've cleared my memory of our previous conversation."
 	try:
 		update.message.reply_text(reset_message)
 	except BadRequest as e:
