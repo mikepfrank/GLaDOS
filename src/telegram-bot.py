@@ -1105,16 +1105,16 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 	#	this means we are continuing a previous conversation after
 	#	a restart of the bot. In this case, we don't want to send the
 	#	start message.
-	if len(conversation.messages) == 0:
-
-		conversation.add_message(Message(conversation.bot_name, START_MESSAGE))
-		# Also record the initial message in our conversation data structure.
+	if len(conversation.messages) <= 1:
 
 		try:
 			update.message.reply_text(START_MESSAGE)
 		except BadRequest as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 			return
+
+		conversation.add_message(Message(conversation.bot_name, START_MESSAGE))
+		# Also record the initial message in our conversation data structure.
 
 	else:
 
