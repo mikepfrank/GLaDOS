@@ -1116,11 +1116,18 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 			return
 
 	else:
+
+		# Compose a system diagnostic message explaining what we're doing.
+		DIAG_MSG = f"[DIAGNOSTIC: Restarted bot with last {len(conversation.messages)} messages from archive.]"
+
 		try:
-			update.message.reply_text(f"[DIAGNOSTIC: Restarted bot with last {len(conversation.messages)} messages from archive.]")
+			update.message.reply_text(DIAG_MSG)
 		except BadRequest as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 			return
+
+		# If that succeeded, add it to the conversation archive too (so the AI will see it).
+		conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 
 	# Give the user a system warning if their first name contains unsupported characters or is too long.
 	if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", update.message.from_user.first_name):
@@ -1131,7 +1138,10 @@ def start(update, context):			# Context, in this context, is the Telegram contex
             # Add the warning message to the conversation, so the AI can see it.
 		warning_msg = f"WARNING: Your first name \"{update.message.from_user.first_name}\" contains " \
 			"unsupported characters (or is too long). The AI only supports names with <=64 alphanumeric " \
-			"characters (a-z, 0-9), dashes (-) or underscores (_)."
+			"characters (a-z, 0-9), dashes (-) or underscores (_). For purposes of this conversation, "   \
+			f"you will be identified by your {_which_name}, {user_name}."
+
+		# Make sure the AI sees that message, even if we fail in sending it to the user.
 		conversation.add_message(Message(SYS_NAME, warning_msg))
 		
             # Also send the warning message to the user. (Making it clear that 
@@ -1179,8 +1189,11 @@ def _ensure_convo_loaded(update, context) -> bool:
 		
 		_logger.normal(f"Automatically restarting conversation {chat_id} after reboot.")
 
+		DIAG_MSG = "[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.]"
+			# NOTE: The AI can't see this diagnostic because the convo hasn't even been reloaded yet!
+
 		try:
-			update.message.reply_text("[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.]")
+			update.message.reply_text(DIAG_MSG)
 		except BadRequest as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 			return False
@@ -1557,10 +1570,14 @@ def forget(update, context):
 #__/ End definition of /forget command handler.
 
 
+global _which_name
+
 # This function, given a Telegram user object, returns a string that identifies the user.
 def get_user_name(user):
 
 	"""Return a string that identifies the given Telegram user."""
+
+	global _which_name
 
 	# Decide what we'll call this user. We'll use their first_name attribute, unless it
 	# is None, or an empty string, or contains non-identifier characters, in which case 
@@ -1584,10 +1601,12 @@ def get_user_name(user):
 	# If the user's first name wasn't valid, we'll try to use their username.
 	if user_name is None:
 		user_name = user.username
+		_which_name = 'username'
 
 		# If that isn't valid either, we'll use their ID.
 		if user_name is None or user_name == '':
 			user_name = str(user.id)
+			_which_name = 'user ID'
 
 	return user_name
 
