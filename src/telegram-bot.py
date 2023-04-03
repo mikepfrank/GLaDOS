@@ -365,7 +365,8 @@ minReplyWinToks	 = TheAIPersonaConfig().minReplyWinToks
 	# number of tokens worth of space it should be given for its reply.
 
 # Configure the stop sequence appropriate for this application.
-stop_seq = ['\n' + MESSAGE_DELIMITER]
+#stop_seq = ['\n' + MESSAGE_DELIMITER]
+stop_seq = MESSAGE_DELIMITER
 	# NOTE: The stop parameter is used to tell the API to stop generating 
 	# tokens when it encounters the specified string(s). We set it to stop 
 	# when it encounters the message delimiter string at the start of a new 
@@ -1627,8 +1628,10 @@ def process_message(update, context):
 		# Note that <context>, in this context, denotes the Telegram context object.
 	"""Process a message."""
 
+	user_name = get_user_name(update.message.from_user)
+
 	if update.message is None:
-		_logger.error("Null message received; ignoring...")
+		_logger.error("Null message received from user {user_name}; ignoring...")
 		return
 
 	# Get the chat ID.
@@ -1648,7 +1651,7 @@ def process_message(update, context):
 	conversation = context.chat_data['conversation']
 
 	# Add the message just received to the conversation.
-	conversation.add_message(Message(get_user_name(update.message.from_user), update.message.text))
+	conversation.add_message(Message(user_name, update.message.text))
 
 	# If the currently selected engine is a chat engine, we'll dispatch the rest
 	# of the message processing to a different function that's specialized to use 
