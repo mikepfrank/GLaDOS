@@ -2292,16 +2292,17 @@ def _report_error(convo:Conversation, telegramMessage,
 	# Compose formatted error message.
 	msg = f"[ERROR: {errMsg}]"
 
-	if showAI:
-		# Add the error message to the conversation.
-		convo.add_message(Message(SYS_NAME, msg))
-
 	if showUser:
 		# Show the error message to the user.
 		try:
 			telegramMessage.reply_text(msg)
 		except BadRequest as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+			return
+
+	if showAI:
+		# Add the error message to the conversation.
+		convo.add_message(Message(SYS_NAME, msg))
 
 #__/ End private function _report_error().
 
