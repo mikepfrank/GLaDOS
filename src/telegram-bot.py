@@ -1095,6 +1095,7 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 	# will be specific to this chat_id. This will also allow updates from different
 	# users in the same chat to all appear in the same conversation.
 	conversation = Conversation(chat_id)
+		# Note this constructor call will also reload the conversation data, if it exists.
 	context.chat_data['conversation'] = conversation
 
 	# Add the /start command itself to the conversation archive.
@@ -1107,6 +1108,8 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 	#	start message.
 	if len(conversation.messages) <= 1:
 
+		_logger.normal(f"Sending start message to user {user_name} in new conversation {chat_id}.")
+
 		try:
 			update.message.reply_text(START_MESSAGE)
 		except BadRequest as e:
@@ -1117,6 +1120,8 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 		# Also record the initial message in our conversation data structure.
 
 	else:
+
+		_logger.normal(f"Sending restart message to user {user_name} for existing conversation {chat_id}.")
 
 		# Compose a system diagnostic message explaining what we're doing.
 		DIAG_MSG = f"[DIAGNOSTIC: Restarted bot with last {len(conversation.messages)} messages from archive.]"
@@ -1184,13 +1189,9 @@ def _ensure_convo_loaded(update, context) -> bool:
 
 		_logger.normal(f"User {user_name} sent a message in an uninitialized conversation {chat_id}.")
 
-		if chat_id == -1001815681152:
-			_logger.warn(f"Ignoring chat {chat_id} which hasn't been restarted.")
-			return False	# Don't auto-restart this chat (are we banned)?
-		
-		_logger.normal(f"Automatically restarting conversation {chat_id} after reboot.")
+		_logger.normal(f"Automatically starting (or restarting) conversation {chat_id}.")
 
-		DIAG_MSG = "[DIAGNOSTIC: Bot was rebooted; auto-reloading conversation.]"
+		DIAG_MSG = "[DIAGNOSTIC: New chat or bot was rebooted; auto-starting conversation.]"
 			# NOTE: The AI can't see this diagnostic because the convo hasn't even been reloaded yet!
 
 		try:
