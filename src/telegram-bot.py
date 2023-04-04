@@ -1581,7 +1581,8 @@ def forget(update, context):
 
 #__/ End definition of /forget command handler.
 
-
+# This global just keeps track of whether get_user_name() retrieved the user's "first name" 
+# or their "username" or their "user ID". (Its value is one of those literal strings.)
 global _which_name
 
 # This function, given a Telegram user object, returns a string that identifies the user.
@@ -1597,6 +1598,7 @@ def get_user_name(user):
 
 	user_name = user.first_name
 		# By default, we'll use the user's first name.
+	_which_name = 'first name'
 
 	# If the user's first name is an empty string, we'll invalidate it by setting it to None.
 	if user_name == '':
@@ -1615,7 +1617,7 @@ def get_user_name(user):
 		user_name = user.username
 		_which_name = 'username'
 
-		# If that isn't valid either, we'll use their ID.
+		# But, if that name isn't valid either, we'll use their ID.
 		if user_name is None or user_name == '':
 			user_name = str(user.id)
 			_which_name = 'user ID'
