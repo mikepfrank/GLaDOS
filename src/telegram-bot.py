@@ -1746,20 +1746,23 @@ def process_message(update, context):
 				# We've successfully expunged the oldest message.  We need to try again.
 				continue
 		
-			except RateLimitError:		# This normally indicates that our monthly quota was exceeded.
+			except RateLimitError as e:		# This normally indicates that our monthly quota was exceeded.
 
 				# We exceeded our OpenAI API quota or rate limit. There isn't really anything we can
 				# do here except send a diagnostic message to the user.
 
-				_logger.error("process_message(): OpenAI quota or rate limit exceeded.")
+				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}.")
 
+				DIAG_MSG = "[DIAGNOSTIC: AI model is overloaded; please try again later.]"
 				try:
-					update.message.reply_text("[DIAGNOSTIC: Out of monthly quota for AI "
-						"service, or rate limit exceeded. Please try again later.]")
+					update.message.reply_text(DIAG_MSG)
 
 				except BadRequest as e:
 					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 				
+				# This allows the AI to see this diagnostic message too.
+				conversation.add_message(SYS_NAME, DIAG_MSG)
+
 				return	# That's all she wrote.
 
 		# Unless the total response length has just maxed out the available space,
