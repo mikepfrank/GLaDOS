@@ -1188,11 +1188,10 @@ def _ensure_convo_loaded(update, context) -> bool:
 	if not 'conversation' in context.chat_data:
 
 		_logger.normal(f"User {user_name} sent a message in an uninitialized conversation {chat_id}.")
+		_logger.normal(f"\tAutomatically starting (or restarting) conversation {chat_id}.")
 
-		_logger.normal(f"Automatically starting (or restarting) conversation {chat_id}.")
-
-		DIAG_MSG = "[DIAGNOSTIC: New chat or bot was rebooted; auto-starting conversation.]"
-			# NOTE: The AI can't see this diagnostic because the convo hasn't even been reloaded yet!
+		DIAG_MSG = "[DIAGNOSTIC: Either this is a new chat, or the bot server was rebooted. Auto-starting conversation.]"
+			# NOTE: The AI won't see this diagnostic because the convo hasn't even been reloaded yet!
 
 		try:
 			update.message.reply_text(DIAG_MSG)
@@ -1629,11 +1628,11 @@ def process_message(update, context):
 		# Note that <context>, in this context, denotes the Telegram context object.
 	"""Process a message."""
 
-	user_name = get_user_name(update.message.from_user)
-
 	if update.message is None:
-		_logger.error("Null message received from user {user_name}; ignoring...")
+		_logger.error("Null message received from unknown user; ignoring...")
 		return
+
+	user_name = get_user_name(update.message.from_user)
 
 	# Get the chat ID.
 	chat_id = update.message.chat.id
