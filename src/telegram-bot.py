@@ -1758,7 +1758,8 @@ def process_message(update, context):
 					update.message.reply_text(DIAG_MSG)
 
 				except BadRequest as e:
-					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					return	# No point in the below.
 				
 				# This allows the AI to see this diagnostic message too.
 				conversation.add_message(SYS_NAME, DIAG_MSG)
