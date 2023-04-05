@@ -1187,6 +1187,10 @@ def _ensure_convo_loaded(update, context) -> bool:
 
 	if not 'conversation' in context.chat_data:
 
+		if chat_id == -1001815681152:
+			_logger.warn(f"Ignoring message from user {user_name} in non-restarted conversation {chat_id}.")
+			return False
+
 		_logger.normal(f"User {user_name} sent a message in an uninitialized conversation {chat_id}.")
 		_logger.normal(f"\tAutomatically starting (or restarting) conversation {chat_id}.")
 
