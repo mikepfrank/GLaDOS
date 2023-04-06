@@ -1023,7 +1023,8 @@ class Conversation:
 			'role': CHAT_ROLE_SYSTEM,
 
 			# Trying this new variation, to facilitate continuations:
-			'content': f"Respond as {botName}, in the user's language if possible. (However, if the user is not addressing you, type '/pass' to remain silent.)"
+			'content': f"Respond as {botName}, in the user's language unless otherwise instructed. (However, if the user is not addressing you, type '/pass' to remain silent.)"
+			#'content': f"Respond as {botName}, in the user's language if possible. (However, if the user is not addressing you, type '/pass' to remain silent.)"
 				
 			# 'content': f"Respond as {self.bot_name}."
 			# # This is simple and seems to work pretty well.
@@ -1775,7 +1776,7 @@ def process_message(update, context):
 					return	# No point in the below.
 				
 				# This allows the AI to see this diagnostic message too.
-				conversation.add_message(SYS_NAME, DIAG_MSG)
+				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 
 				return	# That's all she wrote.
 
@@ -2214,7 +2215,7 @@ def process_chat_message(update, context):
 				return	# No point in the below.
 				
 			# This allows the AI to see this diagnostic message too.
-			conversation.add_message(SYS_NAME, DIAG_MSG)
+			conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 
 			return	# That's all she wrote.
 
