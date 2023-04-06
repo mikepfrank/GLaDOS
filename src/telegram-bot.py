@@ -1023,7 +1023,7 @@ class Conversation:
 			'role': CHAT_ROLE_SYSTEM,
 
 			# Trying this new variation, to facilitate continuations:
-			'content': f"Respond as {botName}, in the user's language if possible."
+			'content': f"Respond as {botName}, in the user's language if possible. (However, if the user is not addressing you, type '/pass' to remain silent.)"
 				
 			# 'content': f"Respond as {self.bot_name}."
 			# # This is simple and seems to work pretty well.
@@ -1647,6 +1647,14 @@ def process_message(update, context):
 	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
+	# If the message text is empty or None, consider this as the initial message
+	# of a new chat, and just delegate to the start() function.
+	if update.message.text is None or update.message.text == "":
+		_logger.normal(f"Added to group chat {chat_id} by user {user_name}. Auto-starting.")
+		update.message.text = '/start'
+		start(update,context)
+		return
+
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not _ensure_convo_loaded(update, context):
 		return
@@ -1888,7 +1896,7 @@ def process_message(update, context):
 		# not to exacerbate the AI's tendency to repeat itself.	 (So, as a user, if you 
 		# see that the AI isn't responding to a message, this may mean that it has the 
 		# urge to repeat something it said earlier, but is holding its tongue.)
-		if conversation.is_repeated_message(response_message):
+		if response_text != '/pass' and conversation.is_repeated_message(response_message):
 			# Generate an info-level log message to indicate that we're suppressing the response.
 			_logger.info(f"Suppressing response [{response_text}]; it's a repeat.")
 			# Delete the last message from the conversation.
@@ -1927,6 +1935,11 @@ def process_response(update, context, response_message):
 	chat_id = update.message.chat.id
 	conversation = context.chat_data['conversation']
 	response_text = response_message.text
+
+	# First, check to see if the AI typed the '/pass' command, in which case we do nothing.
+	if response_text == '/pass':
+		_logger.info(f"NOTE: The AI is passing its turn in conversation {chat_id}.")
+		return
 
 	# Now, we need to send the response to the user. However, if the response is
 	# longer than the maximum allowed length, then we need to send it in chunks.
