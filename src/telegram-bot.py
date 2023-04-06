@@ -87,6 +87,7 @@
 import	os	
 	# We use the os.environ dictionary to get the environment variables.
 
+import random
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| Imports of contributed (third-party) Python libraries.
@@ -1958,6 +1959,16 @@ def process_response(update, context, response_message):
 		return
 		# Note: Eventually we need to do something smarter here -- like, if we've been
 		# banned from replying in a group chat or something, then leave it.
+
+	N = 10
+	ALERT_MSG = "***System notification*** This free bot will be taken offline soon for cost reasons. Please seek another solution for your chatbot needs."
+	if random.randint(1, N) == 1:
+		try:
+			update.message.reply_text(ALERT_MSG)
+		except BadRequest as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+			return
+		conversation.add_message(Message(SYS_NAME, ALERT_MSG))
 
 	# Finally, we check to see if the AI's message is a command line; that is, if it starts with '/'
 	# followed by an identifier (e.g., '/remember'). If so, we'll process it as a command.
