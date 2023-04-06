@@ -1896,7 +1896,7 @@ def process_message(update, context):
 		# not to exacerbate the AI's tendency to repeat itself.	 (So, as a user, if you 
 		# see that the AI isn't responding to a message, this may mean that it has the 
 		# urge to repeat something it said earlier, but is holding its tongue.)
-		if response_text != '/pass' and conversation.is_repeated_message(response_message):
+		if response_text.lower() != '/pass' and conversation.is_repeated_message(response_message):
 			# Generate an info-level log message to indicate that we're suppressing the response.
 			_logger.info(f"Suppressing response [{response_text}]; it's a repeat.")
 			# Delete the last message from the conversation.
@@ -1937,7 +1937,7 @@ def process_response(update, context, response_message):
 	response_text = response_message.text
 
 	# First, check to see if the AI typed the '/pass' command, in which case we do nothing.
-	if response_text == '/pass':
+	if response_text.lower() == '/pass':
 		_logger.info(f"NOTE: The AI is passing its turn in conversation {chat_id}.")
 		return
 
