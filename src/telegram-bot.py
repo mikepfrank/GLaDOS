@@ -1479,16 +1479,16 @@ def remember(update, context):
 	_logger.normal(f"User {user_name} entered a /remember command for chat {chat_id}.")
 
 	# Block /remember command for users other than Mike.
-	if user_name != 'Michael':
-
-		_logger.warn("NOTE: Currently ignoring /remember command for all users besides Michael.")
-
-		try:
-			update.message.reply_text(f"[DIAGNOSTIC: Sorry, the /remember command is currently disabled.]\n")
-		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-			
-		return	# Quit early
+	#if user_name != 'Michael':
+	#
+	#	_logger.warn("NOTE: Currently ignoring /remember command for all users besides Michael.")
+	#
+	#	try:
+	#		update.message.reply_text(f"[DIAGNOSTIC: Sorry, the /remember command is currently disabled.]\n")
+	#	except BadRequest or Unauthorized or ChatMigrated as e:
+	#		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+	#		
+	#	return	# Quit early
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not _ensure_convo_loaded(update, context):
