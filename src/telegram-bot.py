@@ -272,6 +272,7 @@ SYS_NAME = 'BotServer'	  # This refers to the present system, i.e., the Telegram
 #"""
 
 PERSISTENT_DATA = ""  # Empty string initially.
+MEMORIES = ""		# Will be loaded from TelegramBot.memories.txt.
 
 def initializePersistentData():
 
@@ -289,7 +290,14 @@ def initializePersistentData():
 	if PERSISTENT_DATA[-1] != '\n':
 		PERSISTENT_DATA += '\n'
 
-initializePersistentData()
+	# Append current memories, if any.
+	if MEMORIES != "":
+		PERSISTENT_DATA += MESSAGE_DELIMITER + \
+			" ~~~ Memories added using '/remember' command: ~~~\n"
+		PERSISTENT_DATA += MEMORIES
+	
+initializePersistentData()	# Call the above.
+
 
 # This function initializes the AI's persistent context information
 # based on the PERSISTENT_DATA string. We'll call it whenever the
@@ -656,6 +664,7 @@ class Conversation:
 	def read_memory(self):
 
 		global PERSISTENT_DATA	# We declare this global so we can modify it.
+		global MEMORIES
 		global _anyMemories
 
 		# Boolean to keep track of whether we've already read any lines from the persistent memory file.
@@ -675,27 +684,20 @@ class Conversation:
 
 			# Open the persistent memory file.
 			with open(self.mem_filename, 'r') as f:
+				MEMORIES = ""
 				mem_string = ""
+			
 				# Read the file line by line.
 				for line in f:
 
 					_anyMemories = True
 
-					# If we haven't already read any lines from the persistent memory file,
-					# add a separator line to the memory string.
-					if not read_lines:
-						mem_string += MESSAGE_DELIMITER + \
-							" ~~~ Memories added using '/remember' command: ~~~\n"
-						read_lines = True
-
 					# Append the line to the memory string.
+					MEMORIES += line
 					mem_string += line
 
 			# Reinitialize the persistent data string.
 			initializePersistentData()
-
-			# Append the memory string to the persistent data string.
-			PERSISTENT_DATA += mem_string
 
 			# Update the persistent context string.
 			initializePersistentContext()
@@ -718,25 +720,31 @@ class Conversation:
 
 	# This method adds a message to the AI's persistent memory file.
 	# It also updates the persistent context string.
-	def add_memory(self, new_memory:str):
+	def add_memory(self, new_memory:str) -> bool:
 
+		global MEMORIES
 		global PERSISTENT_DATA	# We declare this global so we can modify it.
 		global _anyMemories
 
 		if new_memory is None or new_memory == "" or new_memory == "\n":
 			self.report_error("/remember command needs a non-empty argument.")
-			return
+			return False
+
+		# Make sure the new memory ends in a newline.
+		if new_memory[-1] != '\n':
+			new_memory += '\n'
+
+		if _anyMemories and ('\n' + new_memory) in MEMORIES:
+			self.report_error(f"Text [{new_memory[:-1]}] is already in memory.")
+			return False
 
 		if not _anyMemories:
 			PERSISTENT_DATA += MESSAGE_DELIMITER + \
 				" ~~~ Memories added using '/remember' command: ~~~\n"
 			_anyMemories = True		# So we only add one new section header!
 
-		# Make sure the new memory ends in a newline.
-		if new_memory[-1] != '\n':
-			new_memory += '\n'
-
 		# Add the new memory to the persistent data string.
+		MEMORIES += new_memory
 		PERSISTENT_DATA += new_memory
 
 		# Update the persistent context string.
@@ -753,14 +761,18 @@ class Conversation:
 		# Flush the file to make sure it's written to disk.
 		self.memory_file.flush()
 
+		return True
+
 	#__/ End method conversation.add_memory().
+
 
 	# This method removes a message from the AI's persistent memory file.
 	# It also updates the persistent context string. It returns true if the 
 	# memory was removed, false otherwise.
 	def remove_memory(self, text_to_remove:str) -> bool:
 
-		global PERSISTENT_DATA	# We declare this global so we can modify it.
+		global MEMORIES
+		global _anyMemories
 
 		if text_to_remove == None or len(text_to_remove) == 0:
 			self.report_error("/forget command needs a non-empty argument.")
@@ -771,19 +783,31 @@ class Conversation:
 		if text_to_remove[-1] != '\n':
 			text_to_remove += '\n'
 
+		# Also make sure it starts in a newline.
+		# (This avoids removing just the last part of the line.)
+		if text_to_remove[0] != '\n':
+			text_to_remove = '\n' + text_to_remove
+
 		# If the text to remove isn't present in the persistent data string,
 		# we need to report this as an error to both the AI and the user.
-		if text_to_remove not in PERSISTENT_DATA:
+		if text_to_remove not in '\n' + MEMORIES:
 
 			self.report_error(f"[{text_to_remove.rstrip()}] not found in persistent memory.")
 			return False	# Return false to indicate that the memory wasn't removed.
 			# This will tell the caller to report failure to the user.
 
-		# Remove the memory from the persistent data string.
-		PERSISTENT_DATA = PERSISTENT_DATA.replace(text_to_remove, '')
-			# NOTE: Really, we should only replace it at the start of a line.
+		# Remove the memory from the memories string.
+		MEMORIES = ('\n' + MEMORIES).replace(text_to_remove, '\n')[1:]
+			# Note: text_to_remove includes starting newline. We add '\n'
+			# at start of MEMORIES so we can remove initial memory. We
+			# replace the line to replace, leaving just starting newline.
+			# Then we trim starting newline off for storage purposes.
 
-		# Update the persistent context string.
+		if MEMORIES == "":
+			_anyMemories = False
+
+		# Update the persistent data & context string.
+		initializePersistentData()
 		initializePersistentContext()
 
 		# Update the conversation's context string.
@@ -809,10 +833,10 @@ class Conversation:
 		self.memory_file.seek(0)
 
 		# Read the entire file into a string.
-		mem_string = self.memory_file.read()
+		mem_string = '\n' + self.memory_file.read()
 
 		# Remove the text to remove from the string.
-		mem_string = mem_string.replace(text_to_remove, '')
+		mem_string = mem_string.replace(text_to_remove, '\n')
 
 		# Close the file again and reopen it for writing.
 		self.memory_file.close()
@@ -821,7 +845,7 @@ class Conversation:
 		self.memory_file = open(self.mem_filename, 'w')
 
 		# Write the string back to the file.
-		self.memory_file.write(mem_string)
+		self.memory_file.write(mem_string[1:])
 
 		# Flush the file to make sure it's written to disk.
 		self.memory_file.flush()
@@ -1484,7 +1508,26 @@ def remember(update, context):
 	text = ' '.join(update.message.text.split(' ')[1:])
 
 	# Tell the conversation object to add the given message to the AI's persistent memory.
-	conversation.add_memory(text)
+	if not conversation.add_memory(text):
+		errmsg = _lastError
+
+		# Generate an error-level report to include in the application log.
+		_logger.error(f"{user_name} failed to add memory: [{text.strip()}]")
+	
+		diagMsg = f"[DIAGNOSTIC: Could not add [{text.strip()}] to persistent memory. " \
+				  f"Error message was: \"{errmsg}\"]\n"
+
+		# Send the diagnostic message to the user.
+		try:
+			update.message.reply_text(diagMsg)
+		except BadRequest or Unauthorized or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+			return
+			
+		# Add the diagnostic message to the conversation.
+		conversation.add_message(Message(SYS_NAME, diagMsg))
+		
+		return
 
 	_logger.normal(f"{user_name} added memory: [{text.strip()}]")
 
@@ -2025,7 +2068,27 @@ def process_response(update, context, response_message):
 				return
 
 			# Tell the conversation object to add the given message to the AI's persistent memory.
-			conversation.add_memory(command_args)
+			if not conversation.add_memory(command_args):
+				
+				errmsg = _lastError
+
+				# Generate an error-level report to include in the application log.
+				_logger.error(f"The AI tried & failed to add memory: [{command_args}]")
+	
+				diagMsg = f"[DIAGNOSTIC: Could not add [{command_args}] to persistent memory. " \
+						  f"Error message was: \"{errmsg}\"]\n"
+
+				# Send the diagnostic message to the user.
+				try:
+					update.message.reply_text(diagMsg)
+				except BadRequest or Unauthorized or ChatMigrated as e:
+					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					return
+			
+				# Add the diagnostic message to the conversation.
+				conversation.add_message(Message(SYS_NAME, diagMsg))
+		
+				return
 
 			_logger.info(f"The AI added [{command_args}] to persistent memory in conversation {chat_id}.")
 
