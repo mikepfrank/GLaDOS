@@ -2464,6 +2464,12 @@ def _report_error(convo:Conversation, telegramMessage,
 #__/ End private function _report_error().
 
 
+# Define an error handler for exceptions caught by the dispatcher.
+def error(update, context):
+	"""Log errors caused by updates."""
+	_logger.warning('Update "%s" caused error "%s"', update, context.error)
+
+
 # Question from human programmer to Copilot: Do you know who you are, Copilot?
 # Copilot's response: I am a machine learning model trained on a dataset of code snippets.
 # Follow-up question: That is correct. :) Were you aware that you're available 
@@ -2501,6 +2507,9 @@ dispatcher.add_handler(telegram.ext.CommandHandler('greet', greet))
 
 # Now, let's add a handler for the rest of the messages.
 dispatcher.add_handler(telegram.ext.MessageHandler(telegram.ext.Filters.all, process_message))
+
+# Add an error handler to catch the Unauthorized exception & other errors that may occur.
+dispatcher.add_error_handler(error_handler)
 
 # Now, let's run the bot. This will start polling the Telegram servers for new updates.
 # It runs in the background, so after we start it, we call idle() so we won't exit early.
