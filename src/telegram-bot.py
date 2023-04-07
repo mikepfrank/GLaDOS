@@ -108,7 +108,7 @@ from curses import ascii
 # The following packages are from the python-telegram-bot library.
 import telegram
 import telegram.ext	   # Needed for ExtBot, Dispatcher, Updater.
-from telegram.error import BadRequest, Unauthorized	# We use this a lot.
+from telegram.error import BadRequest, Unauthorized, ChatMigrated	# We use this a lot.
 
 # The following packages are from the openai library.
 from openai.error import RateLimitError			# Detects quota exceeded.
@@ -1086,7 +1086,7 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Get user_name
-	user_name = get_user_name(update.message.from_user)
+	user_name = _get_user_name(update.message.from_user)
 
 	# Print diagnostic information.
 	_logger.normal(f"User {user_name} started conversation {chat_id}.")
@@ -1113,7 +1113,7 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 
 		try:
 			update.message.reply_text(START_MESSAGE)
-		except BadRequest or Unauthorized as e:
+		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 			return
 
@@ -1129,7 +1129,7 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 
 		try:
 			update.message.reply_text(DIAG_MSG)
-		except BadRequest or Unauthorized as e:
+		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 			return
 
@@ -1156,7 +1156,7 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 		reply_msg = f"[SYSTEM {warning_msg}]"
 		try:
 			update.message.reply_text(reply_msg)
-		except BadRequest or Unauthorized as e:
+		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 
 	return
@@ -1184,7 +1184,7 @@ def _ensure_convo_loaded(update, context) -> bool:
 	chat_id = update.message.chat.id
 
 	# Get the user's name.
-	user_name = get_user_name(update.message.from_user)
+	user_name = _get_user_name(update.message.from_user)
 
 	if not 'conversation' in context.chat_data:
 
@@ -1200,7 +1200,7 @@ def _ensure_convo_loaded(update, context) -> bool:
 
 		try:
 			update.message.reply_text(DIAG_MSG)
-		except BadRequest or Unauthorized as e:
+		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 			return False
 
@@ -1236,7 +1236,7 @@ def help(update, context):
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Get user name to use in message records.
-	user_name = get_user_name(update.message.from_user)
+	user_name = _get_user_name(update.message.from_user)
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not _ensure_convo_loaded(update, context):
@@ -1259,7 +1259,7 @@ def help(update, context):
 
 	try:
 		update.message.reply_text(HELP_STRING)
-	except BadRequest or Unauthorized as e:
+	except BadRequest or Unauthorized or ChatMigrated as e:
 		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 		return
 
@@ -1281,7 +1281,7 @@ def echo(update, context):
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Get user name to use in message records.
-	user_name = get_user_name(update.message.from_user)
+	user_name = _get_user_name(update.message.from_user)
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not _ensure_convo_loaded(update, context):
@@ -1313,7 +1313,7 @@ def echo(update, context):
 
 	try:
 		update.message.reply_text(responseText)
-	except BadRequest or Unauthorized as e:
+	except BadRequest or Unauthorized or ChatMigrated as e:
 		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 		return
 
@@ -1336,7 +1336,7 @@ def greet(update, context):
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Get user name to use in message records.
-	user_name = get_user_name(update.message.from_user)
+	user_name = _get_user_name(update.message.from_user)
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not _ensure_convo_loaded(update, context):
@@ -1362,7 +1362,7 @@ def greet(update, context):
 
 	try:
 		update.message.reply_text(GREETING_TEXT)
-	except BadRequest or Unauthorized as e:
+	except BadRequest or Unauthorized or ChatMigrated as e:
 		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 		return
 
@@ -1384,7 +1384,7 @@ def reset(update, context):
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Get user name to use in message records.
-	user_name = get_user_name(update.message.from_user)
+	user_name = _get_user_name(update.message.from_user)
 
 	_logger.normal(f"User {user_name} entered a /reset command for chat {chat_id}.")
 
@@ -1412,7 +1412,7 @@ def reset(update, context):
 	DIAG_MSG = f"[DIAGNOSTIC: Cleared conversation {chat_id}.]"
 	try:
 		update.message.reply_text(DIAG_MSG)
-	except BadRequest or Unauthorized as e:
+	except BadRequest or Unauthorized or ChatMigrated as e:
 		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 		return
 
@@ -1423,7 +1423,7 @@ def reset(update, context):
 	reset_message = f"This is {BOT_NAME}. I've cleared my memory of our previous conversation."
 	try:
 		update.message.reply_text(reset_message)
-	except BadRequest or Unauthorized as e:
+	except BadRequest or Unauthorized or ChatMigrated as e:
 		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 		return
 
@@ -1448,7 +1448,7 @@ def remember(update, context):
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Get the name that we'll use for the user.
-	user_name = get_user_name(update.message.from_user)
+	user_name = _get_user_name(update.message.from_user)
 
 	_logger.normal(f"User {user_name} entered a /remember command for chat {chat_id}.")
 
@@ -1459,7 +1459,7 @@ def remember(update, context):
 
 		try:
 			update.message.reply_text(f"[DIAGNOSTIC: Sorry, the /remember command is currently disabled.]\n")
-		except BadRequest or Unauthorized as e:
+		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 			
 		return	# Quit early
@@ -1490,7 +1490,7 @@ def remember(update, context):
 	DIAG_MSG = f"[DIAGNOSTIC: Added [{text.strip()}] to persistent memory.]\n"
 	try:
 		update.message.reply_text(DIAG_MSG)
-	except BadRequest or Unauthorized as e:
+	except BadRequest or Unauthorized or ChatMigrated as e:
 		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 
 	# Also record the diagnostic message in our conversation data structure.
@@ -1514,7 +1514,7 @@ def forget(update, context):
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Get the name that we'll use for the user.
-	user_name = get_user_name(update.message.from_user)
+	user_name = _get_user_name(update.message.from_user)
 
 	_logger.normal(f"User {user_name} entered a /forget command for chat {chat_id}.")
 
@@ -1548,7 +1548,7 @@ def forget(update, context):
 		DIAG_MSG = f"[DIAGNOSTIC: Removed [{text.strip()}] from persistent memory.]\n"
 		try:
 			update.message.reply_text(DIAG_MSG)
-		except BadRequest or Unauthorized as e:
+		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 			
 		# Also record the diagnostic message in our conversation data structure.
@@ -1568,7 +1568,7 @@ def forget(update, context):
 		# Send the diagnostic message to the user.
 		try:
 			update.message.reply_text(diagMsg)
-		except BadRequest or Unauthorized as e:
+		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 			return
 			
@@ -1586,12 +1586,12 @@ def forget(update, context):
 
 #__/ End definition of /forget command handler.
 
-# This global just keeps track of whether get_user_name() retrieved the user's "first name" 
+# This global just keeps track of whether _get_user_name() retrieved the user's "first name" 
 # or their "username" or their "user ID". (Its value is one of those literal strings.)
 global _which_name
 
 # This function, given a Telegram user object, returns a string that identifies the user.
-def get_user_name(user):
+def _get_user_name(user):
 
 	"""Return a string that identifies the given Telegram user."""
 
@@ -1639,7 +1639,7 @@ def process_message(update, context):
 		_logger.error("Null message received from unknown user; ignoring...")
 		return
 
-	user_name = get_user_name(update.message.from_user)
+	user_name = _get_user_name(update.message.from_user)
 
 	# Get the chat ID.
 	chat_id = update.message.chat.id
@@ -1770,7 +1770,7 @@ def process_message(update, context):
 				try:
 					update.message.reply_text(DIAG_MSG)
 
-				except BadRequest or Unauthorized as e:
+				except BadRequest or Unauthorized or ChatMigrated as e:
 					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return	# No point in the below.
 				
@@ -1836,7 +1836,7 @@ def process_message(update, context):
 					update.message.reply_text("[DIAGNOSTIC: Length limit reached; extending response.]")
 					# Note that this message doesn't get added to the conversation, so it won't be
 					# visible to the AI, only to the user.
-				except BadRequest or Unauthorized as e:
+				except BadRequest or Unauthorized or ChatMigrated as e:
 					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return
 
@@ -1874,7 +1874,7 @@ def process_message(update, context):
 			# (Doing this temporarily during development.)
 			try:
 				update.message.reply_text("[DIAGNOSTIC: Response was empty.]")
-			except BadRequest or Unauthorized as e:
+			except BadRequest or Unauthorized or ChatMigrated as e:
 				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 			
 				# Note that this message doesn't get added to the conversation, so it won't be
@@ -1910,7 +1910,7 @@ def process_message(update, context):
 				update.message.reply_text(f"[DIAGNOSTIC: Suppressing response [{response_text}]; it's a repeat.]")
 				# Note that this message doesn't get added to the conversation, so it won't be
 				# visible to the AI, only to the user.
-			except BadRequest or Unauthorized as e:
+			except BadRequest or Unauthorized or ChatMigrated as e:
 				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 			
 			return		# This means the bot is simply not responding to the message
@@ -1937,6 +1937,7 @@ def process_message(update, context):
 def process_response(update, context, response_message):
 
 	chat_id = update.message.chat.id
+	user_name = _get_user_name(update.message.from_user)
 	conversation = context.chat_data['conversation']
 	response_text = response_message.text
 
@@ -1957,7 +1958,7 @@ def process_response(update, context, response_message):
 
 		try:
 			update.message.reply_text(response_text[:MAX_MESSAGE_LENGTH])
-		except BadRequest or Unauthorized as e:
+		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 			return
 			# Note: Eventually we need to do something smarter here -- like, if we've been
@@ -1967,7 +1968,7 @@ def process_response(update, context, response_message):
 
 	try:
 		update.message.reply_text(response_text)
-	except BadRequest or Unauthorized as e:
+	except BadRequest or Unauthorized or ChatMigrated as e:
 		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 		return
 		# Note: Eventually we need to do something smarter here -- like, if we've been
@@ -1975,10 +1976,10 @@ def process_response(update, context, response_message):
 
 	N = 10
 	ALERT_MSG = "***System notification*** This free bot will be taken offline soon for cost reasons. Please seek another solution for your chatbot needs."
-	if random.randint(1, N) == 1:
+	if user_name != "Seii1998" and random.randint(1, N) == 1:
 		try:
 			update.message.reply_text(ALERT_MSG)
-		except BadRequest or Unauthorized as e:
+		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 			return
 		conversation.add_message(Message(SYS_NAME, ALERT_MSG))
@@ -2008,7 +2009,7 @@ def process_response(update, context, response_message):
 			# Also notify the user that we're remembering the given statement.
 			try:
 				update.message.reply_text(f"[DIAGNOSTIC: Added [{command_args}] to persistent memory.]")
-			except BadRequest or Unauthorized as e:
+			except BadRequest or Unauthorized or ChatMigrated as e:
 				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 				return
 
@@ -2026,7 +2027,7 @@ def process_response(update, context, response_message):
 				# Also notify the user that we're forgetting the given statement.
 				try:
 					update.message.reply_text(f"[DIAGNOSTIC: Removed [{command_args}] from persistent memory.]")
-				except BadRequest or Unauthorized as e:
+				except BadRequest or Unauthorized or ChatMigrated as e:
 					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return
 			
@@ -2037,7 +2038,7 @@ def process_response(update, context, response_message):
 				# Also notify the user that we couldn't forget the given statement.
 				try:
 					update.message.reply_text(f"[DIAGNOSTIC: Could not remove [{command_args}] from persistent memory.]")
-				except BadRequest or Unauthorized as e:
+				except BadRequest or Unauthorized or ChatMigrated as e:
 					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return
 
@@ -2047,7 +2048,7 @@ def process_response(update, context, response_message):
 			# Send the user a diagnostic message.
 			try:
 				update.message.reply_text(f"[DIAGNOSTIC: Unknown command [{command_name}].]")
-			except BadRequest or Unauthorized as e:
+			except BadRequest or Unauthorized or ChatMigrated as e:
 				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 				return
 
@@ -2058,7 +2059,7 @@ def process_response(update, context, response_message):
 	   response_message.text.endswith("(more)") or response_message.text.endswith("..."):
 		try:
 			update.message.reply_text("[If you want me to continue my response, type '/continue'.]")
-		except BadRequest or Unauthorized as e:
+		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 
 #__/ End of process_response() function definition.
@@ -2208,7 +2209,7 @@ def process_chat_message(update, context):
 			try:
 				update.message.reply_text(DIAG_MSG)
 
-			except BadRequest or Unauthorized as e:
+			except BadRequest or Unauthorized or ChatMigrated as e:
 				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 				return	# No point in the below.
 				
@@ -2268,7 +2269,7 @@ def process_chat_message(update, context):
 			update.message.reply_text("[DIAGNOSTIC: Response was empty.]")
 			# Note that this message doesn't get added to the conversation, so it won't be
 			# visible to the AI, only to the user.
-		except BadRequest or Unauthorized as e:
+		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 			
 		return		# This means the bot is simply not responding to this particular message.
@@ -2292,7 +2293,7 @@ def process_chat_message(update, context):
 			update.message.reply_text(f"[DIAGNOSTIC: Suppressing response [{response_text}]; it's a repeat.]")
 			# Note that this message doesn't get added to the conversation, so it won't be
 			# visible to the AI, only to the user.
-		except BadRequest or Unauthorized as e:
+		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 		
 		return		# This means the bot is simply not responding to the message
@@ -2334,7 +2335,7 @@ def _report_error(convo:Conversation, telegramMessage,
 		# Show the error message to the user.
 		try:
 			telegramMessage.reply_text(msg)
-		except BadRequest or Unauthorized as e:
+		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 			return
 
