@@ -731,10 +731,6 @@ class Conversation:
 				" ~~~ Memories added using '/remember' command: ~~~\n"
 			_anyMemories = True		# So we only add one new section header!
 
-		if new_memory is None or new_memory == "" or new_memory == "\n":
-			self.report_error("/remember command needs a non-empty argument.")
-			return
-
 		# Make sure the new memory ends in a newline.
 		if new_memory[-1] != '\n':
 			new_memory += '\n'
@@ -784,6 +780,7 @@ class Conversation:
 
 		# Remove the memory from the persistent data string.
 		PERSISTENT_DATA = PERSISTENT_DATA.replace(text_to_remove, '')
+			# NOTE: Really, we should only replace it at the start of a line.
 
 		# Update the persistent context string.
 		initializePersistentContext()
@@ -1990,8 +1987,14 @@ def process_response(update, context, response_message):
 	if response_message.text[0] == '/':
 		# Extract the command name from the message.
 		# We'll do this with a regex that captures the command name, and then the rest of the message.
-		# NOTE: This regex is a bit fragile, but it's good enough for now.
-		command_name, command_args = re.match(r"^/([^ ]+) (.+)", response_message.text).groups()
+
+		match = re.match(r"^/(\S+)(?:\s+(.*))?$", response_message.text)
+		command_name = command_args = None
+		if match is not None:
+			groups = match.groups()
+			command_name = groups[0]
+			if len(groups) > 1:
+				command_args = groups[1]
 
 		# Now, we'll process the command.
 
@@ -2003,55 +2006,106 @@ def process_response(update, context, response_message):
 		if command_name == 'remember':
 			# This is a command to remember something.
 
+			if command_args == None:
+				_logger.error(f"The AI sent a /remember command with no argument in conversation {chat_id}.")
+				DIAG_MSG = "[DIAGNOSTIC: /remember command needs an argument.]"
+				try:
+					update.message.reply_text(DIAG_MSG)
+				except BadRequest or Unauthorized or ChatMigrated as e:
+					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					return
+
+				# Record the diagnostic for the AI also.
+				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
+				
+				return
+
 			# Tell the conversation object to add the given message to the AI's persistent memory.
 			conversation.add_memory(command_args)
 
-			_logger.info(f"Added [{command_args}] to persistent memory.")
+			_logger.info(f"The AI added [{command_args}] to persistent memory in conversation {chat_id}.")
+
 			# Also notify the user that we're remembering the given statement.
+			DIAG_MSG = f"[DIAGNOSTIC: Added [{command_args}] to persistent memory.]"
 			try:
-				update.message.reply_text(f"[DIAGNOSTIC: Added [{command_args}] to persistent memory.]")
+				update.message.reply_text(DIAG_MSG)
 			except BadRequest or Unauthorized or ChatMigrated as e:
 				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 				return
 
+			# Record the diagnostic for the AI also.
+			conversation.add_message(Message(SYS_NAME, DIAG_MSG))
+				
 		# Check to see if the AI typed the '/forget' command.
 		elif command_name == 'forget':
 			# This is a command to forget something.
+
+			if command_args == None:
+				_logger.error(f"The AI sent a /forget command with no argument in conversation {chat_id}.")
+				DIAG_MSG = "[DIAGNOSTIC: /forget command needs an argument.]"
+				try:
+					update.message.reply_text(DIAG_MSG)
+				except BadRequest or Unauthorized or ChatMigrated as e:
+					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					return
+
+				# Record the diagnostic for the AI also.
+				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
+				
+				return
 
 			# Tell the conversation object to remove the given message from the AI's persistent memory.
 			# The return value is True if the message was found and removed, and False if it wasn't.
 			if conversation.remove_memory(command_args):
 
 				# Log this at INFO level.
-				_logger.info(f"Removed [{command_args}] from persistent memory.")
+				_logger.info(f"The AI removed [{command_args}] from persistent memory in conversation {chat_id}.")
 
 				# Also notify the user that we're forgetting the given statement.
+				DIAG_MSG = f"[DIAGNOSTIC: Removed [{command_args}] from persistent memory.]"
 				try:
-					update.message.reply_text(f"[DIAGNOSTIC: Removed [{command_args}] from persistent memory.]")
+					update.message.reply_text(DIAG_MSG)
 				except BadRequest or Unauthorized or ChatMigrated as e:
 					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return
 			
+				# Record the diagnostic for the AI also.
+				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
+				
+				return
+
 			else:
 				# Log this at ERROR level.
-				_logger.error(f"Could not remove [{command_args}] from persistent memory.")
+				_logger.error(f"The AI tried & failed to remove [{command_args}] from persistent memory in conversation {chat_id}.")
 
 				# Also notify the user that we couldn't forget the given statement.
+				DIAG_MSG = f'[DIAGNOSTIC: Could not remove [{command_args}] from persistent memory. Error message was: "{_lastError}"]'
 				try:
-					update.message.reply_text(f"[DIAGNOSTIC: Could not remove [{command_args}] from persistent memory.]")
+					update.message.reply_text(DIAG_MSG)
 				except BadRequest or Unauthorized or ChatMigrated as e:
 					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return
 
+				# Record the diagnostic for the AI also.
+				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
+				
+				return
+
 		else:
 			# This is a command that we don't recognize.
-			_logger.info(f"Unknown command [{command_name}].")
+			_logger.info(f"Unknown command [{command_name}] in chat {chat_id}.")
 			# Send the user a diagnostic message.
+			DIAG_MSG = f"[DIAGNOSTIC: Unknown command [{command_name}].]"
 			try:
-				update.message.reply_text(f"[DIAGNOSTIC: Unknown command [{command_name}].]")
+				update.message.reply_text(DIAG_MSG)
 			except BadRequest or Unauthorized or ChatMigrated as e:
 				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 				return
+
+			# Record the diagnostic for the AI also.
+			conversation.add_message(Message(SYS_NAME, DIAG_MSG))
+				
+			return
 
 	# One more thing to do here: If the AI's response ends with the string "(cont)" or "(cont.)"
 	# or "(more)" or "...", then we'll send a message to the user asking them to continue the 
