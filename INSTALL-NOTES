@@ -56,7 +56,7 @@ to have previously been installed:
     ------------------------
         pip3 install openai             (I'm using vers. 0.27.0)
         pip3 install backoff            (I'm using vers. 1.10.0)
-        pip3 install tiktoken           (I'm using vers. 0.2.0)
+        pip3 install tiktoken           (I'm using vers. 0.3.3)
 
 
     Used by the config package:
