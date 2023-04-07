@@ -303,7 +303,8 @@ def initializePersistentContext():
 	PERSISTENT_CONTEXT = \
 		MESSAGE_DELIMITER + " ~~~ Persistent context data: ~~~\n" + \
 		PERSISTENT_DATA + \
-		MESSAGE_DELIMITER + " ~~~ Available commands: ~~~\n" + \
+		MESSAGE_DELIMITER + " ~~~ Commands available for AI to use: ~~~\n" + \
+		"  /pass - Refrain from responding to the last user message.\n" + \
 		"  /remember <text> - Adds <text> to persistent context data.\n" + \
 		"  /forget <text>   - Removes <text> from persistent context data.\n" + \
 		MESSAGE_DELIMITER + " ~~~ Recent Telegram messages: ~~~"
@@ -1016,22 +1017,25 @@ class Conversation:
 		# to make sure it's clear to the AI that it is responding in the 
 		# role of the message sender whose 'role' matches our .bot_name
 		# attribute.
-		chat_messages.append({
-			'role': CHAT_ROLE_SYSTEM,
-
-			# Trying this new variation, to facilitate continuations:
-			'content': f"Respond as {botName} in the user's language. (However, if the user is not addressing you, type '/pass' to remain silent.)"
-			#'content': f"Respond as {botName}, in the user's language if possible. (However, if the user is not addressing you, type '/pass' to remain silent.)"
-				
-			# 'content': f"Respond as {self.bot_name}."
-			# # This is simple and seems to work pretty well.
-
-		})
-
+		#
 		# (The back-end language model will be prompted to respond by something like 
 		# "assistant\n", which is why we need to make sure it knows that it's responding 
 		# as the bot.)
 
+		response_prompt = f"Respond as {botName} in the appropriate language."
+		if self.chat_id < 0:	# Negative chat IDs correspond to group chats.
+			# Only give this instruction in group chats:
+			response_prompt += " (However, if the user is not addressing you, type '/pass' to remain silent.)"
+
+		chat_messages.append({
+			'role': CHAT_ROLE_SYSTEM,
+			'content': response_prompt
+		})
+
+			#'content': f"Respond as {botName}, in the user's language if possible. (However, if the user is not addressing you, type '/pass' to remain silent.)"
+				
+			# 'content': f"Respond as {self.bot_name}."
+			# # This is simple and seems to work pretty well.
 
 			#'content': f"Assistant, your role in this chat is '{self.bot_name}'; enter your next message below.",
 				# This was my initial wording, but it seemed to cause some confusion.
@@ -1141,10 +1145,10 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 		_logger.warning(f"User {update.message.from_user.first_name} has an unsupported first name.")
 		
             # Add the warning message to the conversation, so the AI can see it.
-		warning_msg = f"WARNING: Your first name \"{update.message.from_user.first_name}\" contains " \
+		warning_msg = f"[SYSTEM WARNING: Your first name \"{update.message.from_user.first_name}\" contains " \
 			"unsupported characters (or is too long). The AI only supports names with <=64 alphanumeric " \
 			"characters (a-z, 0-9), dashes (-) or underscores (_). For purposes of this conversation, "   \
-			f"you will be identified by your {_which_name}, {user_name}."
+			f"you will be identified by your {_which_name}, {user_name}.]"
 
 		# Make sure the AI sees that message, even if we fail in sending it to the user.
 		conversation.add_message(Message(SYS_NAME, warning_msg))
