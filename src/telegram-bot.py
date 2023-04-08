@@ -1593,7 +1593,7 @@ def remember(update, context):
 	# Check whether the user is in our access list.
 	if not _check_access(user_name):
 		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
-		errMsg = f"Sorry, but access to {BOT_NAME} is currently restricted to authorized users."
+		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
 		try:
 			update.message.reply_text(f"[SYSTEM: {errMsg}]")
 		except BadRequest or Unauthorized or ChatMigrated as e:
@@ -1680,7 +1680,7 @@ def forget(update, context):
 	# Check whether the user is in our access list.
 	if not _check_access(user_name):
 		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
-		errMsg = f"Sorry, but access to {BOT_NAME} is currently restricted to authorized users."
+		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
 		try:
 			update.message.reply_text(f"[SYSTEM: {errMsg}]")
 		except BadRequest or Unauthorized or ChatMigrated as e:
@@ -1830,7 +1830,7 @@ def process_message(update, context):
 	# Check whether the user is in our access list.
 	if not _check_access(user_name):
 		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
-		errMsg = f"Sorry, but access to {BOT_NAME} is currently restricted to authorized users."
+		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
 		try:
 			update.message.reply_text(f"[SYSTEM: {errMsg}]")
 		except BadRequest or Unauthorized or ChatMigrated as e:
@@ -2641,7 +2641,7 @@ dispatcher.add_handler(telegram.ext.CommandHandler('greet', greet))
 dispatcher.add_handler(telegram.ext.MessageHandler(telegram.ext.Filters.all, process_message))
 
 # Add an error handler to catch the Unauthorized exception & other errors that may occur.
-dispatcher.add_error_handler(error_handler)
+dispatcher.add_error_handler(error)
 
 # Now, let's run the bot. This will start polling the Telegram servers for new updates.
 # It runs in the background, so after we start it, we call idle() so we won't exit early.
