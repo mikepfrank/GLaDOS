@@ -2015,8 +2015,8 @@ def process_response(update, context, response_message):
 		# Note: Eventually we need to do something smarter here -- like, if we've been
 		# banned from replying in a group chat or something, then leave it.
 
-	N = 10
-	ALERT_MSG = "***System notification*** This free bot will be taken offline soon for cost reasons. Please seek another solution for your chatbot needs."
+	N = 5
+	ALERT_MSG = "***System notification*** This free bot will be taken offline very soon for cost reasons. You need to seek another solution for your chatbot needs."
 	if user_name != "Seii1998" and random.randint(1, N) == 1:
 		try:
 			update.message.reply_text(ALERT_MSG)
