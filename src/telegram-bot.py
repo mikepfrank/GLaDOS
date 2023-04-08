@@ -1047,7 +1047,7 @@ class Conversation:
 		# "assistant\n", which is why we need to make sure it knows that it's responding 
 		# as the bot.)
 
-		response_prompt = f"Respond as {botName}, in the user's language if possible."
+		response_prompt = f"Respond as {botName}."
 		if self.chat_id < 0:	# Negative chat IDs correspond to group chats.
 			# Only give this instruction in group chats:
 			response_prompt += " (However, if the user is not addressing you, type '/pass' to remain silent.)"
@@ -1164,27 +1164,30 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 		conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 
 	# Give the user a system warning if their first name contains unsupported characters or is too long.
-	#if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", update.message.from_user.first_name):
-	#	
-	#       # Log the warning.
-	#	_logger.warning(f"User {update.message.from_user.first_name} has an unsupported first name.")
-	#	
-    #       # Add the warning message to the conversation, so the AI can see it.
-	#	warning_msg = f"[SYSTEM WARNING: Your first name \"{update.message.from_user.first_name}\" contains " \
-	#		"unsupported characters (or is too long). The AI only supports names with <=64 alphanumeric " \
-	#		"characters (a-z, 0-9), dashes (-) or underscores (_). For purposes of this conversation, "   \
-	#		f"you will be identified by your {_which_name}, {user_name}.]"
-	#
-	#	# Make sure the AI sees that message, even if we fail in sending it to the user.
-	#	conversation.add_message(Message(SYS_NAME, warning_msg))
-	#	
-    #        # Also send the warning message to the user. (Making it clear that 
-    #        # it's a system message, not from the AI persona itself.)
-	#	reply_msg = f"[SYSTEM {warning_msg}]"
-	#	try:
-	#		update.message.reply_text(reply_msg)
-	#	except BadRequest or Unauthorized or ChatMigrated as e:
-	#		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+	if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", update.message.from_user.first_name):
+		
+	       # Log the warning.
+		_logger.warning(f"User {update.message.from_user.first_name} has an unsupported first name.")
+		
+           # Add the warning message to the conversation, so the AI can see it.
+		warning_msg = f"NOTIFICATION: Welcome, {update.message.from_user.first_name}. " \
+			"The AI will identify you in this conversation by your {_which_name}, {user_name}."
+
+		#warning_msg = f"[SYSTEM NOTIFICATION: Your first name \"{update.message.from_user.first_name}\"" \
+		#	"contains unsupported characters (or is too long). The AI only supports names with <=64 alphanumeric " \
+		#	"characters (a-z, 0-9), dashes (-) or underscores (_). For purposes of this conversation, "   \
+		#	f"you will be identified by your {_which_name}, {user_name}.]"
+				
+			# Make sure the AI sees that message, even if we fail in sending it to the user.
+		conversation.add_message(Message(SYS_NAME, warning_msg))
+		
+            # Also send the warning message to the user. (Making it clear that 
+            # it's a system message, not from the AI persona itself.)
+		reply_msg = f"[SYSTEM {warning_msg}]"
+		try:
+			update.message.reply_text(reply_msg)
+		except BadRequest or Unauthorized or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
 
 	return
 
