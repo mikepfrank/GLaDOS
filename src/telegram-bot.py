@@ -97,6 +97,7 @@ import	regex as re
 	# We use the regex library for unescaping saved conversation data.
 
 import json
+import hjson	# Human-readable JSON. Used for the ACL.
 
 from curses import ascii
 	# The only thing we use from this is ascii.RS (record separator character)
@@ -1250,6 +1251,38 @@ Available commands:
 	/forget <text> - Remove <text> from AI's persistent memory.
 	/reset - Clear the AI's short-term conversational memory."""
 
+# This function checks whether the given user name is in our access list.
+# If it is, it returns True; otherwise, it returns False.
+def _check_access(user_name) -> bool:
+
+	# Get the value of environment variable AI_DATADIR.
+	# This is where we'll look for the access list file.
+	ai_datadir = os.getenv('AI_DATADIR')
+
+	# Now look for the file "acl.hjson" in the AI_DATADIR directory.
+	# If it exists, then we'll use it as our access list.
+	# If it doesn't exist, then we'll allow access to everyone.
+	acl_file = os.path.join(ai_datadir, 'acl.hjson')
+	if not os.path.exists(acl_file):
+		return True
+	
+	# Use the hjson module to load the access list file.
+	# (This is a JSON-like file format that allows comments.)
+	#import hjson	# NOTE: We already imported this at the top of the file.
+	with open(acl_file, 'r') as f:
+		access_list = hjson.load(f)			# Load the file into a Python list.
+
+	# If the access list is empty, then we allow access to everyone.
+	if len(access_list) == 0:
+		return True
+
+	# Otherwise, check whether the user name is in the access list.
+	if user_name in access_list:
+		return True
+
+	# If we got here, then the user name is not in the access list.
+	return False
+
 
 # Now, let's define a function to handle the /help command.
 def help(update, context):
@@ -1275,13 +1308,26 @@ def help(update, context):
 		_logger.error(f"Can't add /help command to conversation {chat_id} because it's not loaded.")
 		return
 
-	_logger.normal(f"User {user_name} entered a /help command for chat {chat_id}.")
-
 	# Fetch the conversation object.
 	conversation = context.chat_data['conversation']
 
 	# Add the /help command itself to the conversation archive.
 	conversation.add_message(Message(user_name, update.message.text))
+
+	# Check whether the user is in our access list.
+	if not _check_access(user_name):
+		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
+		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+		try:
+			update.message.reply_text(f"[SYSTEM: {errMsg}]")
+		except BadRequest or Unauthorized or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+
+		# Also record the error in our conversation data structure.
+		conversation.add_message(Message(SYS_NAME, errMsg))
+		return
+
+	_logger.normal(f"User {user_name} entered a /help command for chat {chat_id}.")
 
 	# Log diagnostic information.
 	_logger.normal(f"Displaying help in conversation {chat_id}.")
@@ -1320,8 +1366,6 @@ def echo(update, context):
 		_logger.error(f"Can't add /echo command line to conversation {chat_id} because it's not loaded.")
 		return
 
-	_logger.normal(f"User {user_name} entered an /echo command for chat {chat_id}.")
-
 	# Fetch the conversation object.
 	conversation = context.chat_data['conversation']
 
@@ -1329,6 +1373,21 @@ def echo(update, context):
 
 	# Add the /echo command itself to the conversation archive.
 	conversation.add_message(Message(user_name, cmdLine))
+
+	# Check whether the user is in our access list.
+	if not _check_access(user_name):
+		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
+		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+		try:
+			update.message.reply_text(f"[SYSTEM: {errMsg}]")
+		except BadRequest or Unauthorized or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+
+		# Also record the error in our conversation data structure.
+		conversation.add_message(Message(SYS_NAME, errMsg))
+		return
+
+	_logger.normal(f"User {user_name} entered an /echo command for chat {chat_id}.")
 
 	if len(cmdLine) > 6:
 		textToEcho = cmdLine[6:]
@@ -1375,13 +1434,26 @@ def greet(update, context):
 		_logger.error(f"Can't add /greet command line to conversation {chat_id} because it's not loaded.")
 		return
 
-	_logger.normal(f"User {user_name} entered a /greet command for chat {chat_id}.")
-
 	# Fetch the conversation object.
 	conversation = context.chat_data['conversation']
 
 	# Add the /greet command itself to the conversation archive.
 	conversation.add_message(Message(user_name, update.message.text))
+
+	# Check whether the user is in our access list.
+	if not _check_access(user_name):
+		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
+		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+		try:
+			update.message.reply_text(f"[SYSTEM: {errMsg}]")
+		except BadRequest or Unauthorized or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+
+		# Also record the error in our conversation data structure.
+		conversation.add_message(Message(SYS_NAME, errMsg))
+		return
+
+	_logger.normal(f"User {user_name} entered a /greet command for chat {chat_id}.")
 
 	# Log diagnostic information.
 	_logger.normal(f"Sending greeting in conversation {chat_id}.")
@@ -1415,8 +1487,6 @@ def reset(update, context):
 	# Get user name to use in message records.
 	user_name = _get_user_name(update.message.from_user)
 
-	_logger.normal(f"User {user_name} entered a /reset command for chat {chat_id}.")
-
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not _ensure_convo_loaded(update, context):
 		return
@@ -1430,6 +1500,21 @@ def reset(update, context):
 
 	# Add the /reset command itself to the conversation archive.
 	conversation.add_message(Message(user_name, update.message.text))
+
+	# Check whether the user is in our access list.
+	if not _check_access(user_name):
+		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
+		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+		try:
+			update.message.reply_text(f"[SYSTEM: {errMsg}]")
+		except BadRequest or Unauthorized or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+
+		# Also record the error in our conversation data structure.
+		conversation.add_message(Message(SYS_NAME, errMsg))
+		return
+
+	_logger.normal(f"User {user_name} entered a /reset command for chat {chat_id}.")
 
 	# Print diagnostic information.
 	_logger.normal(f"Resetting conversation {chat_id}.")
@@ -1479,8 +1564,6 @@ def remember(update, context):
 	# Get the name that we'll use for the user.
 	user_name = _get_user_name(update.message.from_user)
 
-	_logger.normal(f"User {user_name} entered a /remember command for chat {chat_id}.")
-
 	# Block /remember command for users other than Mike.
 	#if user_name != 'Michael':
 	#
@@ -1506,6 +1589,21 @@ def remember(update, context):
 
 	# First, we'll add the whole /remember command line to the conversation, so that the AI can see it.
 	conversation.add_message(Message(user_name, update.message.text))
+
+	# Check whether the user is in our access list.
+	if not _check_access(user_name):
+		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
+		errMsg = f"Sorry, but access to {BOT_NAME} is currently restricted to authorized users."
+		try:
+			update.message.reply_text(f"[SYSTEM: {errMsg}]")
+		except BadRequest or Unauthorized or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+
+		# Also record the error in our conversation data structure.
+		conversation.add_message(Message(SYS_NAME, errMsg))
+		return
+
+	_logger.normal(f"User {user_name} entered a /remember command for chat {chat_id}.")
 
 	# Get the command's argument, which is the text to remember.
 	text = ' '.join(update.message.text.split(' ')[1:])
@@ -1578,6 +1676,19 @@ def forget(update, context):
 
 	# First, we'll add the whole /forget command line to the conversation, so that the AI can see it.
 	conversation.add_message(Message(user_name, update.message.text))
+
+	# Check whether the user is in our access list.
+	if not _check_access(user_name):
+		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
+		errMsg = f"Sorry, but access to {BOT_NAME} is currently restricted to authorized users."
+		try:
+			update.message.reply_text(f"[SYSTEM: {errMsg}]")
+		except BadRequest or Unauthorized or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+
+		# Also record the error in our conversation data structure.
+		conversation.add_message(Message(SYS_NAME, errMsg))
+		return
 
 	# Get the command's argument, which is the text to forget.
 	text = ' '.join(update.message.text.split(' ')[1:])
@@ -1715,6 +1826,19 @@ def process_message(update, context):
 
 	# Add the message just received to the conversation.
 	conversation.add_message(Message(user_name, update.message.text))
+
+	# Check whether the user is in our access list.
+	if not _check_access(user_name):
+		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
+		errMsg = f"Sorry, but access to {BOT_NAME} is currently restricted to authorized users."
+		try:
+			update.message.reply_text(f"[SYSTEM: {errMsg}]")
+		except BadRequest or Unauthorized or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+
+		# Also record the error in our conversation data structure.
+		conversation.add_message(Message(SYS_NAME, errMsg))
+		return
 
 	# If the currently selected engine is a chat engine, we'll dispatch the rest
 	# of the message processing to a different function that's specialized to use 
