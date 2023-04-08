@@ -371,7 +371,7 @@ __all__ = [
 	#|							(This is also often called the context window.)
 	#|		'price'			- The cost (per 1,000 tokens) to use the engine.
 	#|		'is-chat'		- True if the engine is a chat engine.
-	#|		'encoding'		- The token encoding used by the engine.
+	#|		'encoding'		- The token encoding used by the engine. [DEPRECATED]
 	#|			These are defined by the tiktoken library, and are:
 	#|				'gpt2'	- Used by most GPT-3 engines.
 	#|				'p50k_base'	- Used by the code models and GPT-3.5 engines.
@@ -469,9 +469,10 @@ def isChatEngine(engineId:str):
 	return _is_chat(engineId)
 
 # Given an engine name, return the encoding attribute value.
+# DEPRECATED; use tiktoken.encoding_for_model() instead.
 def _get_encoding(engine_name):
 	"""Given an engine name string, return the corresponding encoding 
-		attribute value."""
+		attribute value. [DEPRECATED]"""
 	return _get_engine_attr(engine_name, 'encoding')
 
 
@@ -2104,11 +2105,12 @@ class ChatCompletion(Completion):
 			# (Should we make this easier to access?)
 
 			# Now let's get the name of the encoding used by this engine.
-		encodingName = _get_encoding(engineName)
+		#encodingName = _get_encoding(engineName)
 
 			# Now we can ask the tiktoken library to give us the corresponding
 			# encoding object.
-		encoding = tiktoken.get_encoding(encodingName)
+		#encoding = tiktoken.get_encoding(encodingName)	# obsolete
+		encoding = tiktoken.encoding_for_model(engineName)
 
 			# Now we can use the encoding object to convert the text to a list
 			# of tokens.
@@ -3180,10 +3182,12 @@ def tiktokenCount(text:str=None, encoding:str='gpt2', model:str=None):
 		its lack of dependence on GPT-2 having been installed."""
 
 	# If the model argument is provided, use it to get the encoding.
-	if model != None:
-		encoding = _get_encoding(model)
 
-	encodingObj = tiktoken.get_encoding(encoding)
+	if model != None:
+		encodingObj = tiktoken.encoding_for_model(model)
+	else:
+		encodingObj = tiktoken.get_encoding(encoding)
+		
 	num_tokens = len(encodingObj.encode(text))
 	return num_tokens
 

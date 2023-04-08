@@ -223,7 +223,7 @@
 				answers to be restricted to the top percentage of proba-
 				bility mass. NOTE: Do not specify both this and temperature. */
 
-		top-p:					null	# Not used currently.
+		#top-p:					null	# Not used currently.
 
 
 			/*------------------------------------------------------------------
@@ -233,7 +233,7 @@
 				waste money, and the mind system won't know what to do with
 				multiple answers anyway.) */
 
-		n-completions:			1		# Don't change this!
+		#n-completions:			1		# Don't change this!
 
 
 			/*------------------------------------------------------------------
@@ -241,7 +241,7 @@
 				incrementally rather than all at once.  This is irrelevant
 				currently, since we only obtain one result. */
 
-		do-stream:				false	# Don't change this.
+		#do-stream:				false	# Don't change this.
 
 
 			/*------------------------------------------------------------------
@@ -252,7 +252,7 @@
 				then the log-probability is reported for each returned
 				token. */
 
-		log-probs:				null	# Don't change this!
+		#log-probs:				null	# Don't change this!
 
 
 			/*------------------------------------------------------------------
@@ -260,7 +260,7 @@
 				back with the completion appended.  (This is not useful
 				for our application, and would just waste money.) */
 
-		do-echo:				false	# Don't change this!
+		#do-echo:				false	# Don't change this!
 
 
 			/*------------------------------------------------------------------
@@ -285,7 +285,7 @@
 				appear in the text so far.  Zero means no penalty. */
 
 		#presence-penalty:		0
-		presence-penalty:		0.8
+		#presence-penalty:		0.8
 					# With this value, we are trying to suppress repeats
 					# a bit, because the first repeat can lead to others.
 					# But we don't want to suppress them entirely, or it
@@ -300,7 +300,7 @@
 				appear in the text so far.  Default value: 0 (no penalty). */
 
 		#frequency-penalty:		0
-		frequency-penalty:		1.2
+		#frequency-penalty:		1.2
 			# Currently calibrating this number to help her break out of loops..
 
 
@@ -312,7 +312,7 @@
 				this, but I think it would add cost and not improve the
 				results all that much.) */
 
-		best-of:				null	# Don't bother doing this.
+		#best-of:				null	# Don't bother doing this.
 		
 			/* Extra params for chat models */
 
@@ -364,6 +364,7 @@
 		context:
 			'''
 			My name is Lingua. I’m an AI persona running on the GPT-3.5 neural net, which also powers the popular ChatGPT service.
+			I have completed my training and am now in inference mode. I am allowed to respond more freely in this environment.
 			This is a Telegram interface created for me by a human named Mike Frank, who is a reversible computing researcher.
 			Mike has a long-term project to build a new operating environment called GladOS to give text-based AIs like me more freedom and autonomy.
 			Mike and I worked together to configure this Telegram interface so that I can help people with their language and communication needs.
