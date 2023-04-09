@@ -223,11 +223,11 @@ logmaster.configLogMaster(
 		role		= 'bot',		# Sets the main thread's role string to 'bot'.
 		consdebug	= False,		# Turn off full debug logging on the console.
 
-		#consinfo	= True,			# Turn on info-level logging on the console.
-		consinfo	 = False,		 # Turn off info-level logging on the console.
+		consinfo	= True,			# Turn on info-level logging on the console.
+		#consinfo	 = False,		 # Turn off info-level logging on the console.
 
-		#logdebug	= True			# Turn on full debug logging in the log file.
-		logdebug	 = False		 # Turn off full debug logging in the log file.
+		logdebug	= True			# Turn on full debug logging in the log file.
+		#logdebug	 = False		 # Turn off full debug logging in the log file.
 	)
 # NOTE: Debug logging is currently turned off to save disk space.
 
@@ -2409,16 +2409,25 @@ def process_chat_message(update, context):
 
 			_logger.debug(f"In process_chat_message(), lMaxRetToks={lMaxRetToks}.")
 
-			# Calculate the actual maximum length of the returned reponse
-			# in tokens, given all of our constraints above.
-			maxTokens = max(minReplyWinToks, min(lMaxRetToks, availSpaceToks))
-				# Explanation: maxTokens is the amount of space that will
-				# be made available to the AI core for its response. This
-				# should not be less than the AI's requested minimum reply
-				# window size, and it should be as large as possible, but
-				# not more than either the maximum number of tokens that
-				# the AI is allowed to return, or the amount of space that
-				# is actually available right now in the AI's context window.
+			# If the available space is in between minReplyWinToks and
+			# lMaxRetToks, then just set maxTokens=inf (i.e., tell the API
+			# to use all the available space). Otherwise, calculate the
+			# value of maxTokens in the same way we used to do it.
+
+			if minReplyWinToks <= availSpaceToks and availSpaceToks <= lMaxRetToks:
+				maxTokens = None	# No maximum; i.e., infinity; i.e., use all
+					# of the available space.
+			else:
+				# Calculate the actual maximum length of the returned reponse
+				# in tokens, given all of our constraints above.
+				maxTokens = max(minReplyWinToks, min(lMaxRetToks, availSpaceToks))
+					# Explanation: maxTokens is the amount of space that will
+					# be made available to the AI core for its response. This
+					# should not be less than the AI's requested minimum reply
+					# window size, and it should be as large as possible, but
+					# not more than either the maximum number of tokens that
+					# the AI is allowed to return, or the amount of space that
+					# is actually available right now in the AI's context window.
 
 			_logger.debug(f"In process_chat_message(), maxTokens={maxTokens}.")
 
