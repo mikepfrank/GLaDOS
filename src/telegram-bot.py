@@ -1906,7 +1906,9 @@ def process_message(update, context):
 				response_text = completion.text
 				break
 
-			except PromptTooLargeException:				# Imported from gpt3.api module.
+			except PromptTooLargeException as e:				# Imported from gpt3.api module.
+
+				_logger.debug("The prompt was too large by {e.byHowMuch} tokens! Trimming...")
 
 				# The prompt is too long.  We need to expunge the oldest message from the conversation.
 				# However, we need to do this within a try/except clause in case the only message left
