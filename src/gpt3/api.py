@@ -194,6 +194,8 @@
 
 #from	sys			import	stderr	# Not currently used.
 
+import	re	# Regex
+
 from	os			import	path	# Manipulate filesystem path strings.
 
 from	pprint		import	pformat #,pprint	# Pretty-print complex objects.
@@ -1698,17 +1700,6 @@ class ChatMessages:
 			to represent the messages before passing them to the 
 			underlying language model."""
 		
-		_estimatedFormattingTokens = 4
-			# This is the number of extra tokens that we're guessing the 
-			# API uses to format the role and content of each message.  
-			# It's not documented anywhere, but we're guessing that it's
-			# probably ~4 tokens per message, to delimit the 2 fields.
-			# This is because we got a hint from someone that the back-end 
-			# format is something like:
-			#
-			#		<begin_msg_token> <role_token> '\n' <content_tokens> '\n' <end_msg_token>
-			#			 1 token	   N(=1) tok.	 1		M tokens	   1 		 1
-
 		totalToks = 0	# Accumulates the total number of tokens in all messages.
 
 		for msg in self.messageList:
@@ -1721,8 +1712,15 @@ class ChatMessages:
 
 			totalToks += msgToks
 			
-		return totalToks+1	# The +1 here is some slop.
-			# Or, maybe the rep on the remote has one extra delimiter token.
+		# Extra "slop tokens" to reduce API errors.
+		if model == 'gpt-4':
+			_slopTokens = 4
+		else:
+			_slopTokens = 1
+
+		totalToks += _slopTokens
+
+		return totalToks
 
 	#__/ End instance method ChatMessages.totalTokens().
 
@@ -2289,7 +2287,7 @@ class ChatCompletion(Completion):
 
 			_logger.debug(f"In ._createChatComplStruct(), maxToks={maxToks}.")
 
-			_logger.warn(f"[GPT-3 API] Trimmed max_tokens window from {origMax} to {maxTok}.")
+			_logger.warn(f"[GPT-3 chat API] Trimmed max_tokens window from {origMax} to {maxToks}.")
 
 		#__/ End if result window too big.
 
@@ -2302,7 +2300,7 @@ class ChatCompletion(Completion):
 			if apiArgs['max_tokens'] is None:
 				apiArgs['max_tokens'] = float('inf')
 
-			_logger.debug(f"[GPT-3 API] Requesting up to {apiArgs['max_tokens']} tokens.")
+			_logger.debug(f"[GPT-3 chat API] Requesting up to {apiArgs['max_tokens']} tokens.")
 
 			if apiArgs['max_tokens'] == float('inf'):
 				del apiArgs['max_tokens']	# Equivalent to float('inf')?
@@ -2313,7 +2311,33 @@ class ChatCompletion(Completion):
 			# If we get here, we know we have enough space for our query + result,
 			# so we can proceed with the request to the actual underlying API.
 
-		chatComplStruct = openai.ChatCompletion.create(**apiArgs)
+		try:
+			chatComplStruct = openai.ChatCompletion.create(**apiArgs)
+		except openai.error.InvalidRequestError as e:
+			errStr = str(e)		# Get the error as a string.
+
+			_logger.error(f"Got an OpenAI InvalidRequestError: [{errStr}].")
+
+			# Example error string format:
+			#	"This model's maximum context length is 8192 tokens.
+			#	 However, you requested 8194 tokens (7244 in the
+			#	 messages, 950 in the completion). Please reduce the
+			#	 length of the messages or completion."
+
+			# Extract the substrings that are numbers.
+			numStrs = re.findall(r'\d+', errStr)
+
+			# Convert them to actual numbers.
+			numbers = [int(n) for n in numStrs]
+
+			if len(numbers) == 4:
+				maxConLen, reqToks, msgsLen, compLen = numbers
+			
+				maxPrompt = maxConLen - reqToks
+
+				e = PromptTooLargeException(msgsLen, maxPrompt)
+
+				raise e
 
 		_logger.debug("ChatCompletion._createChatComplStruct(): Got raw chat completion struct:"
 					  + '\n' + pformat(chatComplStruct))
