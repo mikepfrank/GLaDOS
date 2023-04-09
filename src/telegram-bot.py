@@ -2381,8 +2381,11 @@ def process_chat_message(update, context):
 			# the context window size.
 
 			# Get the context window size from the gptCore object.
-			contextWinSizeToks = gptCore.fieldSize + 1
-				# The +1 seems true in practice. Not sure why.
+			contextWinSizeToks = gptCore.fieldSize
+
+			# The +1 seems true in practice, except for GPT-4. Not sure why.
+			if ENGINE_NAME != 'gpt-4':
+				contextWinSizeToks += 1
 
 			_logger.debug(f"In process_chat_message(), contextWinSizeToks={contextWinSizeToks}.")
 
