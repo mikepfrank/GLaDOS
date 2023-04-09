@@ -1517,7 +1517,7 @@ class Completion:
 				origMax = apiArgs['max_tokens']	# Save the original value.
 				apiArgs['max_tokens'] = maxTok = fieldSize - _inputLength
 
-				_logger.warn(f"[GPT-3 API] Trimmed max_tokens from {origMax} to {maxTok}.")
+				_logger.warn(f"[GPT-3 API] Trimmed max_tokens from {origMax} to {maxToks}.")
 
 			# If we get here, we know we have enough space for our query + result,
 			# so we can proceed with the request to the actual underlying API.
