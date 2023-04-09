@@ -193,6 +193,12 @@
 	api-conf:	{
 
 			/*------------------------------------------------------------------
+				The 'suffix' parameter is a suffix to be appended to each
+				output.  Not normally useful.									*/
+
+		suffix:					null	# This is the default. Don't change.
+
+			/*------------------------------------------------------------------
 				The 'max-returned-tokens' parameter controls the maximum number
 				of tokens that will be returned in any single completion.
 				However, we may frequently override this value in different
