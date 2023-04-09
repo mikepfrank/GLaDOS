@@ -1565,16 +1565,16 @@ def remember(update, context):
 	user_name = _get_user_name(update.message.from_user)
 
 	# Block /remember command for users other than Mike.
-	#if user_name != 'Michael':
-	#
-	#	_logger.warn("NOTE: Currently ignoring /remember command for all users besides Michael.")
-	#
-	#	try:
-	#		update.message.reply_text(f"[DIAGNOSTIC: Sorry, the /remember command is currently disabled.]\n")
-	#	except BadRequest or Unauthorized or ChatMigrated as e:
-	#		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-	#		
-	#	return	# Quit early
+	if user_name != 'Michael':
+	
+		_logger.warn("NOTE: Currently ignoring /remember command for all users besides Michael.")
+	
+		try:
+			update.message.reply_text(f"[DIAGNOSTIC: Sorry, the /remember command is currently disabled.]\n")
+		except BadRequest or Unauthorized or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+			
+		return	# Quit early
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not _ensure_convo_loaded(update, context):
@@ -2426,7 +2426,7 @@ def process_chat_message(update, context):
 			# Temporary hack to see if we can max out the output length.
 			#maxTokens = None	# Equivalent to float('inf')?
 
-			_logger.info(f"process_chat_message(): maxTokens = {maxTokens}, minReplyWinToks = {minReplyWinToks}, maxRetToks = {maxRetToks}, lMaxRetToks = {lMaxRetToks}, availSpaceToks = {availSpaceToks}")
+			_logger.debug(f"process_chat_message(): maxTokens = {maxTokens}, minReplyWinToks = {minReplyWinToks}, maxRetToks = {maxRetToks}, lMaxRetToks = {lMaxRetToks}, availSpaceToks = {availSpaceToks}")
 
 			# Get the response from GPT-3, as a ChatCompletion object.
 			chatCompletion = gptCore.genChatCompletion(	# Call the API.
