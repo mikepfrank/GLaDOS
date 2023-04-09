@@ -1170,8 +1170,8 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 		_logger.warning(f"User {update.message.from_user.first_name} has an unsupported first name.")
 		
            # Add the warning message to the conversation, so the AI can see it.
-		warning_msg = f"NOTIFICATION: Welcome, {update.message.from_user.first_name}. " \
-			"The AI will identify you in this conversation by your {_which_name}, {user_name}."
+		warning_msg = f"NOTIFICATION: Welcome, \"{update.message.from_user.first_name}\". " \
+			f"The AI will identify you in this conversation by your {_which_name}, {user_name}."
 
 		#warning_msg = f"[SYSTEM NOTIFICATION: Your first name \"{update.message.from_user.first_name}\"" \
 		#	"contains unsupported characters (or is too long). The AI only supports names with <=64 alphanumeric " \
@@ -2320,6 +2320,8 @@ def process_chat_message(update, context):
 	"""We dispatch to this function to process messages from the user
 		if our selected engine is for OpenAI's chat endpoint."""
 	
+	global maxRetToks
+
 	chat_id = update.message.chat.id
 
 	# Get our Conversation object.
@@ -2375,10 +2377,15 @@ def process_chat_message(update, context):
 			# the context window size.
 
 			# Get the context window size from the gptCore object.
-			contextWinSizeToks = gptCore.fieldSize
+			contextWinSizeToks = gptCore.fieldSize + 1
+				# The +1 seems true in practice. Not sure why.
+
+			_logger.debug(f"In process_chat_message(), contextWinSizeToks={contextWinSizeToks}.")
 
 			# Get the length of the chat messages in tokens.
-			msgsSizeToks = ChatMessages(chat_messages).totalTokens()
+			msgsSizeToks = ChatMessages(chat_messages).totalTokens(model=ENGINE_NAME)
+
+			_logger.debug(f"In process_chat_message(), msgsSizeToks={msgsSizeToks}.")
 
 			# Calculate the available space in the context window.
 			availSpaceToks = contextWinSizeToks - msgsSizeToks
@@ -2387,22 +2394,37 @@ def process_chat_message(update, context):
 				# chat messages at the back end contain any additional 
 				# formatting tokens or extra undocumented fields.
 
+			_logger.debug(f"In process_chat_message(), availSpaceToks={availSpaceToks}.")
+
 			# Remember: maxRetToks, minReplyWinToks were already
 			# retrieved from the aiConf object and stored in globals
 			# early in this module.
 
+			# Here we're setting a local variable from the global.
+			if maxRetToks is None:	# In the chat API, this becomes inf.
+				lMaxRetToks = float('inf')	# So in other words, no limit.
+			else:
+				lMaxRetToks = maxRetToks
+
+			_logger.debug(f"In process_chat_message(), lMaxRetToks={lMaxRetToks}.")
+
 			# Calculate the actual maximum length of the returned reponse
 			# in tokens, given all of our constraints above.
-			maxTokens = max(minReplyWinToks, min(maxRetToks, availSpaceToks))
+			maxTokens = max(minReplyWinToks, min(lMaxRetToks, availSpaceToks))
 				# Explanation: maxTokens is the amount of space that will
 				# be made available to the AI core for its response. This
 				# should not be less than the AI's requested minimum reply
-				# window size, and should it not be more than either the
-				# maximum number of tokens that the AI is allowed to return, 
-				# or the amount of space that is actually available right now 
-				# in the AI's context window.
+				# window size, and it should be as large as possible, but
+				# not more than either the maximum number of tokens that
+				# the AI is allowed to return, or the amount of space that
+				# is actually available right now in the AI's context window.
 
-			_logger.debug(f"process_chat_message(): maxTokens = {maxTokens}, minReplyWinToks = {minReplyWinToks}, maxRetToks = {maxRetToks}, availSpaceToks = {availSpaceToks}")
+			_logger.debug(f"In process_chat_message(), maxTokens={maxTokens}.")
+
+			# Temporary hack to see if we can max out the output length.
+			#maxTokens = None	# Equivalent to float('inf')?
+
+			_logger.info(f"process_chat_message(): maxTokens = {maxTokens}, minReplyWinToks = {minReplyWinToks}, maxRetToks = {maxRetToks}, lMaxRetToks = {lMaxRetToks}, availSpaceToks = {availSpaceToks}")
 
 			# Get the response from GPT-3, as a ChatCompletion object.
 			chatCompletion = gptCore.genChatCompletion(	# Call the API.

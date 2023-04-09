@@ -902,11 +902,17 @@ class	TheAIPersonaConfig:
 			GPT-3 API configuration parameters (under 'api-conf'):
 			------------------------------------------------------
 
+				.suffix [str] 			 - Text to append to each output.
+											(Default value is null.)
+
 				.maxReturnedTokens [int] - Maximum number of tokens to return
 											in one completion from the GPT-3 API.
+											Text API's default value here is 16.
+											Chat API's default value is infinity?
 				
 				.temperature [float]	- Randomness temperature parameter for the 
 											GPT-3 API. (Recommended value: 0.75.)
+											The API's default value is 1.
 				
 				.topP [float]			- Top-p parameter for the GPT-3 API.
 											(Note: Not compatible with temperature.)
@@ -1191,6 +1197,13 @@ class	TheAIPersonaConfig:
 			theAIConfig.apiConf = apiConf = dict()	# Empty dict by default.
 
 		# Go ahead and pull out the parameter values from the API conf record.
+
+		if 'suffix' in apiConf:
+			theAIConfig.suffix = suffix = apiConf['suffix']
+			_logger.normal(f"    [Config/AI]     AI config:    suffix = {suffix}.")
+		else:
+			theAIConfig.suffix = None
+				# No default value is being provided at AI configuration time.
 
 		if 'max-returned-tokens' in apiConf:
 			theAIConfig.maxReturnedTokens = maxRetTok = apiConf['max-returned-tokens']
