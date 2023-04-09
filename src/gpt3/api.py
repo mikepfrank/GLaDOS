@@ -410,7 +410,7 @@ _ENGINE_ATTRIBS = {
 
 	'gpt-4-0314':	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-0314',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
 	'gpt-4':		{'model-family': 'GPT-4',	'engine-name': 'gpt-4-0314',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
-		# NOTE: In these models, prompt tokens are discounted, so there's a new field 'prompt-price' (not yet used by our accounting code).
+		# NOTE: In these models, prompt tokens are discounted, so there's a new field 'prompt-price'.
 
 } # End _ENGINE_ATTRIBS constant module global data structure.
 
@@ -507,10 +507,12 @@ DEF_TOKENS  	= 100		# Gladys requested this.
 global			DEF_TEMP	# Default temperature value.
 #DEF_TEMP		= 0.5		# Is this reasonable?
 #DEF_TEMP		= 0.75		# I think this makes repeats less likely.
-DEF_TEMP		= 0.8		# Current default value, for a bit more creativity.
+#DEF_TEMP		= 0.8		# Current default value, for a bit more creativity.
+DEF_TEMP		= None		# This says to just use the API's default value.
+# The default value in the GPT-3 API is just 1. Should we just use that value?
 
 global			DEF_STOP	# Default stop string (or list of up to 4).
-DEF_STOP		= None		# Let's try no stop.
+DEF_STOP		= None		# Let's try no stop. (This is the chat default anyway.)
 #DEF_STOP		= "\n\n\n"	# Use 3 newlines (two blank lines) as stop.
 	# Note this is anyway the default stop string used by the OpenAI API.
 	# NOTE: IF YOU SET THIS TO '\n', IT BREAKS THE CHAT MODELS.
@@ -660,6 +662,7 @@ class GPT3APIConfig:
 	#|	API parameters:		(See initializer header below for details.)
 	#|
 	#|		.engineId			 [string]
+	#|		.suffix				 [string]
 	#|		.maxTokens			 [intger]
 	#|		.temperature		 [number]
 	#|		.topP				 [number]
@@ -692,6 +695,11 @@ class GPT3APIConfig:
 		#|			curie-beta, davinci, davinci-beta.	Earlier names
 		#|			alphabetically are smaller models.	The default value
 		#|			is currently text-davinci-003 (unless changed by user).
+		#|
+		#|		suffix												[string]
+		#|
+		#|			A text suffix to append to each completion. Defaults
+		#|			to None.
 		#|
 		#|		maxTokens											[integer]
 		#|
@@ -770,13 +778,13 @@ class GPT3APIConfig:
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	def __init__(inst, 
-					engineId:str=DEF_ENGINE,	maxTokens:int=DEF_TOKENS, 
-					temperature:float=DEF_TEMP, topP:float=None, 
-					nCompletions:int=1,			stream:bool=None,	# Used to set stream to False here, but that's the default anyway, I think?
-					logProbs:int=None,			echo:bool=False, 
+					engineId:str=DEF_ENGINE,	maxTokens:int=DEF_TOKENS,	# API's default value for maxTokens is 16 (if not set here).
+					temperature:float=DEF_TEMP, topP:float=None, 	# API's default temperature would be 1 (if not set here).
+					nCompletions:int=None,		stream:bool=None,	# Defaults used to be: nCompletions=1, stream=False. (API defaults anyway.)
+					logProbs:int=None,			echo:bool=False,	# I believe these values are the API default values anyway.
 					stop=DEF_STOP,				presPen:float=None, # Used to set presPen to 0 here, but that's the default anyway, I think?
 					freqPen:float=None,			bestOf:int=None,	# Used to set freqPen to 0 here, but that's the default anyway, I think?
-					name=None):
+					name=None,					suffix:str=None):
 
 		"""Initialize a GPT-3 API configuration, reverting to
 			default values for any un-supplied parameters."""
@@ -784,6 +792,7 @@ class GPT3APIConfig:
 			# Save the values of the supplied configuration parameters.
 
 		inst.engineId			= engineId
+		inst.suffix				= suffix
 		inst.maxTokens			= maxTokens
 		inst.temperature		= temperature
 		inst.topP				= topP
@@ -819,11 +828,13 @@ class GPT3APIConfig:
 				nCompletions:int=None,	stream:bool=None,	
 				logProbs:int=None,		echo:bool=None,			
 				stop=None,				presPen:float=None, 
-				freqPen:float=None,		bestOf:int=None):
+				freqPen:float=None,		bestOf:int=None,
+				suffix:str=None):
 
 		"""Modify one or more parameter values in the configuration."""
 		
 		if engineId		!= None:	self.engineId			= engineId
+		if suffix		!= None:	self.suffix				= suffix
 		if maxTokens	!= None:	self.maxTokens			= maxTokens
 		if temperature	!= None:	self.temperature		= temperature
 		if topP			!= None:	self.topP				= topP
@@ -859,6 +870,7 @@ class GPT3APIConfig:
 		return f"""
 			GPT3 Configuration{namestr}:
 				engine_id		  = {self.engineId}
+				suffix			  = {self.suffix}
 				max_tokens		  = {self.maxTokens}
 				temperature		  = {self.temperature}
 				top_p			  = {self.topP}
@@ -953,11 +965,11 @@ class GPT3ChatAPIConfig(GPT3APIConfig):
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	def __init__(newGPT3ChatAPIConf:GPT3ChatAPIConfig, 
-					engineId:str=DEF_CHAT_ENGINE,	maxTokens:int=DEF_TOKENS, 
+					engineId:str=DEF_CHAT_ENGINE,	maxTokens:int=None,		# Used to set maxTokens=DEF_TOKENS. But the API's default value for maxTokens is float('inf').
 					temperature:float=DEF_TEMP, 	topP:float=None, 
-					nCompletions:int=1,				stream:bool=False,
-					stop=DEF_STOP,					presPen:float=0, 
-					freqPen:float=0,				messages:list=None,
+					nCompletions:int=None,			stream:bool=None,		# Used to set nCompletions=1, stream=False here. But default anyway.
+					stop=DEF_STOP,					presPen:float=None, 	# Used to set presPen=0 here, but default anyway.
+					freqPen:float=None,				messages:list=None,		# Used to set freqPen=0 here, but default anyway.
 					logitBias:dict=None,			user:str=None,
 					name=None):
 			# NOTE: logProbs, echo, and bestOf args from parent class are
@@ -1709,7 +1721,8 @@ class ChatMessages:
 
 			totalToks += msgToks
 			
-		return totalToks
+		return totalToks+1	# The +1 here is some slop.
+			# Or, maybe the rep on the remote has one extra delimiter token.
 
 	#__/ End instance method ChatMessages.totalTokens().
 
@@ -1825,7 +1838,6 @@ class ChatCompletion(Completion):
 	# completions, so we don't need to override them:
 	#
 	#
-
 
 	"""An instance of this class represents a completion object returned
 		by the GPT-3 chat API.  It wraps the underlying completion structure
@@ -2184,6 +2196,8 @@ class ChatCompletion(Completion):
 		if minRepWin is None:		# Just in case caller explicitly sets this to None,
 			minRepWin = DEF_TOKENS	# revert back to the default of 100 tokens.
 
+		_logger.debug(f"In ._createChatComplStruct(), minRepWin={minRepWin}.")
+
 		# If the core is not set, we can't do anything.
 		if chatCompl.chatCore == None:
 			_logger.error("ERROR: chatCompletion._createChatComplStruct(): Chat core not available.")
@@ -2196,6 +2210,8 @@ class ChatCompletion(Completion):
 			# but don't actually update our usage statistics yet!
 
 		estInputLen = chatCompl._estimateInputLen(apiArgs)
+
+		_logger.debug(f"In ._createChatComplStruct(), estInputLen={estInputLen}.")
 
 			# Retrieve the engine's receptive field size; this is the maximum number
 			# of tokens that can be accommodated in the query + response together.
@@ -2210,19 +2226,38 @@ class ChatCompletion(Completion):
 		if fieldSize == 2048:
 			fieldSize = 2049
 
+		elif fieldSize == 4096:
+			fieldSize = 4097
+
 			# (NOTE: Still need to research whether the engines that supposedly
 			# can only handle 4,000 tokens can similarly handle 4,001 tokens,
 			# if whether the engines that supposedly can only handle 4,096
 			# tokens can similarly handle 4,097 tokens, etc.)
 
+			# UPDATE: ChatGPT-3.5 can indeed handle 4,097, it seems.
+
+		_logger.debug(f"In ._createChatComplStruct(), fieldSize={fieldSize}.")
+
+
+		# Get a numeric equivalent for 'max_tokens'.
+		if 'max_tokens' not in apiArgs or apiArgs['max_tokens'] is None:
+			maxToks = float('infty')
+		else:
+			maxToks = apiArgs['max_tokens']
+
+		_logger.debug(f"In ._createChatComplStruct(), maxToks={maxToks}.")
+
+
 			# Check to make sure that input+result window is not greater than
 			# the size of the receptive field; if so, then we need to request 
 			# a smaller result (but not too small).
 
-		if estInputLen + apiArgs['max_tokens'] > fieldSize:
+		if estInputLen + maxToks > fieldSize:
 
 				# See how much space there is right now for our query result.
 			availSpace = fieldSize - estInputLen
+
+			_logger.debug(f"In ._createChatComplStruct(), availSpace={availSpace}.")
 
 				# If there isn't enough space left even for our minimum requested
 				# reply window size, then we need to raise an exception, because 
@@ -2233,6 +2268,8 @@ class ChatCompletion(Completion):
 
 					# Calculate the effective maximum prompt length, in tokens.
 				effMax = fieldSize - minRepWin
+
+				_logger.debug(f"In ._createChatComplStruct(), effMax={effMax}.")
 
 				_logger.debug("[GPT chat API] Prompt length of "
 							  f"{estInputLen} exceeds our effective "
@@ -2247,15 +2284,28 @@ class ChatCompletion(Completion):
 				# If we get here, we have enough space for our minimum result length,
 				# so we can shrink the maximum result length accordingly.
 
-			origMax = apiArgs['max_tokens']	# Save the original value.
-			apiArgs['max_tokens'] = maxTok = fieldSize - estInputLen
+			origMax = maxToks	# Save the original value.
+			apiArgs['max_tokens'] = maxToks = fieldSize - estInputLen
+
+			_logger.debug(f"In ._createChatComplStruct(), maxToks={maxToks}.")
 
 			_logger.warn(f"[GPT-3 API] Trimmed max_tokens window from {origMax} to {maxTok}.")
 
 		#__/ End if result window too big.
 
+		# Temporary hack to try to max out the output length.
+		#apiArgs['max_tokens'] = None
+
+		# This code *should* allow the output to fill up to the entire remaining context window? Will it work?
 		if 'max_tokens' in apiArgs:
+
+			if apiArgs['max_tokens'] is None:
+				apiArgs['max_tokens'] = float('inf')
+
 			_logger.debug(f"[GPT-3 API] Requesting up to {apiArgs['max_tokens']} tokens.")
+
+			if apiArgs['max_tokens'] == float('inf'):
+				del apiArgs['max_tokens']	# Equivalent to float('inf')?
 
 		prettyArgs = pformat(apiArgs)
 		_logger.debug("Calling openai.ChatCompleton.create() with these keyword args:\n" + prettyArgs)
@@ -2576,6 +2626,7 @@ class GPT3Core:
 		# Note here we have to match the exact keyword argument names supported by OpenAI's API.
 
 		if prompt					!= None:	kwargs['prompt']			= prompt
+		if conf.suffix				!= None:	kwargs['suffix']			= conf.suffix
 		if conf.maxTokens			!= None:	kwargs['max_tokens']		= conf.maxTokens
 		if conf.temperature			!= None:	kwargs['temperature']		= conf.temperature
 		if conf.topP				!= None:	kwargs['top_p']				= conf.topP
@@ -3458,6 +3509,7 @@ def _recalcDollars():
 
 		costs[engine] = engCost
 		dollars = dollars + engCost
+
 	#__/ End loop over engine names.
 		
 	return (costs, dollars)
