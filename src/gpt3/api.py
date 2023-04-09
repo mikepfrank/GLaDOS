@@ -1714,7 +1714,7 @@ class ChatMessages:
 			
 		# Extra "slop tokens" to reduce API errors.
 		if model == 'gpt-4':
-			_slopTokens = 4
+			_slopTokens = 5
 		else:
 			_slopTokens = 1
 
@@ -2239,7 +2239,7 @@ class ChatCompletion(Completion):
 
 		# Get a numeric equivalent for 'max_tokens'.
 		if 'max_tokens' not in apiArgs or apiArgs['max_tokens'] is None:
-			maxToks = float('infty')
+			maxToks = float('inf')
 		else:
 			maxToks = apiArgs['max_tokens']
 
@@ -2248,9 +2248,10 @@ class ChatCompletion(Completion):
 
 			# Check to make sure that input+result window is not greater than
 			# the size of the receptive field; if so, then we need to request 
-			# a smaller result (but not too small).
+			# a smaller result (but not too small). Exception: If maxToks is
+			# infinity (no limit), just keep it like that.
 
-		if estInputLen + maxToks > fieldSize:
+		if maxToks < float('inf') and estInputLen + maxToks > fieldSize:
 
 				# See how much space there is right now for our query result.
 			availSpace = fieldSize - estInputLen
