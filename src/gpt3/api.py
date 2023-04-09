@@ -2289,7 +2289,7 @@ class ChatCompletion(Completion):
 
 			_logger.debug(f"In ._createChatComplStruct(), maxToks={maxToks}.")
 
-			_logger.warn(f"[GPT-3 API] Trimmed max_tokens window from {origMax} to {maxTok}.")
+			_logger.warn(f"[GPT-3 API] Trimmed max_tokens window from {origMax} to {maxToks}.")
 
 		#__/ End if result window too big.
 
