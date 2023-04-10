@@ -196,7 +196,7 @@
 
 import	re	# Regex
 
-from	os			import	path	# Manipulate filesystem path strings.
+from	os			import	path, rename	# Manipulate filesystem path strings.
 
 from	pprint		import	pformat #,pprint	# Pretty-print complex objects.
 
@@ -3406,7 +3406,7 @@ def _loadStats():
 
 			# Rename the old file to the archive file.
 			try:
-				os.rename(statsPath, archivePath)
+				rename(statsPath, archivePath)
 				_logger.normal(f"Archived old API usage statistics file {statsPath} to {archivePath}.")
 			except:
 				_logger.warn(f"Couldn't rename {statsPath} to {archivePath}.")
