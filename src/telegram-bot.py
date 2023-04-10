@@ -252,6 +252,8 @@ logmaster.configLogMaster(
 # We're temporarily trying a different delimiter that's less likely to appear in message text:
 MESSAGE_DELIMITER = chr(ascii.RS)	# (Gladys agreed to try this.)
 	# A control character.	(ASCII RS = 0x1E, record separator.)
+#MESSAGE_DELIMITER = chr(ascii.ETX)	# End-of-text control character.
+#MESSAGE_DELIMITER = chr(ascii.ETB)	# End-of-transmission-block control character.
 
 # Define the bot's name (used in a couple of places below).
 #BOT_NAME = 'Gladys'
