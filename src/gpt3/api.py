@@ -202,7 +202,9 @@ from	pprint		import	pformat #,pprint	# Pretty-print complex objects.
 
 import	json		# We use this to save/restore the API usage statistics.
 
-import	datetime	# We use this to tag new messages with the current time.
+from	datetime	import	date, datetime
+	# We use datetime to tag new messages with the current time.
+	# We use date to determine when to switch stats files.
 
 from	curses.ascii	import	RS #, STX, ETX	# We use these to delimit messages.
 			# We previously assumed [STX][ETX] delimiters surrounded each message.
@@ -608,7 +610,7 @@ _theTokenCounterCore = None		# Initially not yet created.
 
 import threading
 global _lock
-_lock = threading.Lock()
+_lock = threading.RLock()	# Reentrant mutex lock for thread-safe operations.
 
 	# NOTE: Any manipulation of the global variables in the previous section 
 	# (in a way that needs to be effectively atomic) must be protected with 
@@ -3102,7 +3104,7 @@ class GPT3ChatCore(GPT3Core):
 			# The newMessage object returned from the completion object is 
 			# already a dict with role and content, so just add the timestamp.
 
-		newMessage['created_at'] = datetime.datetime.now().isoformat()
+		newMessage['created_at'] = datetime.now().isoformat()
 		return newMessage
 		
 	#__/ End instance method GPT3Core.genMessage().
@@ -3384,69 +3386,78 @@ def _loadStats():
 		# Get today's date.
 		today = date.today()
 
+		_logger.debug(f"In _loadStats(): Today's date is: {today}.")
+
 		# Get the last-modified date of the stats file.
 		try:
 			lastModDate = date.fromtimestamp(path.getmtime(statsPath))
+			_logger.debug(f"In _loadStats(): {statsPath} last modified: {lastModDate}.")
 		except:
+			_logger.error(f"In _loadStats(): Couldn't get date of {statsPath}! Danger, Will Robinson.")
 			lastModDate = None
 			newDay = True
 
 		# If the last-modified date is different from today's date,
 		# archive the old file and reset the stats to zero.
-		if lastModDate != today:
+		if lastModDate is not None and lastModDate != today:
 			
 			# It's a new day!
 			newDay = True
 
-			_logger.info(f"Today's date is {today}, but the last-modified date of the API usage statistics file {statsPath} is {lastModDate}."")
+			_logger.info(f"Today's date is {today}, but the last-modified date of the API usage statistics file {statsPath} is {lastModDate}.")
 			_logger.normal("Starting a new day!")
 
 			# Construct the name of the archive file.
-			archivePath = statsPath + '.' + lastModDate.strftime('%Y-%m-%d')
+			archivePath = lastModDate.strftime('%Y-%m-%d') + '.' + statsPath
 
 			# Rename the old file to the archive file.
 			try:
 				rename(statsPath, archivePath)
-				_logger.normal(f"Archived old API usage statistics file {statsPath} to {archivePath}.")
+				_logger.normal(f"NOTE: Archived old API usage statistics file {statsPath} to {archivePath}.")
 			except:
 				_logger.warn(f"Couldn't rename {statsPath} to {archivePath}.")
 
 			# Reset the stats to zero.
 			_clearStats()
 
+			# If it's actually a new day, we also need to create a new
+			# api-stats.txt file to store the API stats table.
+			_displayStats()
+
 		else:
 
-		_logger.info(f"Loading usage statistics from {statsPath}...")
+			_logger.info(f"Loading usage statistics from {statsPath}...")
 
-		try:
-			with open(statsPath) as inFile:
+			try:
+				with open(statsPath) as inFile:
+					
+					stats 			= json.load(inFile)
 
-				stats 			= json.load(inFile)
-
-				_inputToks 		= stats['input-tokens']
-				_outputToks 	= stats['output-tokens']
-				_expenditures 	= stats['expenditures']
-				_totalCost 		= stats['total-cost']
+					_inputToks 		= stats['input-tokens']
+					_outputToks 	= stats['output-tokens']
+					_expenditures 	= stats['expenditures']
+					_totalCost 		= stats['total-cost']
 			
-			#_logger.normal(f"Loaded API usage stats from {statsPath}: \n{pformat(stats, width=25)}")
+					#_logger.normal(f"Loaded API usage stats from {statsPath}: \n{pformat(stats, width=25)}")
 
-		# Ignore file doesn't exist errors.
-		except:
-			_logger.warn(f"Couldn't open API usage statistics file {statsPath}--it might not exist yet.")
-			pass
+				# Ignore file doesn't exist errors.
+			except:
+				_logger.warn(f"Couldn't open API usage statistics file {statsPath}--it might not exist yet.")
+				pass
 
-		finally:
-			_statsLoaded = True		# Hey, we tried at least!
+			finally:
+				_statsLoaded = True		# Hey, we tried at least!
 
-		# If it's actually a new day, we also need to create a new
-		# api-stats.txt file to store the API stats table.
-		if newDay:
-			_displayStats()
+			# In this case, we don't need to save the stats (redundant),
+			# but we do want to display them:
+			_displayStats(doWrite=False)
+				# Note: These could actually be yesterday's stats if the clock JUST clicked 
+				# past midnight, but this hardly matters.
 
 #__/ End module function _loadStats().
 
 
-def _statLine(doWrite:bool=True, line:str):
+def _statLine(doWrite:bool, line:str):
 
 	"""This quick-and-dirty utility method saves a line of
 		the API statistics table to several places."""
@@ -3487,29 +3498,35 @@ def _displayStats(doWrite:bool=True):
 		#		api-stats-YYYY-MM-DD.txt, where YYYY-MM-DD is the
 		#		date of the last modification.
 
-		# Get today's date.
-		today = date.today()
+		if doWrite:		# (We only need to bother if actually writing to a file.)
 
-		# Get the date of the last modification to the file.
-		newDay = False
-		try:
-			lastMod = date.fromtimestamp(path.getmtime(_textPath()))
-		except:
-			lastMod = None
-			newDay = True	# If the file doesn't exist, then it's a new day.
+			# Get today's date.
+			today = date.today()
 
-		# If the dates are different, rename the file to
-		# api-stats-YYYY-MM-DD.txt, where YYYY-MM-DD is the
-		# date of the last modification.
-		if lastMod and lastMod != today:
+			_logger.debug(f"In _displayStats(): Today's date is {today}.")
+
+			# Get the date of the last modification to the file.
+			try:
+				lastMod = date.fromtimestamp(path.getmtime(_textPath()))
+				_logger.debug(f"In _displayStats(): {_textPath()} last modified: {lastMod}.")
+			except:
+				lastMod = None
+
+			# If the dates are different, rename the file to
+			# api-stats-YYYY-MM-DD.txt, where YYYY-MM-DD is the
+			# date of the last modification.
+			if lastMod and lastMod != today:
 		
-			_logger.info(f"Today's date is {today}, but the last-modified date of the API usage statistics file {_textPath()} is {lastMod}.")
-			_logger.normal("Starting a new day!")
-
-			oldPath = _textPath()
-			newPath = path.join(_aiPath, f"api-stats-{lastMod}.txt")
-			rename(oldPath, newPath)
-			newDay = True	# It's a new day!
+				_logger.info(f"Today's date is {today}, but the last-modified date of the API usage statistics file {_textPath()} is {lastMod}.")
+				_logger.normal("Starting a new day!")
+				
+				oldPath = _textPath()
+				newPath = path.join(_aiPath, f"api-stats-{lastMod}.txt")
+				try:
+					rename(oldPath, newPath)
+					_logger.normal(f"NOTE: Archived old API usage statistics file {oldPath} to {newPath}.")
+				except:
+					_logger.error(f"Couldn't rename {oldPath} to {newPath}. Old stats will get stomped!")
 
 		# Start generating a new stats string.
 		_statStr = ""
@@ -3613,7 +3630,7 @@ def _saveStats():
 	
 	#__/ End with statement.
 
-	_displayStats()
+	_displayStats()		# Displays and saves a text format version.
 
 #__/ End module function _saveStats().
 
