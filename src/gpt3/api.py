@@ -563,25 +563,31 @@ global _inputToks, _outputToks	# These are dictionaries of token counts.
 
 global _expenditures
 
-# Initialize all the various stats dictionaries to all-zero values.
-
-_inputToks = {}
-_outputToks = {}
-_expenditures = {}
-for engId in _ENGINE_NAMES:
-	_inputToks[engId] = 0
-	_outputToks[engId] = 0
-	_expenditures[engId] = 0
-
 # This global variable tracks the total cost in dollars across all engines.
-
 global 			_totalCost
-_totalCost 		= 0				# Initialize at stats load/save time.
 
 # String containing a formatted multi-line table showing the current statistics.
 global 			_statStr		
-_statStr 		= ""		# Will be modified after processing a query.
 
+# Function to reinitialize the stats variables. We do this daily.
+def _clearStats():
+
+	# Initialize all the various stats dictionaries to all-zero values.
+
+	_inputToks = {}
+	_outputToks = {}
+	_expenditures = {}
+	for engId in _ENGINE_NAMES:
+		_inputToks[engId] = 0
+		_outputToks[engId] = 0
+		_expenditures[engId] = 0
+
+
+	_totalCost 		= 0				# Initialize at stats load/save time.
+
+	_statStr 		= ""		# Will be modified after processing a query.
+
+_clearStats()	# Initialize the stats variables.
 
 #|==============================================================================
 #|	Module-level global objects.								  [code section]
@@ -3360,41 +3366,87 @@ def _textPath():
 
 def _loadStats():
 
-	"""Loads the api-stats.json file from the AI's data directory."""
+	"""Loads the api-stats.json file from the AI's data directory.
+		We also notice if today's date is different from the last-
+		modified date on the file, and if so, we archive the old
+		file and reset the stats to zero."""
 
 	global _statsLoaded, _inputToks, _outputToks, _expenditures, _totalCost
 
 		# This constructs the full filesystem pathname to the stats file.
 	statsPath = _statsPathname()
 
-	_logger.info(f"Loading usage statistics from {statsPath}...")
+	# Do the following in a thread-safe way.
+	with _lock:
 
-	try:
-		with open(statsPath) as inFile:
+		newDay = False
 
-			stats 			= json.load(inFile)
+		# Get today's date.
+		today = date.today()
 
-			_inputToks 		= stats['input-tokens']
-			_outputToks 	= stats['output-tokens']
-			_expenditures 	= stats['expenditures']
-			_totalCost 		= stats['total-cost']
-		
-		#_logger.normal(f"Loaded API usage stats from {statsPath}: \n{pformat(stats, width=25)}")
+		# Get the last-modified date of the stats file.
+		try:
+			lastModDate = date.fromtimestamp(path.getmtime(statsPath))
+		except:
+			lastModDate = None
+			newDay = True
 
-	# Ignore file doesn't exist errors.
-	except:
-		_logger.warn(f"Couldn't open API usage statistics file {statsPath}--it might not exist yet.")
-		pass
+		# If the last-modified date is different from today's date,
+		# archive the old file and reset the stats to zero.
+		if lastModDate != today:
+			
+			# It's a new day!
+			newDay = True
 
-	finally:
-		_statsLoaded = True		# Hey, we tried at least!
+			_logger.info(f"Today's date is {today}, but the last-modified date of the API usage statistics file {statsPath} is {lastModDate}."")
+			_logger.normal("Starting a new day!")
 
-	_displayStats()
+			# Construct the name of the archive file.
+			archivePath = statsPath + '.' + lastModDate.strftime('%Y-%m-%d')
+
+			# Rename the old file to the archive file.
+			try:
+				os.rename(statsPath, archivePath)
+				_logger.normal(f"Archived old API usage statistics file {statsPath} to {archivePath}.")
+			except:
+				_logger.warn(f"Couldn't rename {statsPath} to {archivePath}.")
+
+			# Reset the stats to zero.
+			_clearStats()
+
+		else:
+
+		_logger.info(f"Loading usage statistics from {statsPath}...")
+
+		try:
+			with open(statsPath) as inFile:
+
+				stats 			= json.load(inFile)
+
+				_inputToks 		= stats['input-tokens']
+				_outputToks 	= stats['output-tokens']
+				_expenditures 	= stats['expenditures']
+				_totalCost 		= stats['total-cost']
+			
+			#_logger.normal(f"Loaded API usage stats from {statsPath}: \n{pformat(stats, width=25)}")
+
+		# Ignore file doesn't exist errors.
+		except:
+			_logger.warn(f"Couldn't open API usage statistics file {statsPath}--it might not exist yet.")
+			pass
+
+		finally:
+			_statsLoaded = True		# Hey, we tried at least!
+
+		# If it's actually a new day, we also need to create a new
+		# api-stats.txt file to store the API stats table.
+		if newDay:
+			_displayStats()
 
 #__/ End module function _loadStats().
 
 
-def _statLine(line):
+def _statLine(doWrite:bool=True, line:str):
 
 	"""This quick-and-dirty utility method saves a line of
 		the API statistics table to several places."""
@@ -3405,7 +3457,8 @@ def _statLine(line):
 	_logger.info(line)
 	
 		# Append this line to the api-stats.txt file.
-	print(line, file=_statFile)
+	if doWrite:
+		print(line, file=_statFile)
 
 		# Also accumulate it in this global string.
 	_statStr = _statStr + line + '\n'
@@ -3413,25 +3466,70 @@ def _statLine(line):
 #__/ End module function _statLine().
 
 
-def _displayStats():
+def _displayStats(doWrite:bool=True):
+		# If called with doWrite=False, this function will not
+		# actually write the stats table to the api-stats.txt file.
 
 	"""Displays usage statistics in an easily-readable format.
 		Also saves them to a file api-stats.txt."""
 
 	global _statFile, _statStr
 
-	_statStr = ""
+	with _lock:		# Grab this module's mutex lock.
+		# (We do this because we want this function to be thread-safe.)
 
-	with open(_textPath(), 'w') as _statFile:
+		# Before we write the new stats table, we want to make sure
+		# that we are writing a new file for each day. We do this as
+		# follows, if the api-stats.txt file already exists:
+		#	1. Get today's date.
+		#	2. Get the date of the last modification to the file.
+		#	3. If the dates are different, rename the file to
+		#		api-stats-YYYY-MM-DD.txt, where YYYY-MM-DD is the
+		#		date of the last modification.
+
+		# Get today's date.
+		today = date.today()
+
+		# Get the date of the last modification to the file.
+		newDay = False
+		try:
+			lastMod = date.fromtimestamp(path.getmtime(_textPath()))
+		except:
+			lastMod = None
+			newDay = True	# If the file doesn't exist, then it's a new day.
+
+		# If the dates are different, rename the file to
+		# api-stats-YYYY-MM-DD.txt, where YYYY-MM-DD is the
+		# date of the last modification.
+		if lastMod and lastMod != today:
+		
+			_logger.info(f"Today's date is {today}, but the last-modified date of the API usage statistics file {_textPath()} is {lastMod}.")
+			_logger.normal("Starting a new day!")
+
+			oldPath = _textPath()
+			newPath = path.join(_aiPath, f"api-stats-{lastMod}.txt")
+			rename(oldPath, newPath)
+			newDay = True	# It's a new day!
+
+		# Start generating a new stats string.
+		_statStr = ""
+
+		# If doWrite=True, then open the file for writing.
+		if doWrite: 
+			try:
+				_statFile = open(_textPath(), 'w')
+			except:
+				_logger.warn(f"Couldn't open API usage statistics file {_textPath()} for writing.")
+				doWrite = False
 
 		# NOTE: We may need to widen some of the columns in this table
 		#  if the contents start to overflow.
 
-		_statLine("")
-		_statLine("                   |         Token Counts          |")
-		_statLine("                   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ |")
-		_statLine("Engine Name        |    Input |  Output |    Total |  USD Cost")
-		_statLine("===================|==========|=========|==========|==========")
+		_statLine(doWrite, "")
+		_statLine(doWrite, "                   |         Token Counts          |")
+		_statLine(doWrite, "                   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ |")
+		_statLine(doWrite, "Engine Name        |    Input |  Output |    Total |  USD Cost")
+		_statLine(doWrite, "===================|==========|=========|==========|==========")
 		
 		# Cumulative input, output, and total token counts.
 		cumIn = cumOut = cumTot = 0
@@ -3451,7 +3549,7 @@ def _displayStats():
 	
 			cost = "$%8.4f" % _expenditures[engine]
 	
-			_statLine(f"{engStr} | {inTokStr} | {outTokStr} | {totStr} | {cost}")
+			_statLine(doWrite, f"{engStr} | {inTokStr} | {outTokStr} | {totStr} | {cost}")
 	
 			cumIn  = cumIn  + inToks
 			cumOut = cumOut + outToks
@@ -3466,10 +3564,14 @@ def _displayStats():
 	
 		totStr = "$%8.4f" % _totalCost
 	
-		_statLine( "~~~~~~~~~~~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~~")
-		_statLine(f"TOTALS:            | {cumInStr} | {cumOutStr} | {cumTotStr} | {totStr}")
-		_statLine("")
+		_statLine(doWrite,  "~~~~~~~~~~~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~~")
+		_statLine(doWrite, f"TOTALS:            | {cumInStr} | {cumOutStr} | {cumTotStr} | {totStr}")
+		_statLine(doWrite, "")
 	
+		# If doWrite=True, then we were writing to the file, and we need to close it.
+		if doWrite:
+			_statFile.close()
+
 	#__/ End with statement.
 
 #__/ End module function _displayStats().
