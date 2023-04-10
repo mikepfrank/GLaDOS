@@ -2314,6 +2314,7 @@ class ChatCompletion(Completion):
 
 		try:
 			chatComplStruct = openai.ChatCompletion.create(**apiArgs)
+
 		except openai.error.InvalidRequestError as e:
 			errStr = str(e)		# Get the error as a string.
 
@@ -3264,7 +3265,14 @@ def tiktokenCount(text:str=None, encoding:str='gpt2', model:str=None):
 	else:
 		encodingObj = tiktoken.get_encoding(encoding)
 		
-	num_tokens = len(encodingObj.encode(text))
+	num_tokens = len(encodingObj.encode(text, disallowed_special=()))
+		# Note: Setting the disallowed_special keyword argument to the
+		# empty tuple causes special tokens like '<|endoftext|>' to be
+		# encoded as normal text. This could inflate our token count,
+		# but it's better to estimate it a bit too high than too low.
+		# (But, we don't know how the actual API will handle this text
+		# yet...)
+
 	return num_tokens
 
 #__/ End module public function tiktokenCount().
