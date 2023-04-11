@@ -574,6 +574,10 @@ global 			_statStr
 # Function to reinitialize the stats variables. We do this daily.
 def _clearStats():
 
+	global _inputToks, _outputToks, _expenditures, _totalCost, _statStr
+
+	_logger.info("Initializing engine usage statistics...")
+
 	# Initialize all the various stats dictionaries to all-zero values.
 
 	_inputToks = {}
@@ -583,7 +587,6 @@ def _clearStats():
 		_inputToks[engId] = 0
 		_outputToks[engId] = 0
 		_expenditures[engId] = 0
-
 
 	_totalCost 		= 0				# Initialize at stats load/save time.
 
@@ -3319,7 +3322,7 @@ def _aiEngine() -> str:
 	return TheAIPersonaConfig().modelVersion
 
 
-def _statsPathname():
+def _statsPathname(prefix:str=None):
 
 	"""Constructs and returns the pathname to the api-stats.json file."""
 
@@ -3350,6 +3353,8 @@ def _statsPathname():
 		# comes from a module constant, defined above.
 				
 	statsFilename = _STATS_FILENAME
+	if prefix:
+		statsFilename = prefix + '-' + _STATS_FILENAME
 		
 		#------------------------------------------------------
 		# Next, we need to construct the full pathname of the
@@ -3412,7 +3417,8 @@ def _loadStats():
 			_logger.normal("Starting a new day!")
 
 			# Construct the name of the archive file.
-			archivePath = lastModDate.strftime('%Y-%m-%d') + '.' + statsPath
+			archivePath = _statsPathname(prefix = str(lastModDate))
+			#archivePath = lastModDate.strftime('%Y-%m-%d') + '.' + statsPath
 
 			# Rename the old file to the archive file.
 			try:
