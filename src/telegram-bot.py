@@ -1252,6 +1252,9 @@ Available commands:
 # If it is, it returns True; otherwise, it returns False.
 def _check_access(user_name) -> bool:
 
+	# Temporary override to have blacklist override whitelist.
+	return not _isBlocked(user_name)
+
 	# Get the value of environment variable AI_DATADIR.
 	# This is where we'll look for the access list file.
 	ai_datadir = os.getenv('AI_DATADIR')
