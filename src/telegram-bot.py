@@ -314,8 +314,9 @@ def initializePersistentContext():
 		PERSISTENT_DATA + \
 		MESSAGE_DELIMITER + " ~~~ Commands available for AI to use: ~~~\n" + \
 		"  /pass - Refrain from responding to the last user message.\n" + \
+		"  /block - Adds the current user to the block list." + \
 		"  /remember <text> - Adds <text> to persistent context data.\n" + \
-		"  /forget <text>   - Removes <text> from persistent context data.\n" + \
+		"  /forget <text> - Removes <text> from persistent context data.\n" + \
 		MESSAGE_DELIMITER + " ~~~ Recent Telegram messages: ~~~"
 
 # Go ahead and call it now.
@@ -1257,27 +1258,42 @@ def _check_access(user_name) -> bool:
 
 	# Now look for the file "acl.hjson" in the AI_DATADIR directory.
 	# If it exists, then we'll use it as our access list.
-	# If it doesn't exist, then we'll allow access to everyone.
+	# If it doesn't exist, then we'll allow access to everyone except
+	# who's in the blocklist.
+
 	acl_file = os.path.join(ai_datadir, 'acl.hjson')
-	if not os.path.exists(acl_file):
-		return True
-	
-	# Use the hjson module to load the access list file.
-	# (This is a JSON-like file format that allows comments.)
-	#import hjson	# NOTE: We already imported this at the top of the file.
-	with open(acl_file, 'r') as f:
-		access_list = hjson.load(f)			# Load the file into a Python list.
+	if os.path.exists(acl_file):
 
-	# If the access list is empty, then we allow access to everyone.
-	if len(access_list) == 0:
+		# Use the hjson module to load the access list file.
+		# (This is a JSON-like file format that allows comments.)
+		#import hjson	# NOTE: We already imported this at the top of the file.
+		with open(acl_file, 'r') as f:
+			access_list = hjson.load(f)			# Load the file into a Python list.
+
+		# If the access list is empty, then we allow access to everyone.
+		if len(access_list) > 0:
+
+			# Otherwise, check whether the user name is in the access list.
+			if user_name in access_list:
+				return True
+			else:
+				return False
+
+
+	# If we get here, either there's no acl or the acl is empty.
+	# Allow the user unless they're in the blocklist.
+
+	bcl_file = os.path.join(ai_datadir, 'bcl.hjson')
+	if not os.path.exists(bcl_file):
 		return True
 
-	# Otherwise, check whether the user name is in the access list.
-	if user_name in access_list:
-		return True
+	with open(bcl_file, 'r') as f:
+		block_list = hjson.load(f)
+		if user_name in block_list:
+			return False
 
-	# If we got here, then the user name is not in the access list.
-	return False
+	# If we get here, there's no ACL and the user isn't blocked, so allow them.
+	return True	
 
 
 # Now, let's define a function to handle the /help command.
@@ -2104,6 +2120,69 @@ def process_message(update, context):
 #__/ End of process_message() function definition.
 
 
+def _isBlocked(user:str):
+	
+	# Get the value of environment variable AI_DATADIR.
+	# This is where we'll look for the block list files.
+	ai_datadir = os.getenv('AI_DATADIR')
+	
+	# User is blocked if they're in the bcl.hjson file.
+
+	bcl_file = os.path.join(ai_datadir, 'bcl.hjson')
+	if os.path.exists(bcl_file):
+		with open(bcl_file, 'r') as f:
+			block_list = hjson.load(f)
+			if user in block_list:
+				return True
+		
+	# User is blocked if they're in the bcl.json file.
+	
+	bcl_file = os.path.join(ai_datadir, 'bcl.json')
+	if os.path.exists(bcl_file):
+		with open(bcl_file, 'r') as f:
+			block_list = json.load(f)
+			if user in block_list:
+				return True
+
+	# Not in either file? Check to see if there's an ACL (whitelist) and user is not in it.
+
+	acl_file = os.path.join(ai_datadir, 'acl.hjson')
+	if os.path.exists(acl_file):	# If whitelist doesn't exist, user isn't blocked.
+		
+		with open(acl_file, 'r') as f:
+			access_list = hjson.load(f)			# Load the file into a Python list.
+
+		# If the whitelist is empty, then we allow access to everyone.
+		if len(access_list) > 0:
+
+			# Otherwise, check whether the user name is in the access list.
+			if user in access_list:
+				return False	# User is not blocked.
+			else:
+				return True		# There's a whitelist but user isn't in it. Effectively blocked.
+
+	return False
+
+
+def _blockUser(user):
+	
+	ai_datadir = os.getenv('AI_DATADIR')
+
+	block_list = []
+
+	bcl_file = os.path.join(ai_datadir, 'bcl.json')
+	if os.path.exists(bcl_file):
+		with open(bcl_file, 'r') as f:
+			block_list = json.load(f)
+	
+	if user in block_list:
+		_logger.error(f"_blockUser(): User {user} is already blocked. Ignoring.")
+
+	block_list.append(user)
+	with open(bcl_file, 'w') as f:
+		json.dump(block_list, f)
+	
+
 def process_response(update, context, response_message):
 
 	chat_id = update.message.chat.id
@@ -2283,6 +2362,31 @@ def process_response(update, context, response_message):
 				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 				
 				return
+
+		elif command_name == 'block':
+			# Adds the current user to the block list.
+			
+			_logger.warn(f"***ALERT*** The AI is blocking user '{user_name}' in conversation {chat_id}.")
+
+			if _isBlocked(user_name):
+				_logger.error(f"User '{user_name}' is already blocked.")
+				return
+
+			_blockUser(user_name)
+
+			#
+			DIAG_MSG = f'[DIAGNOSTIC: {BOT_NAME} has blocked user {user_name}.]'
+			
+			try:
+				update.message.reply_text(DIAG_MSG)
+			except BadRequest or Unauthorized or ChatMigrated as e:
+				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+				return
+
+			# Record the diagnostic for the AI also.
+			conversation.add_message(Message(SYS_NAME, DIAG_MSG))
+				
+			return
 
 		else:
 			# This is a command that we don't recognize.
