@@ -3291,8 +3291,12 @@ def loadStatsIfNeeded():
 	"""If the stats file hasn't been loaded from the filesystem yet,
 		this loads it."""
 
-	if not _statsLoaded:
-		_loadStats()
+	# NOTE: We now just load stats unconditionally, because if it's 
+	# a new day, we'll need to do housekeeping like renaming the stats
+	# file and resetting the stats.
+
+	#if not _statsLoaded:
+	_loadStats()
 
 #__/ End module public function loadStatsIfNeeded().
 
@@ -3446,13 +3450,17 @@ def _loadStats():
 				pass
 
 			finally:
+
+				# If this was our first time (trying to) load the stats, display them.
+				if not _statsLoaded:
+					# In this case, we don't need to save the stats (redundant),
+					# but we do want to display them:
+					_displayStats(doWrite=False)
+						# Note: These could actually be yesterday's stats if the clock JUST clicked 
+						# past midnight, but this hardly matters.
+
 				_statsLoaded = True		# Hey, we tried at least!
 
-			# In this case, we don't need to save the stats (redundant),
-			# but we do want to display them:
-			_displayStats(doWrite=False)
-				# Note: These could actually be yesterday's stats if the clock JUST clicked 
-				# past midnight, but this hardly matters.
 
 #__/ End module function _loadStats().
 
