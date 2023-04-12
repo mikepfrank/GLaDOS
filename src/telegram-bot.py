@@ -314,7 +314,7 @@ def initializePersistentContext():
 		PERSISTENT_DATA + \
 		MESSAGE_DELIMITER + " ~~~ Commands available for AI to use: ~~~\n" + \
 		"  /pass - Refrain from responding to the last user message.\n" + \
-		"  /block - Adds the current user to the block list." + \
+		"  /block - Adds the current user to the block list.\n" + \
 		"  /remember <text> - Adds <text> to persistent context data.\n" + \
 		"  /forget <text> - Removes <text> from persistent context data.\n" + \
 		MESSAGE_DELIMITER + " ~~~ Recent Telegram messages: ~~~"
@@ -1580,16 +1580,16 @@ def remember(update, context):
 	user_name = _get_user_name(update.message.from_user)
 
 	# Block /remember command for users other than Mike.
-	#if user_name != 'Michael':
-	#
-	#	_logger.warn("NOTE: Currently ignoring /remember command for all users besides Michael.")
-	#
-	#	try:
-	#		update.message.reply_text(f"[DIAGNOSTIC: Sorry, the /remember command is currently disabled.]\n")
-	#	except BadRequest or Unauthorized or ChatMigrated as e:
-	#		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-	#		
-	#	return	# Quit early
+	if user_name != 'Michael':
+	
+		_logger.warn("NOTE: Currently ignoring /remember command for all users besides Michael.")
+	
+		try:
+			update.message.reply_text(f"[DIAGNOSTIC: Sorry, the /remember command is currently disabled.]\n")
+		except BadRequest or Unauthorized or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+			
+		return	# Quit early
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not _ensure_convo_loaded(update, context):
