@@ -1241,12 +1241,19 @@ def _ensure_convo_loaded(update, context) -> bool:
 
 HELP_STRING = f"""
 {BOT_NAME} bot powered by {MODEL_FAMILY}/{ENGINE_NAME}.
+
 Available commands:
-	/start - Start a new conversation.
-	/help - Show this help message.
-	/remember <text> - Add <text> to AI's persistent memory.
-	/forget <text> - Remove <text> from AI's persistent memory.
-	/reset - Clear the AI's short-term conversational memory."""
+	/start - Starts the bot, if not already started; also reloads conversation history, if any.
+	/help - Shows this help message.
+	/reset - Clears the bot's memory of the conversation. Useful for breaking output loops.
+	/echo <text> - Echoes back the given text. (I/O test.)
+	/greet - Causes the server to send a greeting. (Server responsiveness test.)
+
+NOTE: Please be polite and ethical, or you may be blocked."""
+
+# No longer supported for random users:
+#  remember - Adds the given statement to the bot's persistent context data.
+#  forget - Removes the given statement from the bot's persistent context data.
 
 # This function checks whether the given user name is in our access list.
 # If it is, it returns True; otherwise, it returns False.
@@ -1483,7 +1490,7 @@ def greet(update, context):
 		return
 
 	# Also record the echo text in our conversation data structure.
-	conversation.add_message(Message(conversation.bot_name, GREETING_TEXT))
+	conversation.add_message(Message(SYS_NAME, GREETING_TEXT))
 
 
 # Now, let's define a function to handle the /reset command.
@@ -2763,12 +2770,16 @@ dispatcher.add_handler(telegram.ext.CommandHandler('reset', reset))
 
 # Command list to enter into BotFather.
 COMMAND_LIST = f"""
-start - Starts the bot, reloading conversation history, if any.
+start - Starts bot; reloads conversation history.
 help - Displays general help and command help.
-remember - Adds the given statement to the bot's persistent context data.
-forget - Removes the given statement from the bot's persistent context data.
-reset - Clears the bot's memory of the conversation. Useful for breaking output loops.
+reset - Clears the bot's conversation memory.
+echo - Echoes back the given text.
+greet - Make server send a greeting.
 """
+# No longer supported for random users:
+#  remember - Adds the given statement to the bot's persistent context data.
+#  forget - Removes the given statement from the bot's persistent context data.
+
 print("NOTE: You should enter the following command list into BotFather at bot creation time:")
 print(COMMAND_LIST)
 
