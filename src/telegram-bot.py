@@ -1417,10 +1417,19 @@ def echo(update, context):
 
 	_logger.normal(f"User {user_name} entered an /echo command for chat {chat_id}.")
 
-	if len(cmdLine) > 6:
-		textToEcho = cmdLine[6:]
+	if len(cmdLine) > 6:	# Anything after '/', 'e', 'c', 'h', 'o', ' '?
+		textToEcho = cmdLine[6:]	# Grab rest of line.
 	else:
-		textToEcho = ""
+		_logger.error("The '/echo' command requires a non-empty argument.")
+		errMsg = f"The '/echo' command requires an argument. (Usage: /echo <text to echo>)"
+		try:
+			update.message.reply_text(f"[SYSTEM: {errMsg}]")
+		except BadRequest or Unauthorized or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+
+		# Also record the error in our conversation data structure.
+		conversation.add_message(Message(SYS_NAME, errMsg))
+		return
 
 	responseText = f'Response: "{textToEcho}"'
 

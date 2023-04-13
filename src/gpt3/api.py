@@ -3414,7 +3414,7 @@ def _loadStats():
 			newDay = True
 
 			_logger.info(f"Today's date is {today}, but the last-modified date of the API usage statistics file {statsPath} is {lastModDate}.")
-			_logger.normal("Starting a new day!")
+			_logger.normal("Stats file loader: Starting a new day!")
 
 			# Construct the name of the archive file.
 			archivePath = _statsPathname(prefix = str(lastModDate))
@@ -3532,7 +3532,7 @@ def _displayStats(doWrite:bool=True):
 			if lastMod and lastMod != today:
 		
 				_logger.info(f"Today's date is {today}, but the last-modified date of the API usage statistics file {_textPath()} is {lastMod}.")
-				_logger.normal("Starting a new day!")
+				_logger.normal("Stats display: Starting a new day!")
 				
 				oldPath = _textPath()
 				newPath = path.join(_aiPath, f"api-stats-{lastMod}.txt")
