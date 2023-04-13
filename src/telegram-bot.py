@@ -1404,7 +1404,8 @@ def echo(update, context):
 
 	# Check whether the user is in our access list.
 	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
+		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
+
 		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
 		try:
 			update.message.reply_text(f"[SYSTEM: {errMsg}]")
@@ -1421,9 +1422,9 @@ def echo(update, context):
 		textToEcho = cmdLine[6:]	# Grab rest of line.
 	else:
 		_logger.error("The '/echo' command requires a non-empty argument.")
-		errMsg = f"The '/echo' command requires an argument. (Usage: /echo <text to echo>)"
+		errMsg = f"ERROR: The '/echo' command requires an argument. (Usage: /echo <text to echo>)"
 		try:
-			update.message.reply_text(f"[SYSTEM: {errMsg}]")
+			update.message.reply_text(f"[SYSTEM {errMsg}]")
 		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 
