@@ -1432,7 +1432,7 @@ def echo(update, context):
 		conversation.add_message(Message(SYS_NAME, errMsg))
 		return
 
-	responseText = f'Response: "{textToEcho}"'
+	responseText = f'Response: [{textToEcho}]'
 
 	# Log diagnostic information.
 	_logger.normal(f"Echoing [{textToEcho}] in conversation {chat_id}.")
