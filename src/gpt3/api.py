@@ -2011,15 +2011,16 @@ class ChatCompletion(Completion):
 
 
 	@property
+	def firstChoice(thisChatCompletion:ChatCompletion):
+		"""Returns the first choice dict of this chat completion."""
+		return thisChatCompletion.chatComplStruct['choices'][0]
+
+	@property
 	def message(thisChatCompletion:ChatCompletion):
 
 		"""Returns the result message dict of this chat completion."""
 
-		#msg = thisChatCompletion._msgFromGen()
-		#return msg
-
-		return thisChatCompletion.chatComplStruct \
-				['choices'][0]['message']
+		return thisChatCompletion.firstChoice['message']
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| chatCompletion.text						  [public instance property]
@@ -2041,6 +2042,10 @@ class ChatCompletion(Completion):
 		# Note the following code differs from the code in the Completion class.
 		return thisChatCompletion.message['content']
 
+	@property
+	def finishReason(thisChatCompletion:ChatCompletion):
+		"""Returns the value of the finish_reason field of the result."""
+		return thisChatCompletion.firstChoice['finish_reason']
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| chatCompletion.nTokens					  [public instance property]
