@@ -87,6 +87,8 @@
 import	os	
 	# We use the os.environ dictionary to get the environment variables.
 
+from	pprint	import	pformat
+
 import random
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -314,7 +316,7 @@ def initializePersistentContext():
 	PERSISTENT_CONTEXT = \
 		MESSAGE_DELIMITER + " ~~~ Persistent context data: ~~~\n" + \
 		PERSISTENT_DATA + \
-		MESSAGE_DELIMITER + " ~~~ Commands available for AI to use: ~~~\n" + \
+		MESSAGE_DELIMITER + f" ~~~ Commands available for {BOT_NAME} to use: ~~~\n" + \
 		"  /pass - Refrain from responding to the last user message.\n" + \
 		"  /block - Adds the current user to the block list.\n" + \
 		"  /remember <text> - Adds <text> to persistent context data.\n" + \
@@ -1836,10 +1838,15 @@ def process_message(update, context):
 		_logger.error("Null message received from unknown user; ignoring...")
 		return
 
-	user_name = _get_user_name(update.message.from_user)
-
 	# Get the chat ID.
 	chat_id = update.message.chat.id
+
+	# If it's that one stupid chat, just ignore it silently.
+	if chat_id == -1001815681152:
+		return
+
+	# Get the user name.
+	user_name = _get_user_name(update.message.from_user)
 
 	# Make sure the thread component is set to this application (for logging).
 	logmaster.setComponent(_appName)
@@ -2452,6 +2459,10 @@ def process_chat_message(update, context):
 
 	chat_id = update.message.chat.id
 
+	# Get user_name & unique ID (for content violation logging).
+	user_name = _get_user_name(update.message.from_user)
+	user_id = update.message.from_user.id
+
 	# Get our Conversation object.
 	conversation = context.chat_data['conversation']
 
@@ -2569,15 +2580,18 @@ def process_chat_message(update, context):
 			# Get the response from GPT-3, as a ChatCompletion object.
 			chatCompletion = gptCore.genChatCompletion(	# Call the API.
 				
-				maxTokens=maxTokens,	# Max. number of tokens to return.
+				maxTokens = maxTokens,	# Max. number of tokens to return.
 					# We went to a lot of trouble to set this up properly above!
 
-				messages=chat_messages,		# Current message list for chat API.
+				messages = chat_messages,		# Current message list for chat API.
 					# Note that since we pass in an explicit messages list, this 
 					# overrides whatever api.Messages object is being maintained 
 					# in the GPT3ChatCore object.
 
-				minRepWin=minReplyWinToks	# Min. reply window size in tokens.
+				user = str(user_id),		# Send the user's unique ID for
+					# traceability in the event of severe content violations.
+
+				minRepWin = minReplyWinToks	# Min. reply window size in tokens.
 					# This parameter gets passed through to the ChatCompletion()
 					# initializer and thence to ChatCompletion._createComplStruct(),
 					# which does the actual work of retrieving the raw completion
@@ -2595,6 +2609,26 @@ def process_chat_message(update, context):
 
 			)
 			response_text = chatCompletion.text
+
+			# Also check for finish_reason == 'content_filter' and log/send a warning.
+			finish_reason = chatCompletion.finishReason
+			if finish_reason == 'content_filter':
+				
+				_logger.warn(f"OpenAI content filter triggered by user {user_name} " \
+							 "(ID {user_id}) in chat {chat_id}. Response was:\n" + \
+							 pformat(chatCompletion.chatComplStruct))
+
+				WARNING_MSG = "WARNING: User {user_name} triggered OpenAI's content " + \
+							  "filter. Repeated violations could result in a ban."
+
+				try:
+					update.message.reply_text("[SYSTEM {WARNING_MSG}]")
+				except BadRequest or Unauthorized or ChatMigrated as e:
+					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					return	# No point in the below.
+				
+				# This allows the AI to see this warning message too.
+				conversation.add_message(Message(SYS_NAME, WARNING_MSG))
 
 			break	# We got a response, so we can break out of the loop.
 
