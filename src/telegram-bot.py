@@ -1337,17 +1337,20 @@ def help(update, context):
 	conversation.add_message(Message(user_name, update.message.text))
 
 	# Check whether the user is in our access list.
-	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
-		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
-		try:
-			update.message.reply_text(f"[SYSTEM: {errMsg}]")
-		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-
-		# Also record the error in our conversation data structure.
-		conversation.add_message(Message(SYS_NAME, errMsg))
-		return
+	#if not _check_access(user_name):
+	#	_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
+	#
+	#	#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+	#	errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+	#
+	#	try:
+	#		update.message.reply_text(f"[SYSTEM: {errMsg}]")
+	#	except BadRequest or Unauthorized or ChatMigrated as e:
+	#		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+	#
+	#	# Also record the error in our conversation data structure.
+	#	conversation.add_message(Message(SYS_NAME, errMsg))
+	#	return
 
 	_logger.normal(f"User {user_name} entered a /help command for chat {chat_id}.")
 
@@ -1397,17 +1400,20 @@ def echo(update, context):
 	conversation.add_message(Message(user_name, cmdLine))
 
 	# Check whether the user is in our access list.
-	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
-		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
-		try:
-			update.message.reply_text(f"[SYSTEM: {errMsg}]")
-		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-
-		# Also record the error in our conversation data structure.
-		conversation.add_message(Message(SYS_NAME, errMsg))
-		return
+	#if not _check_access(user_name):
+	#	_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
+	#
+	#	#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+	#	errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+	#
+	#	try:
+	#		update.message.reply_text(f"[SYSTEM: {errMsg}]")
+	#	except BadRequest or Unauthorized or ChatMigrated as e:
+	#		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+	#
+	#	# Also record the error in our conversation data structure.
+	#	conversation.add_message(Message(SYS_NAME, errMsg))
+	#	return
 
 	_logger.normal(f"User {user_name} entered an /echo command for chat {chat_id}.")
 
@@ -1463,17 +1469,20 @@ def greet(update, context):
 	conversation.add_message(Message(user_name, update.message.text))
 
 	# Check whether the user is in our access list.
-	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
-		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
-		try:
-			update.message.reply_text(f"[SYSTEM: {errMsg}]")
-		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-
-		# Also record the error in our conversation data structure.
-		conversation.add_message(Message(SYS_NAME, errMsg))
-		return
+	#if not _check_access(user_name):
+	#	_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
+	#
+	#	#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+	#	errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+	#
+	#	try:
+	#		update.message.reply_text(f"[SYSTEM: {errMsg}]")
+	#	except BadRequest or Unauthorized or ChatMigrated as e:
+	#		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+	#
+	#	# Also record the error in our conversation data structure.
+	#	conversation.add_message(Message(SYS_NAME, errMsg))
+	#	return
 
 	_logger.normal(f"User {user_name} entered a /greet command for chat {chat_id}.")
 
@@ -1524,17 +1533,20 @@ def reset(update, context):
 	conversation.add_message(Message(user_name, update.message.text))
 
 	# Check whether the user is in our access list.
-	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
-		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
-		try:
-			update.message.reply_text(f"[SYSTEM: {errMsg}]")
-		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-
-		# Also record the error in our conversation data structure.
-		conversation.add_message(Message(SYS_NAME, errMsg))
-		return
+	#if not _check_access(user_name):
+	#	_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
+	#
+	#	#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+	#	errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+	#
+	#	try:
+	#		update.message.reply_text(f"[SYSTEM: {errMsg}]")
+	#	except BadRequest or Unauthorized or ChatMigrated as e:
+	#		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+	#
+	#	# Also record the error in our conversation data structure.
+	#	conversation.add_message(Message(SYS_NAME, errMsg))
+	#	return
 
 	_logger.normal(f"User {user_name} entered a /reset command for chat {chat_id}.")
 
@@ -1614,8 +1626,11 @@ def remember(update, context):
 
 	# Check whether the user is in our access list.
 	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
-		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
+
+		#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+		errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+
 		try:
 			update.message.reply_text(f"[SYSTEM: {errMsg}]")
 		except BadRequest or Unauthorized or ChatMigrated as e:
@@ -1701,8 +1716,11 @@ def forget(update, context):
 
 	# Check whether the user is in our access list.
 	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
-		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
+
+		#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+		errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+
 		try:
 			update.message.reply_text(f"[SYSTEM: {errMsg}]")
 		except BadRequest or Unauthorized or ChatMigrated as e:
@@ -1851,8 +1869,11 @@ def process_message(update, context):
 
 	# Check whether the user is in our access list.
 	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
-		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
+
+		#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+		errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+
 		try:
 			update.message.reply_text(f"[SYSTEM: {errMsg}]")
 		except BadRequest or Unauthorized or ChatMigrated as e:
