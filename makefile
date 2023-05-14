@@ -46,3 +46,18 @@ models.json:
 # (May also be needed after engine list changes.
 clean-stats:
 	rm $(AI_DATADIR)/api-stats.*
+
+help:
+	@echo ""
+	@echo "The rules in the makefile are:"
+	@echo ""
+	@echo "    * clean-stats - Zero out the current day's usage stats."
+	@echo "    * data-dir - Create the AI's persistent data directory."
+	@echo "    * help - Display this help."
+	@echo "    * install-data - Install the AI's initial data files."
+	@echo "    * models.json - Create models.json if it doesn't exist."
+	@echo "    * run-bot - Run the Telegram bot server."
+	@echo "    * run-glados (default) - Run the GLaDOS server."
+	@echo "    * run-test - Run the simple test application."
+	@echo "    * update-models - Update the models.json file."
+	@echo ""
