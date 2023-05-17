@@ -1899,7 +1899,7 @@ def process_message(update, context):
 		try:
 			update.message.reply_text(f"[SYSTEM: {errMsg}]")
 		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+			_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 
 		# Also record the error in our conversation data structure.
 		conversation.add_message(Message(SYS_NAME, errMsg))
@@ -2003,14 +2003,14 @@ def process_message(update, context):
 				# We exceeded our OpenAI API quota or rate limit, or the server was overloaded.
 				# There isn't really anything we can do here except send a diagnostic message to the user.
 
-				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}.")
+				_logger.error(f"Got a {type(e).__name__} from OpenAI ({e}) for conversation {chat_id}.")
 
 				DIAG_MSG = "[DIAGNOSTIC: AI model is overloaded; please try again later.]"
 				try:
 					update.message.reply_text(DIAG_MSG)
 
 				except BadRequest or Unauthorized or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return	# No point in the below.
 				
 				# This allows the AI to see this diagnostic message too.
@@ -2076,7 +2076,7 @@ def process_message(update, context):
 					# Note that this message doesn't get added to the conversation, so it won't be
 					# visible to the AI, only to the user.
 				except BadRequest or Unauthorized or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return
 
 				continue	# Loop back and get another response extending the existing one.
@@ -2114,7 +2114,7 @@ def process_message(update, context):
 			try:
 				update.message.reply_text("[DIAGNOSTIC: Response was empty.]")
 			except BadRequest or Unauthorized or ChatMigrated as e:
-				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+				_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; ignoring.")
 			
 				# Note that this message doesn't get added to the conversation, so it won't be
 				# visible to the AI, only to the user.
@@ -2150,7 +2150,7 @@ def process_message(update, context):
 				# Note that this message doesn't get added to the conversation, so it won't be
 				# visible to the AI, only to the user.
 			except BadRequest or Unauthorized or ChatMigrated as e:
-				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+				_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; ignoring.")
 			
 			return		# This means the bot is simply not responding to the message
 
@@ -2261,7 +2261,7 @@ def process_response(update, context, response_message):
 		try:
 			update.message.reply_text(response_text[:MAX_MESSAGE_LENGTH])
 		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+			_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 			return
 			# Note: Eventually we need to do something smarter here -- like, if we've been
 			# banned from replying in a group chat or something, then leave it.
@@ -2271,7 +2271,7 @@ def process_response(update, context, response_message):
 	try:
 		update.message.reply_text(response_text)
 	except BadRequest or Unauthorized or ChatMigrated as e:
-		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+		_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 		return
 		# Note: Eventually we need to do something smarter here -- like, if we've been
 		# banned from replying in a group chat or something, then leave it.
@@ -2317,7 +2317,7 @@ def process_response(update, context, response_message):
 				try:
 					update.message.reply_text(DIAG_MSG)
 				except BadRequest or Unauthorized or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return
 
 				# Record the diagnostic for the AI also.
@@ -2340,7 +2340,7 @@ def process_response(update, context, response_message):
 				try:
 					update.message.reply_text(diagMsg)
 				except BadRequest or Unauthorized or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return
 			
 				# Add the diagnostic message to the conversation.
@@ -2355,7 +2355,7 @@ def process_response(update, context, response_message):
 			try:
 				update.message.reply_text(DIAG_MSG)
 			except BadRequest or Unauthorized or ChatMigrated as e:
-				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+				_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 				return
 
 			# Record the diagnostic for the AI also.
@@ -2371,7 +2371,7 @@ def process_response(update, context, response_message):
 				try:
 					update.message.reply_text(DIAG_MSG)
 				except BadRequest or Unauthorized or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return
 
 				# Record the diagnostic for the AI also.
@@ -2391,7 +2391,7 @@ def process_response(update, context, response_message):
 				try:
 					update.message.reply_text(DIAG_MSG)
 				except BadRequest or Unauthorized or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return
 			
 				# Record the diagnostic for the AI also.
@@ -2408,7 +2408,7 @@ def process_response(update, context, response_message):
 				try:
 					update.message.reply_text(DIAG_MSG)
 				except BadRequest or Unauthorized or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return
 
 				# Record the diagnostic for the AI also.
@@ -2433,7 +2433,7 @@ def process_response(update, context, response_message):
 			try:
 				update.message.reply_text(DIAG_MSG)
 			except BadRequest or Unauthorized or ChatMigrated as e:
-				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+				_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 				return
 
 			# Record the diagnostic for the AI also.
@@ -2449,7 +2449,7 @@ def process_response(update, context, response_message):
 			try:
 				update.message.reply_text(DIAG_MSG)
 			except BadRequest or Unauthorized or ChatMigrated as e:
-				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+				_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 				return
 
 			# Record the diagnostic for the AI also.
@@ -2465,7 +2465,7 @@ def process_response(update, context, response_message):
 		try:
 			update.message.reply_text("[If you want me to continue my response, type '/continue'.]")
 		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+			_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; ignoring.")
 
 #__/ End of process_response() function definition.
 
@@ -2669,14 +2669,14 @@ def process_chat_message(update, context):
 			# for this model. There isn't really anything we can do here except 
 			# send a diagnostic message to the user.
 
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}.")
+			_logger.error(f"Got a {type(e).__name__} from OpenAI ({e}) for conversation {chat_id}.")
 
 			DIAG_MSG = "[DIAGNOSTIC: AI model is overloaded; please try again later.]"
 			try:
 				update.message.reply_text(DIAG_MSG)
 
 			except BadRequest or Unauthorized or ChatMigrated as e:
-				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+				_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 				return	# No point in the below.
 				
 			# This allows the AI to see this diagnostic message too.
@@ -2736,7 +2736,7 @@ def process_chat_message(update, context):
 			# Note that this message doesn't get added to the conversation, so it won't be
 			# visible to the AI, only to the user.
 		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+			_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; ignoring.")
 			
 		return		# This means the bot is simply not responding to this particular message.
 	
@@ -2760,7 +2760,7 @@ def process_chat_message(update, context):
 			# Note that this message doesn't get added to the conversation, so it won't be
 			# visible to the AI, only to the user.
 		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+			_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; ignoring.")
 		
 		return		# This means the bot is simply not responding to the message
 
@@ -2802,7 +2802,7 @@ def _report_error(convo:Conversation, telegramMessage,
 		try:
 			telegramMessage.reply_text(msg)
 		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+			_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 			return
 
 	if showAI:
