@@ -93,8 +93,9 @@ import random
 		#| Imports of contributed (third-party) Python libraries.
 		#|	 NOTE: Use pip install <library-name> to install the library.
 
-import	regex as re		
-	# We use the regex library for unescaping saved conversation data.
+import re	# Built-in version is sufficient.
+#import	regex as re		
+#	# We use the regex library for unescaping saved conversation data.
 
 import json
 import hjson	# Human-readable JSON. Used for the ACL.
@@ -473,50 +474,75 @@ class Message:
 		"""A string representation of the message object.
 			It is properly delimited for reading by the GPT-3 model."""
 		return f"{MESSAGE_DELIMITER} {self.sender}> {self.text}"
-	
+
+
+	# NOTE: I could have made both serialize() and deserialize() methods
+	# much simpler if I had just used codecs.encode() and codecs.decode();
+	# but since I didn't do this originally, I have to still do a custom
+	# implementation to maintain backwards compatibility with existing
+	# conversation archives. Trying to simplify the code, though.
+
 	# The following method serializes the message object to a string
 	# which can be appended to the conversation archive file, and
 	# later read back in when restoring the conversation.
 	def serialize(self):
 
-		# NOTE: The message text could contain newlines, which we need to
-		#		replace with a literal '\n' encoding. But, in case the 
-		#		message text contains a literal '\' followed by an 'n', we
-		#		need to escape the '\' with another '\'.
-		# First, we'll replace all backslashes with '\\'.
-		# Then, we'll replace all newlines with '\n'.
+		"""Returns a string representation of a given message suitable for
+			archiving, as a single newline-terminated line of text. Embedded
+			newlines are escaped as '\n'; and any other ASCII control characters 
+			within the message text are escaped using their '\xHH' codes."""
 
-		text = self.text
-		if text is None:	# Null text? (Shouldn't happen, but...)
-			text = ""		# Message is empty string.
+		# Construct the replacement dictionary for serialization.
+		serialize_replace_dict = {
+			'\\': '\\\\',	# '\' -> '\\'
+			'\n': '\\n',	# '[LF]' -> '\n' ([LF] = ASCII linefeed char).
+		}
+		# Add the other ASCII controls, but encoded as '\xHH'.
+		for i in list(range(0, 9)) + list(range(11, 32)):
+			serialize_replace_dict[chr(i)] = f"\\x{format(i, '02x')}"
 
-		escaped_text = text.replace('\\', '\\\\').replace('\n', '\\n')\
-			.translate(str.maketrans({chr(i): f"\\x{format(i, '02x')}" \
-						for i in list(range(0, 9)) + list(range(11, 32))}))\
-			.replace('\ufffd', '\\ufffd')
+		# Translate the characters that need escaping.
+		escaped_text = text.translate(str.maketrans(serialize_replace_dict))
 
-		# Detailed explanation of above:
-		#
-		#	1. First, we escape all literal backslashes ('\') in the text
-		#		by replacing them with double-backslash sequences ('\\').
-		#
-		#	2. Next, we escape all literal newlines (ASCII LF characters)
-		#		in the text by replacing them with '\n' escape sequences.
-		#
-		#	3. The .translate() maps any other ASCII control characters to
-		#		their hexadecimal escape sequences, '\xHH' where the H's 
-		#		are the hex digits of the character's code point.
-		#
-		#	4. The final .replace() looks for any literal Unicode replacement
-		#		characters that might appear in the text, and replaces them
-		#		with the escape code for the that Unicode character, which
-		#		is '\ufffd' (representing the two-byte code point 0xFFFD).
-		#		(This is necessary because, during decoding, we'll use the
-		#		Unicode replacement character as a temporary placeholder
-		#		to facilitate correct handling of '\\' escape sequences.)
+		# # NOTE: The message text could contain newlines, which we need to
+		# #		replace with a literal '\n' encoding. But, in case the 
+		# #		message text contains a literal '\' followed by an 'n', we
+		# #		need to escape the '\' with another '\'.
+		# # First, we'll replace all backslashes with '\\'.
+		# # Then, we'll replace all newlines with '\n'.
+
+		# text = self.text
+		# if text is None:	# Null text? (Shouldn't happen, but...)
+		# 	text = ""		# Message is empty string.
+
+		# escaped_text = text.replace('\\', '\\\\').replace('\n', '\\n')\
+		# 	.translate(str.maketrans({chr(i): f"\\x{format(i, '02x')}" \
+		# 				for i in list(range(0, 9)) + list(range(11, 32))}))\
+		# 	.replace('\ufffd', '\\ufffd')
+
+		# # Detailed explanation of above:
+		# #
+		# #	1. First, we escape all literal backslashes ('\') in the text
+		# #		by replacing them with double-backslash sequences ('\\').
+		# #
+		# #	2. Next, we escape all literal newlines (ASCII LF characters)
+		# #		in the text by replacing them with '\n' escape sequences.
+		# #
+		# #	3. The .translate() maps any other ASCII control characters to
+		# #		their hexadecimal escape sequences, '\xHH' where the H's 
+		# #		are the hex digits of the character's code point.
+		# #
+		# #	4. The final .replace() looks for any literal Unicode replacement
+		# #		characters that might appear in the text, and replaces them
+		# #		with the escape code for the that Unicode character, which
+		# #		is '\ufffd' (representing the two-byte code point 0xFFFD).
+		# #		(This is necessary because, during decoding, we'll use the
+		# #		Unicode replacement character as a temporary placeholder
+		# #		to facilitate correct handling of '\\' escape sequences.)
 
 		# Now, we'll return the serialized representation of the message.
 		return f"{self.sender}> {escaped_text}\n"
+
 
 	# Given a line of text from the conversation archive file, this method
 	# deserializes the message object from the line.
@@ -532,45 +558,97 @@ class Message:
 		# Remove the trailing newline.
 		text = text.rstrip('\n')
 
-		# First, we'll replace all '\\' sequences with a temporary 
-		# placeholder (Unicode replacement character, which should
-		# (ideally) not occur in the serialized file).
+		# To correctly unescape any escaped characters, we'll use the
+		# regex library with a custom replacement function.
 
-		repl_char = '\ufffd'	# Unicode replacement character.
-		text = text.replace("\\\\", repl_char)
+		# Construct the replacement dictionary for deserialization.
+		deserialize_replace_dict = {
+			'\\\\': '\\',	# '\\' -> '\'
+			'\\n': '\n',	# '\n' -> '[LF]' ([LF] = ASCII linefeed char).
+#			'\\ufffd': '\ufffd'	# '\ufffd' -> '[RC]' ([RC] = Unicode replacement char.)
+				# NOTE: There is ambiguity in whether these should be translated, so don't bother.
+		}
+		# Unescape the other ASCII controls, which are encoded as '\xHH'.
+		for i in list(range(0, 9)) + list(range(11, 32)):
+			serialize_replace_dict[f"\\x{format(i, '02x')}"] = chr(i)
 
-		# Pattern to match encoded newlines.
-		pattern_enc_newline = r'\\n'
+		# Define a custom replacer based on the dict we just made.
+		def deserialize_replacer(match):
+			return deserialize_replace_dict[match.group(0)]
 
-		# Now, we'll replace all encoded newlines
-		# with a literal newline character.
-		text = re.sub(pattern_enc_newline, '\n', text)
+		# Compile an appropriate regex pattern and use it to do the 
+		# substitutions using the replacer.
 
-		# Pattern to match encoded other controls.
-		pattern_enc_ctrl = r'\\x([0-9a-fA-F]{2})'
+		pattern = re.compile('|'.join(map(re.escape, 
+				    deserialize_replace_dict.keys())))
+		
+		text = pattern.sub(deserialize_replacer, text)
 
-		# Now, we'll replace all encoded other controls
-		# with the literal control characters.
+		# # First, we'll replace all '\\' sequences with a temporary 
+		# # placeholder (Unicode replacement character, which should
+		# # (ideally) not occur in the serialized file). (The present
+		# # implementation of the .serialize() method ensures this.)
 
-		def replace_enc_ctrl(match):
-			return chr(int(match.group(1), 16))
+		# repl_char = '\ufffd'	# Unicode replacement character.
+		# text = text.replace("\\\\", repl_char)
 
-		text = re.sub(pattern_enc_ctrl, replace_enc_ctrl, text)
+		# 	# NOTE: The reason this is necessary is in case the *original*
+		# 	# message contained a literal escape sequence like '\n' or
+		# 	# '\x12'. This would then get serialized as '\\n' or '\\x12'.
+		# 	# We then need to replace the '\\' sequences there temporarily
+		# 	# with something other than '\', because otherwise the '\n' or 
+		# 	# '\x12' sub-string will get interpreted as an escape sequence 
+		# 	# that was generated by the serializer, when it isn't.
 
-		# Now, we'll revert the placeholders back to literal '\'.
-		text = text.replace(repl_char, '\\')
+		# # Pattern to match encoded newlines.
+		# pattern_enc_newline = r'\\n'
+		# 	# The '\\' tells regex matcher "match a '\' here";
+		# 	# then the 'n' tells matcher "match a 'n' here".
 
-		# Finally, we'll restore any escaped replacement characters.
-		text = text.replace('\\ufffd', repl_char)
+		# # Now, we'll replace all encoded newlines
+		# # with a literal newline character.
+		# text = re.sub(pattern_enc_newline, '\n', text)
+
+		# # Pattern to match encoded other controls.
+		# pattern_enc_ctrl = r'\\x([0-9a-fA-F]{2})'
+		# 	# '\\' - Match a '\'.
+		# 	# 'x' - Match the letter x.
+		# 	# '(' - Begin collecting group #1.
+		# 	# '[0-9a-fA-F]' - Match any hex digit.
+		# 	# '{2}' - Match the previous item twice (thus 2 hex digits).
+		# 	# ')' - End collection of group #1.
+
+		# # Now, we'll replace all encoded other controls
+		# # with the literal control characters.
+
+		# def replace_enc_ctrl(match):
+		# 	'''Inline replacement function'''
+		# 	return chr(int(match.group(1), 16))
+
+		# text = re.sub(pattern_enc_ctrl, replace_enc_ctrl, text)
+
+		# # Now, we'll revert the temporary placeholders back to literal '\'.
+		# text = text.replace(repl_char, '\\')
+
+		# # Finally, we'll restore any escaped replacement characters.
+		# text = text.replace('\\ufffd', repl_char)
+
+		# 	# NOTE: We still have a failure mode above. If the original
+		# 	# message contained literal '\ufffd', this gets serialized
+		# 	# as '\\ufffd', and during deseriialization, this becomes
+		# 	# '[RC]uffd' (where '[RC]' represents a literal 
+		# 	# replacement character), then we change '[RC]' to 
+		# 	# '\', getting '\ufffd', then this gets translated to '[RC]'
+		# 	# when it really should have been left alone. Need to fix!
 
 		# Return the message object.
 		return Message(sender, text)
 	
 	#__/ End of message.deserialize() instance method definition.
 
-	# Don't know if we'll need this yet.
-	def __repr__(self):
-		return f"{self.sender}> {self.text}"
+	# Not currently used.
+	#def __repr__(self):
+	#	return self.serialize().rstrip('\n')
 	
 #__/ End of Message class definition.
 
