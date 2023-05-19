@@ -1,6 +1,6 @@
 # GladOS
 
-<img src="./pics/glados-aria-screenshot.png" alt="Screenshot of Aria in GladOS" width="500"/>
+<img src="./pics/glados-aria-screenshot.png" alt="Screenshot of Aria in GladOS" style="max-width: 100%;"/>
 
 **Gladys' Lovely and Dynamic Operating System** (GladOS) is an operating
 environment that is intended to provide a convenient "home" that a
