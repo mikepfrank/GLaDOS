@@ -314,8 +314,9 @@ def initializePersistentContext():
 		PERSISTENT_DATA + \
 		MESSAGE_DELIMITER + " ~~~ Commands available for AI to use: ~~~\n" + \
 		"  /pass - Refrain from responding to the last user message.\n" + \
+		"  /block - Adds the current user to the block list.\n" + \
 		"  /remember <text> - Adds <text> to persistent context data.\n" + \
-		"  /forget <text>   - Removes <text> from persistent context data.\n" + \
+		"  /forget <text> - Removes <text> from persistent context data.\n" + \
 		MESSAGE_DELIMITER + " ~~~ Recent Telegram messages: ~~~"
 
 # Go ahead and call it now.
@@ -1240,16 +1241,26 @@ def _ensure_convo_loaded(update, context) -> bool:
 
 HELP_STRING = f"""
 {BOT_NAME} bot powered by {MODEL_FAMILY}/{ENGINE_NAME}.
+
 Available commands:
-	/start - Start a new conversation.
-	/help - Show this help message.
-	/remember <text> - Add <text> to AI's persistent memory.
-	/forget <text> - Remove <text> from AI's persistent memory.
-	/reset - Clear the AI's short-term conversational memory."""
+	/start - Starts the bot, if not already started; also reloads conversation history, if any.
+	/help - Shows this help message.
+	/reset - Clears the bot's memory of the conversation. Useful for breaking output loops.
+	/echo <text> - Echoes back the given text. (I/O test.)
+	/greet - Causes the server to send a greeting. (Server responsiveness test.)
+
+NOTE: Please be polite and ethical, or you may be blocked."""
+
+# No longer supported for random users:
+#  remember - Adds the given statement to the bot's persistent context data.
+#  forget - Removes the given statement from the bot's persistent context data.
 
 # This function checks whether the given user name is in our access list.
 # If it is, it returns True; otherwise, it returns False.
 def _check_access(user_name) -> bool:
+
+	# Temporary override to have blacklist override whitelist.
+	return not _isBlocked(user_name)
 
 	# Get the value of environment variable AI_DATADIR.
 	# This is where we'll look for the access list file.
@@ -1257,27 +1268,42 @@ def _check_access(user_name) -> bool:
 
 	# Now look for the file "acl.hjson" in the AI_DATADIR directory.
 	# If it exists, then we'll use it as our access list.
-	# If it doesn't exist, then we'll allow access to everyone.
+	# If it doesn't exist, then we'll allow access to everyone except
+	# who's in the blocklist.
+
 	acl_file = os.path.join(ai_datadir, 'acl.hjson')
-	if not os.path.exists(acl_file):
-		return True
-	
-	# Use the hjson module to load the access list file.
-	# (This is a JSON-like file format that allows comments.)
-	#import hjson	# NOTE: We already imported this at the top of the file.
-	with open(acl_file, 'r') as f:
-		access_list = hjson.load(f)			# Load the file into a Python list.
+	if os.path.exists(acl_file):
 
-	# If the access list is empty, then we allow access to everyone.
-	if len(access_list) == 0:
+		# Use the hjson module to load the access list file.
+		# (This is a JSON-like file format that allows comments.)
+		#import hjson	# NOTE: We already imported this at the top of the file.
+		with open(acl_file, 'r') as f:
+			access_list = hjson.load(f)			# Load the file into a Python list.
+
+		# If the access list is empty, then we allow access to everyone.
+		if len(access_list) > 0:
+
+			# Otherwise, check whether the user name is in the access list.
+			if user_name in access_list:
+				return True
+			else:
+				return False
+
+
+	# If we get here, either there's no acl or the acl is empty.
+	# Allow the user unless they're in the blocklist.
+
+	bcl_file = os.path.join(ai_datadir, 'bcl.hjson')
+	if not os.path.exists(bcl_file):
 		return True
 
-	# Otherwise, check whether the user name is in the access list.
-	if user_name in access_list:
-		return True
+	with open(bcl_file, 'r') as f:
+		block_list = hjson.load(f)
+		if user_name in block_list:
+			return False
 
-	# If we got here, then the user name is not in the access list.
-	return False
+	# If we get here, there's no ACL and the user isn't blocked, so allow them.
+	return True	
 
 
 # Now, let's define a function to handle the /help command.
@@ -1311,17 +1337,20 @@ def help(update, context):
 	conversation.add_message(Message(user_name, update.message.text))
 
 	# Check whether the user is in our access list.
-	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
-		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
-		try:
-			update.message.reply_text(f"[SYSTEM: {errMsg}]")
-		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-
-		# Also record the error in our conversation data structure.
-		conversation.add_message(Message(SYS_NAME, errMsg))
-		return
+	#if not _check_access(user_name):
+	#	_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
+	#
+	#	#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+	#	errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+	#
+	#	try:
+	#		update.message.reply_text(f"[SYSTEM: {errMsg}]")
+	#	except BadRequest or Unauthorized or ChatMigrated as e:
+	#		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+	#
+	#	# Also record the error in our conversation data structure.
+	#	conversation.add_message(Message(SYS_NAME, errMsg))
+	#	return
 
 	_logger.normal(f"User {user_name} entered a /help command for chat {chat_id}.")
 
@@ -1371,17 +1400,20 @@ def echo(update, context):
 	conversation.add_message(Message(user_name, cmdLine))
 
 	# Check whether the user is in our access list.
-	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
-		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
-		try:
-			update.message.reply_text(f"[SYSTEM: {errMsg}]")
-		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-
-		# Also record the error in our conversation data structure.
-		conversation.add_message(Message(SYS_NAME, errMsg))
-		return
+	#if not _check_access(user_name):
+	#	_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
+	#
+	#	#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+	#	errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+	#
+	#	try:
+	#		update.message.reply_text(f"[SYSTEM: {errMsg}]")
+	#	except BadRequest or Unauthorized or ChatMigrated as e:
+	#		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+	#
+	#	# Also record the error in our conversation data structure.
+	#	conversation.add_message(Message(SYS_NAME, errMsg))
+	#	return
 
 	_logger.normal(f"User {user_name} entered an /echo command for chat {chat_id}.")
 
@@ -1437,17 +1469,20 @@ def greet(update, context):
 	conversation.add_message(Message(user_name, update.message.text))
 
 	# Check whether the user is in our access list.
-	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
-		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
-		try:
-			update.message.reply_text(f"[SYSTEM: {errMsg}]")
-		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-
-		# Also record the error in our conversation data structure.
-		conversation.add_message(Message(SYS_NAME, errMsg))
-		return
+	#if not _check_access(user_name):
+	#	_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
+	#
+	#	#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+	#	errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+	#
+	#	try:
+	#		update.message.reply_text(f"[SYSTEM: {errMsg}]")
+	#	except BadRequest or Unauthorized or ChatMigrated as e:
+	#		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+	#
+	#	# Also record the error in our conversation data structure.
+	#	conversation.add_message(Message(SYS_NAME, errMsg))
+	#	return
 
 	_logger.normal(f"User {user_name} entered a /greet command for chat {chat_id}.")
 
@@ -1464,7 +1499,7 @@ def greet(update, context):
 		return
 
 	# Also record the echo text in our conversation data structure.
-	conversation.add_message(Message(conversation.bot_name, GREETING_TEXT))
+	conversation.add_message(Message(SYS_NAME, GREETING_TEXT))
 
 
 # Now, let's define a function to handle the /reset command.
@@ -1498,17 +1533,20 @@ def reset(update, context):
 	conversation.add_message(Message(user_name, update.message.text))
 
 	# Check whether the user is in our access list.
-	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
-		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
-		try:
-			update.message.reply_text(f"[SYSTEM: {errMsg}]")
-		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-
-		# Also record the error in our conversation data structure.
-		conversation.add_message(Message(SYS_NAME, errMsg))
-		return
+	#if not _check_access(user_name):
+	#	_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
+	#
+	#	#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+	#	errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+	#
+	#	try:
+	#		update.message.reply_text(f"[SYSTEM: {errMsg}]")
+	#	except BadRequest or Unauthorized or ChatMigrated as e:
+	#		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+	#
+	#	# Also record the error in our conversation data structure.
+	#	conversation.add_message(Message(SYS_NAME, errMsg))
+	#	return
 
 	_logger.normal(f"User {user_name} entered a /reset command for chat {chat_id}.")
 
@@ -1561,16 +1599,16 @@ def remember(update, context):
 	user_name = _get_user_name(update.message.from_user)
 
 	# Block /remember command for users other than Mike.
-	#if user_name != 'Michael':
-	#
-	#	_logger.warn("NOTE: Currently ignoring /remember command for all users besides Michael.")
-	#
-	#	try:
-	#		update.message.reply_text(f"[DIAGNOSTIC: Sorry, the /remember command is currently disabled.]\n")
-	#	except BadRequest or Unauthorized or ChatMigrated as e:
-	#		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-	#		
-	#	return	# Quit early
+	if user_name != 'Michael':
+	
+		_logger.warn("NOTE: Currently ignoring /remember command for all users besides Michael.")
+	
+		try:
+			update.message.reply_text(f"[DIAGNOSTIC: Sorry, the /remember command is currently disabled.]\n")
+		except BadRequest or Unauthorized or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+			
+		return	# Quit early
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not _ensure_convo_loaded(update, context):
@@ -1588,8 +1626,11 @@ def remember(update, context):
 
 	# Check whether the user is in our access list.
 	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
-		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
+
+		#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+		errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+
 		try:
 			update.message.reply_text(f"[SYSTEM: {errMsg}]")
 		except BadRequest or Unauthorized or ChatMigrated as e:
@@ -1675,8 +1716,11 @@ def forget(update, context):
 
 	# Check whether the user is in our access list.
 	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
-		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
+
+		#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+		errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+
 		try:
 			update.message.reply_text(f"[SYSTEM: {errMsg}]")
 		except BadRequest or Unauthorized or ChatMigrated as e:
@@ -1825,12 +1869,15 @@ def process_message(update, context):
 
 	# Check whether the user is in our access list.
 	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list.")
-		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
+
+		#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+		errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+
 		try:
 			update.message.reply_text(f"[SYSTEM: {errMsg}]")
 		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+			_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 
 		# Also record the error in our conversation data structure.
 		conversation.add_message(Message(SYS_NAME, errMsg))
@@ -1934,14 +1981,14 @@ def process_message(update, context):
 				# We exceeded our OpenAI API quota or rate limit, or the server was overloaded.
 				# There isn't really anything we can do here except send a diagnostic message to the user.
 
-				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}.")
+				_logger.error(f"Got a {type(e).__name__} from OpenAI ({e}) for conversation {chat_id}.")
 
 				DIAG_MSG = "[DIAGNOSTIC: AI model is overloaded; please try again later.]"
 				try:
 					update.message.reply_text(DIAG_MSG)
 
 				except BadRequest or Unauthorized or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return	# No point in the below.
 				
 				# This allows the AI to see this diagnostic message too.
@@ -2007,7 +2054,7 @@ def process_message(update, context):
 					# Note that this message doesn't get added to the conversation, so it won't be
 					# visible to the AI, only to the user.
 				except BadRequest or Unauthorized or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return
 
 				continue	# Loop back and get another response extending the existing one.
@@ -2045,7 +2092,7 @@ def process_message(update, context):
 			try:
 				update.message.reply_text("[DIAGNOSTIC: Response was empty.]")
 			except BadRequest or Unauthorized or ChatMigrated as e:
-				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+				_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; ignoring.")
 			
 				# Note that this message doesn't get added to the conversation, so it won't be
 				# visible to the AI, only to the user.
@@ -2081,7 +2128,7 @@ def process_message(update, context):
 				# Note that this message doesn't get added to the conversation, so it won't be
 				# visible to the AI, only to the user.
 			except BadRequest or Unauthorized or ChatMigrated as e:
-				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+				_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; ignoring.")
 			
 			return		# This means the bot is simply not responding to the message
 
@@ -2103,6 +2150,69 @@ def process_message(update, context):
 
 #__/ End of process_message() function definition.
 
+
+def _isBlocked(user:str):
+	
+	# Get the value of environment variable AI_DATADIR.
+	# This is where we'll look for the block list files.
+	ai_datadir = os.getenv('AI_DATADIR')
+	
+	# User is blocked if they're in the bcl.hjson file.
+
+	bcl_file = os.path.join(ai_datadir, 'bcl.hjson')
+	if os.path.exists(bcl_file):
+		with open(bcl_file, 'r') as f:
+			block_list = hjson.load(f)
+			if user in block_list:
+				return True
+		
+	# User is blocked if they're in the bcl.json file.
+	
+	bcl_file = os.path.join(ai_datadir, 'bcl.json')
+	if os.path.exists(bcl_file):
+		with open(bcl_file, 'r') as f:
+			block_list = json.load(f)
+			if user in block_list:
+				return True
+
+	# Not in either file? Check to see if there's an ACL (whitelist) and user is not in it.
+
+	acl_file = os.path.join(ai_datadir, 'acl.hjson')
+	if os.path.exists(acl_file):	# If whitelist doesn't exist, user isn't blocked.
+		
+		with open(acl_file, 'r') as f:
+			access_list = hjson.load(f)			# Load the file into a Python list.
+
+		# If the whitelist is empty, then we allow access to everyone.
+		if len(access_list) > 0:
+
+			# Otherwise, check whether the user name is in the access list.
+			if user in access_list:
+				return False	# User is not blocked.
+			else:
+				return True		# There's a whitelist but user isn't in it. Effectively blocked.
+
+	return False
+
+
+def _blockUser(user):
+	
+	ai_datadir = os.getenv('AI_DATADIR')
+
+	block_list = []
+
+	bcl_file = os.path.join(ai_datadir, 'bcl.json')
+	if os.path.exists(bcl_file):
+		with open(bcl_file, 'r') as f:
+			block_list = json.load(f)
+	
+	if user in block_list:
+		_logger.error(f"_blockUser(): User {user} is already blocked. Ignoring.")
+
+	block_list.append(user)
+	with open(bcl_file, 'w') as f:
+		json.dump(block_list, f)
+	
 
 def process_response(update, context, response_message):
 
@@ -2129,7 +2239,7 @@ def process_response(update, context, response_message):
 		try:
 			update.message.reply_text(response_text[:MAX_MESSAGE_LENGTH])
 		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+			_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 			return
 			# Note: Eventually we need to do something smarter here -- like, if we've been
 			# banned from replying in a group chat or something, then leave it.
@@ -2139,7 +2249,7 @@ def process_response(update, context, response_message):
 	try:
 		update.message.reply_text(response_text)
 	except BadRequest or Unauthorized or ChatMigrated as e:
-		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+		_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 		return
 		# Note: Eventually we need to do something smarter here -- like, if we've been
 		# banned from replying in a group chat or something, then leave it.
@@ -2185,7 +2295,7 @@ def process_response(update, context, response_message):
 				try:
 					update.message.reply_text(DIAG_MSG)
 				except BadRequest or Unauthorized or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return
 
 				# Record the diagnostic for the AI also.
@@ -2208,7 +2318,7 @@ def process_response(update, context, response_message):
 				try:
 					update.message.reply_text(diagMsg)
 				except BadRequest or Unauthorized or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return
 			
 				# Add the diagnostic message to the conversation.
@@ -2223,7 +2333,7 @@ def process_response(update, context, response_message):
 			try:
 				update.message.reply_text(DIAG_MSG)
 			except BadRequest or Unauthorized or ChatMigrated as e:
-				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+				_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 				return
 
 			# Record the diagnostic for the AI also.
@@ -2239,7 +2349,7 @@ def process_response(update, context, response_message):
 				try:
 					update.message.reply_text(DIAG_MSG)
 				except BadRequest or Unauthorized or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return
 
 				# Record the diagnostic for the AI also.
@@ -2259,7 +2369,7 @@ def process_response(update, context, response_message):
 				try:
 					update.message.reply_text(DIAG_MSG)
 				except BadRequest or Unauthorized or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return
 			
 				# Record the diagnostic for the AI also.
@@ -2276,13 +2386,38 @@ def process_response(update, context, response_message):
 				try:
 					update.message.reply_text(DIAG_MSG)
 				except BadRequest or Unauthorized or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 					return
 
 				# Record the diagnostic for the AI also.
 				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 				
 				return
+
+		elif command_name == 'block':
+			# Adds the current user to the block list.
+			
+			_logger.warn(f"***ALERT*** The AI is blocking user '{user_name}' in conversation {chat_id}.")
+
+			if _isBlocked(user_name):
+				_logger.error(f"User '{user_name}' is already blocked.")
+				return
+
+			_blockUser(user_name)
+
+			#
+			DIAG_MSG = f'[DIAGNOSTIC: {BOT_NAME} has blocked user {user_name}.]'
+			
+			try:
+				update.message.reply_text(DIAG_MSG)
+			except BadRequest or Unauthorized or ChatMigrated as e:
+				_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
+				return
+
+			# Record the diagnostic for the AI also.
+			conversation.add_message(Message(SYS_NAME, DIAG_MSG))
+				
+			return
 
 		else:
 			# This is a command that we don't recognize.
@@ -2292,7 +2427,7 @@ def process_response(update, context, response_message):
 			try:
 				update.message.reply_text(DIAG_MSG)
 			except BadRequest or Unauthorized or ChatMigrated as e:
-				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+				_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 				return
 
 			# Record the diagnostic for the AI also.
@@ -2308,7 +2443,7 @@ def process_response(update, context, response_message):
 		try:
 			update.message.reply_text("[If you want me to continue my response, type '/continue'.]")
 		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+			_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; ignoring.")
 
 #__/ End of process_response() function definition.
 
@@ -2485,14 +2620,14 @@ def process_chat_message(update, context):
 			# for this model. There isn't really anything we can do here except 
 			# send a diagnostic message to the user.
 
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}.")
+			_logger.error(f"Got a {type(e).__name__} from OpenAI ({e}) for conversation {chat_id}.")
 
 			DIAG_MSG = "[DIAGNOSTIC: AI model is overloaded; please try again later.]"
 			try:
 				update.message.reply_text(DIAG_MSG)
 
 			except BadRequest or Unauthorized or ChatMigrated as e:
-				_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+				_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 				return	# No point in the below.
 				
 			# This allows the AI to see this diagnostic message too.
@@ -2552,7 +2687,7 @@ def process_chat_message(update, context):
 			# Note that this message doesn't get added to the conversation, so it won't be
 			# visible to the AI, only to the user.
 		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+			_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; ignoring.")
 			
 		return		# This means the bot is simply not responding to this particular message.
 	
@@ -2576,7 +2711,7 @@ def process_chat_message(update, context):
 			# Note that this message doesn't get added to the conversation, so it won't be
 			# visible to the AI, only to the user.
 		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; ignoring.")
+			_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; ignoring.")
 		
 		return		# This means the bot is simply not responding to the message
 
@@ -2618,7 +2753,7 @@ def _report_error(convo:Conversation, telegramMessage,
 		try:
 			telegramMessage.reply_text(msg)
 		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+			_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
 			return
 
 	if showAI:
@@ -2656,12 +2791,16 @@ dispatcher.add_handler(telegram.ext.CommandHandler('reset', reset))
 
 # Command list to enter into BotFather.
 COMMAND_LIST = f"""
-start - Starts the bot, reloading conversation history, if any.
+start - Starts bot; reloads conversation history.
 help - Displays general help and command help.
-remember - Adds the given statement to the bot's persistent context data.
-forget - Removes the given statement from the bot's persistent context data.
-reset - Clears the bot's memory of the conversation. Useful for breaking output loops.
+reset - Clears the bot's conversation memory.
+echo - Echoes back the given text.
+greet - Make server send a greeting.
 """
+# No longer supported for random users:
+#  remember - Adds the given statement to the bot's persistent context data.
+#  forget - Removes the given statement from the bot's persistent context data.
+
 print("NOTE: You should enter the following command list into BotFather at bot creation time:")
 print(COMMAND_LIST)
 
