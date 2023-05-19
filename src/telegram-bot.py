@@ -495,6 +495,26 @@ class Message:
 						for i in list(range(0, 9)) + list(range(11, 32))}))\
 			.replace('\ufffd', '\\ufffd')
 
+		# Detailed explanation of above:
+		#
+		#	1. First, we escape all literal backslashes ('\') in the text
+		#		by replacing them with double-backslash sequences ('\\').
+		#
+		#	2. Next, we escape all literal newlines (ASCII LF characters)
+		#		in the text by replacing them with '\n' escape sequences.
+		#
+		#	3. The .translate() maps any other ASCII control characters to
+		#		their hexadecimal escape sequences, '\xHH' where the H's 
+		#		are the hex digits of the character's code point.
+		#
+		#	4. The final .replace() looks for any literal Unicode replacement
+		#		characters that might appear in the text, and replaces them
+		#		with the escape code for the that Unicode character, which
+		#		is '\ufffd' (representing the two-byte code point 0xFFFD).
+		#		(This is necessary because, during decoding, we'll use the
+		#		Unicode replacement character as a temporary placeholder
+		#		to facilitate correct handling of '\\' escape sequences.)
+
 		# Now, we'll return the serialized representation of the message.
 		return f"{self.sender}> {escaped_text}\n"
 
