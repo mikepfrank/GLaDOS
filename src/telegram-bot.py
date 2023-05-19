@@ -329,7 +329,8 @@ initializePersistentContext()
 	#|=============================================================================|
 
 # This is a string that we'll always use to prompt the AI to begin generating a new message.
-AI_PROMPT = f'\n{MESSAGE_DELIMITER} {BOT_NAME}>'
+AI_PROMPT = f'\n{MESSAGE_DELIMITER} {BOT_NAME}>'	# Used with GPT text API only.
+	# NOTE: The ChatGPT versions of the bot do prompting differently, and don't use this.
 
 # This is the size, in messages, of the window at the end of the conversation 
 # within which we'll exclude messages in that region from being repeated by the AI.
