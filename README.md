@@ -1,5 +1,7 @@
 # GladOS
 
+<img src="./pics/glados-aria-screenshot.png" alt="Screenshot of Aria in GladOS" width="500"/>
+
 **Gladys' Lovely and Dynamic Operating System** (GladOS) is an operating
 environment that is intended to provide a convenient "home" that a
 persona manifested by a text-based AI system can "live" within.
