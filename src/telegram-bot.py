@@ -89,11 +89,13 @@ import	os
 
 import random
 
+import re	# Built-in version is sufficient for our purposes here.
+
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| Imports of contributed (third-party) Python libraries.
 		#|	 NOTE: Use pip install <library-name> to install the library.
 
-import re	# Built-in version is sufficient.
+# Commented out because we're now just using the built-in re library, imported above.
 #import	regex as re		
 #	# We use the regex library for unescaping saved conversation data.
 
@@ -105,7 +107,7 @@ from curses import ascii
 
 	# NOTE: Copilot also wanted to import the following libraries, but we 
 	#	aren't directly using them yet:
-	#		sys, time, logging, random, pickle, json, datetime, pytz, subprocess
+	#		sys, time, logging, random, pickle, datetime, pytz, subprocess
 
 # The following packages are from the python-telegram-bot library.
 import telegram
@@ -414,26 +416,37 @@ stop_seq = MESSAGE_DELIMITER
 # else:
 #	  stop_seq = ['\n' + MESSAGE_DELIMITER]
 
-# Instead of calling the GPT3Core constructor directly, we'll call the 
-# gpt3.api.createCoreConnection() function to create the GPT3Core object. 
-# This selects the appropriate GPT3Core subclass to instantiate based on 
-# the selected engine name. We also go ahead and configure important API 
-# parameters here.
+
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|	Construct remote API connection to the core GPT engine.
+	#|
+	#|	Note that instead of calling a GPT3Core class constructor directly here, 
+	#|	we'll call the gpt3.api.createCoreConnection() factory function to create
+	#|	the GPT3Core object.  This selects the appropriate GPT3Core subclass to
+	#|	instantiate based on the selected engine name. We also go ahead and
+	#|	configure important API parameters here.
 
 gptCore = createCoreConnection(ENGINE_NAME, maxTokens=maxRetToks, 
 	temperature=temperature, presPen=presPen, freqPen=freqPen, 
 	stop=stop_seq)
 
-# NOTE: The presence penalty and frequency penalty parameters are here 
-# to try to prevent long outputs from becoming repetitive.
+	# NOTE: The presence penalty and frequency penalty parameters are here 
+	# to try to prevent long outputs from becoming repetitive.
 
 
-# The following code will be used to display the current date/time to the AI, including the time zone.
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|	The following function will be used to display the current date/time to
+	#|	the AI, including the time zone.
 
 # Time format string to use (minutes are included, but not seconds).
 _TIME_FORMAT = "%A, %B %d, %Y, %I:%M %p"
+
 # The following function will get the current date/time as a string, including the timezone.
 def timeString():
+
+	"""Returns a nicely-formatted string representing the current date, time,
+		and timezone."""
+
 	dateTime = tznow()	# Function to get the current date and time in the local timezone.
 	fmtStr = _TIME_FORMAT  # The base format string to use.
 
@@ -452,11 +465,18 @@ def timeString():
 	return timeStr
 
 
+#===============================================================================
+#	Class definitions.
+
+
 # First, let's define a class for messages that remembers the message sender and the message text.
 class Message:
-	"""Instances of this class store the message sender and the message text
-		for an incoming or outgoing message."""
 
+	"""An object that instantiates this class stores the message sender and the
+		message text for an incoming or outgoing message."""
+
+
+	# New instance initializer (called automatically by class constructor).
 	def __init__(self, sender, text):
 		# Print diagnostic information.
 		_logger.debug(f"Creating message object for: {sender}> {text}")
@@ -470,55 +490,67 @@ class Message:
 		self.archived = False
 			# Has this message been written to the archive file yet?
 
+
+	# Note that the following method is only used for GPT text engines, not chat engines.
 	def __str__(self):
 		"""A string representation of the message object.
 			It is properly delimited for reading by the GPT-3 model."""
 		return f"{MESSAGE_DELIMITER} {self.sender}> {self.text}"
 
 
-	# NOTE: I could have made both serialize() and deserialize() methods
-	# much simpler if I had just used codecs.encode() and codecs.decode();
-	# but since I didn't do this originally, I have to still do a custom
-	# implementation to maintain backwards compatibility with existing
-	# conversation archives. Trying to simplify the code, though.
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|	Methods for serializing and deserializing message objects so that
+		#|	they may be saved to, and retrieved from, a persistent archive file.
+		#|	The archive file of each conversation is created incrementally, and
+		#|	is loaded whenever the conversation is restarted.
+		#|
+		#|	NOTE: I could have made both serialize() and deserialize() methods
+		#|	much simpler if I had just used codecs.encode() and codecs.decode();
+		#|	but since I didn't do that originally, I have to still do a custom
+		#|	implementation to maintain backwards compatibility with existing
+		#|	conversation archive files. Trying to simplify the code, though.
+
 
 	# The following method serializes the message object to a string
 	# which can be appended to the conversation archive file, and
-	# later read back in when restoring the conversation.
+	# then later read back in when restoring the conversation.
+
 	def serialize(self):
 
 		"""Returns a string representation of a given message suitable for
 			archiving, as a single newline-terminated line of text. Embedded
 			newlines are escaped as '\\n'; and any other ASCII control characters 
-			within the message text are escaped using their '\\xHH' codes."""
-
-		# NOTE: The message text could contain newlines, which we need to
-		#		replace with a literal '\n' encoding. But, in case the 
-		#		message text contains a literal '\' followed by an 'n', we
-		#		need to escape the '\' with another '\'.
+			within the message text (except for TAB) are escaped using their
+			'\\xHH' (hexadecimal) codes."""
 
 		text = self.text
 		if text is None:	# Null text? (Shouldn't happen, but...)
 			text = ""		# Message is empty string.
+
+		# NOTE: The message text could contain newlines, which we need to
+		#	replace with a literal '\n' encoding. But, in case the message
+		#	text happens to contain a literal '\' followed by an 'n', we
+		#	need to escape that '\' with another '\' to avoid ambiguity.
 
 		# Construct the replacement dictionary for serialization.
 		serialize_replace_dict = {
 			'\\': '\\\\',	# '\' -> '\\'
 			'\n': '\\n',	# '[LF]' -> '\n' ([LF] = ASCII linefeed char).
 		}
+
 		# Add the other ASCII controls (except for TAB), but encoded as '\xHH'.
 		for i in list(range(0, 9)) + list(range(11, 32)):	# Omit codes 9=TAB & 10=LF.
 			serialize_replace_dict[chr(i)] = f"\\x{format(i, '02x')}"
 
-		# Translate the characters that need escaping.
+		# Translate the characters that need escaping, in a single pass..
 		escaped_text = text.translate(str.maketrans(serialize_replace_dict))
 
 		# Now, we'll return the serialized representation of the message.
-		return f"{self.sender}> {escaped_text}\n"
+		return f"{self.sender}> {escaped_text}\n"	# Newline-terminated.
 
 
-	# Given a line of text from the conversation archive file, this method
-	# deserializes the message object from the line.
+	# Given a line of text from a conversation archive file, this method
+	# deserializes the message object from its encoding in the archive line.
 
 	@staticmethod
 	def deserialize(line):
@@ -535,29 +567,38 @@ class Message:
 			# the string '> ' happens to appear in the text.
 		text = '> '.join(parts[1:])
 
-		# Remove the trailing newline.
+		# Remove the trailing newline, if present (it should be, though).
 		text = text.rstrip('\n')
 
-		# To correctly unescape any escaped characters, we'll use the
-		# regex library with a custom replacement function.
+			# To correctly unescape any escaped characters, we'll use the
+			# regex library with a custom replacement function. (Note that
+			# although we define this function inline below, we could also
+			# have defined it as a top-level function or class method.)
 
 		# Construct the replacement dictionary for deserialization.
 		deserialize_replace_dict = {
+
 			'\\\\': '\\',	# '\\' -> '\'
 			'\\n': '\n',	# '\n' -> '[LF]' ([LF] = ASCII linefeed char).
-#			'\\ufffd': '\ufffd'	# '\ufffd' -> '[RC]' ([RC] = Unicode replacement char.)
-				# NOTE: There is ambiguity in whether these should be translated, so don't bother.
+
+			#'\\ufffd': '\ufffd'	# '\ufffd' -> '[RC]' ([RC] = Unicode replacement char.)
+				# NOTE: There is ambiguity as to whether these should really be de-escaped, 
+				# -- because some earlier versions of this bot escaped them, and some didn't,
+				# so, we just don't bother. It's doubtful the archive has any real instances.
+
 		}
-		# Unescape the other ASCII controls, which are encoded as '\xHH'.
+
+		# Also unescape the other ASCII controls (except for TAB), which are
+		# encoded as '\xHH'.  (TAB is left in literal form in the archive.)
 		for i in list(range(0, 9)) + list(range(11, 32)):
 			deserialize_replace_dict[f"\\x{format(i, '02x')}"] = chr(i)
 
-		# Define a custom replacer based on the dict we just made.
+		# Define a custom replacer based on the dict we just constructed.
 		def deserialize_replacer(match):
 			return deserialize_replace_dict[match.group(0)]
 
 		# Compile an appropriate regex pattern and use it to do the 
-		# substitutions using the replacer.
+		# substitutions using the custom replacer we just defined.
 
 		pattern = re.compile('|'.join(map(re.escape, 
 				    deserialize_replace_dict.keys())))
@@ -569,11 +610,23 @@ class Message:
 	
 	#__/ End of message.deserialize() instance method definition.
 
+
 	# Not currently used.
 	#def __repr__(self):
 	#	return self.serialize().rstrip('\n')
 	
 #__/ End of Message class definition.
+
+
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|	The Conversation class is defined below.
+	#|
+	#|	An object instantiating this class is the primary data structure that
+	#|	we use to keep track of an individual Telegram conversation. Note that
+	#|	a conversation may be associated either with a single user, or a group
+	#|	chat. Group chats are distinguished by having negative chat IDs.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
 # Exception class to represent an error in the conversation.
@@ -585,37 +638,51 @@ class ConversationError(Exception):
 		return self.message
 
 
+# We use this global Boolean to keep track of whether
+# the dynamic persistent memory list is non-empty.
 global _anyMemories
 _anyMemories = False
 
+# This global string tracks the last error reported
+# using the conversation.report_error() instance method.
 global _lastError
 _lastError = ""
 
-# Next, let's define a class for conversations that remembers the messages in the conversation.
-#  We'll use a list of Message objects to store the messages.
-# TO DO: Add support for archiving/restoring conversation data.
+
+# Next, let's define a class for conversations that remembers the messages in
+# the conversation.  We'll use a list of Message objects to store the messages.
 
 class Conversation:
-	"""Instances of this class store the messages in a conversation."""
 
-	def __init__(self, chat_id):
+	"""An object instantiating this class stores the recent messages
+		in an individual Telegram conversation."""
 
-		# Print diagnostic information.
-		print(f"Creating conversation object for chat_id: {chat_id}")
+	# New instance initializer.
+	def __init__(self, chat_id:int):
 
-		self.chat_id = chat_id
-		self.messages = []
+		"""Instance initializer for a new conversation object for a given
+			Telegram chat (identified by an integer ID)."""
+
+		# Print diagnostic information to console (& log file).
+		_logger.normal(f"Creating conversation object for chat_id: {chat_id}")
+
+		self.bot_name = BOT_NAME	# The name of the bot. ('Gladys', 'Aria', etc.)
+		self.chat_id = chat_id		# Remember the chat ID associated with this convo.
+		self.messages = []			# No messages initially (until added or loaded).
+
 		# The following is a string which we'll use to accumulate the conversation text.
-		self.context_string = PERSISTENT_CONTEXT	# Start with just the persistent context data.
+		self.context_string = PERSISTENT_CONTEXT	# Start with just the global persistent context data.
+
+		# These attributes are for managing the length (in messages) of the message list.
 		self.context_length = 0				# Initially there are no Telegram messages in the context.
 		self.context_length_max = 200		# Max number N of messages to include in the context.
-		self.bot_name = BOT_NAME			# The name of the bot. ('Gladys' in this case.)
 
 		# Determine the filename we'll use to archive/restore the conversation.
 		self.filename = f"{LOG_DIR}/{_appName}.{chat_id}.txt"
 
 		# We'll also need another file to store the AI's persistent memories.
-		# NOTE: These are shared between all conversations.
+		# NOTE: These are currently shared among all conversations!
+		# Eventually, we should really have a different one for each conversation, or user.
 		self.mem_filename = f"{LOG_DIR}/{_appName}.memories.txt"
 
 		# Read the conversation archive file, if it exists.
@@ -624,29 +691,32 @@ class Conversation:
 		# Also read the persistent memory file, if it exists.
 		self.read_memory()
 
-		# Go ahead and open the archive file for appending.
+		# Go ahead and open the conversation archive file for appending.
 		self.archive_file = open(self.filename, 'a')
 
 		# Also open the persistent memory file for appending.
 		self.memory_file = open(self.mem_filename, 'a')
 
+		## NOTE: Since the above files are never closed, we may eventually run out of
+		## file descriptors, and the entire bot server will stop working. Really, we
+		## should close them whenever an existing convo is restarted, before reopening.
+
 	#__/ End of conversation instance initializer.
 
 
 	# This method adds the messages in the conversation to the context string.
+	# NOTE: This method is only really needed for the GPT text engines.
+
 	def expand_context(self):
 
 		# First, we'll start the context string out with a line that gives
 		# the current date and time, in the local timezone (from TZ).
-		self.context_string = f"{timeString()}\n"	# This function is defined above.
-
-		# The implementation Copilot suggested is below; we're not using this one right now.
-		#self.context_string += f"{datetime.now(tz=LOCAL_TZ).strftime('%Y-%m-%d %H:%M:%S')}\n"
+		self.context_string = f"Current time: {timeString()}\n"	# This function is defined above.
 
 		# Now we'll add the persistent context, and then the last N messages.
 		self.context_string += PERSISTENT_CONTEXT + '\n'.join([str(m) for m in self.messages])
 			# Join the messages into a single string, with a newline between each.
-			# Add the persistent context to the beginning of the string.
+			# Include the persistent context at the beginning of the string.
 
 
 	# This method reads recent messages from the conversation archive file, if it exists.
@@ -939,7 +1009,7 @@ class Conversation:
 		self.context_string += extra_text
 
 
-	# This method deletes the last message the end of the conversation.
+	# This method deletes the last message at the end of the conversation.
 	# (This is normally only done if the message is empty, since Telegram
 	# will not send an empty message anyway.)
 	def delete_last_message(self):
@@ -1121,7 +1191,7 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 	# Make sure the thread component is set to this application (for logging).
 	logmaster.setComponent(_appName)
 
-	# Assume we're in a thread associated with a conversation.
+	# Assume we're in a thread associated with a specific conversation.
 	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
