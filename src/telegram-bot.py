@@ -489,8 +489,17 @@ class Message:
 
 		"""Returns a string representation of a given message suitable for
 			archiving, as a single newline-terminated line of text. Embedded
-			newlines are escaped as '\n'; and any other ASCII control characters 
-			within the message text are escaped using their '\xHH' codes."""
+			newlines are escaped as '\\n'; and any other ASCII control characters 
+			within the message text are escaped using their '\\xHH' codes."""
+
+		# NOTE: The message text could contain newlines, which we need to
+		#		replace with a literal '\n' encoding. But, in case the 
+		#		message text contains a literal '\' followed by an 'n', we
+		#		need to escape the '\' with another '\'.
+
+		text = self.text
+		if text is None:	# Null text? (Shouldn't happen, but...)
+			text = ""		# Message is empty string.
 
 		# Construct the replacement dictionary for serialization.
 		serialize_replace_dict = {
@@ -503,17 +512,6 @@ class Message:
 
 		# Translate the characters that need escaping.
 		escaped_text = text.translate(str.maketrans(serialize_replace_dict))
-
-		# # NOTE: The message text could contain newlines, which we need to
-		# #		replace with a literal '\n' encoding. But, in case the 
-		# #		message text contains a literal '\' followed by an 'n', we
-		# #		need to escape the '\' with another '\'.
-		# # First, we'll replace all backslashes with '\\'.
-		# # Then, we'll replace all newlines with '\n'.
-
-		# text = self.text
-		# if text is None:	# Null text? (Shouldn't happen, but...)
-		# 	text = ""		# Message is empty string.
 
 		# escaped_text = text.replace('\\', '\\\\').replace('\n', '\\n')\
 		# 	.translate(str.maketrans({chr(i): f"\\x{format(i, '02x')}" \
@@ -570,7 +568,7 @@ class Message:
 		}
 		# Unescape the other ASCII controls, which are encoded as '\xHH'.
 		for i in list(range(0, 9)) + list(range(11, 32)):
-			serialize_replace_dict[f"\\x{format(i, '02x')}"] = chr(i)
+			deserialize_replace_dict[f"\\x{format(i, '02x')}"] = chr(i)
 
 		# Define a custom replacer based on the dict we just made.
 		def deserialize_replacer(match):
