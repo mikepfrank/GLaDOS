@@ -50,6 +50,30 @@
       "parent": null
     },
     {
+      "id": "gpt-3.5-turbo",
+      "object": "model",
+      "created": 1677610602,
+      "owned_by": "openai",
+      "permission": [
+        {
+          "id": "modelperm-Gsp3SyIu7GamHB3McQv3rMf5",
+          "object": "model_permission",
+          "created": 1684434433,
+          "allow_create_engine": false,
+          "allow_sampling": true,
+          "allow_logprobs": true,
+          "allow_search_indices": false,
+          "allow_view": true,
+          "allow_fine_tuning": false,
+          "organization": "*",
+          "group": null,
+          "is_blocking": false
+        }
+      ],
+      "root": "gpt-3.5-turbo",
+      "parent": null
+    },
+    {
       "id": "davinci",
       "object": "model",
       "created": 1649359874,
@@ -95,6 +119,30 @@
         }
       ],
       "root": "text-davinci-edit-001",
+      "parent": null
+    },
+    {
+      "id": "text-davinci-003",
+      "object": "model",
+      "created": 1669599635,
+      "owned_by": "openai-internal",
+      "permission": [
+        {
+          "id": "modelperm-y4r1Z53hJ9TJxrUMPM50fYoS",
+          "object": "model_permission",
+          "created": 1684345476,
+          "allow_create_engine": false,
+          "allow_sampling": true,
+          "allow_logprobs": true,
+          "allow_search_indices": false,
+          "allow_view": true,
+          "allow_fine_tuning": false,
+          "organization": "*",
+          "group": null,
+          "is_blocking": false
+        }
+      ],
+      "root": "text-davinci-003",
       "parent": null
     },
     {
@@ -218,30 +266,6 @@
       "parent": null
     },
     {
-      "id": "text-davinci-003",
-      "object": "model",
-      "created": 1669599635,
-      "owned_by": "openai-internal",
-      "permission": [
-        {
-          "id": "modelperm-uSp4mCewqjf1sM0yI1sfRyag",
-          "object": "model_permission",
-          "created": 1684074209,
-          "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
-          "allow_search_indices": false,
-          "allow_view": true,
-          "allow_fine_tuning": false,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "text-davinci-003",
-      "parent": null
-    },
-    {
       "id": "babbage-code-search-text",
       "object": "model",
       "created": 1651172509,
@@ -314,30 +338,6 @@
       "parent": null
     },
     {
-      "id": "gpt-3.5-turbo-0301",
-      "object": "model",
-      "created": 1677649963,
-      "owned_by": "openai",
-      "permission": [
-        {
-          "id": "modelperm-8TicxZyEGvfUKtYK4sPO32Ao",
-          "object": "model_permission",
-          "created": 1683913990,
-          "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
-          "allow_search_indices": false,
-          "allow_view": true,
-          "allow_fine_tuning": false,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "gpt-3.5-turbo-0301",
-      "parent": null
-    },
-    {
       "id": "text-curie-001",
       "object": "model",
       "created": 1649364043,
@@ -359,6 +359,30 @@
         }
       ],
       "root": "text-curie-001",
+      "parent": null
+    },
+    {
+      "id": "gpt-4",
+      "object": "model",
+      "created": 1678604602,
+      "owned_by": "openai",
+      "permission": [
+        {
+          "id": "modelperm-HnvVZ1tf2jVawVaM1B3yjZnD",
+          "object": "model_permission",
+          "created": 1684465847,
+          "allow_create_engine": false,
+          "allow_sampling": false,
+          "allow_logprobs": false,
+          "allow_search_indices": false,
+          "allow_view": false,
+          "allow_fine_tuning": false,
+          "organization": "*",
+          "group": null,
+          "is_blocking": false
+        }
+      ],
+      "root": "gpt-4",
       "parent": null
     },
     {
@@ -482,27 +506,27 @@
       "parent": null
     },
     {
-      "id": "gpt-3.5-turbo",
+      "id": "gpt-4-0314",
       "object": "model",
-      "created": 1677610602,
+      "created": 1678604601,
       "owned_by": "openai",
       "permission": [
         {
-          "id": "modelperm-C34BeeteYvuLNoa893aJRcnp",
+          "id": "modelperm-wD0mMKN1qMMpZ1ptTiU1uNNz",
           "object": "model_permission",
-          "created": 1683852530,
+          "created": 1684465847,
           "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
+          "allow_sampling": false,
+          "allow_logprobs": false,
           "allow_search_indices": false,
-          "allow_view": true,
+          "allow_view": false,
           "allow_fine_tuning": false,
           "organization": "*",
           "group": null,
           "is_blocking": false
         }
       ],
-      "root": "gpt-3.5-turbo",
+      "root": "gpt-4-0314",
       "parent": null
     },
     {
@@ -890,30 +914,6 @@
       "parent": null
     },
     {
-      "id": "gpt-4-0314",
-      "object": "model",
-      "created": 1678604601,
-      "owned_by": "openai",
-      "permission": [
-        {
-          "id": "modelperm-PGbNkIIZZLRipow1uFL0LCvV",
-          "object": "model_permission",
-          "created": 1683768678,
-          "allow_create_engine": false,
-          "allow_sampling": false,
-          "allow_logprobs": false,
-          "allow_search_indices": false,
-          "allow_view": false,
-          "allow_fine_tuning": false,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "gpt-4-0314",
-      "parent": null
-    },
-    {
       "id": "text-search-curie-query-001",
       "object": "model",
       "created": 1651172509,
@@ -959,30 +959,6 @@
         }
       ],
       "root": "text-search-babbage-doc-001",
-      "parent": null
-    },
-    {
-      "id": "gpt-4",
-      "object": "model",
-      "created": 1678604602,
-      "owned_by": "openai",
-      "permission": [
-        {
-          "id": "modelperm-nqKDpzYoZMlqbIltZojY48n9",
-          "object": "model_permission",
-          "created": 1683768705,
-          "allow_create_engine": false,
-          "allow_sampling": false,
-          "allow_logprobs": false,
-          "allow_search_indices": false,
-          "allow_view": false,
-          "allow_fine_tuning": false,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "gpt-4",
       "parent": null
     },
     {
@@ -1175,6 +1151,30 @@
         }
       ],
       "root": "curie",
+      "parent": null
+    },
+    {
+      "id": "gpt-3.5-turbo-0301",
+      "object": "model",
+      "created": 1677649963,
+      "owned_by": "openai",
+      "permission": [
+        {
+          "id": "modelperm-pvjOAsmQhwelYZvz8BlX18w0",
+          "object": "model_permission",
+          "created": 1684521457,
+          "allow_create_engine": false,
+          "allow_sampling": true,
+          "allow_logprobs": true,
+          "allow_search_indices": false,
+          "allow_view": true,
+          "allow_fine_tuning": false,
+          "organization": "*",
+          "group": null,
+          "is_blocking": false
+        }
+      ],
+      "root": "gpt-3.5-turbo-0301",
       "parent": null
     },
     {
