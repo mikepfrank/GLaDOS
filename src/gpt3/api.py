@@ -470,6 +470,8 @@ def _is_chat(engine_name):
 
 # Expose _is_chat() as a public function.
 def isChatEngine(engineId:str):
+	"""Given an engine name string, return a Boolean value which is
+		True if and only if the engine uses the ChatCompletion API."""
 	return _is_chat(engineId)
 
 # Given an engine name, return the encoding attribute value.
@@ -3428,7 +3430,7 @@ def _loadStats():
 			# Rename the old file to the archive file.
 			try:
 				rename(statsPath, archivePath)
-				_logger.normal(f"NOTE: Archived old API usage statistics file {statsPath} to {archivePath}.")
+				_logger.normal(f"NOTE: Archived old API usage statistics data file {statsPath} to {archivePath}.")
 			except:
 				_logger.warn(f"Couldn't rename {statsPath} to {archivePath}.")
 
@@ -3543,7 +3545,7 @@ def _displayStats(doWrite:bool=True):
 				newPath = path.join(_aiPath, f"api-stats-{lastMod}.txt")
 				try:
 					rename(oldPath, newPath)
-					_logger.normal(f"NOTE: Archived old API usage statistics file {oldPath} to {newPath}.")
+					_logger.normal(f"NOTE: Archived old API usage statistics text file {oldPath} to {newPath}.")
 				except:
 					_logger.error(f"Couldn't rename {oldPath} to {newPath}. Old stats will get stomped!")
 
