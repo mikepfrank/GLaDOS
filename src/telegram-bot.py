@@ -2651,7 +2651,7 @@ def process_chat_message(update, context):
 			# Temporary hack to see if we can max out the output length.
 			#maxTokens = None	# Equivalent to float('inf')?
 
-			_logger.info(f"process_chat_message(): maxTokens = {maxTokens}, minReplyWinToks = {minReplyWinToks}, maxRetToks = {maxRetToks}, lMaxRetToks = {lMaxRetToks}, availSpaceToks = {availSpaceToks}")
+			_logger.debug(f"process_chat_message(): maxTokens = {maxTokens}, minReplyWinToks = {minReplyWinToks}, maxRetToks = {maxRetToks}, lMaxRetToks = {lMaxRetToks}, availSpaceToks = {availSpaceToks}")
 
 			# Get the response from GPT-3, as a ChatCompletion object.
 			chatCompletion = gptCore.genChatCompletion(	# Call the API.
