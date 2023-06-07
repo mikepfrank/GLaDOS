@@ -120,8 +120,11 @@
 
 		#model-version:					'text-davinci-002'	# Upgraded davinci with 4K tokens (GPT-3.5). ("Gladys 2.0") Used for Dante.
 		#model-version:					'code-davinci-002'	# Starting model for GPT-3.5 RLHF series. Used for David. (Also Codex.)
-		#model-version:					'text-davinci-003'	# GPT-3.5 RLHF-aligned model. Used for DaVinci.
-		model-version:					'gpt-3.5-turbo'		# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
+		#model-version:					'text-davinci-003'		# GPT-3.5 RLHF-aligned model. Used for DaVinci.
+		model-version:					'gpt-3.5-turbo'			# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
+		#model-version:					'gpt-3.5-turbo-0301'	# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
+				# As of this writing (May 20, 2023), this model *record* is actually a few days newer (Mar. 1) than 'gpt-3.5-turbo' (Feb. 28).
+				# However, the actual gpt-3.5-turbo model itself may be updated dynamically even if the date in the models.json stays the same..
 
 			# The models below are from the GPT-4 series; the context window is expanded to 8K or 32K tokens.
 
