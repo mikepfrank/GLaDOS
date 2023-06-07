@@ -218,7 +218,6 @@ import	openai		# OpenAI's Python bindings for their REST API to GPT-3.
 import	tiktoken	# A fast standalone tokenizer module for GPT-3.
 import	backoff		# Utility module for exponential backoff on failures.
 
-
 	#/==========================================================================
 	#|	1.3. Imports of custom application modules. 	[module code subsection]
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -350,6 +349,8 @@ __all__ = [
 			# NOTE: This is the recommended token-counting function.
 
 		'stats',				# Function: Returns the GPT-3 usage statistics.
+
+		'genImage',				# Function: Generate an image from a description.
 
 	]
 
@@ -3316,6 +3317,22 @@ def stats():
 	return _statStr
 #__/ End module public function stats().
 
+
+def genImage(desc:str):
+	"""Generate an image from the given description string.
+		Returns the URL of the generated image."""
+	
+	response = openai.Image.create(
+		prompt = desc,
+		n = 1,					# Can range from 1-10.
+		size = "1024x1024"		# Other options include 512x512 and 256x256.
+	)
+
+	image_url = response['data'][0]['url']
+
+	return image_url
+#__/ End module public function genImage().
+	
 
 	#/==========================================================================
 	#|	Module private functions.								[code section]

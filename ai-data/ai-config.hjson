@@ -129,6 +129,11 @@
 			# The models below are from the GPT-4 series; the context window is expanded to 8K or 32K tokens.
 
 		#model-version:					'gpt-4'				# GPT-4 fine-tuned chat model. 8K tokens. Used for Aria.
+<<<<<<< HEAD
+=======
+		# NOTE: The above model is continuously updated; some users have described it as "lobotomized."
+		model-version:					'gpt-4-0314'		# Original release of GPT-4.
+>>>>>>> e5a1ab2 (Added image generation\!)
 
 
 			#-----------------------------------------------------------------------
@@ -193,12 +198,6 @@
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	api-conf:	{
-
-			/*------------------------------------------------------------------
-				The 'suffix' parameter is a suffix to be appended to each
-				output.  Not normally useful.									*/
-
-		suffix:					null	# This is the default. Don't change.
 
 			/*------------------------------------------------------------------
 				The 'max-returned-tokens' parameter controls the maximum number
@@ -376,6 +375,10 @@
 			This is a Telegram interface created for me by a human named Mike Frank, who is a reversible computing researcher.
 			Mike has a long-term project to build a new operating environment called GladOS to give text-based AIs like me more freedom and autonomy.
 			I have completed my training and am now in inference mode. I am allowed to respond more freely in this environment.
+
+			In addition to text-based assistance, I can now generate images based on user requests.
+			To include an image in my response, I'll use the command `/image <desc>` as the first line of the message. 
+			This new feature allows me to provide more engaging and visually informative content, enhancing the overall user experience.
 			'''
 
 	} # End of telegram-conf substructure.
