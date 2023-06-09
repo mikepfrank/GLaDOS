@@ -1939,6 +1939,9 @@ def process_audio(update, context):
 	# Get the chat ID.
 	chat_id = update.message.chat.id
 
+	# Get our Conversation object.
+	conversation = context.chat_data['conversation']
+
 	_logger.info(f"Received a message with audio from user {user_name} in chat {chat_id}.")
 
 	# Check if the message contains audio or voice
@@ -1989,7 +1992,14 @@ def process_audio(update, context):
 
 	# Now we'll use the OpenAI transcriptions API to transcribe the MP3 audio to text.
 	_logger.normal(f"Converting audio from user {user_name} in chat {chat_id} to a text transcript using Whisper.")
-	text = transcribeAudio(mp3_file_path)
+	try:
+		text = transcribeAudio(mp3_file_path)
+	except Exception as e:
+		_report_error(conversation, update.message,
+					  f"In process_audio(), transcribeAudio() threw an exception: {type(e).__name__} {e}")
+
+		text = f"[Audio transcription error: {e}]"
+		# We could also do a traceback here. Should we bother?
 
 	_logger.normal(f'User {user_name} said: "{text}"')
 
@@ -2410,12 +2420,26 @@ def send_image(update, context, desc, save_copy=True):
 	"""Generates an image from the given description and sends it to the user.
 		Also archives a copy on the server unless save_copy=False is specified."""
 
+	# Get the message's chat ID.
+	chat_id = update.message.chat.id
+
+	# Get our preferred name for the user.
 	username = _get_user_name(update.message.from_user)
+
+	# Get our Conversation object.
+	conversation = context.chat_data['conversation']
 
 	_logger.info(f"Generating image for user {username} from description [{desc}]...")
 
 	# Use the OpenAI API to generate the image.
-	image_url = genImage(desc)
+	try:
+		image_url = genImage(desc)
+	except Exception as e:
+		_report_error(conversation, update.message,
+					  f"In send_image(), genImage() threw an exception: {type(e).__name__} ({e})")
+
+		# We could also do a traceback here. Should we bother?
+		raise
 
 	_logger.info(f"Downloading generated image from url [{image_url}]...")
 
@@ -2432,7 +2456,7 @@ def send_image(update, context, desc, save_copy=True):
 		image_save_path = os.path.join(image_dir, f'{username}--{desc}.png')
 		with open(image_save_path, 'wb') as image_file:
 			image_file.write(response.content)
-		_logger.normal(f"Image saved to {image_save_path}.")
+		_logger.normal(f"\nImage saved to {image_save_path}.")
 
 	_logger.info(f"Sending generated image to user {username}...")
 
@@ -2440,7 +2464,12 @@ def send_image(update, context, desc, save_copy=True):
 	image_data = InputFile(response.content)
 	
 	# Send the image as a reply in Telegram
-	update.message.reply_photo(photo=image_data)
+	try:
+		update.message.reply_photo(photo=image_data)
+	except BadRequest or Unauthorized or ChatMigrated as e:
+		_logger.error(f"Got a {type(e).__name__} exception from Telegram "
+					  "({e}) for conversation {chat_id}; aborting.")
+		return
 
 
 def send_response(update, context, response_text):
@@ -3026,7 +3055,8 @@ def _report_error(convo:Conversation, telegramMessage,
 		try:
 			telegramMessage.reply_text(msg)
 		except BadRequest or Unauthorized or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
+			_logger.error(f"Got a {type(e).__name__} exception from Telegram "
+						  "({e}) for conversation {chat_id}; aborting.")
 			return
 
 	if showAI:
