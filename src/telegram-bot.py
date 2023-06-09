@@ -495,8 +495,8 @@ class Message:
 		self.sender	  = sender
 
 		if text is None:
-			_logger.warn(f"""Can't initialize Message from {sender} with text of None; using "" instead.""")
-			text = ""
+			_logger.warn(f"""Can't initialize Message from {sender} with text of None; using "[null message]" instead.""")
+			text = "[null message]"
 
 		self.text	  = text
 		self.archived = False
@@ -521,7 +521,7 @@ class Message:
 
 		text = self.text
 		if text is None:	# Null text? (Shouldn't happen, but...)
-			text = ""		# Message is empty string.
+			text = "[null message]"		# Message is this placeholder. (Was empty string.)
 
 		escaped_text = text.replace('\\', '\\\\').replace('\n', '\\n')\
 			.translate(str.maketrans({chr(i): f"\\x{format(i, '02x')}" \
@@ -1243,9 +1243,9 @@ def _ensure_convo_loaded(update, context) -> bool:
 
 	if not 'conversation' in context.chat_data:
 
-		if chat_id == -1001815681152:
-			_logger.warn(f"Ignoring message from user {user_name} in non-restarted conversation {chat_id}.")
-			return False
+		#if chat_id == -1001815681152:
+		#	_logger.warn(f"Ignoring message from user {user_name} in non-restarted conversation {chat_id}.")
+		#	return False
 
 		_logger.normal(f"User {user_name} sent a message in an uninitialized conversation {chat_id}.")
 		_logger.normal(f"\tAutomatically starting (or restarting) conversation {chat_id}.")
@@ -1264,6 +1264,7 @@ def _ensure_convo_loaded(update, context) -> bool:
 		update.message.text = '/start'
 		start(update,context)
 		update.message.text = _tmpText
+			# For some reason, this isn't working?
 	
 	return True
 
@@ -1874,6 +1875,10 @@ def process_audio(update, context):
 	# Get the chat ID.
 	chat_id = update.message.chat.id
 
+	# Attempt to ensure the conversation is loaded; if we failed, bail.
+	if not _ensure_convo_loaded(update, context):
+		return
+
 	# Get our Conversation object.
 	conversation = context.chat_data['conversation']
 
@@ -1971,6 +1976,10 @@ def process_message(update, context):
 	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
+	# Attempt to ensure the conversation is loaded; if we failed, bail.
+	if not _ensure_convo_loaded(update, context):
+		return
+
 	# If the message contained audio or voice, then represent it using an
 	# appropriate text format.
 
@@ -1998,11 +2007,7 @@ def process_message(update, context):
 		return
 
 	if update.message.text is None:
-		update.message.text = ""
-
-	# Attempt to ensure the conversation is loaded; if we failed, bail.
-	if not _ensure_convo_loaded(update, context):
-		return
+		update.message.text = "[null message]"
 
 	conversation = context.chat_data['conversation']
 
