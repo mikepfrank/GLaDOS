@@ -84,6 +84,8 @@
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| Imports of standard Python libraries.
 
+import	traceback	# For stack trace debugging.
+
 import	os	
 	# We use the os.environ dictionary to get the environment variables.
 
@@ -489,7 +491,7 @@ class Message:
 
 	def __init__(self, sender, text):
 		# Print diagnostic information.
-		_logger.debug(f"Creating message object for: {sender}> {text}")
+		#_logger.debug(f"Creating message object for: {sender}> {text}")
 		self.sender	  = sender
 
 		if text is None:
@@ -1890,33 +1892,44 @@ def process_audio(update, context):
 	# Get the value of environment variable AI_DATADIR.
 	# This is where we'll save any audio files.
 	ai_datadir = os.getenv('AI_DATADIR')
-	audio_dir = os.path.join(ai_datadir, 'audio_files')
+	audio_dir = os.path.join(ai_datadir, 'audio')
 
 	# Create a folder to save the audio files if it doesn't exist
 	if not os.path.exists(audio_dir):
 		os.makedirs(audio_dir)
 
 	# Save the audio as an OGG file
-	ogg_file_path = os.path.join(audio_dir, f'{file_id}.ogg')
+	ogg_file_path = os.path.join(audio_dir, f'{user_name}-{file_id}.ogg')
 
 	_logger.normal(f"Downloading audio from user {user_name} in chat {chat_id} to OGG file {ogg_file_path}.")
 	file_obj.download(ogg_file_path)
 
-	# Convert the OGG file to WAV
-	wav_file_path = os.path.join(audio_dir, f'{file_id}.wav')
-	_logger.normal(f"Converting audio from user {user_name} in chat {chat_id} to WAV format in {wav_file_path}.")
-	ogg_audio = AudioSegment.from_ogg(ogg_file_path)
-	ogg_audio.export(wav_file_path, format='wav')
+	# Convert the OGG file to MP3 (we were using WAV, but the file size was too big).
+	mp3_file_path = os.path.join(audio_dir, f'{user_name}-{file_id}.mp3')
+	_logger.normal(f"Converting audio from user {user_name} in chat {chat_id} to MP3 format in {mp3_file_path}.")
 
-	# Now we'll use the OpenAI transcriptions API to transcribe the WAV audio to text.
+	_logger.normal(f"\tReading in OGG file {ogg_file_path}...")
+	try:
+		ogg_audio = AudioSegment.from_ogg(ogg_file_path)
+	except Exception as e:
+		_logger.error(f"Error reading OGG audio: {e}")
+		_logger.error(traceback.format_exc())  # This will log the full traceback of the exception
+
+	_logger.normal(f"\tWriting out MP3 file {mp3_file_path}...")
+	try:
+		ogg_audio.export(mp3_file_path, format='mp3')
+	except Exception as e:
+		_logger.error(f"Error exporting MP3 audio: {e}")
+		_logger.error(traceback.format_exc())  # This will log the full traceback of the exception
+
+	# Now we'll use the OpenAI transcriptions API to transcribe the MP3 audio to text.
 	_logger.normal(f"Converting audio from user {user_name} in chat {chat_id} to a text transcript using Whisper.")
-	text = transcribeAudio(wav_file_path)
+	text = transcribeAudio(mp3_file_path)
+
+	_logger.normal(f'User {user_name} said: "{text}"')
 
 	# Store the text in the audio_text attribute of the message object for later reference.
 	context.user_data['audio_text'] = text
-
-	# Call the main message handler.
-	#process_message(update, context)
 
 	return False	# Do this so we continue processing message handlers.
 #__/
@@ -1966,13 +1979,16 @@ def process_message(update, context):
 		# Clear the audio_text entry from the user_data dictionary
 		del context.user_data['audio_text']
 
-	# If the message text is empty or None, consider this as the initial message
-	# of a new chat, and just delegate to the start() function.
-	if update.message.text is None or update.message.text == "":
+	# If this is a group chat and the message text is empty or None,
+	# assume we were just added to the chat, and just delegate to the start() function.
+	if chat_id < 0 and (update.message.text is None or update.message.text == ""):
 		_logger.normal(f"Added to group chat {chat_id} by user {user_name}. Auto-starting.")
 		update.message.text = '/start'
 		start(update,context)
 		return
+
+	if update.message.text is None:
+		update.message.text = ""
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not _ensure_convo_loaded(update, context):
@@ -2330,15 +2346,36 @@ def _blockUser(user):
 		json.dump(block_list, f)
 	
 
-def send_image(update, context, desc):
+def send_image(update, context, desc, save_copy=True):
+	"""Generates an image from the given description and sends it to the user.
+		Also archives a copy on the server unless save_copy=False is specified."""
+
+	username = _get_user_name(update.message.from_user)
+
+	_logger.info(f"Generating image for user {username} from description [{desc}]...")
 
 	# Use the OpenAI API to generate the image.
 	image_url = genImage(desc)
+
+	_logger.info(f"Downloading generated image from url [{image_url}]...")
 
 	# Download the image from the URL
 	response = requests.get(image_url)
 	response.raise_for_status()
 	
+	# Save the image to the filesystem if the flag is set to True
+	if save_copy:
+		_logger.info(f"Saving a copy of the generated image to the filesystem...")
+		image_dir = os.path.join(os.getenv('AI_DATADIR'), 'images')
+		if not os.path.exists(image_dir):
+			os.makedirs(image_dir)
+		image_save_path = os.path.join(image_dir, f'{username}--{desc}.png')
+		with open(image_save_path, 'wb') as image_file:
+			image_file.write(response.content)
+		_logger.normal(f"Image saved to {image_save_path}.")
+
+	_logger.info(f"Sending generated image to user {username}...")
+
 	# Prepare the image to be sent via Telegram
 	image_data = InputFile(response.content)
 	
@@ -3013,11 +3050,12 @@ dispatcher.add_handler(CommandHandler('greet', greet))
 
 # In case user sends an audio message, we add a handler to save the audio in a file for later processing.
 # This handler should then return FALSE so that subsequent message processing will still happen.
-# NOTE: This doesn't seem to work!
 dispatcher.add_handler(MessageHandler(Filters.audio|Filters.voice, process_audio), group = 1)
+	# group=1 says, try this handler first.
 
 # Now, let's add a handler for the rest of the messages.
 dispatcher.add_handler(MessageHandler(Filters.all, process_message), group = 2)
+	# group=2 says, try this handlers if ones in the lower group fail.
 
 # Add an error handler to catch the Unauthorized exception & other errors that may occur.
 dispatcher.add_error_handler(error)
