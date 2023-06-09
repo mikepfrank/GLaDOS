@@ -196,7 +196,8 @@
 
 import	re	# Regex
 
-from	os			import	path, rename	# Manipulate filesystem path strings.
+from	os			import	path, rename, makedirs
+	# Manipulate filesystem path strings, create directories.
 
 from	pprint		import	pformat #,pprint	# Pretty-print complex objects.
 
@@ -3386,6 +3387,10 @@ def _statsPathname(prefix:str=None):
 		
 	_logger.debug(f"Got AI data directory = {aiDataDir}.")
 
+	stats_dir = path.join(aiDataDir, 'stats')
+	if not path.exists(stats_dir):
+		makedirs(stats_dir)
+
 		#-----------------------------------------------------
 		# Next, we need to get the name of the stats json file
 		# (relative to that directory). At the moment, this
@@ -3399,7 +3404,7 @@ def _statsPathname(prefix:str=None):
 		# Next, we need to construct the full pathname of the
 		# API statistics JSON file.
 		
-	statsPathname = path.join(aiDataDir, statsFilename)
+	statsPathname = path.join(stats_dir, statsFilename)
 		
 		#-------------------------
 		# Return it to the caller.
@@ -3411,7 +3416,7 @@ def _statsPathname(prefix:str=None):
 
 def _textPath():
 	"""Constructs and returns the pathname to the text file to store the API stats table."""
-	return path.join(_aiPath, 'api-stats.txt')
+	return path.join(_aiPath, 'stats', 'api-stats.txt')
 
 
 def _loadStats():
@@ -3574,7 +3579,7 @@ def _displayStats(doWrite:bool=True):
 				_logger.normal("Stats display: Starting a new day!")
 				
 				oldPath = _textPath()
-				newPath = path.join(_aiPath, f"api-stats-{lastMod}.txt")
+				newPath = path.join(_aiPath, 'stats', f"api-stats-{lastMod}.txt")
 				try:
 					rename(oldPath, newPath)
 					_logger.normal(f"NOTE: Archived old API usage statistics text file {oldPath} to {newPath}.")
