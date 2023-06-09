@@ -104,6 +104,8 @@ import hjson	# Human-readable JSON. Used for the ACL.
 from curses import ascii
 	# The only thing we use from this is ascii.RS (record separator character)
 
+import requests
+
 	# NOTE: Copilot also wanted to import the following libraries, but we 
 	#	aren't directly using them yet:
 	#		sys, time, logging, random, pickle, json, datetime, pytz, subprocess
