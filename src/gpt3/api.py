@@ -351,6 +351,7 @@ __all__ = [
 		'stats',				# Function: Returns the GPT-3 usage statistics.
 
 		'genImage',				# Function: Generate an image from a description.
+		'transcribeAudio',		# Function: Transcribe an audio file to text.
 
 	]
 
@@ -3326,6 +3327,20 @@ def genImage(desc:str):
 	return image_url
 #__/ End module public function genImage().
 	
+
+def transcribeAudio(filename:str):
+	"""Given the path to an MP3 audio file, use the transcriptions endpoint
+		to convert the audio to text, and return the text."""
+	
+	_logger.info(f"Passing {filename} to the OpenAI transcription endpoint...")
+	audio_file = open(filename, 'rb')
+	transcript = openai.Audio.transcribe("whisper-1", audio_file)
+	_logger.info(f"Got back this transcript: {transcript}")
+	text = transcript['text']
+
+	return text
+#__/ End module public function transcribeAudio();
+
 
 	#/==========================================================================
 	#|	Module private functions.								[code section]
