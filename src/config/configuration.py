@@ -1385,6 +1385,12 @@ class	TheAIPersonaConfig:
 		else:
 			theAIConfig.context = None	# No default value provided in config file.
 
+		if 'help-string' in telegramConf:
+			helpString = telegramConf['help-string']
+			theAIConfig.helpString = helpString
+			_logger.normal(f"    [Config/AI]     AI config: The AI persona's custom Telegram help string is [{helpString.strip()}].")
+		else:
+			theAIConfig.helpString = None	# No default value provided in config file.
 
 		#|**********************************************************************
 		#| NOTE: It would be nice to do some additional error-checking 

@@ -246,8 +246,8 @@ logmaster.configLogMaster(
 		consdebug	= False,		# Turn off full debug logging on the console.
 		#consdebug	= True,			# Turn on full debug logging on the console.
 
-		#consinfo	= True,			# Turn on info-level logging on the console.
-		consinfo	 = False,		 # Turn off info-level logging on the console.
+		consinfo	= True,			# Turn on info-level logging on the console.
+		#consinfo	 = False,		 # Turn off info-level logging on the console.
 
 		#logdebug	= True			# Turn on full debug logging in the log file.
 		logdebug	 = False		 # Turn off full debug logging in the log file.
@@ -1270,7 +1270,23 @@ def _ensure_convo_loaded(update, context) -> bool:
 	
 	return True
 
-HELP_STRING = f"""
+# Aria rewrote this in her voice. This is now in Aria's ai-config.json|telegram-conf|help-string.
+#HELP_STRING = f"""
+#Hello, I'm Aria! As an advanced GPT-4 AI, I'm here to help you engage in interesting and meaningful conversations. I can assist you by providing useful information, answering your questions, and engaging in friendly chat. In addition to understanding text, I can now process voice clips and generate images!
+#
+#Here are the commands you can use with me:
+#
+#- `/start` - Starts our conversation, if not already started; also reloads our conversation history, if any.
+#- `/help` - Displays this help message.
+#- `/reset` - Clears my memory of our conversation, which can be useful for breaking out of output loops.
+#- `/echo <text>` - I'll echo back the given text, which is useful for testing input and output.
+#- `/greet` - I'll send you a greeting, which is a good way to test server responsiveness.
+#
+#To request an image in my response, use the command `/image <desc>` as the first line of your message, and I'll generate and send the image to you.
+#
+#Please remember to be polite and ethical while interacting with me. If you need assistance or have any questions, feel free to ask. I'm here to help! 😊"""
+
+HELP_STRING="""
 {BOT_NAME} bot powered by {MODEL_FAMILY}/{ENGINE_NAME}.
 	NOTE: {BOT_NAME} now understands voice clips and can
 	generate images!
@@ -1289,12 +1305,20 @@ NOTE: Please be polite and ethical, or you may be blocked."""
 #  forget - Removes the given statement from the bot's persistent context data.
 
 # Override help string if it's set in ai-config.hjson.
+<<<<<<< HEAD
 #if TheAIPersonaConfig().helpString:
 #	_logger.normal("Using custom help string.")
 #	HELP_STRING = TheAIPersonaConfig().helpString
 #	customHelp = True
 #else:
 #	customHelp = False
+=======
+if TheAIPersonaConfig().helpString:
+	HELP_STRING = TheAIPersonaConfig().helpString
+	customHelp = True
+else:
+	customHelp = False
+>>>>>>> 9796ffd (Trying to enable help string custom config. Not working yet.)
 
 # This function checks whether the given user name is in our access list.
 # If it is, it returns True; otherwise, it returns False.
@@ -1377,10 +1401,30 @@ def handle_help(update, context):
 	# Add the /help command itself to the conversation archive.
 	conversation.add_message(Message(user_name, update.message.text))
 
+<<<<<<< HEAD
+=======
+	# Don't require ACL access for help command since it doesn't query the API.
+	# Check whether the user is in our access list.
+	#if not _check_access(user_name):
+	#	_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
+	#
+	#	#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+	#	errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+	#
+	#	try:
+	#		update.message.reply_text(f"[SYSTEM: {errMsg}]")
+	#	except BadRequest or Unauthorized or ChatMigrated as e:
+	#		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+	#
+	#	# Also record the error in our conversation data structure.
+	#	conversation.add_message(Message(SYS_NAME, errMsg))
+	#	return
+
+>>>>>>> 9796ffd (Trying to enable help string custom config. Not working yet.)
 	_logger.normal(f"User {user_name} entered a /help command for chat {chat_id}.")
 
 	# Log diagnostic information.
-	_logger.normal(f"Displaying help in conversation {chat_id}.")
+	_logger.normal(f"\tDisplaying help in conversation {chat_id}.")
 
 	try:
 		update.message.reply_text(HELP_STRING)
@@ -1389,7 +1433,8 @@ def handle_help(update, context):
 		return False
 
 	# Also record the help string in our conversation data structure.
-	conversation.add_message(Message(SYS_NAME, HELP_STRING))
+	who = BOT_NAME if customHelp else SYS_NAME
+	conversation.add_message(Message(who, HELP_STRING))
 
 	return True		# Finished processing this message.
 
