@@ -1971,14 +1971,16 @@ def process_audio(update, context):
 	if not os.path.exists(audio_dir):
 		os.makedirs(audio_dir)
 
-	# Save the audio as an OGG file
-	ogg_file_path = os.path.join(audio_dir, f'{user_name}-{file_id}.ogg')
+	# Pick a shorter ID for the file (collisions will be fairly rare).
+	short_file_id = f"{random.randint(1,1000000)-1:06d}"
 
+	# Save the audio as an OGG file
+	ogg_file_path = os.path.join(audio_dir, f'{user_name}-{short_file_id}.ogg')
 	_logger.normal(f"Downloading audio from user {user_name} in chat {chat_id} to OGG file {ogg_file_path}.")
 	file_obj.download(ogg_file_path)
 
 	# Convert the OGG file to MP3 (we were using WAV, but the file size was too big).
-	mp3_file_path = os.path.join(audio_dir, f'{user_name}-{file_id}.mp3')
+	mp3_file_path = os.path.join(audio_dir, f'{user_name}-{short_file_id}.mp3')
 	_logger.normal(f"Converting audio from user {user_name} in chat {chat_id} to MP3 format in {mp3_file_path}.")
 
 	_logger.normal(f"\tReading in OGG file {ogg_file_path}...")
@@ -2461,7 +2463,7 @@ def send_image(update, context, desc, save_copy=True):
 		image_save_path = os.path.join(image_dir, f'{username}--{desc}.png')
 		with open(image_save_path, 'wb') as image_file:
 			image_file.write(response.content)
-		_logger.normal(f"\nImage saved to {image_save_path}.")
+		_logger.normal(f"\tImage saved to {image_save_path}.")
 
 	_logger.info(f"Sending generated image to user {username}...")
 
