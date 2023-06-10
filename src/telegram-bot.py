@@ -1074,7 +1074,7 @@ class Conversation:
 		# "assistant\n", which is why we need to make sure it knows that it's responding 
 		# as the bot.)
 
-		response_prompt = f"Respond as {botName}. (If you want to include an image in your response, put the command ‘/image <desc>’ as the first line of your response.)"
+		response_prompt = f"Respond as {botName}. (If you want to include an image in your response, you must put the command line ‘/image <desc>’ at the very start of your response.)"
 		if self.chat_id < 0:	# Negative chat IDs correspond to group chats.
 			# Only give this instruction in group chats:
 			response_prompt += " (However, if the user is not addressing you, type '/pass' to remain silent.)"
