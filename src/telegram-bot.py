@@ -1289,12 +1289,12 @@ NOTE: Please be polite and ethical, or you may be blocked."""
 #  forget - Removes the given statement from the bot's persistent context data.
 
 # Override help string if it's set in ai-config.hjson.
-if TheAIPersonaConfig().helpString:
-	_logger.normal("Using custom help string.")
-	HELP_STRING = TheAIPersonaConfig().helpString
-	customHelp = True
-else:
-	customHelp = False
+#if TheAIPersonaConfig().helpString:
+#	_logger.normal("Using custom help string.")
+#	HELP_STRING = TheAIPersonaConfig().helpString
+#	customHelp = True
+#else:
+#	customHelp = False
 
 # This function checks whether the given user name is in our access list.
 # If it is, it returns True; otherwise, it returns False.
