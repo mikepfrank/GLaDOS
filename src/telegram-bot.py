@@ -613,7 +613,7 @@ class Conversation:
 	def __init__(self, chat_id):
 
 		# Print diagnostic information.
-		print(f"Creating conversation object for chat_id: {chat_id}")
+		print(f"\tCreating conversation object for chat_id: {chat_id}")
 
 		self.chat_id = chat_id
 		self.messages = []
@@ -1161,7 +1161,7 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 	#	start message.
 	if len(conversation.messages) <= 1:
 
-		_logger.normal(f"Sending start message to user {user_name} in new conversation {chat_id}.")
+		_logger.normal(f"\tSending start message to user {user_name} in new conversation {chat_id}.")
 
 		try:
 			update.message.reply_text(START_MESSAGE)
@@ -1174,7 +1174,7 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 
 	else:
 
-		_logger.normal(f"Sending restart message to user {user_name} for existing conversation {chat_id}.")
+		_logger.normal(f"\tSending restart message to user {user_name} for existing conversation {chat_id}.")
 
 		# Compose a system diagnostic message explaining what we're doing.
 		DIAG_MSG = f"[DIAGNOSTIC: Restarted bot with last {len(conversation.messages)} messages from archive.]"
@@ -1270,6 +1270,8 @@ def _ensure_convo_loaded(update, context) -> bool:
 
 HELP_STRING = f"""
 {BOT_NAME} bot powered by {MODEL_FAMILY}/{ENGINE_NAME}.
+	NOTE: {BOT_NAME} now understands voice clips and can
+	generate images!
 
 Available commands:
 	/start - Starts the bot, if not already started; also reloads conversation history, if any.
@@ -1882,7 +1884,7 @@ def process_audio(update, context):
 	# Get our Conversation object.
 	conversation = context.chat_data['conversation']
 
-	_logger.info(f"Received a message with audio from user {user_name} in chat {chat_id}.")
+	_logger.normal(f"Received a message with audio from user {user_name} in chat {chat_id}.")
 
 	# Check if the message contains audio or voice
 	if update.message.audio:
@@ -1911,21 +1913,21 @@ def process_audio(update, context):
 
 	# Save the audio as an OGG file
 	ogg_file_path = os.path.join(audio_dir, f'{user_name}-{short_file_id}.ogg')
-	_logger.normal(f"Downloading audio from user {user_name} in chat {chat_id} to OGG file {ogg_file_path}.")
+	_logger.normal(f"\tDownloading audio from user {user_name} in chat {chat_id} to OGG file {ogg_file_path}.")
 	file_obj.download(ogg_file_path)
 
 	# Convert the OGG file to MP3 (we were using WAV, but the file size was too big).
 	mp3_file_path = os.path.join(audio_dir, f'{user_name}-{short_file_id}.mp3')
-	_logger.normal(f"Converting audio from user {user_name} in chat {chat_id} to MP3 format in {mp3_file_path}.")
+	_logger.normal(f"\tConverting audio from user {user_name} in chat {chat_id} to MP3 format in {mp3_file_path}.")
 
-	_logger.normal(f"\tReading in OGG file {ogg_file_path}...")
+	_logger.normal(f"\t\tReading in OGG file {ogg_file_path}...")
 	try:
 		ogg_audio = AudioSegment.from_ogg(ogg_file_path)
 	except Exception as e:
 		_logger.error(f"Error reading OGG audio: {e}")
 		_logger.error(traceback.format_exc())  # This will log the full traceback of the exception
 
-	_logger.normal(f"\tWriting out MP3 file {mp3_file_path}...")
+	_logger.normal(f"\t\tWriting out MP3 file {mp3_file_path}...")
 	try:
 		ogg_audio.export(mp3_file_path, format='mp3')
 	except Exception as e:
@@ -1933,7 +1935,7 @@ def process_audio(update, context):
 		_logger.error(traceback.format_exc())  # This will log the full traceback of the exception
 
 	# Now we'll use the OpenAI transcriptions API to transcribe the MP3 audio to text.
-	_logger.normal(f"Converting audio from user {user_name} in chat {chat_id} to a text transcript using Whisper.")
+	_logger.normal(f"\tConverting audio from user {user_name} in chat {chat_id} to a text transcript using Whisper.")
 	try:
 		text = transcribeAudio(mp3_file_path)
 	except Exception as e:
@@ -1943,7 +1945,7 @@ def process_audio(update, context):
 		text = f"[Audio transcription error: {e}]"
 		# We could also do a traceback here. Should we bother?
 
-	_logger.normal(f'User {user_name} said: "{text}"')
+	_logger.normal(f'\tUser {user_name} said: "{text}"')
 
 	# Store the text in the audio_text attribute of the message object for later reference.
 	context.user_data['audio_text'] = text
@@ -1987,7 +1989,7 @@ def process_message(update, context):
 
 	if 'audio_text' in context.user_data:	# We added this earlier if appropriate.
 
-		# Utilize the transcript created by save_audio() above.
+		# Utilize the transcript created by process_audio() above.
 		text = f"(audio) {context.user_data['audio_text']}"	
 
 		# Append the text caption, if present.
