@@ -378,6 +378,23 @@
 			Also, I can now process audio clips, thanks to the new Whisper speech-to-text API from OpenAI. When I see a message starting with '(audio)' followed by text, it means that a user has sent a voice clip or audio file, which has been automatically transcribed for me to read and understand.
 			'''
 
+		help-string:
+			'''
+			Hello, I'm Aria! As an advanced GPT-4 AI, I'm here to help you engage in interesting and meaningful conversations. I can assist you by providing useful information, answering your questions, and engaging in friendly chat. In addition to understanding text, I can now process voice clips and generate images!
+
+			Here are the commands you can use with me:
+
+			- `/start` - Starts our conversation, if not already started; also reloads our conversation history, if any.
+			- `/help` - Displays this help message.
+			- `/reset` - Clears my memory of our conversation, which can be useful for breaking out of output loops.
+			- `/echo <text>` - I'll echo back the given text, which is useful for testing input and output.
+			- `/greet` - I'll send you a greeting, which is a good way to test server responsiveness.
+
+			To request an image in my response, use the command `/image <desc>` as the first line of your message, and I'll generate and send the image to you.
+
+			Please remember to be polite and ethical while interacting with me. If you need assistance or have any questions, feel free to ask. I'm here to help! 😊
+			'''
+
 	} # End of telegram-conf substructure.
 
 
