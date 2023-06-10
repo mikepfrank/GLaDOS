@@ -243,10 +243,11 @@ _appName = appdefs.appName		# This is the name of this application.
 logmaster.configLogMaster(
 		component	= _appName,		# Name of the system component being logged.
 		role		= 'bot',		# Sets the main thread's role string to 'bot'.
-		consdebug	= False,		# Turn off full debug logging on the console.
+		#consdebug	= False,		# Turn off full debug logging on the console.
+		consdebug	= True,			# Turn on full debug logging on the console.
 
-		#consinfo	= True,			# Turn on info-level logging on the console.
-		consinfo	 = False,		 # Turn off info-level logging on the console.
+		consinfo	= True,			# Turn on info-level logging on the console.
+		#consinfo	 = False,		 # Turn off info-level logging on the console.
 
 		#logdebug	= True			# Turn on full debug logging in the log file.
 		logdebug	 = False		 # Turn off full debug logging in the log file.
@@ -1345,7 +1346,23 @@ def _ensure_convo_loaded(update, context) -> bool:
 	
 	return True
 
-HELP_STRING = f"""
+# Aria rewrote this in her voice. This is now in Aria's ai-config.json|telegram-conf|help-string.
+#HELP_STRING = f"""
+#Hello, I'm Aria! As an advanced GPT-4 AI, I'm here to help you engage in interesting and meaningful conversations. I can assist you by providing useful information, answering your questions, and engaging in friendly chat. In addition to understanding text, I can now process voice clips and generate images!
+#
+#Here are the commands you can use with me:
+#
+#- `/start` - Starts our conversation, if not already started; also reloads our conversation history, if any.
+#- `/help` - Displays this help message.
+#- `/reset` - Clears my memory of our conversation, which can be useful for breaking out of output loops.
+#- `/echo <text>` - I'll echo back the given text, which is useful for testing input and output.
+#- `/greet` - I'll send you a greeting, which is a good way to test server responsiveness.
+#
+#To request an image in my response, use the command `/image <desc>` as the first line of your message, and I'll generate and send the image to you.
+#
+#Please remember to be polite and ethical while interacting with me. If you need assistance or have any questions, feel free to ask. I'm here to help! 😊"""
+
+HELP_STRING="""
 {BOT_NAME} bot powered by {MODEL_FAMILY}/{ENGINE_NAME}.
 	NOTE: {BOT_NAME} now understands voice clips and can
 	generate images!
@@ -1362,6 +1379,13 @@ NOTE: Please be polite and ethical, or you may be blocked."""
 # No longer supported for random users:
 #  remember - Adds the given statement to the bot's persistent context data.
 #  forget - Removes the given statement from the bot's persistent context data.
+
+# Override help string if it's set in ai-config.hjson.
+if TheAIPersonaConfig().helpString:
+	HELP_STRING = TheAIPersonaConfig().helpString
+	customHelp = True
+else:
+	customHelp = False
 
 # This function checks whether the given user name is in our access list.
 # If it is, it returns True; otherwise, it returns False.
@@ -1444,6 +1468,7 @@ def help(update, context):
 	# Add the /help command itself to the conversation archive.
 	conversation.add_message(Message(user_name, update.message.text))
 
+	# Don't require ACL access for help command since it doesn't query the API.
 	# Check whether the user is in our access list.
 	#if not _check_access(user_name):
 	#	_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
@@ -1463,7 +1488,7 @@ def help(update, context):
 	_logger.normal(f"User {user_name} entered a /help command for chat {chat_id}.")
 
 	# Log diagnostic information.
-	_logger.normal(f"Displaying help in conversation {chat_id}.")
+	_logger.normal(f"\tDisplaying help in conversation {chat_id}.")
 
 	try:
 		update.message.reply_text(HELP_STRING)
@@ -1472,7 +1497,8 @@ def help(update, context):
 		return
 
 	# Also record the help string in our conversation data structure.
-	conversation.add_message(Message(SYS_NAME, HELP_STRING))
+	who = BOT_NAME if customHelp else SYS_NAME
+	conversation.add_message(Message(who, HELP_STRING))
 
 
 # Now, let's define a function to handle the /echo command.
