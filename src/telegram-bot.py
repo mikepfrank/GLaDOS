@@ -246,8 +246,8 @@ logmaster.configLogMaster(
 		consdebug	= False,		# Turn off full debug logging on the console.
 		#consdebug	= True,			# Turn on full debug logging on the console.
 
-		consinfo	= True,			# Turn on info-level logging on the console.
-		#consinfo	 = False,		 # Turn off info-level logging on the console.
+		#consinfo	= True,			# Turn on info-level logging on the console.
+		consinfo	 = False,		 # Turn off info-level logging on the console.
 
 		#logdebug	= True			# Turn on full debug logging in the log file.
 		logdebug	 = False		 # Turn off full debug logging in the log file.
@@ -1305,20 +1305,12 @@ NOTE: Please be polite and ethical, or you may be blocked."""
 #  forget - Removes the given statement from the bot's persistent context data.
 
 # Override help string if it's set in ai-config.hjson.
-<<<<<<< HEAD
-#if TheAIPersonaConfig().helpString:
-#	_logger.normal("Using custom help string.")
-#	HELP_STRING = TheAIPersonaConfig().helpString
-#	customHelp = True
-#else:
-#	customHelp = False
-=======
 if TheAIPersonaConfig().helpString:
+	_logger.normal("Using custom help string.")
 	HELP_STRING = TheAIPersonaConfig().helpString
 	customHelp = True
 else:
 	customHelp = False
->>>>>>> 9796ffd (Trying to enable help string custom config. Not working yet.)
 
 # This function checks whether the given user name is in our access list.
 # If it is, it returns True; otherwise, it returns False.
@@ -1401,26 +1393,6 @@ def handle_help(update, context):
 	# Add the /help command itself to the conversation archive.
 	conversation.add_message(Message(user_name, update.message.text))
 
-<<<<<<< HEAD
-=======
-	# Don't require ACL access for help command since it doesn't query the API.
-	# Check whether the user is in our access list.
-	#if not _check_access(user_name):
-	#	_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
-	#
-	#	#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
-	#	errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
-	#
-	#	try:
-	#		update.message.reply_text(f"[SYSTEM: {errMsg}]")
-	#	except BadRequest or Unauthorized or ChatMigrated as e:
-	#		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-	#
-	#	# Also record the error in our conversation data structure.
-	#	conversation.add_message(Message(SYS_NAME, errMsg))
-	#	return
-
->>>>>>> 9796ffd (Trying to enable help string custom config. Not working yet.)
 	_logger.normal(f"User {user_name} entered a /help command for chat {chat_id}.")
 
 	# Log diagnostic information.
@@ -1999,9 +1971,9 @@ def process_message(update, context):
 	# Get the chat ID.
 	chat_id = update.message.chat.id
 
-	# If it's that one stupid chat, just ignore it silently.
-	if chat_id == -1001815681152:
-		return
+	## If it's that one stupid chat, just ignore it silently.
+	#if chat_id == -1001815681152:
+	#	return
 
 	# Get the user name.
 	user_name = _get_user_name(update.message.from_user)

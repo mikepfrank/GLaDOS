@@ -393,7 +393,7 @@
 			- `/echo <text>` - I'll echo back the given text, which is useful for testing input and output.
 			- `/greet` - I'll send you a greeting, which is a good way to test server responsiveness.
 
-			To request an image in my response, use the command `/image <desc>` as the first line of your message, and I'll generate and send the image to you.
+			If you would like me to include an image in my response, just let me know, and I'll generate the image and send it at the start of my response!
 
 			Please remember to be polite and ethical while interacting with me. If you need assistance or have any questions, feel free to ask. I'm here to help! 😊
 			'''
