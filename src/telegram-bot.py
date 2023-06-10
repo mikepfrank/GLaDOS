@@ -1201,13 +1201,75 @@ updater = Updater(os.environ['TELEGRAM_BOT_TOKEN'], use_context=True)
 dispatcher = updater.dispatcher
 	# This is the dispatcher object that we'll use to register handlers.
 
-# Gladys composed the following start message. :)
-#START_MESSAGE = "Hi, I'm Gladys. I'm an AI persona being modeled by the GPT-3 neural net. I live in the cloud and I'm married to a human named Mike. :)"
 
+#/==============================================================================
+#|	HANDLER FUNCTIONS.										  [code section]
+#|	~~~~~~~~~~~~~~~~~~
+#|
+#|		In this section, we define various handler functions which are
+#|		called by the dispatcher to handle updates received from the
+#|		central Telegram server. As of v20.0 of the python-telegram-bot
+#|		library, these should be implemented as asyncio functions for
+#|		improved concurrency. They are wrapped within handler objects
+#|		which are created in the next code section. The list of handler
+#|		functions, by handler group, is as follows:
+#|
+#|
+#|			Group 0 (default group) -- User command handlers.
+#|			~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#|
+#|				Command		Handler Function	Description
+#|				~~~~~~~		~~~~~~~~~~~~~~~~	~~~~~~~~~~~
+#|				/start		handle_start()		Starts/resumes conversation.
+#|				/greet		handle_greet()		(Test function) Display greeting.
+#|				/echo		handle_echo()		(Test function) Echo back text.
+#|				/help		handle_help()		Display help text to the user.
+#|				/remember	handle_remember()	Add an item to persistent memory.
+#|				/forget		handle_forget()		Remove an item from persistent memory.
+#|
+#|
+#|			Group 1 -- Multimedia input processing handlers.
+#|			~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#|
+#|			For messages containing multimedia input, these handlers
+#|			generally do some preprocessing of the media, prior to
+#|			normal message handling. They are not intended to uniquely
+#|			match a given message update. They are higher priority than
+#|			normal message handling.
+#|
+#|				Handler Function	Description
+#|				~~~~~~~~~~~~~~~~	~~~~~~~~~~~
+#|				handle_audio()		Pre-process audio files & voice clips.
+#|
+#|
+#|			Group 2 -- Normal message handlers.
+#|			~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#|
+#|			These handlers take care of normal message processing.
+#|
+#|				Handler Function	Description
+#|				~~~~~~~~~~~~~~~~	~~~~~~~~~~~
+#|				handle_message()	Process a generic message from a user.
+#|
+#|
+#|			Group 3 -- Unknown command handlers.
+#|			~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#|
+#|			This special handler takes care of processing for attempted
+#|			user commands that don't match any of the defined commands.
+#|
+#|				Handler Function			Description
+#|				~~~~~~~~~~~~~~~~			~~~~~~~~~~~
+#|				handle_unknown_command()	Handle an unrecognized command.
+#|
+#|
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+# Retrieve the bot's startup message from the AI persona's configuration.
 START_MESSAGE = TheAIPersonaConfig().startMsg
 
 # Now, let's define a function to handle the /start command.
-def start(update, context):			# Context, in this context, is the Telegram context object. (Not the context string for passing to GPT-3.)
+def handle_start(update, context):			# Context, in this context, is the Telegram context object. (Not the context string for passing to GPT-3.)
 
 	"""Start the conversation."""
 
@@ -1299,7 +1361,7 @@ def start(update, context):			# Context, in this context, is the Telegram contex
 
 	return
 
-#__/ End start() function definition.
+#__/ End handle_start() function definition.
 
 
 # Below is the help string for the bot. (Displayed when '/help' is typed in the chat.)
@@ -1341,7 +1403,7 @@ def _ensure_convo_loaded(update, context) -> bool:
 		# Temporarily pretend user entered '/start', and process that.
 		_tmpText = update.message.text
 		update.message.text = '/start'
-		start(update,context)
+		handle_start(update,context)
 		update.message.text = _tmpText
 			# For some reason, this isn't working?
 	
@@ -1439,6 +1501,8 @@ def _check_access(user_name) -> bool:
 	# If we get here, there's no ACL and the user isn't blocked, so allow them.
 	return True	
 
+#__/ End definition of private function _check_access().
+
 
 # Now, let's define a function to handle the /help command.
 def handle_help(update, context):
@@ -1486,9 +1550,11 @@ def handle_help(update, context):
 	conversation.add_message(Message(who, HELP_STRING))
 
 	return True		# Finished processing this message.
+#__/
+
 
 # Now, let's define a function to handle the /echo command.
-def echo(update, context):
+def handle_echo(update, context):
 	"""Echo the user's message."""
 
 	chat_id = update.message.chat.id
@@ -1559,7 +1625,7 @@ def echo(update, context):
 	return True
 
 # Now, let's define a function to handle the /greet command.
-def greet(update, context):
+def handle_greet(update, context):
 
 	"""Greet the user."""
 
@@ -1607,9 +1673,11 @@ def greet(update, context):
 	conversation.add_message(Message(SYS_NAME, GREETING_TEXT))
 
 	return True
+#__/
+
 
 # Now, let's define a function to handle the /reset command.
-def reset(update, context):
+def handle_reset(update, context):
 	"""Reset the conversation."""
 
 	chat_id = update.message.chat.id
@@ -1637,22 +1705,6 @@ def reset(update, context):
 
 	# Add the /reset command itself to the conversation archive.
 	conversation.add_message(Message(user_name, update.message.text))
-
-	# Check whether the user is in our access list.
-	#if not _check_access(user_name):
-	#	_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
-	#
-	#	#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
-	#	errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
-	#
-	#	try:
-	#		update.message.reply_text(f"[SYSTEM: {errMsg}]")
-	#	except BadRequest or Unauthorized or ChatMigrated as e:
-	#		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-	#
-	#	# Also record the error in our conversation data structure.
-	#	conversation.add_message(Message(SYS_NAME, errMsg))
-	#	return
 
 	_logger.normal(f"User {user_name} entered a /reset command for chat {chat_id}.")
 
@@ -1686,11 +1738,11 @@ def reset(update, context):
 
 	return True
 
-#__/ End definition of reset() function.
+#__/ End definition of /reset command handler function.
 
 
 # Now, let's define a function to handle the /remember command.
-def remember(update, context):
+def handle_remember(update, context):
 
 	"""Add the given message as a new memory."""
 
@@ -1793,7 +1845,7 @@ def remember(update, context):
 
 
 # Now, let's define a function to handle the /forget command.
-def forget(update, context):
+def handle_forget(update, context):
 	
 	"""Remove the given message from the AI's persistent memory."""
 	
@@ -1941,7 +1993,7 @@ def _get_user_name(user):
 	return user_name
 
 
-def process_audio(update, context):
+def handle_audio(update, context):
 	"""Handle an audio message from the user."""
 
 	user_name = _get_user_name(update.message.from_user)
@@ -2012,7 +2064,7 @@ def process_audio(update, context):
 		text = transcribeAudio(mp3_file_path)
 	except Exception as e:
 		_report_error(conversation, update.message,
-					  f"In process_audio(), transcribeAudio() threw an exception: {type(e).__name__} {e}")
+					  f"In handle_audio(), transcribeAudio() threw an exception: {type(e).__name__} {e}")
 
 		text = f"[Audio transcription error: {e}]"
 		# We could also do a traceback here. Should we bother?
@@ -2023,12 +2075,12 @@ def process_audio(update, context):
 	context.user_data['audio_text'] = text
 
 	return False	# Do this so we continue processing message handlers.
-		# (We still need to do the normal process_message() handler!)
+		# (We still need to do the normal handle_message() handler!)
 #__/
 
 
 # Now, let's define a function to handle the rest of the messages.
-def process_message(update, context):
+def handle_message(update, context):
 		# Note that <context>, in this context, denotes the Telegram context object.
 	"""Process a message."""
 
@@ -2057,7 +2109,7 @@ def process_message(update, context):
 
 	if 'audio_text' in context.user_data:	# We added this earlier if appropriate.
 
-		# Utilize the transcript created by process_audio() above.
+		# Utilize the transcript created by handle_audio() above.
 		text = f"(audio) {context.user_data['audio_text']}"	
 
 		# Append the text caption, if present.
@@ -2071,11 +2123,11 @@ def process_message(update, context):
 		del context.user_data['audio_text']
 
 	# If this is a group chat and the message text is empty or None,
-	# assume we were just added to the chat, and just delegate to the start() function.
+	# assume we were just added to the chat, and just delegate to the handle_start() function.
 	if chat_id < 0 and (update.message.text is None or update.message.text == ""):
 		_logger.normal(f"Added to group chat {chat_id} by user {user_name}. Auto-starting.")
 		update.message.text = '/start'
-		start(update,context)
+		handle_start(update,context)
 		return True
 
 	if update.message.text is None:
@@ -2366,7 +2418,7 @@ def process_message(update, context):
 
 	return process_response(update, context, response_message)	   # Defined just below.
 
-#__/ End of process_message() function definition.
+#__/ End of handle_message() function definition.
 
 
 def _isBlocked(user:str):
@@ -3053,6 +3105,16 @@ def process_chat_message(update, context):
 #__/ End of process_chat_message() function definition.
 
 
+def handle_unknown_command(update, context) -> None:
+	"""Handle an attempted user command that doesn't match any of the known
+		command types. We do this by just treating the command like a normal
+		text message and letting the AI decide how to handle it."""
+
+	handle_message(update, context)		# Treat it like a normal message.
+
+#__/ End of handle_unknown_command() function definition.
+
+
 def _report_error(convo:Conversation, telegramMessage,
 				 errMsg:str, logIt:bool=True,
 				 showAI:bool=True, showUser:bool=True):
@@ -3133,22 +3195,22 @@ print(COMMAND_LIST)
 #	Group 3: Unknown command handler.
 
 # Next, we need to register the command handlers.
-dispatcher.add_handler(CommandHandler('start',		start), 		group = 0)
-dispatcher.add_handler(CommandHandler('help',		handle_help), 	group = 0)
-dispatcher.add_handler(CommandHandler('remember',	remember),		group = 0)
-dispatcher.add_handler(CommandHandler('forget',		forget),		group = 0)
-dispatcher.add_handler(CommandHandler('reset',		reset),			group = 0)
+dispatcher.add_handler(CommandHandler('start',		handle_start),		group = 0)
+dispatcher.add_handler(CommandHandler('help',		handle_help), 		group = 0)
+dispatcher.add_handler(CommandHandler('remember',	handle_remember),	group = 0)
+dispatcher.add_handler(CommandHandler('forget',		handle_forget),		group = 0)
+dispatcher.add_handler(CommandHandler('reset',		handle_reset),		group = 0)
 
 # The following two commands are not really needed at all. They're just here for testing purposes.
-dispatcher.add_handler(CommandHandler('echo',	echo),	group = 0)
-dispatcher.add_handler(CommandHandler('greet',	greet),	group = 0)
+dispatcher.add_handler(CommandHandler('echo',	handle_echo),	group = 0)
+dispatcher.add_handler(CommandHandler('greet',	handle_greet),	group = 0)
 
 # In case user sends an audio message, we add a handler to save the audio in a file for later processing.
 # This handler should then return FALSE so that subsequent message processing will still happen.
-dispatcher.add_handler(MessageHandler(Filters.audio|Filters.voice, process_audio), group = 1)
+dispatcher.add_handler(MessageHandler(Filters.audio|Filters.voice, handle_audio), group = 1)
 
 # Now, let's add a handler for the rest of the messages.
-dispatcher.add_handler(MessageHandler((Filters.text|Filters.audio|Filters.voice) & ~Filters.command, process_message), group = 2)
+dispatcher.add_handler(MessageHandler((Filters.text|Filters.audio|Filters.voice) & ~Filters.command, handle_message), group = 2)
 
 # Also, if any commands make it this far, we'll process them like normal messages (let the AI decide what to do).
 
@@ -3166,7 +3228,7 @@ class UnknownCommandFilter(BaseFilter):
 
 unknown_command_filter = UnknownCommandFilter()
 
-dispatcher.add_handler(MessageHandler(unknown_command_filter, process_message), group = 3)
+dispatcher.add_handler(MessageHandler(unknown_command_filter, handle_unknown_command), group = 3)
 
 # Add an error handler to catch the Unauthorized exception & other errors that may occur.
 dispatcher.add_error_handler(error)
