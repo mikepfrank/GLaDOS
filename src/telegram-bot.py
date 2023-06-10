@@ -3122,6 +3122,8 @@ class UnknownCommandFilter(BaseFilter):
 		text = update.message.text
 		defined_commands = ['/start', '/help', '/remember', '/forget', '/reset', '/echo', '/greet']
 		
+		if text is None:
+			return False
 		if text.startswith('/') and text.split()[0] not in defined_commands:
 			return True
 		return False
