@@ -44,6 +44,7 @@
 #|	  TO DO:																   |
 #|	  ~~~~~																	   |
 #|																			   |
+#|		  - Implement user-specific and chat-specific persistent memory.	   |
 #|		  - Add commands to adjust parameters of the OpenAI GPT-3 API.		   |
 #|		  - Add a feature to allow different bots running on the same		   |
 #|				server to communicate with each other.						   |
@@ -597,9 +598,9 @@ class Message:
 
 		"""Returns a string representation of a given message suitable for
 			archiving, as a single newline-terminated line of text. Embedded
-			newlines are escaped as '\n'; and any other ASCII control characters 
+			newlines are escaped as '\\n'; and any other ASCII control characters 
 			within the message text (except for TAB) are escaped using their
-			'\xHH' (hexadecimal) codes."""
+			'\\xHH' (hexadecimal) codes."""
 
 		text = self.text
 		if text is None:	# Null text? (Shouldn't happen, but...)
@@ -781,14 +782,20 @@ class Conversation:
 		## NOTE: Since the above files are never closed, we may eventually run out of
 		## file descriptors, and the entire bot server will stop working. Really, we
 		## should close them whenever an existing convo is restarted, before reopening.
+		## Currently, we handle this with the __del__() method below, which should get
+		## called eventually whenever a given conversation object is garbage-collected.
 
 	#__/ End of conversation instance initializer.
 
 
 	# This method adds the messages in the conversation to the context string.
-	# NOTE: This method is only really needed for the GPT text engines.
+	# NOTE: This method is only really needed for the GPT text engines; the
+	# chat engines include the same functionality in get_chat_messages().
 
 	def expand_context(self):
+
+		"""Flesh out the conversation's context string by filling in the
+			current time at the top, and the message list at the bottom."""
 
 		# First, we'll start the context string out with a line that gives
 		# the current date and time, in the local timezone (from TZ).
@@ -799,9 +806,17 @@ class Conversation:
 			# Join the messages into a single string, with a newline between each.
 			# Include the persistent context at the beginning of the string.
 
+	#__/ End instance method expand_context() for class Conversation.
 
-	# This method reads recent messages from the conversation archive file, if it exists.
+
+	# This method loads recent messages from the conversation archive file, if
+	# it exists. NOTE: This is presently inefficient, since it reads the entire
+	# file instead of just # the last 200 lines. This could be improved upon,
+	# with some effort. (E.g., via exponential back-seeking from end.)
+
 	def read_archive(self):
+		"""Loads messages from conversation archive."""
+
 		# If the conversation archive file exists, read it.
 		if os.path.exists(self.filename):
 			# Open the conversation archive file.
@@ -824,28 +839,31 @@ class Conversation:
 			# Update the conversation's context string.
 			self.expand_context()
 
+	#__/ End read_archive() instance method for class Conversation.
 
-	# This method reads the AI's persistent memories from the persistent memory file, if it exists.
+
+	# This method reads the AI's persistent memories from the persistent memory
+	# file, if it exists. NOTE: At present there's only one global persistent
+	# memory file shared across all conversations. This is not a good design!
+
 	def read_memory(self):
+		"""Loads persistent memories."""
 
-		global PERSISTENT_DATA	# We declare this global so we can modify it.
-		global MEMORIES
-		global _anyMemories
+			# We declare these globals so we can modify them.
+		global PERSISTENT_DATA, MEMORIES, _anyMemories
 
-		# Boolean to keep track of whether we've already read any lines from the persistent memory file.
+			# Boolean to keep track of whether we've already read any lines from the persistent memory file.
 		read_lines = False
 
 		# If the persistent memory file exists, read it.
 		if os.path.exists(self.mem_filename):
 
-			# NOTE: At present, we simply read the entire file
-			# as a single string and append it to the persistent data
-			# string and update the persistent context string.
-			# NOTE: This will eventually cause problems if the
-			# persistent memory file becomes too long to fit in
-			# the AI's receptive field.
-			# In the future, we may want to store the persistent data
-			# in a dictionary and access it more selectively.
+			# NOTE: At present, we simply read the entire file as a single
+			# string and append it to the persistent data string and update
+			# the persistent context string. NOTE: This will eventually cause
+			# problems if the persistent memory file becomes too long to fit in
+			# the AI's receptive field. In the future, we may want to store the
+			# persistent data in a dictionary and access it more selectively.
 
 			# Open the persistent memory file.
 			with open(self.mem_filename, 'r') as f:
@@ -883,9 +901,14 @@ class Conversation:
 			#		 # Add the key/value pair to the persistent memory dictionary.
 			#		 self.memory[key] = value
 
+	#__/ End read_memory() instance method for class Conversation.
+
+
 	# This method adds a message to the AI's persistent memory file.
 	# It also updates the persistent context string.
+
 	def add_memory(self, new_memory:str) -> bool:
+		"""Adds a new item to the AI's persistent memory."""
 
 		global MEMORIES
 		global PERSISTENT_DATA	# We declare this global so we can modify it.
@@ -934,7 +957,9 @@ class Conversation:
 	# This method removes a message from the AI's persistent memory file.
 	# It also updates the persistent context string. It returns true if the 
 	# memory was removed, false otherwise.
+
 	def remove_memory(self, text_to_remove:str) -> bool:
+		"""Remove a specified item from the AI's persistent memory."""
 
 		global MEMORIES
 		global _anyMemories
@@ -1076,7 +1101,10 @@ class Conversation:
 
 	# Extend a (non-finalized) message by appending some extra text onto the end of it.
 	# NOTE: This should only be called on the last message in the conversation.
+	# NOTE: Seems like this method should really be moved to the Message class.
+
 	def extend_message(self, message, extra_text):
+		"""Extends a non-finalized message by adding some extra text to it."""
 
 		# First, make sure the message has not already been finalized.
 		if message.archived:
@@ -1093,8 +1121,12 @@ class Conversation:
 	# This method deletes the last message at the end of the conversation.
 	# (This is normally only done if the message is empty, since Telegram
 	# will not send an empty message anyway.)
-	def delete_last_message(self):
 
+	def delete_last_message(self):
+		"""Deletes the last message in a conversation; use it only if the
+			message is empty and hasn't been archived already."""
+
+		# Commented this out to ignore these warnings.
 		# First, make sure the message has not already been finalized.
 		#if self.messages[-1].archived:
 		#	print("ERROR: Tried to delete an already-archived message.")
@@ -1116,7 +1148,7 @@ class Conversation:
 
 
 	def archive_message(self, message):
-		"""Add a message to the conversation, and archive it."""
+		"""Commit a message to the conversation, and archive it."""
 		self.archive_file.write(message.serialize())
 		self.archive_file.flush()
 		message.archived = True
@@ -1125,16 +1157,19 @@ class Conversation:
 	# The following method clears the entire conversational memory.
 	# However, it does not erase the archive file or clear the 
 	# persistent memory file.
+
 	def clear(self):
 		"""Clear the entire conversational memory."""
 		self.messages = []
 		self.context_length = 0
 		self.expand_context()	# Update the context string.
 
+
 	# This method checks whether a given message is already in the conversation,
 	# within the last NOREPEAT_WINDOW_SIZE messages. This is used to help prevent 
 	# the bot from getting into a loop where it sends the same message over and 
 	# over too frequently.
+
 	def is_repeated_message(self, message):
 		"""Check whether a message (with the same sender and text) is already 
 			included in the most recent <NOREPEAT_WINDOW_SIZE> messages of the 
@@ -1149,6 +1184,7 @@ class Conversation:
 
 	# This method converts the persistent context and the list of messages
 	# into the format of a 'messages' list as expected by the GPT-3 chat API.
+
 	def get_chat_messages(self):
 
 		"""Convert the persistent context and the list of messages into the 
@@ -1214,13 +1250,15 @@ class Conversation:
 		response_prompt = f"Respond as {botName}. (If you want to include an image in your response, put the command ‘/image <desc>’ as the first line of your response.)"
 		if self.chat_id < 0:	# Negative chat IDs correspond to group chats.
 			# Only give this instruction in group chats:
-			response_prompt += " (However, if the user is not addressing you, type '/pass' to remain silent.)"
+			response_prompt += " However, if the user is not addressing you, type '/pass' to remain silent."
 
 		chat_messages.append({
 			'role': CHAT_ROLE_SYSTEM,
 			'content': response_prompt
 		})
 
+		# Old versions of response prompt:
+		
 			#'content': f"Respond as {botName}, in the user's language if possible. (However, if the user is not addressing you, type '/pass' to remain silent.)"
 				
 			# 'content': f"Respond as {self.bot_name}."
@@ -1246,12 +1284,15 @@ class Conversation:
 	
 	#__/ End conversation.get_chat_messages() instance method definition.
 
+
 	# This is needed so we don't eventually run out of file descriptors
 	# after conversations are restarted repeatedly.
 	def __del__(self):
 		# Close our open files to recycle their file descriptors.
 		self.archive_file.close()
 		self.memory_file.close()
+	#__/ End destructor method for class Conversation.
+
 
 #__/ End Conversation class definition.
 
