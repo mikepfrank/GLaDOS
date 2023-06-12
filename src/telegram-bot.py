@@ -2406,7 +2406,9 @@ def send_image(update, context, desc, save_copy=True):
 		image_dir = os.path.join(os.getenv('AI_DATADIR'), 'images')
 		if not os.path.exists(image_dir):
 			os.makedirs(image_dir)
-		image_save_path = os.path.join(image_dir, f'{username}--{desc}.png')
+		# Pick a short ID for the file (collisions will be fairly rare).
+		short_file_id = f"{random.randint(1,1000000)-1:06d}"
+		image_save_path = os.path.join(image_dir, f'{username}--{short_file_id}.png')
 		with open(image_save_path, 'wb') as image_file:
 			image_file.write(response.content)
 		_logger.normal(f"\tImage saved to {image_save_path}.")
