@@ -227,10 +227,14 @@ pertaining to behavior in group chats:
                         to be able to add your bot to groups.
 
     * Group Privacy - Set this to OFF/DISABLED if you want the
-                        bot to respond to every message in a 
-                        group chat.  If ON/ENABLED, the bot will
-                        only respond if a user addresses it with 
-                        @<bot_username> ...
+                        bot to potentially respond to every message 
+			in a group chat.  (Note, however, that the
+			ChatGPT bots such as Aria/Turbo have the 
+			capability to voluntarily refrain from 
+			responding in group chats when it isn't 
+			appropriate.)  If ON/ENABLED, the bot can 
+			only respond if a user formally addresses 
+			it with "@<bot_username> ..."
 
 
 9b. Usage tips for GLaDOS server.
