@@ -3317,11 +3317,15 @@ def genImage(desc:str):
 	"""Generate an image from the given description string.
 		Returns the URL of the generated image."""
 	
+	_logger.info(f"Generating a 1024x1024 image with description [{desc}].")
+
 	response = openai.Image.create(
 		prompt = desc,
 		n = 1,					# Can range from 1-10.
 		size = "1024x1024"		# Other options include 512x512 and 256x256.
 	)
+
+	_logger.debug(f"Got response: [{response}]")
 
 	image_url = response['data'][0]['url']
 
