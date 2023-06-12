@@ -224,7 +224,9 @@ import	traceback	# For stack trace debugging.
 import	os	
 	# We use the os.environ dictionary to get the environment variables.
 
-import random	
+from	pprint	import	pformat
+
+import random
 	# At the moment, we just use this to pick random IDs for temporary files.
 
 import re
@@ -643,7 +645,7 @@ class Conversation:
 			Telegram chat (identified by an integer ID)."""
 
 		# Print diagnostic information to console (& log file).
-		_logger.normal(f"Creating conversation object for chat_id: {chat_id}")
+		_logger.normal(f"\tCreating conversation object for chat_id: {chat_id}")
 
 		newConv.bot_name = BOT_NAME	# The name of the bot. ('Gladys', 'Aria', etc.)
 		newConv.chat_id = chat_id		# Remember the chat ID associated with this convo.
@@ -1174,8 +1176,8 @@ class Conversation:
 		# it knows that it's responding as the named bot persona.)
 
 		response_prompt = f"Respond as {botName}. (If you want to include an " \
-			"image in your response, put the command ‘/image <desc>’ as the " \
-			"first line of your response.)"
+			"image in your response, you must put the command ‘/image <desc>’ at the " \
+			"very start of your response.)"
 
 		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
 			# Only give this instruction in group chats:
@@ -1435,7 +1437,6 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 						"The AI will identify you in this conversation by your " \
 						f"{which_name}, {user_name}."
 
-
 		#warning_msg = f"[SYSTEM NOTIFICATION: Your first name \"{update.message.from_user.first_name}\"" \
 		#	"contains unsupported characters (or is too long). The AI only supports names with <=64 alphanumeric " \
 		#	"characters (a-z, 0-9), dashes (-) or underscores (_). For purposes of this conversation, "   \
@@ -1541,10 +1542,19 @@ async def handle_echo(update:Update, context:Context) -> None:
 
 	_logger.normal(f"User {user_name} entered an /echo command for chat {chat_id}.")
 
-	if len(cmdLine) > 6:
-		textToEcho = cmdLine[6:]
+	if len(cmdLine) > 6:	# Anything after '/', 'e', 'c', 'h', 'o', ' '?
+		textToEcho = cmdLine[6:]	# Grab rest of line.
 	else:
-		textToEcho = ""
+		_logger.error("The '/echo' command requires a non-empty argument.")
+		errMsg = f"ERROR: The '/echo' command requires an argument. (Usage: /echo <text to echo>)"
+		try:
+			await update.message.reply_text(f"[SYSTEM {errMsg}]")
+		except BadRequest or Forbidden or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+
+		# Also record the error in our conversation data structure.
+		conversation.add_message(Message(SYS_NAME, errMsg))
+		return
 
 	responseText = f'Response: "{textToEcho}"'
 
@@ -1722,7 +1732,8 @@ async def handle_remember(update:Update, context:Context) -> None:
 
 	# Check whether the user is in our access list.
 	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
+		_logger.normal(f"User {user_name} tried to access chat {chat_id}, "
+			"but is not in the access list. Denying access.")
 
 		#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
 		errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
@@ -1735,6 +1746,7 @@ async def handle_remember(update:Update, context:Context) -> None:
 		# Also record the error in our conversation data structure.
 		conversation.add_message(Message(SYS_NAME, errMsg))
 		return
+	#__/
 
 	_logger.normal(f"User {user_name} entered a /remember command for chat {chat_id}.")
 
@@ -2401,6 +2413,10 @@ async def process_chat_message(update:Update, context:Context, effText:str=None)
 
 	chat_id = update.message.chat.id
 
+	# Get user_name & unique ID (for content violation logging).
+	user_name = _get_user_name(update.message.from_user)
+	user_id = update.message.from_user.id
+
 	# Get our Conversation object.
 	conversation = context.chat_data['conversation']
 
@@ -2526,7 +2542,10 @@ async def process_chat_message(update:Update, context:Context, effText:str=None)
 					# overrides whatever api.Messages object is being maintained 
 					# in the GPT3ChatCore object.
 
-				minRepWin=minReplyWinToks	# Min. reply window size in tokens.
+				user = str(user_id),		# Send the user's unique ID for
+					# traceability in the event of severe content violations.
+
+				minRepWin = minReplyWinToks	# Min. reply window size in tokens.
 					# This parameter gets passed through to the ChatCompletion()
 					# initializer and thence to ChatCompletion._createComplStruct(),
 					# which does the actual work of retrieving the raw completion
@@ -2544,6 +2563,26 @@ async def process_chat_message(update:Update, context:Context, effText:str=None)
 
 			)
 			response_text = chatCompletion.text
+
+			# Also check for finish_reason == 'content_filter' and log/send a warning.
+			finish_reason = chatCompletion.finishReason
+			if finish_reason == 'content_filter':
+				
+				_logger.warn(f"OpenAI content filter triggered by user {user_name} " \
+							 "(ID {user_id}) in chat {chat_id}. Response was:\n" + \
+							 pformat(chatCompletion.chatComplStruct))
+
+				WARNING_MSG = "WARNING: User {user_name} triggered OpenAI's content " + \
+							  "filter. Repeated violations could result in a ban."
+
+				try:
+					update.message.reply_text("[SYSTEM {WARNING_MSG}]")
+				except BadRequest or Unauthorized or ChatMigrated as e:
+					_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+					return	# No point in the below.
+				
+				# This allows the AI to see this warning message too.
+				conversation.add_message(Message(SYS_NAME, WARNING_MSG))
 
 			break	# We got a response, so we can break out of the loop.
 
@@ -3385,6 +3424,8 @@ async def _report_error(convo:Conversation, telegramMessage,
 	# We're temporarily trying a different delimiter that's less likely to appear in message text:
 MESSAGE_DELIMITER = chr(ascii.RS)	# (Gladys agreed to try this.)
 	# A control character.	(ASCII RS = 0x1E, record separator.)
+#MESSAGE_DELIMITER = chr(ascii.ETX)	# End-of-text control character.
+#MESSAGE_DELIMITER = chr(ascii.ETB)	# End-of-transmission-block control character.
 
 	# This is the size, in messages, of the window at the end of the conversation 
 	# within which we'll exclude messages in that region from being repeated by the AI.
@@ -3710,6 +3751,7 @@ app = ApplicationBuilder().token(BOT_TOKEN).build()
 # Add an error handler to catch the Unauthorized/Forbidden exception & other errors that may occur.
 #dispatcher.add_error_handler(handle_error)
 app.add_error_handler(handle_error)
+
 
 #====================================================================
 # HANDLER GROUPS:
