@@ -150,7 +150,6 @@
 #|	TO DO:
 #|	~~~~~~
 #|
-#|		o Cleanup: Group together public/private functions in new code sections.
 #|		o Cleanup: Handler functions don't need to return booleans.
 #|		o Migrate to python-telegram-bot library v20, upgrade to asyncio.
 #|		o Move more of the data files to AI_DATADIR.
@@ -264,6 +263,10 @@ from telegram.ext 	import (
 		BaseFilter,			# Abstract base class for defining new filters.
 		ContextTypes,		# Used for type hints.
 	)
+
+# Type name that we'll use often
+Context = ContextTypes.context
+#Context = ContextTypes.DEFAULT_TYPE
 
 from telegram.error import BadRequest, Unauthorized, ChatMigrated
 	# We use these a lot in exception handlers.
@@ -446,6 +449,7 @@ logmaster.configLogMaster(
 	# 2.1. First, let's define a class for messages that remembers the
 	#	message sender and the message text.
 
+class Message: pass
 class Message:
 
 	"""An object that instantiates this class stores the message sender and the
@@ -453,7 +457,7 @@ class Message:
 
 
 	# New instance initializer (called automatically by class constructor).
-	def __init__(newMessage, sender:str, text:str):
+	def __init__(newMessage:Message, sender:str, text:str):
 
 		# Print diagnostic information.
 		#_logger.debug(f"Creating message object for: {sender}> {text}")
@@ -477,7 +481,7 @@ class Message:
 	# Conversation class's get_chat_messages() method to format the
 	# conversation data appropriately for sending to GPT.
 
-	def __str__(thisMsg):
+	def __str__(thisMsg:Message) -> str:
 		"""A string representation of the message object.
 			It is properly delimited for reading by the GPT-3 model."""
 		return f"{MESSAGE_DELIMITER} {thisMsg.sender}> {thisMsg.text}"
@@ -502,7 +506,7 @@ class Message:
 	# then later read back in when restoring the conversation. The
 	# serialized format is 1 line per message, with controls escaped.
 
-	def serialize(self):
+	def serialize(thisMsg:Message) -> str:
 
 		"""Returns a string representation of a given message suitable for
 			archiving, as a single newline-terminated line of text. Embedded
@@ -510,7 +514,7 @@ class Message:
 			within the message text (except for TAB) are escaped using their
 			'\\xHH' (hexadecimal) codes."""
 
-		text = self.text
+		text = thisMsg.text
 		if text is None:	# Null text? (Shouldn't happen, but...)
 			text = "[null message]"		# Message is this placeholder. (Was empty string.)
 
@@ -533,14 +537,14 @@ class Message:
 		escaped_text = text.translate(str.maketrans(serialize_replace_dict))
 
 		# Now, we'll return the serialized representation of the message.
-		return f"{self.sender}> {escaped_text}\n"	# Newline-terminated.
+		return f"{thisMsg.sender}> {escaped_text}\n"	# Newline-terminated.
 
 
 	# Given a line of text from a conversation archive file, this method
 	# deserializes the message object from its encoding in the archive line.
 
 	@staticmethod	# Static because we use this for constructing the object.
-	def deserialize(line):
+	def deserialize(line:str) -> Message:
 
 		"""Deserialize a line in "Sender> Text" format from a message archive, 
 			whose text is encoded using escaped '\\n' newlines and all '\\xHH' 
@@ -614,7 +618,7 @@ class Message:
 # Exception class to represent an error in the conversation.
 class ConversationError(Exception):
 	"""Exception class to represent an error in the conversation."""
-	def __init__(self, message):
+	def __init__(self, message:str):
 		self.message = message
 	def __str__(self):
 		return self.message
@@ -622,13 +626,14 @@ class ConversationError(Exception):
 # Next, let's define a class for conversations that remembers the messages in
 # the conversation.  We'll use a list of Message objects to store the messages.
 
+class Conversation: pass
 class Conversation:
 
 	"""An object instantiating this class stores the recent messages
 		in an individual Telegram conversation."""
 
 	# New instance initializer.
-	def __init__(self, chat_id:int):
+	def __init__(newConv:Conversation, chat_id:int):
 
 		"""Instance initializer for a new conversation object for a given
 			Telegram chat (identified by an integer ID)."""
@@ -636,39 +641,39 @@ class Conversation:
 		# Print diagnostic information to console (& log file).
 		_logger.normal(f"Creating conversation object for chat_id: {chat_id}")
 
-		self.bot_name = BOT_NAME	# The name of the bot. ('Gladys', 'Aria', etc.)
-		self.chat_id = chat_id		# Remember the chat ID associated with this convo.
-		self.messages = []			# No messages initially (until added or loaded).
+		newConv.bot_name = BOT_NAME	# The name of the bot. ('Gladys', 'Aria', etc.)
+		newConv.chat_id = chat_id		# Remember the chat ID associated with this convo.
+		newConv.messages = []			# No messages initially (until added or loaded).
 
 		# The following is a string which we'll use to accumulate the conversation text.
-		self.context_string = PERSISTENT_CONTEXT	# Start with just the global persistent context data.
+		newConv.context_string = PERSISTENT_CONTEXT	# Start with just the global persistent context data.
 
 		# These attributes are for managing the length (in messages) of the message list.
-		self.context_length = 0				# Initially there are no Telegram messages in the context.
-		self.context_length_max = 200		# Max number N of messages to include in the context.
+		newConv.context_length = 0				# Initially there are no Telegram messages in the context.
+		newConv.context_length_max = 200		# Max number N of messages to include in the context.
 
 		# Determine the filename we'll use to archive/restore the conversation.
 		# (NOTE: We really ought to keep these in AI_DATADIR instead of LOG_DIR!)
-		self.filename = f"{LOG_DIR}/{_appName}.{chat_id}.txt"
+		newConv.filename = f"{LOG_DIR}/{_appName}.{chat_id}.txt"
 
 		# We'll also need another file to store the AI's persistent memories.
 		# 	NOTE: These are currently global; i.e., shared among all conversations!
 		# 	Eventually, we should also have a different one for each conversation, and/or each user.
-		self.mem_filename = f"{LOG_DIR}/{_appName}.memories.txt"
+		newConv.mem_filename = f"{LOG_DIR}/{_appName}.memories.txt"
 
 		# Read the conversation archive file, if it exists.
-		self.read_archive()
-			# Note this will retrieve at most the last self.context_length_max messages.
+		newConv.read_archive()
+			# Note this will retrieve at most the last newConv.context_length_max messages.
 
 		# Also read the persistent memory file, if it exists.
-		self.read_memory()
+		newConv.read_memory()
 
 		# Go ahead and open the conversation archive file for appending.
-		self.archive_file = open(self.filename, 'a')
+		newConv.archive_file = open(newConv.filename, 'a')
 			# NOTE: We leave it open indefinitely (until the server terminates).
 
 		# Also open the persistent memory file for appending.
-		self.memory_file = open(self.mem_filename, 'a')
+		newConv.memory_file = open(newConv.mem_filename, 'a')
 			# NOTE: We leave it open indefinitely (until the server terminates).
 
 		## NOTE: Since the above files are never closed, we may eventually run out of
@@ -684,17 +689,17 @@ class Conversation:
 	# NOTE: This method is only really needed for the GPT text engines; the
 	# chat engines include the same functionality in get_chat_messages().
 
-	def expand_context(self):
+	def expand_context(thisConv:Conversation):
 
 		"""Flesh out the conversation's context string by filling in the
 			current time at the top, and the message list at the bottom."""
 
 		# First, we'll start the context string out with a line that gives
 		# the current date and time, in the local timezone (from TZ).
-		self.context_string = f"Current time: {timeString()}\n"	# This function is defined above.
+		thisConv.context_string = f"Current time: {timeString()}\n"	# This function is defined above.
 
 		# Now we'll add the persistent context, and then the last N messages.
-		self.context_string += PERSISTENT_CONTEXT + '\n'.join([str(m) for m in self.messages])
+		thisConv.context_string += PERSISTENT_CONTEXT + '\n'.join([str(m) for m in thisConv.messages])
 			# Join the messages into a single string, with a newline between each.
 			# Include the persistent context at the beginning of the string.
 
@@ -706,13 +711,13 @@ class Conversation:
 	# file instead of just # the last 200 lines. This could be improved upon,
 	# with some effort. (E.g., via exponential back-seeking from end.)
 
-	def read_archive(self):
+	def read_archive(thisConv:Conversation):
 		"""Loads messages from conversation archive."""
 
 		# If the conversation archive file exists, read it.
-		if os.path.exists(self.filename):
+		if os.path.exists(thisConv.filename):
 			# Open the conversation archive file.
-			with open(self.filename, 'r') as f:
+			with open(thisConv.filename, 'r') as f:
 				# Read the file line by line.
 				for line in f:
 
@@ -720,16 +725,16 @@ class Conversation:
 					message = Message.deserialize(line)
 
 					# If we're already at the maximum context length, pop the oldest message
-					if self.context_length >= self.context_length_max:
-						self.messages.pop(0)
-						self.context_length -= 1
+					if thisConv.context_length >= thisConv.context_length_max:
+						thisConv.messages.pop(0)
+						thisConv.context_length -= 1
 
 					# Append the message to the conversation.
-					self.messages.append(message)
-					self.context_length += 1
+					thisConv.messages.append(message)
+					thisConv.context_length += 1
 
 			# Update the conversation's context string.
-			self.expand_context()
+			thisConv.expand_context()
 
 	#__/ End read_archive() instance method for class Conversation.
 
@@ -738,7 +743,7 @@ class Conversation:
 	# file, if it exists. NOTE: At present there's only one global persistent
 	# memory file shared across all conversations. This is not a good design!
 
-	def read_memory(self):
+	def read_memory(thisConv:Conversation):
 		"""Loads persistent memories."""
 
 			# We declare these globals so we can modify them.
@@ -748,7 +753,7 @@ class Conversation:
 		read_lines = False
 
 		# If the persistent memory file exists, read it.
-		if os.path.exists(self.mem_filename):
+		if os.path.exists(thisConv.mem_filename):
 
 			# NOTE: At present, we simply read the entire file as a single
 			# string and append it to the persistent data string and update
@@ -758,7 +763,7 @@ class Conversation:
 			# persistent data in a dictionary and access it more selectively.
 
 			# Open the persistent memory file.
-			with open(self.mem_filename, 'r') as f:
+			with open(thisConv.mem_filename, 'r') as f:
 				MEMORIES = ""
 				mem_string = ""
 			
@@ -778,11 +783,11 @@ class Conversation:
 			_initPersistentContext()
 
 			# Update the conversation's context string.
-			self.expand_context()
+			thisConv.expand_context()
 
 			# The below version was Copilot's idea.
 			# Open the persistent memory file.
-			#with open(self.mem_filename, 'r') as f:
+			#with open(thisConv.mem_filename, 'r') as f:
 			#	 # Read the file line by line.
 			#	 for line in f:
 			#		 # Split the line into the key and the value.
@@ -791,7 +796,7 @@ class Conversation:
 			#		 value = '='.join(parts[1:])
 			#
 			#		 # Add the key/value pair to the persistent memory dictionary.
-			#		 self.memory[key] = value
+			#		 thisConv.memory[key] = value
 
 	#__/ End read_memory() instance method for class Conversation.
 
@@ -799,7 +804,7 @@ class Conversation:
 	# This method adds a message to the AI's persistent memory file.
 	# It also updates the persistent context string.
 
-	def add_memory(self, new_memory:str) -> bool:
+	def add_memory(thisConv:Conversation, new_memory:str) -> bool:
 		"""Adds a new item to the AI's persistent memory."""
 
 		global MEMORIES
@@ -807,7 +812,7 @@ class Conversation:
 		global _anyMemories
 
 		if new_memory is None or new_memory == "" or new_memory == "\n":
-			self.report_error("/remember command needs a non-empty argument.")
+			thisConv.report_error("/remember command needs a non-empty argument.")
 			return False
 
 		# Make sure the new memory ends in a newline.
@@ -815,7 +820,7 @@ class Conversation:
 			new_memory += '\n'
 
 		if _anyMemories and ('\n' + new_memory) in MEMORIES:
-			self.report_error(f"Text [{new_memory[:-1]}] is already in memory.")
+			thisConv.report_error(f"Text [{new_memory[:-1]}] is already in memory.")
 			return False
 
 		if not _anyMemories:
@@ -831,15 +836,15 @@ class Conversation:
 		_initPersistentContext()
 
 		# Update the conversation's context string.
-		self.expand_context()
+		thisConv.expand_context()
 
 		# NOTE: We should really make the below atomic so that
 		# memories written from multiple threads don't get mixed.
 
 		# Also, append the new memory to the persistent memory file.
-		self.memory_file.write(new_memory)
+		thisConv.memory_file.write(new_memory)
 		# Flush the file to make sure it's written to disk.
-		self.memory_file.flush()
+		thisConv.memory_file.flush()
 
 		return True
 
@@ -850,14 +855,14 @@ class Conversation:
 	# It also updates the persistent context string. It returns true if the 
 	# memory was removed, false otherwise.
 
-	def remove_memory(self, text_to_remove:str) -> bool:
+	def remove_memory(thisConv:Conversation, text_to_remove:str) -> bool:
 		"""Remove a specified item from the AI's persistent memory."""
 
 		global MEMORIES
 		global _anyMemories
 
 		if text_to_remove == None or len(text_to_remove) == 0:
-			self.report_error("/forget command needs a non-empty argument.")
+			thisConv.report_error("/forget command needs a non-empty argument.")
 			return False
 
 		# Make sure the text to remove ends in a newline.
@@ -874,7 +879,7 @@ class Conversation:
 		# we need to report this as an error to both the AI and the user.
 		if text_to_remove not in '\n' + MEMORIES:
 
-			self.report_error(f"[{text_to_remove.rstrip()}] not found in persistent memory.")
+			thisConv.report_error(f"[{text_to_remove.rstrip()}] not found in persistent memory.")
 			return False	# Return false to indicate that the memory wasn't removed.
 			# This will tell the caller to report failure to the user.
 
@@ -893,7 +898,7 @@ class Conversation:
 		_initPersistentContext()
 
 		# Update the conversation's context string.
-		self.expand_context()
+		thisConv.expand_context()
 
 		# Also remove the memory from the persistent memory file.
 		# We'll use the following algorithm:
@@ -906,31 +911,31 @@ class Conversation:
 		#	(7) Flush the file to make sure it's written to disk.
 
 		# Close the "write" file descriptor.
-		self.memory_file.close()
+		thisConv.memory_file.close()
 
 		# Reopen it in "read" mode.
-		self.memory_file = open(self.mem_filename, 'r')
+		thisConv.memory_file = open(thisConv.mem_filename, 'r')
 
 		# Return the read position to the start of the file.
-		self.memory_file.seek(0)
+		thisConv.memory_file.seek(0)
 
 		# Read the entire file into a string.
-		mem_string = '\n' + self.memory_file.read()
+		mem_string = '\n' + thisConv.memory_file.read()
 
 		# Remove the text to remove from the string.
 		mem_string = mem_string.replace(text_to_remove, '\n')
 
 		# Close the file again and reopen it for writing.
-		self.memory_file.close()
+		thisConv.memory_file.close()
 
 		# Reopen it for writing.
-		self.memory_file = open(self.mem_filename, 'w')
+		thisConv.memory_file = open(thisConv.mem_filename, 'w')
 
 		# Write the string back to the file.
-		self.memory_file.write(mem_string[1:])
+		thisConv.memory_file.write(mem_string[1:])
 
 		# Flush the file to make sure it's written to disk.
-		self.memory_file.flush()
+		thisConv.memory_file.flush()
 
 		# Return true to indicate that the memory was removed.
 		return True
@@ -941,7 +946,7 @@ class Conversation:
 	# This method is called to expunge the oldest message from the conversation
 	# when the context string gets too long to fit in GPT-3's receptive field.
 
-	def expunge_oldest_message(self):
+	def expunge_oldest_message(thisConv:Conversation):
 		"""This method is called to expunge the oldest message from the conversation."""
 
 		# There's an important error case that we need to consider:
@@ -951,15 +956,15 @@ class Conversation:
 		# attempt to expunge the oldest message, we'll end up deleting
 		# the very message that the AI is in the middle of constructing.
 		# So, we can't do anything here except throw an exception.
-		if len(self.messages) <= 1:
+		if len(thisConv.messages) <= 1:
 			raise ConversationError("Can't expunge oldest message from conversation with only one message.")
 
 		# If we get here, we can safely pop the oldest message.
 
-		_logger.debug(f"Expunging oldest message from {len(self.messages)}-message conversation #{self.chat_id}.")
-		#print("Oldest message was:", self.messages[0])
-		self.messages.pop(0)
-		self.expand_context()	# Update the context string.
+		_logger.debug(f"Expunging oldest message from {len(thisConv.messages)}-message conversation #{thisConv.chat_id}.")
+		#print("Oldest message was:", thisConv.messages[0])
+		thisConv.messages.pop(0)
+		thisConv.expand_context()	# Update the context string.
 
 	#__/ End instance method conversation.expunge_oldest_message().
 
@@ -968,7 +973,7 @@ class Conversation:
 	# so that the user does not see error messages that might embarrass us.
 	# (Of course, the caller can always show the error to the user if desired.)
 
-	def report_error(self, errmsg):
+	def report_error(thisConv:Conversation, errmsg:str):
 
 		"""Adds an error report to the conversation memory so that the AI can
 			see it. Also logs the error to the application's main log file."""
@@ -980,28 +985,28 @@ class Conversation:
 		_logger.error(msg)	# Log the error.
 
 		# Add the error report to the conversation.
-		self.add_message(Message(SYS_NAME, msg))
+		thisConv.add_message(Message(SYS_NAME, msg))
 
 		_lastError = msg	# So higher-level callers can access it.
 
 	#__/ End report_error() instance method for class Conversation.
 
 
-	def add_message(self, message, finalize=True):
+	def add_message(thisConv:Conversation, message:Message, finalize=True):
 
 		"""Adds a message to the conversation. Also archives the message
 			unless finalize=False is specified."""
 
-		self.messages.append(message)
-		if len(self.messages) > self.context_length_max:
-			self.messages = self.messages[-self.context_length_max:]	# Keep the last N messages
-		self.context_length = len(self.messages)	# Update the context_length counter.
-		self.expand_context()	# Update the context string.
+		thisConv.messages.append(message)
+		if len(thisConv.messages) > thisConv.context_length_max:
+			thisConv.messages = thisConv.messages[-thisConv.context_length_max:]	# Keep the last N messages
+		thisConv.context_length = len(thisConv.messages)	# Update the context_length counter.
+		thisConv.expand_context()	# Update the context string.
 
 		# Unless this message isn't to be finalized yet, we'll also need to
 		# append the message to the conversation archive file.
 		if finalize:
-			self.finalize_message(message)
+			thisConv.finalize_message(message)
 
 	#__/ End add_message() instance method for class Conversation.
 
@@ -1010,7 +1015,7 @@ class Conversation:
 	# NOTE: This should only be called on the last message in the conversation.
 	# NOTE: Seems like this method should really be moved to the Message class.
 
-	def extend_message(self, message, extra_text):
+	def extend_message(thisConv:Conversation, message:Message, extra_text):
 		"""Extends a non-finalized message by adding some extra text to it."""
 
 		# First, make sure the message has not already been finalized.
@@ -1022,7 +1027,7 @@ class Conversation:
 		message.text += extra_text
 
 		# We also need to update the context string.
-		self.context_string += extra_text
+		thisConv.context_string += extra_text
 	#__/
 
 
@@ -1030,37 +1035,37 @@ class Conversation:
 	# (This is normally only done if the message is empty, since Telegram
 	# will not send an empty message anyway.)
 
-	def delete_last_message(self):
+	def delete_last_message(thisConv:Conversation):
 		"""Deletes the last message in a conversation; use it only if the
 			message is empty and hasn't been archived already."""
 
 		# Commented this out to ignore these warnings.
 		# First, make sure the message has not already been finalized.
-		#if self.messages[-1].archived:
+		#if thisConv.messages[-1].archived:
 		#	print("ERROR: Tried to delete an already-archived message.")
 		#	return
 
 		# Delete the last message.
-		self.messages.pop()
-		self.context_length -= 1
+		thisConv.messages.pop()
+		thisConv.context_length -= 1
 
 		# We also need to update the context string.
-		self.expand_context()	# Update the context string.
+		thisConv.expand_context()	# Update the context string.
 	#__/
 
 
-	def finalize_message(self, message):
+	def finalize_message(thisConv:Conversation, message:Message):
 		"""Finalize a message in the conversation (should be the last message)."""
 
 		if not hasattr(message,'archived') or not message.archived:
-			self.archive_message(message)
+			thisConv.archive_message(message)
 	#__/
 
 
-	def archive_message(self, message):
+	def archive_message(thisConv:Conversation, message:Message):
 		"""Commit a message to the conversation, and archive it."""
-		self.archive_file.write(message.serialize())
-		self.archive_file.flush()
+		thisConv.archive_file.write(message.serialize())
+		thisConv.archive_file.flush()
 		message.archived = True
 	#__/
 
@@ -1069,11 +1074,11 @@ class Conversation:
 	# However, it does not erase the archive file or clear the 
 	# persistent memory file.
 
-	def clear(self):
+	def clear(thisConv:Conversation):
 		"""Clear the entire conversational memory."""
-		self.messages = []
-		self.context_length = 0
-		self.expand_context()	# Update the context string.
+		thisConv.messages = []
+		thisConv.context_length = 0
+		thisConv.expand_context()	# Update the context string.
 	#__/
 
 
@@ -1082,13 +1087,13 @@ class Conversation:
 	# the bot from getting into a loop where it sends the same message over and 
 	# over too frequently.
 
-	def is_repeated_message(self, message):
+	def is_repeated_message(thisConv:Conversation, message:Message):
 		"""Check whether a message (with the same sender and text) is already 
 			included in the most recent <NOREPEAT_WINDOW_SIZE> messages of the 
 			conversation."""
 		# NOTE: In below, don't check against the last message in the conversation,
 		# because that one is the very (candidate) message that we're checking!!
-		for m in self.messages[-NOREPEAT_WINDOW_SIZE-1:-1]:
+		for m in thisConv.messages[-NOREPEAT_WINDOW_SIZE-1:-1]:
 			if m.sender == message.sender and m.text == message.text:
 				return True
 		return False
@@ -1097,14 +1102,14 @@ class Conversation:
 	# This method converts the persistent context and the list of messages
 	# into the format of a 'messages' list as expected by the GPT-3 chat API.
 
-	def get_chat_messages(self):
+	def get_chat_messages(thisConv:Conversation):
 
 		"""Convert the persistent context and the list of messages into the 
 			format of a 'messages' list as expected by the GPT-3 chat API."""
 		
 		chat_messages = []		# Initialize the list of chat messages.
 
-		botName = self.bot_name
+		botName = thisConv.bot_name
 
 		# The first message will be a system message showing the current time.
 
@@ -1133,7 +1138,7 @@ class Conversation:
 		# attribute of the chat message, and we'll use the .text attribute
 		# of the Message object as the 'content' attribute of the chat message.
 
-		for message in self.messages:
+		for message in thisConv.messages:
 
 			sender = message.sender
 
@@ -1168,7 +1173,7 @@ class Conversation:
 			"image in your response, put the command ‘/image <desc>’ as the " \
 			"first line of your response.)"
 
-		if self.chat_id < 0:	# Negative chat IDs correspond to group chats.
+		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
 			# Only give this instruction in group chats:
 			response_prompt += " However, if the user is not addressing you, " \
 							   "type '/pass' to remain silent."
@@ -1190,38 +1195,54 @@ class Conversation:
 			#	"possible. (However, if the user is not addressing you, type " \
 			#	"'/pass' to remain silent.)"
 				
-			# 'content': f"Respond as {self.bot_name}."
+			# 'content': f"Respond as {thisConv.bot_name}."
 			# # This is simple and seems to work pretty well.
 
-			#'content': f"Assistant, your role in this chat is '{self.bot_name}'; " \
+			#'content': f"Assistant, your role in this chat is '{thisConv.bot_name}'; " \
 			#	"enter your next message below.",
 			#	# This was my initial wording, but it seemed to cause some confusion.
 
-			#'content': f"{self.bot_name}, please enter your response below at " \
+			#'content': f"{thisConv.bot_name}, please enter your response below at " \
 			#	"the 'assistant' prompt:"
 			#	# The above wording was agreed upon by me & Turbo (model 'gpt-3.5-turbo').
 
 			# Trying this now:
-			#'content': f"Please now generate {self.bot_name}'s response, in the " \
+			#'content': f"Please now generate {thisConv.bot_name}'s response, in the " \
 			#	"format:\n" \
 			#	 r"%%%\n" \
 			#	 "Commentary as assistant:\n"
 			#	 "{assistant_commentary}\n"
 			#	 r"%%%\n" \
-			#	 f"{self.bot_name}'s response:\n"
+			#	 f"{thisConv.bot_name}'s response:\n"
 			#	 "{persona_response}\n"
 			#	 r"%%%\n"
 
 	# This is needed so we don't eventually run out of file descriptors
 	# after conversations are restarted repeatedly.
-	def __del__(self):
+	def __del__(thisConv:Conversation):
 		# Close our open files to recycle their file descriptors.
-		self.archive_file.close()
-		self.memory_file.close()
+		thisConv.archive_file.close()
+		thisConv.memory_file.close()
 	#__/ End destructor method for class Conversation.
 
 
 #__/ End Conversation class definition.
+
+
+# A filter that matches attempted user commands that aren't of any defined user command type.
+class UnknownCommandFilter(BaseFilter):
+
+	def __call__(self, update, *args, **kwargs) -> bool:
+		text = update.message.text
+		defined_commands = ['/start', '/help', '/remember', '/forget', '/reset', '/echo', '/greet']
+		
+		if text is None:
+			return False
+		if text.startswith('/') and text.split()[0] not in defined_commands:
+			return True
+		return False
+	#__/
+#__/
 
 
 #/==============================================================================
@@ -1303,7 +1324,7 @@ class Conversation:
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 # Now, let's define a function to handle the /start command.
-def handle_start(update, context):
+def handle_start(update:Update, context:Context) -> None:
 	# "Context," in this context, refers to the Telegram context object.
 	# (As opposed to, a context string for passing to GPT-3.)
 
@@ -1415,14 +1436,13 @@ def handle_start(update, context):
 		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for " \
 						  f"conversation {chat_id}; ignoring.")
-
-	return
+	#__/
 
 #__/ End handle_start() function definition.
 
 
 # Now, let's define a function to handle the /help command.
-def handle_help(update, context):
+def handle_help(update:Update, context:Context) -> None:
 	"""Display the help string when the command /help is issued."""
 
 	chat_id = update.message.chat.id
@@ -1439,11 +1459,11 @@ def handle_help(update, context):
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not _ensure_convo_loaded(update, context):
-		return False
+		return
 
 	if 'conversation' not in context.chat_data:
 		_logger.error(f"Can't add /help command to conversation {chat_id} because it's not loaded.")
-		return False
+		return
 
 	# Fetch the conversation object.
 	conversation = context.chat_data['conversation']
@@ -1460,19 +1480,19 @@ def handle_help(update, context):
 		update.message.reply_text(HELP_STRING)
 	except BadRequest or Unauthorized or ChatMigrated as e:
 		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-		return False
+		return
 
 	# Also record the help string in our conversation data structure.
 	who = BOT_NAME if customHelp else SYS_NAME
 	conversation.add_message(Message(who, HELP_STRING))
 
-	return True		# Finished processing this message.
+	# Finished processing this message.
 
 #__/ End '/help' user command handler.
 
 
 # Now, let's define a function to handle the /echo command.
-def handle_echo(update, context):
+def handle_echo(update:Update, context:Context) -> None:
 	"""Echo the user's message."""
 
 	chat_id = update.message.chat.id
@@ -1489,11 +1509,11 @@ def handle_echo(update, context):
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not _ensure_convo_loaded(update, context):
-		return False
+		return
 
 	if 'conversation' not in context.chat_data:
 		_logger.error(f"Can't add /echo command line to conversation {chat_id} because it's not loaded.")
-		return False
+		return
 
 	# Fetch the conversation object.
 	conversation = context.chat_data['conversation']
@@ -1519,17 +1539,16 @@ def handle_echo(update, context):
 		update.message.reply_text(responseText)
 	except BadRequest or Unauthorized or ChatMigrated as e:
 		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-		return False
+		return
 
 	# Also record the echo text in our conversation data structure.
 	conversation.add_message(Message(SYS_NAME, responseText))
 
-	return True
 #__/ End '/echo' user command handler.
 
 
 # Now, let's define a function to handle the /greet command.
-def handle_greet(update, context):
+def handle_greet(update:Update, context:Context) -> None:
 
 	"""Greet the user."""
 
@@ -1547,11 +1566,11 @@ def handle_greet(update, context):
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not _ensure_convo_loaded(update, context):
-		return False
+		return
 
 	if 'conversation' not in context.chat_data:
 		_logger.error(f"Can't add /greet command line to conversation {chat_id} because it's not loaded.")
-		return False
+		return
 
 	# Fetch the conversation object.
 	conversation = context.chat_data['conversation']
@@ -1571,18 +1590,16 @@ def handle_greet(update, context):
 		update.message.reply_text(GREETING_TEXT)
 	except BadRequest or Unauthorized or ChatMigrated as e:
 		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-		return False
+		return
 
 	# Also record the echo text in our conversation data structure.
 	conversation.add_message(Message(SYS_NAME, GREETING_TEXT))
-
-	return True
 
 #__/ End '/greet' user command handler.
 
 
 # Now, let's define a function to handle the /reset command.
-def handle_reset(update, context):
+def handle_reset(update:Update, context:Context) -> None:
 	"""Reset the conversation."""
 
 	chat_id = update.message.chat.id
@@ -1599,11 +1616,11 @@ def handle_reset(update, context):
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not _ensure_convo_loaded(update, context):
-		return False
+		return
 
 	if 'conversation' not in context.chat_data:
 		_logger.error(f"Can't reset conversation {chat_id} because it's not loaded.")
-		return False
+		return
 
 	# Fetch the conversation object.
 	conversation = context.chat_data['conversation']
@@ -1625,7 +1642,7 @@ def handle_reset(update, context):
 		update.message.reply_text(DIAG_MSG)
 	except BadRequest or Unauthorized or ChatMigrated as e:
 		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-		return False
+		return
 
 	# If that succeeded, show it to the AI also.
 	conversation.add_message(Message(SYS_NAME, DIAG_MSG))
@@ -1636,18 +1653,16 @@ def handle_reset(update, context):
 		update.message.reply_text(reset_message)
 	except BadRequest or Unauthorized or ChatMigrated as e:
 		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-		return False
+		return
 
 	# Also record the reset message in our conversation data structure.
 	conversation.add_message(Message(conversation.bot_name, reset_message))
-
-	return True
 
 #__/ End definition of /reset command handler function.
 
 
 # Now, let's define a function to handle the /remember command.
-def handle_remember(update, context):
+def handle_remember(update:Update, context:Context) -> None:
 
 	"""Add the given message as a new memory."""
 
@@ -1673,16 +1688,16 @@ def handle_remember(update, context):
 		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 			
-		return False	# Quit early
+		return 	# Quit early
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not _ensure_convo_loaded(update, context):
-		return False
+		return
 
 	# Retrieve the Conversation object from the Telegram context.
 	if not 'conversation' in context.chat_data:
 		_logger.error(f"Ignoring /remember command for conversation {chat_id} because conversation not loaded.")
-		return False
+		return
 
 	conversation = context.chat_data['conversation']
 
@@ -1703,7 +1718,7 @@ def handle_remember(update, context):
 
 		# Also record the error in our conversation data structure.
 		conversation.add_message(Message(SYS_NAME, errMsg))
-		return False
+		return
 
 	_logger.normal(f"User {user_name} entered a /remember command for chat {chat_id}.")
 
@@ -1725,12 +1740,12 @@ def handle_remember(update, context):
 			update.message.reply_text(diagMsg)
 		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-			return False
+			return
 			
 		# Add the diagnostic message to the conversation.
 		conversation.add_message(Message(SYS_NAME, diagMsg))
 		
-		return False
+		return
 
 	_logger.normal(f"{user_name} added memory: [{text.strip()}]")
 
@@ -1744,13 +1759,11 @@ def handle_remember(update, context):
 	# Also record the diagnostic message in our conversation data structure.
 	conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 
-	return True
-
 #__/ End definition of /remember command handler.
 
 
 # Now, let's define a function to handle the /forget command.
-def handle_forget(update, context):
+def handle_forget(update:Update, context:Context) -> None:
 	
 	"""Remove the given message from the AI's persistent memory."""
 	
@@ -1770,7 +1783,7 @@ def handle_forget(update, context):
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not _ensure_convo_loaded(update, context):
-		return False
+		return 
 
 	# Retrieve the Conversation object from the Telegram context.
 	if not 'conversation' in context.chat_data:
@@ -1795,7 +1808,7 @@ def handle_forget(update, context):
 
 		# Also record the error in our conversation data structure.
 		conversation.add_message(Message(SYS_NAME, errMsg))
-		return False
+		return
 
 	# Get the command's argument, which is the text to forget.
 	text = ' '.join(update.message.text.split(' ')[1:])
@@ -1836,10 +1849,11 @@ def handle_forget(update, context):
 			update.message.reply_text(diagMsg)
 		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
-			return False
+			return
 			
 		# Add the diagnostic message to the conversation.
 		conversation.add_message(Message(SYS_NAME, diagMsg))
+	#__/
 
 	# Copilot wrote the following amusing diagnostic code. But we don't really need it.
 	## Now, let's see if the AI has any memories left.
@@ -1849,8 +1863,6 @@ def handle_forget(update, context):
 	#	 update.message.reply_text(f"I remember these things:\n")
 	#	 for memory in conversation.memories:
 	#		 update.message.reply_text(f"\t{memory}\n")
-
-	return True
 
 #__/ End definition of /forget command handler.
 
@@ -1870,7 +1882,7 @@ def handle_forget(update, context):
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-def handle_audio(update, context):
+def handle_audio(update:Update, context:Context) -> None:
 	"""Handle an audio message from the user."""
 
 	user_name = _get_user_name(update.message.from_user)
@@ -1880,7 +1892,7 @@ def handle_audio(update, context):
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not _ensure_convo_loaded(update, context):
-		return False
+		return
 
 	# Get our Conversation object.
 	conversation = context.chat_data['conversation']
@@ -1894,7 +1906,7 @@ def handle_audio(update, context):
 		audio = update.message.voice
 	else:
 		_logger.error("A message passed the audio/voice filter, but did not contain either.")
-		return False	# So dispatcher will try other filters.
+		return	# Dispatcher will still try other filters.
 
 	# Get the file_id and download the file
 	file_id = audio.file_id
@@ -1951,8 +1963,7 @@ def handle_audio(update, context):
 	# Store the text in the audio_text attribute of the message object for later reference.
 	context.user_data['audio_text'] = text
 
-	return False	# Do this so we continue processing message handlers.
-		# (We still need to do the normal handle_message() handler!)
+	# NOTE: After returning, the normal message handler should still get called.
 #__/
 
 
@@ -1974,13 +1985,13 @@ def handle_audio(update, context):
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 # Now, let's define a function to handle the rest of the messages.
-def handle_message(update, context):
+def handle_message(update:Update, context:Context) -> None:
 		# Note that <context>, in this context, denotes the Telegram context object.
 	"""Process a message."""
 
 	if update.message is None:
 		_logger.error("Null message received from unknown user; ignoring...")
-		return False
+		return
 
 	user_name = _get_user_name(update.message.from_user)
 
@@ -1996,7 +2007,7 @@ def handle_message(update, context):
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not _ensure_convo_loaded(update, context):
-		return False
+		return
 
 	# If the message contained audio or voice, then represent it using an
 	# appropriate text format.
@@ -2022,7 +2033,7 @@ def handle_message(update, context):
 		_logger.normal(f"Added to group chat {chat_id} by user {user_name}. Auto-starting.")
 		update.message.text = '/start'
 		handle_start(update,context)
-		return True
+		return
 
 	if update.message.text is None:
 		update.message.text = "[null message]"
@@ -2046,7 +2057,7 @@ def handle_message(update, context):
 
 		# Also record the error in our conversation data structure.
 		conversation.add_message(Message(SYS_NAME, errMsg))
-		return False
+		return
 
 	# If the currently selected engine is a chat engine, we'll dispatch the rest
 	# of the message processing to a different function that's specialized to use 
@@ -2153,12 +2164,12 @@ def handle_message(update, context):
 
 				except BadRequest or Unauthorized or ChatMigrated as e:
 					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
-					return False	# No point in the below.
+					return	# No point in the below.
 				
 				# This allows the AI to see this diagnostic message too.
 				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 
-				return False	# That's all she wrote.
+				return	# That's all she wrote.
 
 		# Unless the total response length has just maxed out the available space,
 		# if we get here, then we have a new chunk of response from GPT-3 that we
@@ -2219,7 +2230,7 @@ def handle_message(update, context):
 					# visible to the AI, only to the user.
 				except BadRequest or Unauthorized or ChatMigrated as e:
 					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
-					return False
+					return
 
 				continue	# Loop back and get another response extending the existing one.
 
@@ -2260,7 +2271,7 @@ def handle_message(update, context):
 			
 				# Note that this message doesn't get added to the conversation, so it won't be
 				# visible to the AI, only to the user.
-			return True		# This means the bot is simply not responding to this particular message.
+			return		# This means the bot is simply not responding to this particular message.
 
 		# Update the message object, and the context.
 		response_message.text = response_text
@@ -2297,7 +2308,7 @@ def handle_message(update, context):
 			#except BadRequest or Unauthorized or ChatMigrated as e:
 			#	_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; ignoring.")
 			#
-			#return True		# This means the bot is simply not responding to the message
+			#return		# This means the bot is simply not responding to the message
 
 		# If we get here, then we have a non-empty message that's also not a repeat.
 		# It's finally OK at this point to archive the message and send it to the user.
@@ -2313,7 +2324,7 @@ def handle_message(update, context):
 	# already-archived message that we can go ahead and send to the user.
 	# We also check to see if the message is a command line.
 
-	return process_response(update, context, response_message)	   # Defined just below.
+	process_response(update, context, response_message)	   # Defined later.
 
 #__/ End of handle_message() function definition.
 
@@ -2322,7 +2333,7 @@ def handle_message(update, context):
 	#| 3.4. Update handler group 3 -- Unknown command handlers.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-def handle_unknown_command(update, context) -> None:
+def handle_unknown_command(update:Update, context:Context) -> None:
 	"""Handle an attempted user command that doesn't match any of the known
 		command types. We do this by just treating the command like a normal
 		text message and letting the AI decide how to handle it."""
@@ -2337,7 +2348,7 @@ def handle_unknown_command(update, context) -> None:
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 # Define an error handler for exceptions caught by the dispatcher.
-def handle_error(update, context):
+def handle_error(update:Update, context:Context) -> None:
 	"""Log errors caused by updates."""
 	_logger.warning('Update "%s" caused error "%s"', update, context.error)
 #__/
@@ -2358,7 +2369,7 @@ def handle_error(update, context):
 	#|	4.1. Misc. major/public functions.			[python module code section]
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-def process_chat_message(update, context):
+def process_chat_message(update:Update, context:Context) -> None:
 
 	"""We dispatch to this function to process messages from the user
 		if our selected engine is for OpenAI's chat endpoint."""
@@ -2538,12 +2549,12 @@ def process_chat_message(update, context):
 
 			except BadRequest or Unauthorized or ChatMigrated as e:
 				_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
-				return False	# No point in the below.
+				return	# No point in the below.
 				
 			# This allows the AI to see this diagnostic message too.
 			conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 
-			return False	# That's all she wrote.
+			return	# That's all she wrote.
 
 		# Stuff from Copilot:
 		#
@@ -2569,7 +2580,7 @@ def process_chat_message(update, context):
 			
 			_report_error(conversation, update.message, f"Exception while getting response: {type(e).__name__} ({e})")
 
-			return False
+			return
 
 	# If we get here, we've successfully gotten a response from the API.
 
@@ -2599,7 +2610,7 @@ def process_chat_message(update, context):
 		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; ignoring.")
 			
-		return True		# This means the bot is simply not responding to this particular message.
+		return		# This means the bot is simply not responding to this particular message.
 	
 	# Update the message object, and the context.
 	response_message.text = response_text
@@ -2625,7 +2636,7 @@ def process_chat_message(update, context):
 		#except BadRequest or Unauthorized or ChatMigrated as e:
 		#	_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; ignoring.")
 		
-		return True		# This means the bot is simply not responding to the message
+		return		# This means the bot is simply not responding to the message
 
 	# If we get here, then we have a non-empty message that's also not a repeat.
 	# It's finally OK at this point to archive the message and send it to the user.
@@ -2637,12 +2648,12 @@ def process_chat_message(update, context):
 	# already-archived message that we can go ahead and send to the user.
 	# We also check to see if the message is a command line.
 
-	return process_response(update, context, response_message)	   # Defined above.
+	process_response(update, context, response_message)	   # Defined below.
 
 #__/ End of process_chat_message() function definition.
 
 
-def process_response(update, context, response_message):
+def process_response(update:Update, context:Context, response_message:str) -> None:
 
 	chat_id = update.message.chat.id
 	user_name = _get_user_name(update.message.from_user)
@@ -2652,7 +2663,7 @@ def process_response(update, context, response_message):
 	# First, check to see if the AI typed the '/pass' command, in which case we do nothing.
 	if response_text.lower() == '/pass':
 		_logger.info(f"NOTE: The AI is passing its turn in conversation {chat_id}.")
-		return True
+		return
 
 	# Temporary code to suppress usage.
 	#N = 5
@@ -2707,12 +2718,12 @@ def process_response(update, context, response_message):
 					update.message.reply_text(DIAG_MSG)
 				except BadRequest or Unauthorized or ChatMigrated as e:
 					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
-					return False
+					return
 
 				# Record the diagnostic for the AI also.
 				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 				
-				return False
+				return
 
 			# Tell the conversation object to add the given message to the AI's persistent memory.
 			if not conversation.add_memory(command_args):
@@ -2730,12 +2741,12 @@ def process_response(update, context, response_message):
 					update.message.reply_text(diagMsg)
 				except BadRequest or Unauthorized or ChatMigrated as e:
 					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
-					return False
+					return
 			
 				# Add the diagnostic message to the conversation.
 				conversation.add_message(Message(SYS_NAME, diagMsg))
 		
-				return False
+				return
 
 			_logger.info(f"The AI added [{command_args}] to persistent memory in conversation {chat_id}.")
 
@@ -2745,12 +2756,12 @@ def process_response(update, context, response_message):
 				update.message.reply_text(DIAG_MSG)
 			except BadRequest or Unauthorized or ChatMigrated as e:
 				_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
-				return False
+				return
 
 			# Record the diagnostic for the AI also.
 			conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 
-			return True		# Processed AI's /remember command successfully.
+			return		# Processed AI's /remember command successfully.
 				
 		# Check to see if the AI typed the '/forget' command.
 		elif command_name == 'forget':
@@ -2763,12 +2774,12 @@ def process_response(update, context, response_message):
 					update.message.reply_text(DIAG_MSG)
 				except BadRequest or Unauthorized or ChatMigrated as e:
 					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
-					return False
+					return
 
 				# Record the diagnostic for the AI also.
 				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 				
-				return False
+				return
 
 			# Tell the conversation object to remove the given message from the AI's persistent memory.
 			# The return value is True if the message was found and removed, and False if it wasn't.
@@ -2783,12 +2794,12 @@ def process_response(update, context, response_message):
 					update.message.reply_text(DIAG_MSG)
 				except BadRequest or Unauthorized or ChatMigrated as e:
 					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
-					return False
+					return
 			
 				# Record the diagnostic for the AI also.
 				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 				
-				return True	# Processed AI's /forget command successfully.
+				return	# Processed AI's /forget command successfully.
 
 			else:
 				# Log this at ERROR level.
@@ -2800,12 +2811,12 @@ def process_response(update, context, response_message):
 					update.message.reply_text(DIAG_MSG)
 				except BadRequest or Unauthorized or ChatMigrated as e:
 					_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
-					return False
+					return
 
 				# Record the diagnostic for the AI also.
 				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 				
-				return False
+				return
 
 		elif command_name == 'block':
 			# Adds the current user to the block list.
@@ -2823,12 +2834,12 @@ def process_response(update, context, response_message):
 				update.message.reply_text(DIAG_MSG)
 			except BadRequest or Unauthorized or ChatMigrated as e:
 				_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
-				return False
+				return
 
 			# Record the diagnostic for the AI also.
 			conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 				
-			return True		# Processed AI's /block command successfully.
+			return		# Processed AI's /block command successfully.
 
 		elif command_name == 'image':
 
@@ -2843,7 +2854,7 @@ def process_response(update, context, response_message):
 					return
 				# Record the diagnostic for the AI also.
 				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
-				return False
+				return
 
 			# Generate and send an image described by the /image command argument string.
 			_logger.normal(f"Generating an image with description [{command_args}] for user '{user_name}' in conversation {chat_id}.")
@@ -2853,7 +2864,7 @@ def process_response(update, context, response_message):
 			if remaining_text != '':
 				send_response(update, context, remaining_text)
 
-			return True		# Processed AI's /image command successfully.
+			return		# Processed AI's /image command successfully.
 
 		else:
 			# This is a command type that we don't recognize.
@@ -2864,12 +2875,12 @@ def process_response(update, context, response_message):
 				update.message.reply_text(DIAG_MSG)
 			except BadRequest or Unauthorized or ChatMigrated as e:
 				_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; aborting.")
-				return False
+				return
 
 			# Record the diagnostic for the AI also.
 			conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 				
-			return False
+			return
 
 	else: # Response was not a command. Treat it normally.
 
@@ -2885,14 +2896,14 @@ def process_response(update, context, response_message):
 			update.message.reply_text("[If you want me to continue my response, type '/continue'.]")
 		except BadRequest or Unauthorized or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} exception from Telegram ({e}) for conversation {chat_id}; ignoring.")
-			return False
+			return
 
-	return True		# Processed AI's response successfully.
+	return		# Processed AI's response successfully.
 
 #__/ End of process_response() function definition.
 
 
-def send_image(update, context, desc, save_copy=True):
+def send_image(update:Update, context:Context, desc:str, save_copy=True) -> None:
 	"""Generates an image from the given description and sends it to the user.
 		Also archives a copy on the server unless save_copy=False is specified."""
 
@@ -2945,12 +2956,11 @@ def send_image(update, context, desc, save_copy=True):
 	except BadRequest or Unauthorized or ChatMigrated as e:
 		_logger.error(f"Got a {type(e).__name__} exception from Telegram "
 					  "({e}) for conversation {chat_id}; aborting.")
-		return
 	#__/
 #__/
 
 
-def send_response(update, context, response_text):
+def send_response(update:Update, context:Context, response_text:str) -> None:
 	
 	chat_id = update.message.chat.id
 
@@ -2992,7 +3002,7 @@ def send_response(update, context, response_text):
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 # The following function will get the current date/time as a string, including the timezone.
-def timeString():
+def timeString() -> str:
 
 	"""Returns a nicely-formatted string representing the current date, time,
 		and timezone."""
@@ -3020,7 +3030,7 @@ def timeString():
 	#|	4.2. Misc. minor/private functions.			[python module code section]
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-def _blockUser(user):
+def _blockUser(user:str) -> None:
 	"""Blocks the given user from accessing the bot."""
 	
 	ai_datadir = AI_DATADIR
@@ -3101,7 +3111,7 @@ def _check_access(user_name, prioritize_bcl=True) -> bool:
 #__/ End definition of private function _check_access().
 
 
-def _ensure_convo_loaded(update, context) -> bool:
+def _ensure_convo_loaded(update:Update, context:Context) -> bool:
 
 	"""Helper function to ensure the conversation data is loaded,
 		and auto-restart the conversation if isn't."""
@@ -3138,7 +3148,7 @@ def _ensure_convo_loaded(update, context) -> bool:
 
 
 # This function, given a Telegram user object, returns a string that identifies the user.
-def _get_user_name(user):
+def _get_user_name(user) -> str:
 
 	"""Return a string that identifies the given Telegram user."""
 
@@ -3184,7 +3194,7 @@ def _get_user_name(user):
 	# PERSISTENT_DATA string changes, which will happen when we read the
 	# AI's persistent memory file, or when a '/remember' command is issued.
 	
-def _initPersistentContext():
+def _initPersistentContext() -> None:
 
 	global PERSISTENT_DATA, PERSISTENT_CONTEXT	# So we can modify these.
 
@@ -3211,7 +3221,7 @@ def _initPersistentContext():
 		# w. additional memories that are specific to an individual conversation
 		# and/or user.
 
-def _initPersistentData():
+def _initPersistentData() -> None:
 	"""Initialize the persistent data string (including memories, if any)."""
 
 	global PERSISTENT_DATA
@@ -3238,7 +3248,7 @@ def _initPersistentData():
 #__/ End definition of _initPersistentData() function.
 
 	
-def _isBlocked(user:str):
+def _isBlocked(user:str) -> bool:
 	"""Return True if user is on blacklist, or if there
 		is a whitelist and the user is not on it."""
 	
@@ -3287,7 +3297,7 @@ def _isBlocked(user:str):
 
 def _report_error(convo:Conversation, telegramMessage,
 				 errMsg:str, logIt:bool=True,
-				 showAI:bool=True, showUser:bool=True):
+				 showAI:bool=True, showUser:bool=True) -> None:
 
 	"""Report a given error response to a Telegram message. Flags
 		<logIt>, <showAI>, <showUser> control where the error is
@@ -3725,20 +3735,6 @@ dispatcher.add_handler(MessageHandler((Filters.text|Filters.audio|Filters.voice)
 
 # In case any commands make it this far, we'll process them like normal
 # messages (i.e., let the AI decide how to respond).
-
-class UnknownCommandFilter(BaseFilter):
-
-	def __call__(self, update, *args, **kwargs) -> bool:
-		text = update.message.text
-		defined_commands = ['/start', '/help', '/remember', '/forget', '/reset', '/echo', '/greet']
-		
-		if text is None:
-			return False
-		if text.startswith('/') and text.split()[0] not in defined_commands:
-			return True
-		return False
-	#__/
-#__/
 
 # Move to global objects.
 unknown_command_filter = UnknownCommandFilter()
