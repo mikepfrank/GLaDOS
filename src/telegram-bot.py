@@ -3191,7 +3191,7 @@ async def _ensure_convo_loaded(update:Update, context:Context) -> bool:
 
 	if not 'conversation' in context.chat_data:
 
-		_logger.normal(f"User {user_name} sent a message in an uninitialized conversation {chat_id}.")
+		_logger.normal(f"\nUser {user_name} sent a message in an uninitialized conversation {chat_id}.")
 		_logger.normal(f"\tAutomatically starting (or restarting) conversation {chat_id}.")
 
 		DIAG_MSG = "[DIAGNOSTIC: Either this is a new chat, or the bot server was rebooted. Auto-starting conversation.]"
