@@ -473,6 +473,8 @@ def _is_chat(engine_name):
 
 # Expose _is_chat() as a public function.
 def isChatEngine(engineId:str):
+	"""Given an engine name string, return a Boolean value which is
+		True if and only if the engine uses the ChatCompletion API."""
 	return _is_chat(engineId)
 
 # Given an engine name, return the encoding attribute value.
@@ -1349,13 +1351,7 @@ class Completion:
 				'stop' - The completion finished because the engine
 							generated a stop sequence.
 		"""
-		# Really we should override this method in the subclass,
-		# but this way should work for now.
-		if hasattr(self, 'complStruct'):
-			cs = self.complStruct
-		elif hasattr(self, 'chatComplStruct'):
-			cs = self.chatComplStruct
-		return cs['choices'][0]['finish_reason']
+		return self.complStruct['choices'][0]['finish_reason']
 
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2020,15 +2016,16 @@ class ChatCompletion(Completion):
 
 
 	@property
+	def firstChoice(thisChatCompletion:ChatCompletion):
+		"""Returns the first choice dict of this chat completion."""
+		return thisChatCompletion.chatComplStruct['choices'][0]
+
+	@property
 	def message(thisChatCompletion:ChatCompletion):
 
 		"""Returns the result message dict of this chat completion."""
 
-		#msg = thisChatCompletion._msgFromGen()
-		#return msg
-
-		return thisChatCompletion.chatComplStruct \
-				['choices'][0]['message']
+		return thisChatCompletion.firstChoice['message']
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| chatCompletion.text						  [public instance property]
@@ -2050,6 +2047,10 @@ class ChatCompletion(Completion):
 		# Note the following code differs from the code in the Completion class.
 		return thisChatCompletion.message['content']
 
+	@property
+	def finishReason(thisChatCompletion:ChatCompletion):
+		"""Returns the value of the finish_reason field of the result."""
+		return thisChatCompletion.firstChoice['finish_reason']
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| chatCompletion.nTokens					  [public instance property]
@@ -3461,7 +3462,7 @@ def _loadStats():
 			newDay = True
 
 			_logger.info(f"Today's date is {today}, but the last-modified date of the API usage statistics file {statsPath} is {lastModDate}.")
-			_logger.normal("Starting a new day!")
+			_logger.normal("Stats file loader: Starting a new day!")
 
 			# Construct the name of the archive file.
 			archivePath = _statsPathname(prefix = str(lastModDate))
@@ -3470,7 +3471,7 @@ def _loadStats():
 			# Rename the old file to the archive file.
 			try:
 				rename(statsPath, archivePath)
-				_logger.normal(f"NOTE: Archived old API usage statistics JSON file {statsPath} to {archivePath}.")
+				_logger.normal(f"NOTE: Archived old API usage statistics data file {statsPath} to {archivePath}.")
 			except:
 				_logger.warn(f"Couldn't rename {statsPath} to {archivePath}.")
 
@@ -3579,7 +3580,7 @@ def _displayStats(doWrite:bool=True):
 			if lastMod and lastMod != today:
 		
 				_logger.info(f"Today's date is {today}, but the last-modified date of the API usage statistics file {_textPath()} is {lastMod}.")
-				_logger.normal("Starting a new day!")
+				_logger.normal("Stats display: Starting a new day!")
 				
 				oldPath = _textPath()
 				newPath = path.join(_aiPath, 'stats', f"api-stats-{lastMod}.txt")
