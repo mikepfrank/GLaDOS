@@ -1349,7 +1349,13 @@ class Completion:
 				'stop' - The completion finished because the engine
 							generated a stop sequence.
 		"""
-		return self.complStruct['choices'][0]['finish_reason']
+		# Really we should override this method in the subclass,
+		# but this way should work for now.
+		if hasattr(self, 'complStruct'):
+			cs = self.complStruct
+		elif hasattr(self, 'chatComplStruct'):
+			cs = self.chatComplStruct
+		return cs['choices'][0]['finish_reason']
 
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2208,7 +2214,7 @@ class ChatCompletion(Completion):
 		if minRepWin is None:		# Just in case caller explicitly sets this to None,
 			minRepWin = DEF_TOKENS	# revert back to the default of 100 tokens.
 
-		_logger.debug(f"In ._createChatComplStruct(), minRepWin={minRepWin}.")
+		#_logger.debug(f"In ._createChatComplStruct(), minRepWin={minRepWin}.")
 
 		# If the core is not set, we can't do anything.
 		if chatCompl.chatCore == None:
@@ -2223,7 +2229,7 @@ class ChatCompletion(Completion):
 
 		estInputLen = chatCompl._estimateInputLen(apiArgs)
 
-		_logger.debug(f"In ._createChatComplStruct(), estInputLen={estInputLen}.")
+		#_logger.debug(f"In ._createChatComplStruct(), estInputLen={estInputLen}.")
 
 			# Retrieve the engine's receptive field size; this is the maximum number
 			# of tokens that can be accommodated in the query + response together.
@@ -2248,7 +2254,7 @@ class ChatCompletion(Completion):
 
 			# UPDATE: ChatGPT-3.5 can indeed handle 4,097, it seems.
 
-		_logger.debug(f"In ._createChatComplStruct(), fieldSize={fieldSize}.")
+		#_logger.debug(f"In ._createChatComplStruct(), fieldSize={fieldSize}.")
 
 
 		# Get a numeric equivalent for 'max_tokens'.
@@ -2257,7 +2263,7 @@ class ChatCompletion(Completion):
 		else:
 			maxToks = apiArgs['max_tokens']
 
-		_logger.debug(f"In ._createChatComplStruct(), maxToks={maxToks}.")
+		#_logger.debug(f"In ._createChatComplStruct(), maxToks={maxToks}.")
 
 
 			# Check to make sure that input+result window is not greater than
@@ -2270,7 +2276,7 @@ class ChatCompletion(Completion):
 				# See how much space there is right now for our query result.
 			availSpace = fieldSize - estInputLen
 
-			_logger.debug(f"In ._createChatComplStruct(), availSpace={availSpace}.")
+			#_logger.debug(f"In ._createChatComplStruct(), availSpace={availSpace}.")
 
 				# If there isn't enough space left even for our minimum requested
 				# reply window size, then we need to raise an exception, because 
@@ -2282,7 +2288,7 @@ class ChatCompletion(Completion):
 					# Calculate the effective maximum prompt length, in tokens.
 				effMax = fieldSize - minRepWin
 
-				_logger.debug(f"In ._createChatComplStruct(), effMax={effMax}.")
+				#_logger.debug(f"In ._createChatComplStruct(), effMax={effMax}.")
 
 				_logger.debug("[GPT chat API] Prompt length of "
 							  f"{estInputLen} exceeds our effective "
@@ -2300,7 +2306,7 @@ class ChatCompletion(Completion):
 			origMax = maxToks	# Save the original value.
 			apiArgs['max_tokens'] = maxToks = fieldSize - estInputLen
 
-			_logger.debug(f"In ._createChatComplStruct(), maxToks={maxToks}.")
+			#_logger.debug(f"In ._createChatComplStruct(), maxToks={maxToks}.")
 
 			_logger.warn(f"[GPT-3 chat API] Trimmed max_tokens window from {origMax} to {maxToks}.")
 
