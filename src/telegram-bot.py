@@ -3537,6 +3537,8 @@ async def _report_error(convo:Conversation, telegramMessage,
 	# We're temporarily trying a different delimiter that's less likely to appear in message text:
 MESSAGE_DELIMITER = chr(ascii.RS)	# (Gladys agreed to try this.)
 	# A control character.	(ASCII RS = 0x1E, record separator.)
+#MESSAGE_DELIMITER = chr(ascii.ETX)	# End-of-text control character.
+#MESSAGE_DELIMITER = chr(ascii.ETB)	# End-of-transmission-block control character.
 
 	# This is the size, in messages, of the window at the end of the conversation 
 	# within which we'll exclude messages in that region from being repeated by the AI.
