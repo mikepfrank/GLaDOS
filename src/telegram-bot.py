@@ -643,7 +643,7 @@ class Conversation:
 			Telegram chat (identified by an integer ID)."""
 
 		# Print diagnostic information to console (& log file).
-		_logger.normal(f"Creating conversation object for chat_id: {chat_id}")
+		_logger.normal(f"\tCreating conversation object for chat_id: {chat_id}")
 
 		newConv.bot_name = BOT_NAME	# The name of the bot. ('Gladys', 'Aria', etc.)
 		newConv.chat_id = chat_id		# Remember the chat ID associated with this convo.
@@ -1442,7 +1442,6 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 						"The AI will identify you in this conversation by your " \
 						f"{which_name}, {user_name}."
 
-
 		#warning_msg = f"[SYSTEM NOTIFICATION: Your first name \"{update.message.from_user.first_name}\"" \
 		#	"contains unsupported characters (or is too long). The AI only supports names with <=64 alphanumeric " \
 		#	"characters (a-z, 0-9), dashes (-) or underscores (_). For purposes of this conversation, "   \
@@ -1554,8 +1553,8 @@ async def handle_echo(update:Update, context:Context) -> None:
 
 	_logger.normal(f"\nUser {user_name} entered an /echo command for chat {chat_id}.")
 
-	if len(cmdLine) > 6:
-		textToEcho = cmdLine[6:]
+	if len(cmdLine) > 6:	# Anything after '/', 'e', 'c', 'h', 'o', ' '?
+		textToEcho = cmdLine[6:]	# Grab rest of line.
 	else:
 		_logger.error("The '/echo' command requires a non-empty argument.")
 		errMsg = f"ERROR: The '/echo' command requires an argument. (Usage: /echo <text to echo>)"
@@ -1753,7 +1752,8 @@ async def handle_remember(update:Update, context:Context) -> None:
 
 	# Check whether the user is in our access list.
 	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
+		_logger.normal(f"User {user_name} tried to access chat {chat_id}, "
+			"but is not in the access list. Denying access.")
 
 		#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
 		errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
@@ -1766,6 +1766,7 @@ async def handle_remember(update:Update, context:Context) -> None:
 		# Also record the error in our conversation data structure.
 		conversation.add_message(Message(SYS_NAME, errMsg))
 		return
+	#__/
 
 	_logger.normal(f"\nUser {user_name} entered a /remember command for chat {chat_id}.")
 
@@ -2592,7 +2593,10 @@ async def process_chat_message(update:Update, context:Context) -> None:
 					# overrides whatever api.Messages object is being maintained 
 					# in the GPT3ChatCore object.
 
-				minRepWin=minReplyWinToks	# Min. reply window size in tokens.
+				user = str(user_id),		# Send the user's unique ID for
+					# traceability in the event of severe content violations.
+
+				minRepWin = minReplyWinToks	# Min. reply window size in tokens.
 					# This parameter gets passed through to the ChatCompletion()
 					# initializer and thence to ChatCompletion._createComplStruct(),
 					# which does the actual work of retrieving the raw completion
@@ -3296,7 +3300,7 @@ async def _ensure_convo_loaded(update:Update, context:Context) -> bool:
 
 	if not 'conversation' in context.chat_data:
 
-		_logger.normal(f"User {user_name} sent a message in an uninitialized conversation {chat_id}.")
+		_logger.normal(f"\nUser {user_name} sent a message in an uninitialized conversation {chat_id}.")
 		_logger.normal(f"\tAutomatically starting (or restarting) conversation {chat_id}.")
 
 		DIAG_MSG = "[DIAGNOSTIC: Either this is a new chat, or the bot server was rebooted. Auto-starting conversation.]"
@@ -3862,6 +3866,7 @@ app = ApplicationBuilder().token(BOT_TOKEN).build()
 # Add an error handler to catch the Unauthorized/Forbidden exception & other errors that may occur.
 #dispatcher.add_error_handler(handle_error)
 app.add_error_handler(handle_error)
+
 
 #====================================================================
 # HANDLER GROUPS:
