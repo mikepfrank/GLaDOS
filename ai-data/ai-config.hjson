@@ -34,7 +34,6 @@
 #|              defaults to the 'ai-data/' subdirectory of the working
 #|              directory from which the GLaDOS server is run.
 #|
-#|
 #|          AI_CONFIG_FILENAME -
 #|
 #|              The default value for this is just ai-config.hjson, like
