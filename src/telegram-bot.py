@@ -1364,7 +1364,7 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 	which_name = _which_name	# Global set by _get_user_name() call.
 
 	# Print diagnostic information.
-	_logger.normal(f"User {user_name} started conversation {chat_id}.")
+	_logger.normal(f"\nUser {user_name} started conversation {chat_id}.")
 
 	# Create a new conversation object and link it from the Telegram context object.
 	# NOTE: It needs to go in the context.chat_data dictionary, because that way it
@@ -2433,7 +2433,7 @@ async def handle_unknown_command(update:Update, context:Context) -> None:
 # Define an error handler for exceptions caught by the dispatcher.
 async def handle_error(update:Update, context:Context) -> None:
 	"""Log errors caused by updates."""
-	_logger.warning('Update "%s" caused error "%s"', update, context.error)
+	_logger.warning('Update [\n%s\n] caused error "%s"', pformat(update), context.error)
 #__/
 
 
