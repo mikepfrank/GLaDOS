@@ -1249,7 +1249,7 @@ class UnknownCommandFilter(filters.BaseFilter):
 		(message, edited) = _get_update_msg(update)
 		
 		text = message.text
-		defined_commands = ['/start', '/help', '/remember', '/forget', '/reset', '/echo', '/greet']
+		defined_commands = ['/start', '/help', '/image', '/remember', '/forget', '/reset', '/echo', '/greet']
 		
 		if text is None:
 			return False
@@ -1516,6 +1516,73 @@ async def handle_help(update:Update, context:Context) -> None:
 	# Finished processing this message.
 
 #__/ End '/help' user command handler.
+
+
+async def handle_image(update:Update, context:Context) -> None:
+	"""Generate an image with a given description."""
+
+	# Get the message, or edited message from the update.
+	(message, edited) = _get_update_msg(update)
+
+	# Get the ID of the present chat.
+	chat_id = message.chat.id
+
+	# Make sure the thread component is set to this application (for logging).
+	logmaster.setComponent(_appName)
+
+	# Assume we're in a thread associated with a conversation.
+	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
+	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
+
+	# Get user name to use in message records.
+	user_name = _get_user_name(message.from_user)
+
+	# Attempt to ensure the conversation is loaded; if we failed, bail.
+	if not await _ensure_convo_loaded(update, context):
+		return
+
+	if 'conversation' not in context.chat_data:
+		_logger.error(f"Can't add /image command to conversation {chat_id} because it's not loaded.")
+		return
+
+	# Fetch the conversation object.
+	conversation = context.chat_data['conversation']
+
+	# Add the /help command itself to the conversation archive.
+	conversation.add_message(Message(user_name, message.text))
+
+	_logger.normal(f"\nUser {user_name} entered an /image command for chat {chat_id}.")
+
+	# Get just the first line of the message as the actual /image command line.
+	cmdLine = message.text.split('\n')[0]
+
+	if len(cmdLine) > 7:		# Anything after '/', 'i', 'm', 'a', 'g', 'e', ' '?
+		imageDesc = cmdLine[7:]	# Rest of line after '/image ' 
+
+		# Log diagnostic information.
+		_logger.normal("\tGenerating image with description "
+					   f"[{imageDesc}] for user '{user_name}' in "
+					   f"conversation {chat_id}.")
+
+		await send_image(update, context, imageDesc)
+
+		# Make a note in conversation archive to indicate that the image was sent.
+		conversation.add_message(Message(SYS_NAME, f'[Generated image "{imageDesc}"]'))
+
+	else:
+		_logger.error("The '/image' command requires a non-empty argument.")
+		errMsg = f"ERROR: The '/image' command requires an argument. (Usage: /image <description>)"
+		try:
+			await message.reply_text(f"[SYSTEM {errMsg}]")
+		except BadRequest or Forbidden or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
+
+		# Also record the error in our conversation data structure.
+		conversation.add_message(Message(SYS_NAME, errMsg))
+		return
+
+	# Finished processing this message.
+#__/
 
 
 # Now, let's define a function to handle the /echo command.
@@ -2091,7 +2158,7 @@ async def handle_message(update:Update, context:Context) -> None:
 	# If the message was an edited version of an earlier message,
 	# make a note of that.
 	if edited:
-		_logger.normal(f"User {user_name} edited an earlier message in "
+		_logger.normal(f"\nUser {user_name} edited an earlier message in "
 					   f"conversation {chat_id}.")
 		text = "(edited) " + text
 
@@ -3017,11 +3084,17 @@ async def process_response(update:Update, context:Context, response_message:str)
 				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 				return
 
+			# Get the image description.
+			imageDesc = command_args
+
 			# Generate and send an image described by the /image command argument string.
 			_logger.normal("\nGenerating an image with description "
-						   f"[{command_args}] for user '{user_name}' in "
+						   f"[{imageDesc}] for user '{user_name}' in "
 						   f"conversation {chat_id}.")
-			await send_image(update, context, command_args)
+			await send_image(update, context, imageDesc)
+
+			# Make a note in conversation archive to indicate that the image was sent.
+			conversation.add_message(Message(SYS_NAME, f'[Generated image "{imageDesc}"]'))
 
 			# Send the remaining text after the command line, if any, as a normal message.
 			if remaining_text != '':
@@ -3628,6 +3701,7 @@ stop_seq = MESSAGE_DELIMITER	# This is appropriate given the RS delimiter.
 #
 #- `/start` - Starts our conversation, if not already started; also reloads our conversation history, if any.
 #- `/help` - Displays this help message.
+#- `/image <desc>` -
 #- `/reset` - Clears my memory of our conversation, which can be useful for breaking out of output loops.
 #- `/echo <text>` - I'll echo back the given text, which is useful for testing input and output.
 #- `/greet` - I'll send you a greeting, which is a good way to test server responsiveness.
@@ -3771,11 +3845,6 @@ gptCore = createCoreConnection(ENGINE_NAME, maxTokens=maxRetToks,
 # We'll get it from the core object's .modelFamily property.
 MODEL_FAMILY = gptCore.modelFamily
 
-# Note the below would have been the original way to get the model family,
-# but this method is now obsolete, since the core objects know their own 
-# model family.
-#MODEL_FAMILY = aiConf.modelFamily
-
 	# This is the default help string if a custom one is not set.
 HELP_STRING=f"""
 {BOT_NAME} bot powered by {MODEL_FAMILY}/{ENGINE_NAME}. NOTE: {BOT_NAME} now understands voice clips and can generate images!
@@ -3783,6 +3852,7 @@ HELP_STRING=f"""
 Available commands:
 /start - Starts the bot, if not already started; also reloads conversation history, if any.
 /help - Shows this help message.
+/image <desc> - Generate and return an image for the given description.
 /reset - Clears the bot's memory of the conversation. Useful for breaking output loops.
 /echo <text> - Echoes back the given text. (I/O test.)
 /greet - Causes the server to send a greeting. (Server responsiveness test.)
@@ -3801,6 +3871,8 @@ if aiConf.helpString:
 else:
 	customHelp = False
 
+# Create the custom filter to detect and handle unknown commands.
+unknown_command_filter = UnknownCommandFilter()
 
 # Question from human programmer to Copilot: Do you know who you are, Copilot?
 # Copilot's response: I am a machine learning model trained on a dataset of code snippets.
@@ -3831,6 +3903,7 @@ else:
 COMMAND_LIST = f"""
 start - Starts bot; reloads conversation history.
 help - Displays general help and command help.
+image - Generates an image from a description.
 reset - Clears the bot's conversation memory.
 echo - Echoes back the given text.
 greet - Make server send a greeting.
@@ -3861,12 +3934,7 @@ app = ApplicationBuilder().token(BOT_TOKEN).build()
 	#| 5.3. Configure dispatcher -- Register update handlers.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-# Retrieve the updater's dispatcher.
-#dispatcher = updater.dispatcher
-	# This is the dispatcher object that we'll use to register handlers.
-
 # Add an error handler to catch the Unauthorized/Forbidden exception & other errors that may occur.
-#dispatcher.add_error_handler(handle_error)
 app.add_error_handler(handle_error)
 
 
@@ -3886,21 +3954,14 @@ app.add_error_handler(handle_error)
 	#----------------------------------------
 	# HANDLER GROUP 0: User command handlers.
 
-# Next, we need to register the command handlers.
-#dispatcher.add_handler(CommandHandler('start',		handle_start),		group = 0)
-#dispatcher.add_handler(CommandHandler('help',		handle_help), 		group = 0)
-#dispatcher.add_handler(CommandHandler('reset',		handle_reset),		group = 0)
-#dispatcher.add_handler(CommandHandler('remember',	handle_remember),	group = 0)	# Not available to most users.
-#dispatcher.add_handler(CommandHandler('forget',		handle_forget),		group = 0)	# Not available to most users.
 app.add_handler(CommandHandler('start',		handle_start),		group = 0)
 app.add_handler(CommandHandler('help',		handle_help), 		group = 0)
+app.add_handler(CommandHandler('image',		handle_image),		group = 0)
 app.add_handler(CommandHandler('reset',		handle_reset),		group = 0)
 app.add_handler(CommandHandler('remember',	handle_remember),	group = 0)	# Not available to most users.
-app.add_handler(CommandHandler('forget',		handle_forget),		group = 0)	# Not available to most users.
+app.add_handler(CommandHandler('forget',	handle_forget),		group = 0)	# Not available to most users.
 
 # The following two commands are not really needed at all. They're just here for testing purposes.
-#dispatcher.add_handler(CommandHandler('echo',	handle_echo),	group = 0)
-#dispatcher.add_handler(CommandHandler('greet',	handle_greet),	group = 0)
 app.add_handler(CommandHandler('echo',	handle_echo),	group = 0)
 app.add_handler(CommandHandler('greet',	handle_greet),	group = 0)
 
@@ -3910,8 +3971,6 @@ app.add_handler(CommandHandler('greet',	handle_greet),	group = 0)
 
 # In case user sends an audio message, we add a handler to convert the audio to
 # text so that the text-based AI can understand it.
-#dispatcher.add_handler(MessageHandler(Filters.audio|Filters.voice, handle_audio),
-#					   group = 1)
 app.add_handler(MessageHandler(filters.AUDIO|filters.VOICE, handle_audio),
 					   group = 1)
 
@@ -3920,15 +3979,13 @@ app.add_handler(MessageHandler(filters.AUDIO|filters.VOICE, handle_audio),
 	# HANDLER GROUP 2: Normal message handlers.
 
 # Now, let's add a handler for the rest of the messages.
-#dispatcher.add_handler(MessageHandler((Filters.text|Filters.audio|Filters.voice)
-#									  & ~Filters.command, handle_message),
-#					   group = 2)
 app.add_handler(MessageHandler((filters.TEXT|filters.AUDIO|filters.VOICE)
 									  & ~filters.COMMAND, handle_message),
 					   group = 2)
 	# NOTE: In the above, note that we accept audio and voice messages
 	# as well as text messages, because we know that the audio and voice
 	# messages will have been converted to text already by handle_audio().
+	# We filter out commands so that they don't get handled twice.
 
 
 	#------------------------------------------
@@ -3936,26 +3993,17 @@ app.add_handler(MessageHandler((filters.TEXT|filters.AUDIO|filters.VOICE)
 
 # In case any commands make it this far, we'll process them like normal
 # messages (i.e., let the AI decide how to respond).
-
-# Move to global objects.
-unknown_command_filter = UnknownCommandFilter()
-
-#dispatcher.add_handler(MessageHandler(unknown_command_filter,
-#									  handle_unknown_command),
-#					   group = 3)
 app.add_handler(MessageHandler(unknown_command_filter,
-									  handle_unknown_command),
-					   group = 3)
+							   handle_unknown_command),
+				group = 3)
 
 	#|==========================================================================
 	#| 5.3. Start main loop.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 # Now, let's run the bot. This will start polling the Telegram servers for new updates.
-# It runs in the background, so after we start it, we call idle() so we won't exit early.
-#updater.start_polling()
-#updater.idle()
 app.run_polling()
+
 
 # Note from Mike:
 #	So, Copilot, are we done? Does this all make sense?
