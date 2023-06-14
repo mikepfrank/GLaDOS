@@ -1567,6 +1567,9 @@ async def handle_image(update:Update, context:Context) -> None:
 		# Make a note in conversation archive to indicate that the image was sent.
 		conversation.add_message(Message(SYS_NAME, f'[Generated image "{imageDesc}"]'))
 
+		# Allow the AI to follow up (but without re-processing the message).
+		await handle_message(update, context, new_msg=False)
+
 	else:
 		_logger.error("The '/image' command requires a non-empty argument.")
 		errMsg = f"ERROR: The '/image' command requires an argument. (Usage: /image <description>)"
@@ -2106,8 +2109,9 @@ async def handle_audio(update:Update, context:Context) -> None:
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 # Now, let's define a function to handle the rest of the messages.
-async def handle_message(update:Update, context:Context) -> None:
+async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 		# Note that <context>, in this context, denotes the Telegram context object.
+		# Call with new_msg=True to skip new-message processing.
 	"""Process a message."""
 
 	# The following code is here in case the user edited
@@ -2141,7 +2145,7 @@ async def handle_message(update:Update, context:Context) -> None:
 	# If the message contained audio or voice, then represent it using an
 	# appropriate text format.
 
-	if 'audio_text' in context.user_data:	# We added this earlier if appropriate.
+	if new_msg and 'audio_text' in context.user_data:	# We added this earlier if appropriate.
 
 		# Utilize the transcript created by handle_audio() above.
 		text = f"(audio) {context.user_data['audio_text']}"	
@@ -2174,7 +2178,8 @@ async def handle_message(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# Add the message just received to the conversation.
-	conversation.add_message(Message(user_name, text))
+	if new_msg:
+		conversation.add_message(Message(user_name, text))
 
 	# Check whether the user is in our access list.
 	if not _check_access(user_name):
