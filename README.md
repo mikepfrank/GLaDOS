@@ -76,10 +76,11 @@ make sure that you are using the Python 3 version of pip.
 Currently this supports the following make rules, which can be invoked using the ``make`` command:
 
 * ``install-data`` - Install the AI's data files in $(AI_DATADIR).
-* ``test-api`` - Test the connection to the OpenAI API.
+* ``update-models`` - Update the ``models.json`` file (see below).
+* ``run-test`` - Test the connection to the OpenAI API.
 * ``default``, ``run-glados`` - Launch the experimental GladOS server program.
 * ``run-bot`` - Launch the Telegram bot server program.
-* ``update-models`` - Update the ``models.json`` file (see below).
+* ``clean-states`` - Make sure the API statistics files have been cleared to prep for a new run.
 
 ### Models JSON file ([`models.json`](models.json "models.json file"))
 
