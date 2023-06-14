@@ -34,7 +34,7 @@ These are the top-level packages that will make up the GLaDOS system.  Note that
 
 ### 1. Applications system ([`apps/`](apps "apps/ directory"))
 
-This package gathers together modules implementing various application programs/tools that are available for use by the A.I. within the GLaDOS environment.  See [the subdirectory's `README.md` file](apps/README.md "apps/README.md file") for a list of the currently planned apps.
+**[MANY APPS INCOMPLETE]** This package gathers together modules implementing various application programs/tools that are available for use by the A.I. within the GLaDOS environment.  See [the subdirectory's `README.md` file](apps/README.md "apps/README.md file") for a list of the currently planned apps.
 
 
 ### 2. Authorization system ([`auth/`](auth "auth/ directory"))
