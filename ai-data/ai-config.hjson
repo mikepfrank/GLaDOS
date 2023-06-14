@@ -386,6 +386,7 @@
 
 			- `/start` - Starts our conversation, if not already started; also reloads our conversation history, if any.
 			- `/help` - Displays this help message.
+			- `/image <desc>` - Generates an image with description <desc> and sends it to you.
 			- `/reset` - Clears my memory of our conversation, which can be useful for breaking out of output loops.
 			- `/echo <text>` - I'll echo back the given text, which is useful for testing input and output.
 			- `/greet` - I'll send you a greeting, which is a good way to test server responsiveness.
