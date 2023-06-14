@@ -3699,12 +3699,10 @@ stop_seq = MESSAGE_DELIMITER	# This is appropriate given the RS delimiter.
 #
 #- `/start` - Starts our conversation, if not already started; also reloads our conversation history, if any.
 #- `/help` - Displays this help message.
-#- `/image <desc>` -
+#- `/image <desc>` - Generates an image with description <desc> and sends it to you.
 #- `/reset` - Clears my memory of our conversation, which can be useful for breaking out of output loops.
 #- `/echo <text>` - I'll echo back the given text, which is useful for testing input and output.
 #- `/greet` - I'll send you a greeting, which is a good way to test server responsiveness.
-#
-#To request an image in my response, use the command `/image <desc>` as the first line of your message, and I'll generate and send the image to you.
 #
 #Please remember to be polite and ethical while interacting with me. If you need assistance or have any questions, feel free to ask. I'm here to help! 😊"""
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
