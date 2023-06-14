@@ -3935,7 +3935,6 @@ app = ApplicationBuilder().token(BOT_TOKEN).build()
 # Add an error handler to catch the Unauthorized/Forbidden exception & other errors that may occur.
 app.add_error_handler(handle_error)
 
-
 #====================================================================
 # HANDLER GROUPS:
 #
