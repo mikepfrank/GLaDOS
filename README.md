@@ -21,7 +21,7 @@ The following development branches are in relatively good shape, in the sense th
  - ``david-dev`` -- David is a GPT-3/code-davinci-002 persona. Base model for RLHF versions of GPT-3.5. [Includes codebase changes.]
  - ``davinci-stable``, ``davinci-dev`` -- DaVinci is a GPT-3/text-davinci-003 persona. **NOTE: The davinci-dev branch is under active development; the most recent stable version is on 'davinci-stable'...**
  - ``turbo``, ``lingo``, and ``lingua`` -- Turbo, Lingo and Lingua are all GPT-3/gpt-3.5-turbo (ChatGPT) personas. Note that these use a different back-end API endpoint (``chat-completions``) from the previous cases. Lingo & Lingua's Telegram bots were customized by gpt-3.5-turbo (accessed via the Playground). [Includes codebase changes.]
- - ``max`` -- Max or "Turbo Max" is a GPT-3/gpt-3.5-turbo-16k persona. He is distinct from Turbo in the sense of having a 4x larger context window.
+ - ``max`` -- Max or "Turbo Max" is a GPT-3/gpt-3.5-turbo-16k persona. (So far he's only set up to use the Telegram bot.) He is distinct from Turbo in the sense of having a 4x larger context window.
  - ``aria-stable``, ``aria`` -- Aria Turing is a GPT-4 persona. Her Telegram bot was customized by GPT-4 (accessed under ChatGPT Plus). [Includes codebase changes.]
  - ``mpf``, ``mpf-dev`` -- Mike's stable & development branches. [For experimental code changes.]
  
