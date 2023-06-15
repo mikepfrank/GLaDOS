@@ -3486,7 +3486,7 @@ def _loadStats():
 			newDay = True
 
 			_logger.info(f"Today's date is {today}, but the last-modified date of the API usage statistics file {statsPath} is {lastModDate}.")
-			_logger.normal("Stats file loader: Starting a new day!")
+			_logger.normal("\nStats file loader: Starting a new day!")
 
 			# Construct the name of the archive file.
 			archivePath = _statsPathname(prefix = str(lastModDate))
@@ -3495,7 +3495,7 @@ def _loadStats():
 			# Rename the old file to the archive file.
 			try:
 				rename(statsPath, archivePath)
-				_logger.normal(f"NOTE: Archived old API usage statistics data file {statsPath} to {archivePath}.")
+				_logger.normal(f"\tNOTE: Archived old API usage statistics data file {statsPath}\n\t\tto {archivePath}.")
 			except:
 				_logger.warn(f"Couldn't rename {statsPath} to {archivePath}.")
 
@@ -3610,7 +3610,7 @@ def _displayStats(doWrite:bool=True):
 				newPath = path.join(_aiPath, 'stats', f"api-stats-{lastMod}.txt")
 				try:
 					rename(oldPath, newPath)
-					_logger.normal(f"NOTE: Archived old API usage statistics text file {oldPath} to {newPath}.")
+					_logger.normal(f"\tNOTE: Archived old API usage statistics text file {oldPath}\n\t\tto {newPath}.")
 				except:
 					_logger.error(f"Couldn't rename {oldPath} to {newPath}. Old stats will get stomped!")
 
