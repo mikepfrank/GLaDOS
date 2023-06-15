@@ -1596,6 +1596,12 @@ class Completion:
 
 		_logger.debug(f"Counted {nToks} tokens in input text [{prompt}]")
 
+		# If stats structures are out of date, expand them as needed.
+		if not engine in _inputToks:
+			_inputToks[engine] = 0
+			_outputToks[engine] = 0
+			_expenditures[engine] = 0
+
 			# Update the global record of API usage statistics.
 		_inputToks[engine] = _inputToks[engine] + nToks
 	
@@ -2465,8 +2471,13 @@ class ChatCompletion(Completion):
 
 		_logger.debug(f"Accounting for {inToks} tokens in input text.")
 
-			# Update the global record of API usage statistics.
+		# If stats structures are out of date, expand them as needed.
+		if not engine in _inputToks:
+			_inputToks[engine] = 0
+			_outputToks[engine] = 0
+			_expenditures[engine] = 0
 
+			# Update the global record of API usage statistics.
 		_inputLength = inToks	# Do we even need this any more?
 		_inputToks[engine] += inToks
 	
@@ -3630,6 +3641,12 @@ def _displayStats(doWrite:bool=True):
 		for engine in _ENGINE_NAMES:
 			
 			engStr 	= "%18s" % engine
+
+			# If stats structures are out of date, expand them as needed.
+			if not engine in _inputToks:
+				_inputToks[engine] = 0
+				_outputToks[engine] = 0
+				_expenditures[engine] = 0
 
 			inToks 	= _inputToks[engine]
 			outToks = _outputToks[engine]
