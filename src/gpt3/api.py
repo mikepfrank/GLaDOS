@@ -3629,10 +3629,10 @@ def _displayStats(doWrite:bool=True):
 		#  if the contents start to overflow.
 
 		_statLine(doWrite, "")
-		_statLine(doWrite, "                   |         Token Counts          |")
-		_statLine(doWrite, "                   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ |")
-		_statLine(doWrite, "Engine Name        |    Input |  Output |    Total |  USD Cost")
-		_statLine(doWrite, "===================|==========|=========|==========|==========")
+		_statLine(doWrite, "                       |         Token Counts          |")
+		_statLine(doWrite, "                       | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ |")
+		_statLine(doWrite, "Engine Name            |    Input |  Output |    Total |  USD Cost")
+		_statLine(doWrite, "=======================|==========|=========|==========|==========")
 		
 		# Cumulative input, output, and total token counts.
 		cumIn = cumOut = cumTot = 0
@@ -3640,7 +3640,7 @@ def _displayStats(doWrite:bool=True):
 		# Generate a table row for each engine.
 		for engine in _ENGINE_NAMES:
 			
-			engStr 	= "%18s" % engine
+			engStr 	= "%22s" % engine
 
 			# If stats structures are out of date, expand them as needed.
 			if not engine in _inputToks:
@@ -3673,8 +3673,8 @@ def _displayStats(doWrite:bool=True):
 	
 		totStr = "$%8.4f" % _totalCost
 	
-		_statLine(doWrite,  "~~~~~~~~~~~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~~")
-		_statLine(doWrite, f"TOTALS:            | {cumInStr} | {cumOutStr} | {cumTotStr} | {totStr}")
+		_statLine(doWrite,  "~~~~~~~~~~~~~~~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~~")
+		_statLine(doWrite, f"TOTALS:                | {cumInStr} | {cumOutStr} | {cumTotStr} | {totStr}")
 		_statLine(doWrite, "")
 	
 		# If doWrite=True, then we were writing to the file, and we need to close it.
