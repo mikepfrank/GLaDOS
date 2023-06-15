@@ -405,19 +405,32 @@ _ENGINE_ATTRIBS = {
 		# GPT-3.5 models. (Increased context length; data through June 2021.)
 
     'text-davinci-002': {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06,		'is-chat': False,	'encoding': 'p50k_base'},
-    'code-davinci-002': {'model-family': 'GPT-3.5',	'engine-name': 'code-davinci-002', 'field-size': 4000, 'price': 0,			'is-chat': False,	'encoding': 'p50k_base'},
+    'code-davinci-002': {'model-family': 'GPT-3.5',	'engine-name': 'code-davinci-002', 'field-size': 8001, 'price': 0,			'is-chat': False,	'encoding': 'p50k_base'},
     'text-davinci-003': {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02,		'is-chat': False,	'encoding': 'p50k_base'},
     
-		# ChatGPT models. (These use the chat API. Data through Sep. 2021.)
+		# ChatGPT-3.5 models. (These use the chat API. Data through Sep. 2021.)
 
-	'gpt-3.5-turbo-0301':   {'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0301', 	'field-size': 4096, 'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
-    'gpt-3.5-turbo':    	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo', 		'field-size': 4096, 'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
+    'gpt-3.5-turbo':    	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo', 		'field-size': 4096, 	'price': 0.002,		'prompt-price': 0.0015,		'is-chat': True,	'encoding': 'p50k_base'},
+	'gpt-3.5-turbo-0301':   {'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0301', 	'field-size': 4096, 	'price': 0.002,		'prompt-price': 0.0015,		'is-chat': True,	'encoding': 'p50k_base'},
+		# To be discontinued on 9/13/23. Switch to gpt-3.5-turbo-0613.
+	'gpt-3.5-turbo-0613':   {'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0613', 	'field-size': 4096, 	'price': 0.002,		'prompt-price': 0.0015,		'is-chat': True,	'encoding': 'p50k_base'},
     
+		# 16k ChatGPT-3.5 models. (Context window size increased to 16,384.)
+
+	'gpt-3.5-turbo-16k':   		{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-16k', 		'field-size': 16384, 	'price': 0.004,		'prompt-price': 0.003,		'is-chat': True,	'encoding': 'p50k_base'},
+	'gpt-3.5-turbo-16k-0613':   {'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-16k-0613', 	'field-size': 16384, 	'price': 0.004,		'prompt-price': 0.003,		'is-chat': True,	'encoding': 'p50k_base'},
+
 		# GPT-4 models.  (These also use the chat API. Data through Sep. 2021.)
 
+	'gpt-4':		{'model-family': 'GPT-4',	'engine-name': 'gpt-4',			'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
 	'gpt-4-0314':	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-0314',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
-	'gpt-4':		{'model-family': 'GPT-4',	'engine-name': 'gpt-4-0314',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
+		# To be discontinued on 9/13/23. Switch to gpt-4-0613.
+	'gpt-4-0613':	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-0613',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
 		# NOTE: In these models, prompt tokens are discounted, so there's a new field 'prompt-price'.
+
+		# 32k GPT-4 models. (Context window size increased to 32,768 tokens.)
+	'gpt-4-32k':		{'model-family': 'GPT-4',	'engine-name': 'gpt-4-32k',			'field-size': 32768, 'price': 0.12,	'prompt-price': 0.06,	'is-chat': True,	'encoding': 'p50k_base'},
+	'gpt-4-32k-0613':	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-32k-0613',	'field-size': 32768, 'price': 0.12,	'prompt-price': 0.06,	'is-chat': True,	'encoding': 'p50k_base'},
 
 } # End _ENGINE_ATTRIBS constant module global data structure.
 
