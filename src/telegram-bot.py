@@ -1248,6 +1248,10 @@ class UnknownCommandFilter(filters.BaseFilter):
 		# Get the message, or edited message from the update.
 		(message, edited) = _get_update_msg(update)
 		
+		# If this isn't even a message update, it's definely not an unknown command!
+		if message is None:
+			return False
+
 		text = message.text
 		defined_commands = ['/start', '/help', '/image', '/remember', '/forget', '/reset', '/echo', '/greet']
 		
@@ -1350,6 +1354,10 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 		
+	if message is None:
+		_logger.warning("In handle_start() with no message? Aborting.")
+		return
+
 	chat_id = message.chat.id
 
 	# Make sure the thread component is set to this application (for logging).
@@ -1472,6 +1480,10 @@ async def handle_help(update:Update, context:Context) -> None:
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 
+	if message is None:
+		_logger.warning("In handle_help() with no message? Aborting.")
+		return
+
 	chat_id = message.chat.id
 
 	# Make sure the thread component is set to this application (for logging).
@@ -1486,6 +1498,7 @@ async def handle_help(update:Update, context:Context) -> None:
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not await _ensure_convo_loaded(update, context):
+		_logger.error("Couldn't load conversation in handle_help(); aborting.")
 		return
 
 	if 'conversation' not in context.chat_data:
@@ -1524,6 +1537,10 @@ async def handle_image(update:Update, context:Context) -> None:
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 
+	if message is None:
+		_logger.warning("In handle_image() with no message? Aborting.")
+		return
+
 	# Get the ID of the present chat.
 	chat_id = message.chat.id
 
@@ -1539,6 +1556,7 @@ async def handle_image(update:Update, context:Context) -> None:
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not await _ensure_convo_loaded(update, context):
+		_logger.error("Couldn't load conversation in handle_image(); aborting.")
 		return
 
 	if 'conversation' not in context.chat_data:
@@ -1595,6 +1613,10 @@ async def handle_echo(update:Update, context:Context) -> None:
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 
+	if message is None:
+		_logger.warning("In handle_echo() with no message? Aborting.")
+		return
+
 	chat_id = message.chat.id
 
 	# Make sure the thread component is set to this application (for logging).
@@ -1609,6 +1631,7 @@ async def handle_echo(update:Update, context:Context) -> None:
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not await _ensure_convo_loaded(update, context):
+		_logger.error("Couldn't load conversation in handle_echo(); aborting.")
 		return
 
 	if 'conversation' not in context.chat_data:
@@ -1664,6 +1687,10 @@ async def handle_greet(update:Update, context:Context) -> None:
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 
+	if message is None:
+		_logger.warning("In handle_greet() with no message? Aborting.")
+		return
+
 	chat_id = message.chat.id
 
 	# Make sure the thread component is set to this application (for logging).
@@ -1678,6 +1705,7 @@ async def handle_greet(update:Update, context:Context) -> None:
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not await _ensure_convo_loaded(update, context):
+		_logger.error("Couldn't load conversation in handle_greet(); aborting.")
 		return
 
 	if 'conversation' not in context.chat_data:
@@ -1717,6 +1745,10 @@ async def handle_reset(update:Update, context:Context) -> None:
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 
+	if message is None:
+		_logger.warning("In handle_reset() with no message? Aborting.")
+		return
+
 	chat_id = message.chat.id
 
 	# Make sure the thread component is set to this application (for logging).
@@ -1731,6 +1763,7 @@ async def handle_reset(update:Update, context:Context) -> None:
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not await _ensure_convo_loaded(update, context):
+		_logger.error("Couldn't load conversation in handle_reset(); aborting.")
 		return
 
 	if 'conversation' not in context.chat_data:
@@ -1784,6 +1817,10 @@ async def handle_remember(update:Update, context:Context) -> None:
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 
+	if message is None:
+		_logger.warning("In handle_remember() with no message? Aborting.")
+		return
+
 	chat_id = message.chat.id
 
 	# Make sure the thread component is set to this application (for logging).
@@ -1810,6 +1847,7 @@ async def handle_remember(update:Update, context:Context) -> None:
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not await _ensure_convo_loaded(update, context):
+		_logger.error("Couldn't load conversation in handle_remember(); aborting.")
 		return
 
 	# Retrieve the Conversation object from the Telegram context.
@@ -1890,6 +1928,10 @@ async def handle_forget(update:Update, context:Context) -> None:
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 
+	if message is None:
+		_logger.warning("In handle_forget() with no message? Aborting.")
+		return
+
 	chat_id = message.chat.id
 
 	# Make sure the thread component is set to this application (for logging).
@@ -1906,6 +1948,7 @@ async def handle_forget(update:Update, context:Context) -> None:
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not await _ensure_convo_loaded(update, context):
+		_logger.error("Couldn't load conversation in handle_forget(); aborting.")
 		return 
 
 	# Retrieve the Conversation object from the Telegram context.
@@ -2011,6 +2054,10 @@ async def handle_audio(update:Update, context:Context) -> None:
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 		
+	if message is None:
+		_logger.warning("In handle_audio() with no message? Aborting.")
+		return
+
 	user_name = _get_user_name(message.from_user)
 
 	# Get the chat ID.
@@ -2018,6 +2065,7 @@ async def handle_audio(update:Update, context:Context) -> None:
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not await _ensure_convo_loaded(update, context):
+		_logger.error("Couldn't load conversation in handle_audio(); aborting.")
 		return
 
 	# Get our Conversation object.
@@ -2123,7 +2171,7 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 	(message, edited) = _get_update_msg(update)
 		
 	if message is None:
-		_logger.error("Update of unknown type received; ignoring...")
+		_logger.error("In handle_message() with no message! Aborting...")
 		return
 
 	text = message.text
@@ -2142,6 +2190,7 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not await _ensure_convo_loaded(update, context):
+		_logger.error("Couldn't load conversation in handle_message(); aborting.")
 		return
 
 	# If the message contained audio or voice, then represent it using an
@@ -2534,6 +2583,10 @@ async def process_chat_message(update:Update, context:Context) -> None:
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 		
+	if message is None:
+		_logger.error("In process_chat_message() with no message! Aborting.")
+		return
+
 	chat_id = message.chat.id
 
 	# Get user_name & unique ID (for content violation logging).
@@ -2857,6 +2910,10 @@ async def process_response(update:Update, context:Context, response_message:str)
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 		
+	if message is None:
+		_logger.warning("In process_response() with no message? Aborting.")
+		return
+
 	chat_id = message.chat.id
 	user_name = _get_user_name(message.from_user)
 	conversation = context.chat_data['conversation']
@@ -3155,6 +3212,10 @@ async def send_image(update:Update, context:Context, desc:str, save_copy=True) -
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 		
+	if message is None:
+		_logger.warning("In send_image() with no message? Aborting.")
+		return
+
 	# Get the message's chat ID.
 	chat_id = message.chat.id
 
@@ -3215,6 +3276,10 @@ async def send_response(update:Update, context:Context, response_text:str) -> No
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 		
+	if message is None:
+		_logger.warning("In send_response() with no message? Aborting.")
+		return
+
 	chat_id = message.chat.id
 
 	# Now, we need to send the response to the user. However, if the response is
@@ -3372,6 +3437,10 @@ async def _ensure_convo_loaded(update:Update, context:Context) -> bool:
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 		
+	if message is None:
+		_logger.warning("In _ensure_convo_loaded() with no message? Aborting.")
+		return False
+
 	# Get the chat ID.
 	chat_id = message.chat.id
 
