@@ -394,6 +394,7 @@ from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF
 
 			messageRepr,
 				# Generates a text representation of a chat message dict.
+			tiktokenCount,
 
 			genImage,			# Generates an image from a description.
 			transcribeAudio,	# Transcribes an audio file to text.
@@ -2651,6 +2652,14 @@ async def process_chat_message(update:Update, context:Context) -> None:
 			# Get the length of the chat messages in tokens.
 			msgsSizeToks = ChatMessages(chat_messages).totalTokens(model=ENGINE_NAME)
 
+			# If this engine supports functions, add in the estimated size in tokens
+			# of the functions structure. (This is a guesstimate since we don't know
+			# how it's formatted at the back end exactly.)
+			if hasFunctions(ENGINE_NAME):
+				funcsSize = tiktokenCount(json.dumps(FUNCTIONS_LIST), model=ENGINE_NAME)
+				_logger.info(f"Estimating size of FUNCTIONS_LIST is {funcsSize}.)")
+				msgsSizeToks += funcsSize
+
 			#_logger.debug(f"In process_chat_message(), msgsSizeToks={msgsSizeToks}.")
 
 			# Calculate the available space in the context window.
@@ -2791,6 +2800,29 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 				# Actually do the call here.
 				await ai_call_function(update, context, function_name, function_args)
+
+					## The following stupid stuff is just to hopefully avoid API errors.
+
+				# Give the AI a dummy result just to make the API happy.
+				dummy_result_msgs = [
+					response_message,	# This is the message that contains the AI's function call.
+					{
+						'role':		'function',
+						'name':		function_name,
+						'content':	'success'		# This is just a dummy return value.
+					}
+				]
+
+				# Do a dummy 2nd API call with the result.
+				dummy_2nd_chatCompl = gptCore.genChatCompletion(
+					messages = dummy_result_msgs
+				)
+
+				# Just for diagnostic purposes.
+				_logger.info("API response to function return:\n" + pformat(dummy_2nd_chatCompl.message))
+
+			#__/ End special code to handle function calls requested by the AI.
+
 
 			# Also check for finish_reason == 'content_filter' and log/send a warning.
 			finish_reason = chatCompletion.finishReason
