@@ -2233,8 +2233,8 @@ class ChatCompletion(Completion):
 
 		# This decorator performs automatic exponential backoff on REST failures.
 
-	@backoff.on_exception(backoff.expo,
-						  (openai.error.APIError))
+	#@backoff.on_exception(backoff.expo,
+	#					  (openai.error.APIError))
 						  
 	def _createChatComplStruct(thisChatCompletion:ChatCompletion, apiArgs:dict, 
 				minRepWin:int=DEF_TOKENS):
