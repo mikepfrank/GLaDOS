@@ -2970,24 +2970,14 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 	# If we get here, we've successfully gotten a response from the API.
 
-	# Generate a debug-level log message to indicate that we're starting a new response.
-	_logger.debug(f"Creating new response from {conversation.bot_name} with "
-				  f"text: [{response_text}].")
-
-	# Create a new Message object and add it to the conversation.
-	response_message = Message(conversation.bot_name, response_text)
-	conversation.add_message(response_message)
-
-	# Strip off any leading or trailing whitespace (Telegram won't display it anyway.).
-	response_text = response_text.strip()
-
 	# If the response is empty, then return early. (Can't even send an empty message anyway.)
 	if response_text == "":
 
 		_logger.warn("Got an empty response! Ignoring...")
 
+		## No longer needed because we don't add an empty message.
 		# Delete the last message from the conversation.
-		conversation.delete_last_message()
+		#conversation.delete_last_message()
 
 		## Commenting this out for production.
 		# # Send the user a diagnostic message indicating that the response was empty.
@@ -3003,6 +2993,17 @@ async def process_chat_message(update:Update, context:Context) -> None:
 			
 		return		# This means the bot is simply not responding to this particular message.
 	
+	# Generate a debug-level log message to indicate that we're starting a new response.
+	_logger.debug(f"Creating new response from {conversation.bot_name} with "
+				  f"text: [{response_text}].")
+
+	# Create a new Message object and add it to the conversation.
+	response_message = Message(conversation.bot_name, response_text)
+	conversation.add_message(response_message)
+
+	# Strip off any leading or trailing whitespace (Telegram won't display it anyway.).
+	response_text = response_text.strip()
+
 	# Update the message object, and the context.
 	response_message.text = response_text
 	conversation.expand_context()	 
