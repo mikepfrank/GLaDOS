@@ -1492,8 +1492,8 @@ class Completion:
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		# This decorator performs automatic exponential backoff on REST failures.
-	@backoff.on_exception(backoff.expo,
-						  (openai.error.APIError))
+	#@backoff.on_exception(backoff.expo,
+	#					  (openai.error.APIError))
 
 	def _createComplStruct(thisCompletion:Completion, apiArgs, minRepWin:int=DEF_TOKENS):
 			# By default, don't accept shortening the space for the response to less than 100 tokens.
