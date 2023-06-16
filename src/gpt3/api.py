@@ -1937,6 +1937,9 @@ class ChatCompletion(Completion):
 		
 		"""Instance initializer for class ChatCompletion."""
 		
+		if 'messages' in kwargs:
+			_logger.info(f"In ChatCompletion.__init__() with messages=[list of {len(kwargs['messages'])} messages]")
+
 		chatCompl = newChatCompletion	# For convenience.
 
 			# These are things we are going to try to find in our arguments,
@@ -1953,12 +1956,12 @@ class ChatCompletion(Completion):
 		
 				# If there's a GPT3ChatCore instance, remember it.
 
-			if isinstance(arg,GPT3ChatCore):
+			if isinstance(arg, GPT3ChatCore):
 				chatCore = arg
 		
 				# If there's a dict, assume it's a completion object.
 		
-			elif isinstance(arg,dict):
+			elif isinstance(arg, dict):
 				chatComplStruct = arg
 
 				# Remember any other arguments that we don't recognize.
@@ -2243,6 +2246,9 @@ class ChatCompletion(Completion):
 		"""Private instance method to retrieve a chat completion from the core
 			chat API, with automatic exponential backoff and retry."""
 		
+		if 'messages' in apiArgs:
+			_logger.info(f"In _createChatComplStruct(), apiArgs['messages']=[list of {len(apiArgs['messages'])} messages]")
+
 		chatCompl = thisChatCompletion	# For convenience.
 
 		if minRepWin is None:		# Just in case caller explicitly sets this to None,
@@ -2406,6 +2412,10 @@ class ChatCompletion(Completion):
 
 				raise e
 
+			else:	# Maybe this isn't a length issue at all?
+				_logger.error("I don't know what to do with that.")
+				raise e
+
 		# If we get here, there was a successful return from the API call.
 		_logger.debug("ChatCompletion._createChatComplStruct(): Got raw chat completion struct:"
 					  + '\n' + pformat(chatComplStruct))
@@ -2454,6 +2464,9 @@ class ChatCompletion(Completion):
 		"""This method estimates the number of tokens in the input messages,
 			and returns the estimate. This may be done prior to calling the
 			API, since it does not use the completion result."""
+
+		if 'messages' in apiArgs:
+			_logger.info(f"In _estimateInputLen(), apiArgs['messages']=[list of {len(apiArgs['messages'])} messages]")
 
 		chatCompl = thisChatCompl	# For convenience.
 		
@@ -3027,6 +3040,9 @@ class GPT3ChatCore(GPT3Core):
 			Any keyword arguments provided will override the current values
 			in the chat configuration."""
    
+		if 'messages' in kwargs:
+			_logger.info(f"In genChatArgs() with messages=[list of {len(kwargs['messages'])} messages]")
+
 		chatCore = thisChatCore		# For convenience.
 
 		apiargs = {} 	# Initially empty dict for building up API argument list.
@@ -3096,6 +3112,9 @@ class GPT3ChatCore(GPT3Core):
 		if functionList		!= None:	apiargs['functions']		= functionList
 		if functionCall		!= None:	apiargs['function_call']	= functionCall
 
+		if 'messages' in apiargs:
+			_logger.info(f"In genChatArgs(), set apiargs['messages']=[list of {len(apiargs['messages'])} messages]")
+
 			# Make sure we don't set both temperature and top_p.		
 		if temperature != None and topP != None:
 			# Do some better error handling here. Warning and/or exception.
@@ -3129,6 +3148,9 @@ class GPT3ChatCore(GPT3Core):
 		
 		#prettyArgs = pformat(kwargs)
 		#_logger.debug(f"In GPT3ChatCore.genChatCompletion() with args={args}, keyword args:\n" + prettyArgs)
+
+		if 'messages' in kwargs:
+			_logger.info(f"In genChatCompletion() with messages=[list of {len(kwargs['messages'])} messages]")
 
 		return ChatCompletion(self, *args, **kwargs)
 			# Calls the ChatCompletion constructor; this does all the real work 
@@ -3835,18 +3857,25 @@ def _msg_repr(msg:dict) -> str:
 	# Get the message content.
 	content = msg['content']
 
+	# Get the 'function_call' value, if present.
+	fcall = msg.get('function_call')
+
 	# Make sure role isn't still None at this point
 	if role is None:
 		_logger.error("gpt3.api._msg_repr(): Somehow role is None at this line, and it shouldn't be.")
 		role = ""
 
 	# Ditto with content
-	if content is None:
-		_logger.error("gpt3.api._msg_repr(): Message content is None, and it shouldn't be.")
-		content = ""
+	if content is None and fcall is None:
+		_logger.error("gpt3.api._msg_repr(): Message content and function call are both None; this is unexpected.")
 
-	rep = role + '\n' + \
-		  content + chr(RS) + '\n'
+	if content is not None:
+		rep = role + '\n' + \
+			  content + chr(RS) + '\n'
+
+	elif fcall is not None:		# This is a damn guess as to how function calls *might* be formatted. It's probably wrong.
+		rep = role + '\n' + \
+			  '@' + fcall['name'] + '(' + fcall['arguments'] + ')' + chr(RS) + '\n'
 
 	return rep
 
