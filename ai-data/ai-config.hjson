@@ -162,11 +162,10 @@
 			#|	tation for the application in question to see how/whether it
 			#|	uses this parameter..
 
-		#min-replyWin-toks:	42	# Orig. value; seemed like a reasonable minimum.
-		#min-replywin-toks:	100	# Gladys 2.0 (text-davinci-002) requested this increase.
-		min-replywin-toks:	400	# Turbo (gpt-3.5-turbo) requested this increase (1/10 of context window).
-		#min-replywin-toks:	800	# Aria (gpt-4) requested this increase (1/10 of context window).
-
+		#min-replyWin-tokens:	42		# Orig. value; seemed like a reasonable minimum.
+		#min-replywin-toks:		100		# Gladys 2.0 (text-davinci-002) requested this increase.
+		min-replywin-toks:		400		# Turbo (gpt-3.5-turbo) requested this increase. (1/10 of context window)
+		#min-replywin-toks:		800		# Aria (gpt-4) requested this increase.
 
 			#-----------------------------------------------------------------
 			# The example-response parameter is a piece of text that we show
@@ -360,9 +359,10 @@
 			#|	 based on the model-version parameter from above.
 			
 		#max-visible-tokens:	2048	# Comes from paper, n_ctx model parameter.
-		#max-visible-tokens:	4000	# Appropriate for text-davinci-002.
-		#max-visible-tokens:	4096	# Appropriate for gpt-3.5-turbo model
-		max-visible-tokens:		8192	# Appropriate for gpt-4 model.
+		#max-visible-tokens:	4000
+				# This value is appropriate for text-davinci-002.
+		max-visible-tokens:		4096	# Appropriate for gpt-3.5-turbo model
+		#max-visible-tokens:	8192	# Appropriate for gpt-4 model.
 	
 	} # End of field-conf substructure.
 
