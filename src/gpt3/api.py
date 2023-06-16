@@ -3055,6 +3055,10 @@ class GPT3ChatCore(GPT3Core):
 		logitBias 			= kwargs.get('logitBias',	chatConf.logitBias)
 		user 				= kwargs.get('user',		chatConf.user)
 
+			# Available only in 0613 (June 13, 2023) or later releases of chat models.
+		functionList		= kwargs.get('functionList')			# Default is None.
+		functionCall		= kwargs.get('functionCall', 'auto')	# Default is 'auto'
+
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| Now, add the selected (non-None) parameter values to the argument list.
 		#| (Note below we have to match the exact keyword argument names supported 
@@ -3075,6 +3079,10 @@ class GPT3ChatCore(GPT3Core):
 		if messages			!= None:	apiargs['messages']			= messages
 		if logitBias		!= None:	apiargs['logit_bias']		= logitBias
 		if user				!= None:	apiargs['user']				= user
+
+			# Available only in 0613 (June 13, 2023) or later releases of chat models.
+		if functionList		!= None:	apiargs['functions']		= functionList
+		if functionCall		!= None:	apiargs['function_call']	= functionCall
 
 			# Make sure we don't set both temperature and top_p.		
 		if temperature != None and topP != None:
