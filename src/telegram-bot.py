@@ -194,6 +194,9 @@
 	please see: https://core.telegram.org/bots#6-botfather.
 """
 
+CONS_INFO = False
+LOG_DEBUG = False
+
 	#|=============================================================================|
 	#|																			   |
 	#|	  Programmer's note:													   |
@@ -419,10 +422,12 @@ logmaster.configLogMaster(
 		#consdebug	= True,			# Turn on full debug logging on the console.
 
 		#consinfo	= True,			# Turn on info-level logging on the console.
-		consinfo	 = False,		 # Turn off info-level logging on the console.
+		#consinfo	 = False,		 # Turn off info-level logging on the console.
+		consinfo	= CONS_INFO,
 
 		#logdebug	= True			# Turn on full debug logging in the log file.
-		logdebug	 = False		 # Turn off full debug logging in the log file.
+		#logdebug	 = False		 # Turn off full debug logging in the log file.
+		logdebug	= LOG_DEBUG
 	)
 #__/
 
@@ -1173,7 +1178,7 @@ class Conversation:
 
 		chat_messages.append({
 			'role': CHAT_ROLE_SYSTEM,
-			'name': SYS_NAME,
+			#'name': SYS_NAME,
 			'content': "The current time is: " + timeString() + "."
 		})
 		
@@ -1183,7 +1188,7 @@ class Conversation:
 
 		chat_messages.append({
 			'role': CHAT_ROLE_SYSTEM,
-			'name': SYS_NAME,
+			#'name': SYS_NAME,
 			'content': "Attention, assistant: You are taking the role of a very " \
 				f"humanlike AI persona named {botName} in a Telegram chat. Here " \
 				"are the context headers for the persona, followed by recent " \
@@ -1210,13 +1215,20 @@ class Conversation:
 			else:
 				role = CHAT_ROLE_USER
 			
-			chat_messages.append({
-				'role': role,		# Note: The role field is always required.
-				'name': sender,		
+			chatMessage = {
+				'role': role,				# Note: The role field is always required.
+				'content': message.text		# The content field is also expected.
+			}
+
+			# Change to try to reduce API errors:
+			# Add name field only for user role.
+			if role == CHAT_ROLE_USER:
+				chatMessage['name'] = sender
 					# Note: When 'name' is present, the API uses it in place of
 					# (or perhaps in addition to!) the role.
-				'content': message.text
-			})
+
+			# Add the message we just constructed.
+			chat_messages.append(chatMessage)
 
 		# We'll add one more system message to the list of chat messages,
 		# to make sure it's clear to the AI that it is responding in the 
@@ -1240,7 +1252,7 @@ class Conversation:
 
 		chat_messages.append({
 			'role': CHAT_ROLE_SYSTEM,
-			'name': SYS_NAME,
+			#'name': SYS_NAME,
 			'content': response_prompt
 		})
 
@@ -2754,11 +2766,14 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				functionList = functions,	# Available function list, if supported.
 				functionCall = 'auto'		# Let AI decide whether/which functions to call.
 			)
-			# Get the text of the response.
+
+			# Get the text field of the response. (Could be None, if function call.)
 			response_text = chatCompletion.text
 
-			# If there's a function call in the response, display it.
+			# Get the full response message.
 			response_message = chatCompletion.message
+
+			# In case there's a function call in the response, display it.
 			#_logger.normal(f"RETURNED MESSAGE = \n" + pformat(response_message))
 
 			funCall = response_message.get('function_call')
@@ -2798,28 +2813,70 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				# This probably is just the remark. Use it as our response text below.
 				response_text = (remark + '\n' + response_text).strip()
 
-				# Actually do the call here.
-				await ai_call_function(update, context, function_name, function_args)
+				# Actually do the call here, and assemble appropriate result text.
+				result = await ai_call_function(update, context, function_name, function_args)
+				if result is None or result == "":
+					result = "null result"
+				if response_text != "":
+					result += ". your remarks will now be sent to the user automatically"
 
+				_logger.info(f"The AI's function call returned the result: [{result}]")
+				
+				# I don't think any of the below mess is actually needed right now.
+				if False:
 					## The following stupid stuff is just to hopefully avoid API errors.
 
-				# Give the AI a dummy result just to make the API happy.
-				dummy_result_msgs = [
-					response_message,	# This is the message that contains the AI's function call.
-					{
-						'role':		'function',
-						'name':		function_name,
-						'content':	'success'		# This is just a dummy return value.
-					}
-				]
+					# Give the AI a dummy result just to make the API happy.
+					dummy_result_msgs = [
+						response_message,	# This is the message that contains the AI's function call.
+					]
+					dummy_result_msgs += [
+						{
+							'role':		'function',
+							'name':		function_name,
+							'content':	result
+						}
+					]
+					if response_text != "":
+						dummy_result_msgs += [{
+							'role':		'assistant',
+							'content':	response_text,
+						}]
 
-				# Do a dummy 2nd API call with the result.
-				dummy_2nd_chatCompl = gptCore.genChatCompletion(
-					messages = dummy_result_msgs
-				)
+					# Append the dummy result messages onto the end of our existing chat messages.
+					chat_messages.extend(dummy_result_msgs)
+					
+					# We'll just do a quick-and-dirty approach here to the context length management.
+					while True:
+						try:
+							# Do a dummy 2nd API call with the result.
+							dummy_2nd_chatCompl = gptCore.genChatCompletion(
+								messages 		= chat_messages,
+								functionList	= functions,
+							)
+							break
+						except PromptTooLargeException:
+							# Just trim off the oldest message after the first two (time & system instructions).
+							_logger.info(f"NOTE: Expunging oldest chat message:\n" + pformat(chat_messages[2]))
+							chat_messages = chat_messages[0:2].extend(chat_messages[3:])
+							continue
 
-				# Just for diagnostic purposes.
-				_logger.info("API response to function return:\n" + pformat(dummy_2nd_chatCompl.message))
+					# Just for diagnostic purposes.
+					_logger.info("API response to function return:\n" + pformat(dummy_2nd_chatCompl.message))
+
+					# Go ahead and add the danged thing. It better not be another function call though,
+					# or empty, or trigger a content filter, or be a '/pass' command, because we just
+					# aren't handling any of that here. Really need to rethink whole code structure.
+
+					second_response_text = dummy_2nd_chatCompl.text
+					_logger.info(f"Text of function return response: [{second_response_text}].")
+
+					second_response_myMsg = Message(conversation.bot_name, second_response_text)
+					_logger.info(f"Resulting message object is: [str(second_response_myMsg)].")
+				
+					conversation.add_message(second_response_myMsg)
+					conversation.finalize_message(second_response_myMsg)
+					await process_response(update, context, second_response_myMsg)
 
 			#__/ End special code to handle function calls requested by the AI.
 
@@ -3200,7 +3257,7 @@ async def ai_block(updateMsg:TgMsg, conversation:Conversation, userToBlock:str=N
 				
 
 # Define a function to handle the /image command, when issued by the AI.
-async def ai_image(update:Update, context:Context, imageDesc:str, remaining_text:str=None) -> None:
+async def ai_image(update:Update, context:Context, imageDesc:str, caption:str, remaining_text:str=None) -> None:
 
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
@@ -3223,13 +3280,13 @@ async def ai_image(update:Update, context:Context, imageDesc:str, remaining_text
 			return
 		# Record the diagnostic for the AI also.
 		conversation.add_message(Message(SYS_NAME, DIAG_MSG))
-		return
+		return "error: null image description"
 
 	# Generate and send an image described by the /image command argument string.
 	_logger.normal("\tGenerating an image with description "
 					f"[{imageDesc}] for user '{user_name}' in "
 					f"conversation {chat_id}.")
-	await send_image(update, context, imageDesc)
+	await send_image(update, context, imageDesc, caption=caption)
 
 	# Make a note in conversation archive to indicate that the image was sent.
 	conversation.add_message(Message(SYS_NAME, f'[Generated and sent image "{imageDesc}"]'))
@@ -3238,11 +3295,14 @@ async def ai_image(update:Update, context:Context, imageDesc:str, remaining_text
 	if remaining_text != None and remaining_text != '':
 		await send_response(update, context, remaining_text)
 
+	return "success: image has been generated and sent to user"
+
 #__/ End of ai_image() function definition.
 
 
-async def ai_call_function(update:Update, context:Context, funcName:str, funcArgs:dict):
-	"""Call the named AI-available function with the given argument dict."""
+async def ai_call_function(update:Update, context:Context, funcName:str, funcArgs:dict) -> str:
+
+	"""Call the named AI-available function with the given argument dict. Returns a result string."""
 
 	# Get the user message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
@@ -3257,37 +3317,42 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 		textToAdd = funcArgs.get('item_text', None)
 
 		if textToAdd:
-			await ai_remember(message, conversation, textToAdd)
+			return await ai_remember(message, conversation, textToAdd)
 		else:
 			await _report_error(conversation, message,
 					f"remember_item() missing required argument item_text.")
+			return "error: required argument item_text is missing"
 
 	elif funcName == 'forget_item':
 		textToDel = funcArgs.get('item_text', None)
 
 		if textToDel:
-			await ai_forget(message, conversation, textToDel)
+			return await ai_forget(message, conversation, textToDel)
 		else:
 			await _report_error(conversation, message,
 					f"forget_item() missing required argument item_text.")
+			return "error: required argument item_text is missing"
 
 	elif funcName == 'create_image':
 		imageDesc = funcArgs.get('image_desc', None)
+		caption = funcArgs.get('caption', None)
 
 		if imageDesc:
-			await ai_image(update, context, imageDesc)
+			return await ai_image(update, context, imageDesc, caption)
 		else:
 			await _report_error(conversation, message,
 					f"create_image() missing required argument image_desc.")
+			return "error: required argument image_desc is missing"
 
 	elif funcName == 'block_user':
 		userToBlock = funcArgs.get('image_desc', user_name)		# Default to current user.
 
-		await ai_block(message, conversation, userToBlock)
+		return await ai_block(message, conversation, userToBlock)
 
 	else:
 		await _report_error(conversation, message,
 							f"AI tried to call an undefined function '{funcName}()'.")
+		return f"error: {funcName} is not an available function"
 #__/
 
 
@@ -3305,6 +3370,10 @@ async def process_response(update:Update, context:Context, response_message:Mess
 	# First, check to see if the AI typed the '/pass' command, in which case we do nothing.
 	if response_text.lower() == '/pass':
 		_logger.normal(f"\nNOTE: The AI is passing its turn in conversation {chat_id}.")
+		return
+
+	if response_text == "":		# Response is empty string??
+		_logger.error(f"In process_response(), got an empty response message: [{str(response_message)}].")
 		return
 
 	# Finally, we check to see if the AI's message is a command line;
@@ -3449,7 +3518,7 @@ async def process_response(update:Update, context:Context, response_message:Mess
 #__/ End of process_response() function definition.
 
 
-async def send_image(update:Update, context:Context, desc:str, save_copy=True) -> None:
+async def send_image(update:Update, context:Context, desc:str, caption=None, save_copy=True) -> None:
 	"""Generates an image from the given description and sends it to the user.
 		Also archives a copy on the server unless save_copy=False is specified."""
 
@@ -3465,7 +3534,7 @@ async def send_image(update:Update, context:Context, desc:str, save_copy=True) -
 	# Get our Conversation object.
 	conversation = context.chat_data['conversation']
 
-	_logger.normal(f"\tGenerating image for user {username} from description [{desc}]...")
+	_logger.normal(f"\tGenerating image for user {username} from description [{desc}]. Caption is [{str(caption)}]...")
 
 	# Use the OpenAI API to generate the image.
 	try:
@@ -3503,7 +3572,7 @@ async def send_image(update:Update, context:Context, desc:str, save_copy=True) -
 	
 	# Send the image as a reply in Telegram
 	try:
-		await message.reply_photo(photo=image_data)
+		await message.reply_photo(photo=image_data, caption=caption)
 	except BadRequest or Forbidden or ChatMigrated as e:
 		_logger.error(f"Got a {type(e).__name__} exception from Telegram "
 					  "({e}) for conversation {chat_id}; aborting.")
@@ -3929,10 +3998,12 @@ async def _report_error(convo:Conversation, telegramMessage,
 
 #MESSAGE_DELIMITER = '🤍'	# A Unicode character. Gladys selected the white heart emoji.
 	# We're temporarily trying a different delimiter that's less likely to appear in message text:
-MESSAGE_DELIMITER = chr(ascii.RS)	# (Gladys agreed to try this.)
+#MESSAGE_DELIMITER = chr(ascii.RS)	# (Gladys agreed to try this.)
 	# A control character.	(ASCII RS = 0x1E, record separator.)
 #MESSAGE_DELIMITER = chr(ascii.ETX)	# End-of-text control character.
 #MESSAGE_DELIMITER = chr(ascii.ETB)	# End-of-transmission-block control character.
+MESSAGE_DELIMITER = ""				# No delimiter at all!
+	# ^ Trying this in desperation to hopefully get rid of API errors.
 
 	# This is the size, in messages, of the window at the end of the conversation 
 	# within which we'll exclude messages in that region from being repeated by the AI.
@@ -3954,7 +4025,7 @@ _TIME_FORMAT = "%A, %B %d, %Y, %I:%M %p"
 	#  Sets the stop sequence (terminates response when encountered).
 
 # Configure the stop sequence appropriate for this application.
-stop_seq = MESSAGE_DELIMITER	# This is appropriate given the RS delimiter.
+#stop_seq = MESSAGE_DELIMITER	# This is appropriate given the RS delimiter.
 #stop_seq = ['\n' + MESSAGE_DELIMITER]	# Needed if delimiter might be in text.
 	# NOTE: The stop parameter is used to tell the API to stop generating 
 	# tokens when it encounters the specified string(s). We set it to stop 
@@ -4047,7 +4118,8 @@ FUNCTIONS_LIST = [
 				},
 				"remark":	{
 					"type":		"string",	# <remark> argument has type string.
-					"description":	"A textual message to send to the user after the call."
+					"description":	"A textual message to send to the user if the " \
+									"call is successful."
 				},
 			},
 			"required":     ["item_text"]       # <item_text> argument is required.
@@ -4067,7 +4139,8 @@ FUNCTIONS_LIST = [
 				},
 				"remark":	{
 					"type":		"string",	# <remark> argument has type string.
-					"description":	"A textual message to send to the user after the call."
+					"description":	"A textual message to send to the user if the " \
+									"call is successful."
 				},
 			},
 			"required":     ["item_text"]       # <item_text> argument is required.
@@ -4085,10 +4158,14 @@ FUNCTIONS_LIST = [
 					"type":         "string",   # <image_desc> argument has type string.
 					"description":  "Detailed text prompt describing the desired image."
 				},
+				"caption":    {
+					"type":         "string",   # <image_desc> argument has type string.
+					"description":  "Text caption to attach to the generated image."
+				},
 				"remark":	{
 					"type":		"string",	# <remark> argument has type string.
-					"description":	"A textual message to send to the user after the " \
-									"call. (Note, this may serve as an image caption.)"
+					"description":	"A textual message to send to the user if the " \
+									"call is successful."
 				},
 			},
 			"required":     ["image_desc"]       # <image_desc> argument is required.
@@ -4108,7 +4185,8 @@ FUNCTIONS_LIST = [
 				},
 				"remark":	{
 					"type":			"string",	# <remark> argument has type string.
-					"description":	"A textual message to send to the user after the call."
+					"description":	"A textual message to send to the user if the " \
+									"call is successful."
 				},
 			},
 			"required":     []       # <user_name> argument is not required.
@@ -4230,8 +4308,8 @@ _initPersistentContext()	# Call the function for this defined earlier.
 		#|	We also go ahead and configure some important API parameters here.
 
 gptCore = createCoreConnection(ENGINE_NAME, maxTokens=maxRetToks, 
-	temperature=temperature, presPen=presPen, freqPen=freqPen, 
-	stop=stop_seq)
+	temperature=temperature, presPen=presPen, freqPen=freqPen)
+	#stop=stop_seq)
 
 	# NOTE: The presence penalty and frequency penalty parameters are here 
 	# to try to prevent long outputs from becoming repetitive. But too-large
