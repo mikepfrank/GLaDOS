@@ -2789,7 +2789,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				# response_text = f"[SYSTEM DIAGNOSTIC: Called {call_desc}]\n\n" + remark + '\n' + response_text
 
 				# This probably is just the remark. Use it as our response text below.
-				response_text = remark + '\n' + response_text
+				response_text = (remark + '\n' + response_text).strip()
 
 				# Actually do the call here.
 				await ai_call_function(update, context, function_name, function_args)
