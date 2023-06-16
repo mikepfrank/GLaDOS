@@ -360,6 +360,8 @@ from	config.configuration	import	TheAIPersonaConfig
 
 from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF.
 
+			_has_functions as hasFunctions,	# Pretend it's public
+
 				#----------
 				# Globals:	(Note their values are copied into the local namespace.)
 
@@ -1224,9 +1226,11 @@ class Conversation:
 		# something like "assistant\n", which is why we need to make sure
 		# it knows that it's responding as the named bot persona.)
 
-		response_prompt = f"Respond as {botName}. (If you want to include an " \
-			"image in your response, you must put the command ‘/image <desc>’ at the " \
-			"very start of your response.)"
+		#response_prompt = f"Respond as {botName}. (If you want to include an " \
+		#	"image in your response, you must put the command ‘/image <desc>’ at the " \
+		#	"very start of your response.)"
+		response_prompt = f"Respond as {botName}. (Remember you can use an available " \
+			"function if there is one that is appropriate.)"
 
 		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
 			# Only give this instruction in group chats:
@@ -2697,6 +2701,13 @@ async def process_chat_message(update:Update, context:Context) -> None:
 			#	f"minReplyWinToks = {minReplyWinToks}, maxRetToks = {maxRetToks}, "
 			#	f"lMaxRetToks = {lMaxRetToks}, availSpaceToks = {availSpaceToks}")
 
+			# Does this engine support the functions interface? If so,
+			# then pass it our list of function descriptions.
+			if hasFunctions(ENGINE_NAME):
+				functions = FUNCTIONS_LIST
+			else:
+				functions = None
+
 			# Get the response from GPT-3, as a ChatCompletion object.
 			chatCompletion = gptCore.genChatCompletion(	# Call the API.
 				
@@ -2711,7 +2722,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				user = str(user_id),		# Send the user's unique ID for
 					# traceability in the event of severe content violations.
 
-				minRepWin = minReplyWinToks	# Min. reply window size in tokens.
+				minRepWin = minReplyWinToks,	# Min. reply window size in tokens.
 					# This parameter gets passed through to the ChatCompletion()
 					# initializer and thence to ChatCompletion._createComplStruct(),
 					# which does the actual work of retrieving the raw completion
@@ -2727,8 +2738,20 @@ async def process_chat_message(update:Update, context:Context) -> None:
 					# estimates were pretty close, the difference will be small, and 
 					# the AI should still be able to generate a reasonable response.
 
+				functions = functions,	# Available function list, if supported.
+				function_call = 'auto'	# Let AI decide whether/which functions to call.
 			)
+			# Get the text of the response.
 			response_text = chatCompletion.text
+
+			# If there's a function call in the response, display it.
+			response_message = chatCompletion.message
+			funCall = response_message.get('function_call')
+			if funCall:
+				function_name = funCall['name']
+				function_args = json.loads(funCall['arguments'])
+				_logger.normal(f"AI wants to call function {function_name} with arguments: \n" + pformat(function_args))
+				# Actually do the call here.
 
 			# Also check for finish_reason == 'content_filter' and log/send a warning.
 			finish_reason = chatCompletion.finishReason
@@ -3617,16 +3640,25 @@ def _initPersistentContext() -> None:
 	global PERSISTENT_DATA, PERSISTENT_CONTEXT	# So we can modify these.
 
 	# Initialize the AI's persistent context information.
-	PERSISTENT_CONTEXT = \
-		MESSAGE_DELIMITER + " ~~~ Persistent context data: ~~~\n" + \
-		PERSISTENT_DATA + \
-		MESSAGE_DELIMITER + " ~~~ Commands available for me to use: ~~~\n" + \
-		"  /pass - Refrain from responding to the last user message.\n" + \
-		"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
-		"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
-		"  /remember <text> - Adds <text> to my persistent context data.\n" + \
-		"  /forget <text> - Removes <text> from my persistent context data.\n" + \
-		MESSAGE_DELIMITER + " ~~~ Recent Telegram messages: ~~~"
+	if hasFunctions(ENGINE_NAME):
+		PERSISTENT_CONTEXT = \
+			MESSAGE_DELIMITER + " ~~~ Persistent context data: ~~~\n" + \
+			PERSISTENT_DATA + \
+			MESSAGE_DELIMITER + " ~~~ Recent Telegram messages: ~~~"
+		#__/
+	else:
+		# Initialize the AI's persistent context information.
+		PERSISTENT_CONTEXT = \
+			MESSAGE_DELIMITER + " ~~~ Persistent context data: ~~~\n" + \
+			PERSISTENT_DATA + \
+			MESSAGE_DELIMITER + " ~~~ Commands available for me to use: ~~~\n" + \
+			"  /pass - Refrain from responding to the last user message.\n" + \
+			"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
+			"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
+			"  /remember <text> - Adds <text> to my persistent context data.\n" + \
+			"  /forget <text> - Removes <text> from my persistent context data.\n" + \
+			MESSAGE_DELIMITER + " ~~~ Recent Telegram messages: ~~~"
+		#__/
 	#__/
 #__/
 
@@ -3657,7 +3689,7 @@ def _initPersistentData() -> None:
 	# Append current memories, if any.
 	if MEMORIES != "":
 		PERSISTENT_DATA += MESSAGE_DELIMITER + \
-			" ~~~ Memories added using '/remember' command: ~~~\n"
+			" ~~~ Memories added using remember_item function: ~~~\n"
 		PERSISTENT_DATA += MEMORIES
 
 	# NOTE: The MEMORIES variable is intended for global (but dynamic) memories
@@ -3871,6 +3903,79 @@ stop_seq = MESSAGE_DELIMITER	# This is appropriate given the RS delimiter.
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ## NOTE: Setting help string is now done later, after gptCore is created.
+
+
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#  Sets the functions list (describes the functions AI may call).
+	#  Note this is only supported in chat models dated 6/13/'23 or later.
+
+# Functions available to the AI in the Telegram app.
+FUNCTIONS_LIST = [
+
+	# Function for command: /remember <item_text>
+	{
+		"name":         "remember_item",
+		"description":  "Adds an item to the AI's persistent memory list.",
+		"parameters":   {
+			"type":         "object",
+			"properties":   {
+				"item_text":    {
+					"type":         "string",   # <item_text> argument has type string.
+					"description":  "Text of item to remember, as a single line."
+				},
+			},
+			"required":     ["item_text"]       # <item_text> argument is required.
+		}
+	},
+
+	# Function for command: /forget <item_text>
+	{
+		"name":         "forget_item",
+		"description":  "Removes an item from the AI's persistent memory list.",
+		"parameters":   {
+			"type":         "object",
+			"properties":   {
+				"item_text":    {
+					"type":         "string",   # <item_text> argument has type string.
+					"description":  "Exact text of item to forget, as a single line."
+				},
+			},
+			"required":     ["item_text"]       # <item_text> argument is required.
+		}
+	},
+
+	# Function for command: /image <image_desc>
+	{
+		"name":         "create_image",
+		"description":  "Generates an image using Dall-E and sends it to the user.",
+		"parameters":   {
+			"type":         "object",
+			"properties":   {
+				"image_desc":    {
+					"type":         "string",   # <image_desc> argument has type string.
+					"description":  "Detailed text prompt describing the desired image."
+				},
+			},
+			"required":     ["image_desc"]       # <image_desc> argument is required.
+		}
+	},
+
+	# Function for command: /block [<user_name>]
+	{
+		"name":         "block_user",
+		"description":  "Blocks a given user from accessing this Telegram bot.",
+		"parameters":   {
+			"type":         "object",
+			"properties":   {
+				"user_name":    {
+					"type":         "string",   # <item_text> argument has type string.
+					"description":  "Name of user to block; defaults to current user."
+				},
+			},
+			"required":     []       # <user_name> argument is not required.
+		}
+	},        
+]
 
 
 		#/============================================================
