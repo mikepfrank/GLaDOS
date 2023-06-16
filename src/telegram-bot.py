@@ -256,6 +256,8 @@ from telegram		import (
 		Update,				# Class for updates (notifications) from Telegram.
 		InputFile,			# Use this to prepare image files to send.
 	)
+from telegram import Message as TgMsg
+	# Type name we'll use as a type hint for messages from Telegram.
 
 from telegram.ext 	import (
 		ApplicationBuilder,	# For building asyncio-based Telegram applications.
@@ -270,7 +272,7 @@ from telegram.ext 	import (
 
 # Type name that we'll use often
 Context = ContextTypes.context
-#Context = ContextTypes.DEFAULT_TYPE
+#Context = ContextTypes.DEFAULT_TYPE	# In older versions of python-telegram-bot.
 
 from telegram.error import BadRequest, Forbidden, ChatMigrated
 	# We use these a lot in exception handlers.
@@ -636,6 +638,10 @@ class Conversation:
 	"""An object instantiating this class stores the recent messages
 		in an individual Telegram conversation."""
 
+	#/==========================================================================
+	#| Special instance methods for class Conversation. 	[class code section]
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 	# New instance initializer.
 	def __init__(newConv:Conversation, chat_id:int):
 
@@ -687,6 +693,49 @@ class Conversation:
 		## called eventually whenever a given conversation object is garbage-collected.
 
 	#__/ End of conversation instance initializer.
+
+
+	def __len__(thisConv:Conversation) -> int:
+		"""Returns the number of messages in the conversation."""
+		return thisConv.context_length
+			# Note this depends on the context_length attribute having been updated
+			# appropriately after the last change to the message list.
+	#__/ End of __len__() special instance method for class Conversation.
+			
+
+	# This is needed so we don't eventually run out of file descriptors
+	# after conversations are restarted repeatedly.
+	def __del__(thisConv:Conversation):
+		# Close our open files to recycle their file descriptors.
+		thisConv.archive_file.close()
+		thisConv.memory_file.close()
+	#__/ End destructor method for class Conversation.
+
+
+	#/==========================================================================
+	#| Public instance properties for class Conversation. 	[class code section]
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
+	# This property returns the chat ID associated with the conversation.
+	@property
+	def chatID(thisConv:Conversation) -> int:
+		"""Returns the chat ID associated with the conversation."""
+		return thisConv.chat_id
+	
+
+	#/==========================================================================
+	#| Public instance methods for class Conversation. 		[class code section]
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
+	def lastMessage(thisConv:Conversation) -> Message:
+		"""Returns the last message in the conversation, if any."""
+		if thisConv.context_length > 0:
+			return thisConv.messages[-1]
+		else:
+			return None
+	#__/ End of lastMessage() instance method for class Conversation.
 
 
 	# This method adds the messages in the conversation to the context string.
@@ -1220,14 +1269,6 @@ class Conversation:
 			#	 f"{thisConv.bot_name}'s response:\n"
 			#	 "{persona_response}\n"
 			#	 r"%%%\n"
-
-	# This is needed so we don't eventually run out of file descriptors
-	# after conversations are restarted repeatedly.
-	def __del__(thisConv:Conversation):
-		# Close our open files to recycle their file descriptors.
-		thisConv.archive_file.close()
-		thisConv.memory_file.close()
-	#__/ End destructor method for class Conversation.
 
 
 #__/ End Conversation class definition.
@@ -2850,11 +2891,263 @@ async def process_chat_message(update:Update, context:Context) -> None:
 #__/ End of process_chat_message() function definition.
 
 
-async def process_response(update:Update, context:Context, response_message:str) -> None:
+# Below are functions to implement commands that may performed by the AI.
+# They are: remember, forget, block, and image.
+#	* /remember <text> - Adds <text> to persistent memory.
+#	* /forget <text> - Removes <text> from persistent memory.
+#	* /block - Blocks the current user.
+#	* /image <desc> - Generates an image with a given text description and sends it to the user.
+
+# Define a function to handle the /remember command, when issued by the AI.
+async def ai_remember(updateMsg:TgMsg, conversation:Conversation, textToAdd:str) -> None:
+	"""The AI calls this function to add the given text to its persistent memory."""
+
+	# Put the message from the Telegram update in a convenient variable.
+	message = updateMsg
+
+	# Retrieve the conversation's chat ID.
+	chat_id = conversation.chatID	# Public property. Type: int.
+
+	# The following code used to appear directly inside handle_response(), but I've
+	# moved it here to make it easier to call it from other places, such as the
+	# code to handle function-call responses from the AI.
+
+	# Check for missing <textToAdd> argument.
+	if textToAdd == None:
+		_logger.error(f"The AI sent a /remember command with no "
+						f"argument in conversation {chat_id}.")
+		DIAG_MSG = "[DIAGNOSTIC: /remember command needs an argument.]"
+		try:
+			await message.reply_text(DIAG_MSG)
+		except BadRequest or Forbidden or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} exception from "
+							f"Telegram ({e}) for conversation {chat_id}; "
+							"aborting.")
+			return
+
+		# Record the diagnostic for the AI's benefit also.
+		conversation.add_message(Message(SYS_NAME, DIAG_MSG))
+		
+		return
+
+	# Tell the conversation object to add the given message to the AI's persistent memory.
+	if not conversation.add_memory(textToAdd):
+		
+		errmsg = _lastError
+
+		# Generate an error-level report to include in the application log.
+		_logger.error(f"The AI tried & failed to add memory: [{textToAdd}]")
+
+		diagMsg = f"[DIAGNOSTIC: Could not add [{textToAdd}] to persistent memory. " \
+					f"Error message was: \"{errmsg}\"]\n"
+
+		# Send the diagnostic message to the user.
+		try:
+			await message.reply_text(diagMsg)
+		except BadRequest or Forbidden or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} exception from "
+							f"Telegram ({e}) for conversation {chat_id}; "
+							"aborting.")
+			return
+	
+		# Add the diagnostic message to the conversation.
+		conversation.add_message(Message(SYS_NAME, diagMsg))
+
+		return
+
+	_logger.info(f"The AI added [{textToAdd}] to persistent memory in conversation {chat_id}.")
+
+	# Also notify the user that we're remembering the given statement.
+	DIAG_MSG = f"[DIAGNOSTIC: Added [{textToAdd}] to persistent memory.]"
+	try:
+		await message.reply_text(DIAG_MSG)
+	except BadRequest or Forbidden or ChatMigrated as e:
+		_logger.error(f"Got a {type(e).__name__} exception from "
+						f"Telegram ({e}) for conversation {chat_id}; "
+						"aborting.")
+		return
+
+	# Record the diagnostic for the AI also.
+	conversation.add_message(Message(SYS_NAME, DIAG_MSG))
+
+	return		# Processed AI's /remember command successfully.
+#__/ End of ai_remember() function definition.
+				
+
+# Define a function to handle the /forget command, when issued by the AI.
+async def ai_forget(updateMsg:TgMsg, conversation:Conversation, textToDel:str) -> None:
+	"""The AI calls this function to remove the given text from its persistent memory."""
+
+	# Put the message from the Telegram update in a convenient variable.
+	message = updateMsg
+
+	# Retrieve the conversation's chat ID.
+	chat_id = conversation.chatID	# Public property. Type: int.
+
+	# The following code used to appear directly inside handle_response(), but I've
+	# moved it here to make it easier to call it from other places, such as the
+	# code to handle function-call responses from the AI.
+
+	# Check for missing <textToDel> argument.
+	if textToDel == None:
+		_logger.error(f"The AI sent a /forget command with no argument in conversation {chat_id}.")
+		DIAG_MSG = "[DIAGNOSTIC: /forget command needs an argument.]"
+		try:
+			await message.reply_text(DIAG_MSG)
+		except BadRequest or Forbidden or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} exception from "
+							f"Telegram ({e}) for conversation {chat_id}; "
+							"aborting.")
+			return
+
+		# Record the diagnostic for the AI also.
+		conversation.add_message(Message(SYS_NAME, DIAG_MSG))
+		
+		return
+
+	# Tell the conversation object to remove the given message
+	# from the AI's persistent memory.  The return value is
+	# True if the message was found and removed, and False if
+	# it wasn't.
+	if conversation.remove_memory(textToDel):
+
+		# Log this at INFO level.
+		_logger.info(f"The AI removed [{textToDel}] from persistent memory in conversation {chat_id}.")
+
+		# Also notify the user that we're forgetting the given statement.
+		DIAG_MSG = f"[DIAGNOSTIC: Removed [{textToDel}] from persistent memory.]"
+		try:
+			await message.reply_text(DIAG_MSG)
+		except BadRequest or Forbidden or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} exception from "
+							f"Telegram ({e}) for conversation {chat_id}; "
+							"aborting.")
+			return
+	
+		# Record the diagnostic for the AI also.
+		conversation.add_message(Message(SYS_NAME, DIAG_MSG))
+		
+		return	# Processed AI's /forget command successfully.
+
+	else:
+
+		errmsg = _lastError
+		
+		# Log this at ERROR level.
+		_logger.error("The AI tried & failed to remove "
+						f"[{textToDel}] from persistent memory in "
+						f"conversation {chat_id}.")
+
+		# Also notify the user that we couldn't forget the given statement.
+		DIAG_MSG = f'[DIAGNOSTIC: Could not remove [{textToDel}] " \
+			f"from persistent memory. Error message was: "{_lastError}"]'
+		try:
+			await message.reply_text(DIAG_MSG)
+		except BadRequest or Forbidden or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} exception from "
+							f"Telegram ({e}) for conversation {chat_id}; "
+							"aborting.")
+			return
+
+		# Record the diagnostic for the AI also.
+		conversation.add_message(Message(SYS_NAME, DIAG_MSG))
+		
+#__/ End of ai_forget() function definition.
+
+
+# Define a function to handle the /block command, when issued by the AI.
+async def ai_block(updateMsg:TgMsg, conversation:Conversation, userToBlock:str=None) -> None:
+	"""The AI calls this function to block the given user. If no user is specified,
+		it blocks the current user (the one who sent the current update)."""
+	
+	# Put the message from the Telegram update in a convenient variable.
+	message = updateMsg
+
+	# Retrieve the current user's name, in case we need it.
+	user_name = _get_user_name(message.from_user)
+
+	# Retrieve the conversation's chat ID.
+	chat_id = conversation.chatID	# Public property. Type: int.
+
+	# The following code used to appear directly inside handle_response(), but I've
+	# moved it here to make it easier to call it from other places, such as the
+	# code to handle function-call responses from the AI.
+
+	# If no user was specified, then we'll block the current user.
+	if userToBlock == None:
+		userToBlock = user_name
+
+	# Generate a warning-level log message to indicate that we're blocking the user.
+	_logger.warn(f"***ALERT*** The AI is blocking user '{userToBlock}' in conversation {chat_id}.")
+
+	if _isBlocked(userToBlock):
+		_logger.error(f"User '{userToBlock}' is already blocked.")
+		DIAG_MSG = f'[DIAGNOSTIC: User {userToBlock} has already been blocked by {BOT_NAME}.]'
+	else:
+		_blockUser(userToBlock)
+		DIAG_MSG = f'[DIAGNOSTIC: {BOT_NAME} has blocked user {userToBlock}.]'
+	
+	try:
+		await message.reply_text(DIAG_MSG)
+	except BadRequest or Forbidden or ChatMigrated as e:
+		_logger.error(f"Got a {type(e).__name__} exception from "
+						f"Telegram ({e}) for conversation {chat_id}; "
+						"aborting.")
+		return
+
+	# Record the diagnostic for the AI also.
+	conversation.add_message(Message(SYS_NAME, DIAG_MSG))
+
+#__/ End of ai_block() function definition.
+				
+
+# Define a function to handle the /image command, when issued by the AI.
+async def ai_image(update:Update, context:Context, imageDesc:str, remaining_text:str) -> None:
 
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
-		
+
+	# Get the chat_id, user_name, and conversation object.
+	chat_id = message.chat.id
+	user_name = _get_user_name(message.from_user)
+	conversation = context.chat_data['conversation']
+
+	# Error-checking for null argument.
+	if imageDesc == None or imageDesc=="":
+		_logger.error(f"The AI sent an /image command with no argument in conversation {chat_id}.")
+		DIAG_MSG = "[DIAGNOSTIC: /remember command needs an argument.]"
+		try:
+			await message.reply_text(DIAG_MSG)
+		except BadRequest or Forbidden or ChatMigrated as e:
+			_logger.error(f"Got a {type(e).__name__} exception from "
+							f"Telegram ({e}) for conversation {chat_id}; "
+							"aborting.")
+			return
+		# Record the diagnostic for the AI also.
+		conversation.add_message(Message(SYS_NAME, DIAG_MSG))
+		return
+
+	# Generate and send an image described by the /image command argument string.
+	_logger.normal("\nGenerating an image with description "
+					f"[{imageDesc}] for user '{user_name}' in "
+					f"conversation {chat_id}.")
+	await send_image(update, context, imageDesc)
+
+	# Make a note in conversation archive to indicate that the image was sent.
+	conversation.add_message(Message(SYS_NAME, f'[Generated image "{imageDesc}"]'))
+
+	# Send the remaining text after the command line, if any, as a normal message.
+	if remaining_text != '':
+		await send_response(update, context, remaining_text)
+#__/ End of ai_image() function definition.
+
+
+async def process_response(update:Update, context:Context, response_message:Message) -> None:
+
+	# Get the message, or edited message from the update.
+	(message, edited) = _get_update_msg(update)
+	
+	# Get the chat_id, user_name, and conversation object.
 	chat_id = message.chat.id
 	user_name = _get_user_name(message.from_user)
 	conversation = context.chat_data['conversation']
@@ -2865,27 +3158,13 @@ async def process_response(update:Update, context:Context, response_message:str)
 		_logger.info(f"NOTE: The AI is passing its turn in conversation {chat_id}.")
 		return
 
-	# Temporary code to suppress usage.
-	#N = 5
-	#ALERT_MSG = "***System notification*** This free bot will be taken " \
-	#	"offline very soon for cost reasons. You need to find another " \
-	#	"solution for your chatbot needs."
-	#if user_name != "Seii1998" and random.randint(1, N) == 1:
-	#	try:
-	#		update.message.reply_text(ALERT_MSG)
-	#	except BadRequest or Forbidden or ChatMigrated as e:
-	#		_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) "
-	#			"for conversation {chat_id}; aborting.")
-	#		return
-	#	conversation.add_message(Message(SYS_NAME, ALERT_MSG))
-
 	# Finally, we check to see if the AI's message is a command line;
 	# that is, if it starts with '/' followed by an identifier (e.g.,
 	# '/remember').  If so, we'll process it as a command.
 	if response_text[0] == '/':
 		# Extract the command name from the message.  We'll do this
 		# with a regex that captures the command name, and then the
-		# rest of the message.  But first, we'll capture just the
+		# rest of the command line.  But first, we'll capture just the
 		# first line of the message, followed by the rest.
 
 		# Split the text into lines
@@ -2897,8 +3176,11 @@ async def process_response(update:Update, context:Context, response_message:str)
 		# Get the remaining text by joining the rest of the lines
 		remaining_text = '\n'.join(lines[1:])
 
+		# Now, we'll use a regex to parse the command line to
+		# extract the command name and optional arguments.
 		match = re.match(r"^/(\S+)(?:\s+(.*))?$", first_line)
 
+		# Extract the command name and arguments from the match.
 		command_name = command_args = None
 		if match is not None:
 			groups = match.groups()
@@ -2917,191 +3199,55 @@ async def process_response(update:Update, context:Context, response_message:str)
 		if command_name == 'remember':
 			# This is a command to remember something.
 
-			if command_args == None:
-				_logger.error(f"The AI sent a /remember command with no "
-							  f"argument in conversation {chat_id}.")
-				DIAG_MSG = "[DIAGNOSTIC: /remember command needs an argument.]"
-				try:
-					await message.reply_text(DIAG_MSG)
-				except BadRequest or Forbidden or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} exception from "
-								  f"Telegram ({e}) for conversation {chat_id}; "
-								  "aborting.")
-					return
+			# Should we issue a warning here if there is remaining text
+			# after the command line that we're ignoring?  Or should we 
+			# include the remaining text as part of the memory to be 
+			# remembered?
 
-				# Record the diagnostic for the AI also.
-				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
-				
-				return
-
-			# Tell the conversation object to add the given message to the AI's persistent memory.
-			if not conversation.add_memory(command_args):
-				
-				errmsg = _lastError
-
-				# Generate an error-level report to include in the application log.
-				_logger.error(f"The AI tried & failed to add memory: [{command_args}]")
-	
-				diagMsg = f"[DIAGNOSTIC: Could not add [{command_args}] to persistent memory. " \
-						  f"Error message was: \"{errmsg}\"]\n"
-
-				# Send the diagnostic message to the user.
-				try:
-					await message.reply_text(diagMsg)
-				except BadRequest or Forbidden or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} exception from "
-								  f"Telegram ({e}) for conversation {chat_id}; "
-								  "aborting.")
-					return
-			
-				# Add the diagnostic message to the conversation.
-				conversation.add_message(Message(SYS_NAME, diagMsg))
-		
-				return
-
-			_logger.info(f"The AI added [{command_args}] to persistent memory in conversation {chat_id}.")
-
-			# Also notify the user that we're remembering the given statement.
-			DIAG_MSG = f"[DIAGNOSTIC: Added [{command_args}] to persistent memory.]"
-			try:
-				await message.reply_text(DIAG_MSG)
-			except BadRequest or Forbidden or ChatMigrated as e:
-				_logger.error(f"Got a {type(e).__name__} exception from "
-							  f"Telegram ({e}) for conversation {chat_id}; "
-							  "aborting.")
-				return
-
-			# Record the diagnostic for the AI also.
-			conversation.add_message(Message(SYS_NAME, DIAG_MSG))
+			# This does all the work of handling the '/remember' command
+			# when issued by the AI.
+			await ai_remember(message, conversation, command_args)
 
 			return		# Processed AI's /remember command successfully.
-				
+
 		# Check to see if the AI typed the '/forget' command.
 		elif command_name == 'forget':
 			# This is a command to forget something.
 
-			if command_args == None:
-				_logger.error(f"The AI sent a /forget command with no argument in conversation {chat_id}.")
-				DIAG_MSG = "[DIAGNOSTIC: /forget command needs an argument.]"
-				try:
-					await message.reply_text(DIAG_MSG)
-				except BadRequest or Forbidden or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} exception from "
-								  f"Telegram ({e}) for conversation {chat_id}; "
-								  "aborting.")
-					return
+			# Should we issue a warning here if there is remaining text
+			# after the command line that we're ignoring?  Or should we 
+			# include the remaining text as part of the memory to be 
+			# forgotten?
 
-				# Record the diagnostic for the AI also.
-				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
-				
-				return
-
-			# Tell the conversation object to remove the given message
-			# from the AI's persistent memory.  The return value is
-			# True if the message was found and removed, and False if
-			# it wasn't.
-			if conversation.remove_memory(command_args):
-
-				# Log this at INFO level.
-				_logger.info(f"The AI removed [{command_args}] from persistent memory in conversation {chat_id}.")
-
-				# Also notify the user that we're forgetting the given statement.
-				DIAG_MSG = f"[DIAGNOSTIC: Removed [{command_args}] from persistent memory.]"
-				try:
-					await message.reply_text(DIAG_MSG)
-				except BadRequest or Forbidden or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} exception from "
-								  f"Telegram ({e}) for conversation {chat_id}; "
-								  "aborting.")
-					return
-			
-				# Record the diagnostic for the AI also.
-				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
-				
-				return	# Processed AI's /forget command successfully.
-
-			else:
-
-				errmsg = _lastError
-				
-				# Log this at ERROR level.
-				_logger.error("The AI tried & failed to remove "
-							  f"[{command_args}] from persistent memory in "
-							  f"conversation {chat_id}.")
-
-				# Also notify the user that we couldn't forget the given statement.
-				DIAG_MSG = f'[DIAGNOSTIC: Could not remove [{command_args}] " \
-					f"from persistent memory. Error message was: "{_lastError}"]'
-				try:
-					await message.reply_text(DIAG_MSG)
-				except BadRequest or Forbidden or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} exception from "
-								  f"Telegram ({e}) for conversation {chat_id}; "
-								  "aborting.")
-					return
-
-				# Record the diagnostic for the AI also.
-				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
-				
-				return
+			# This does all the work of handling the '/forget' command
+			# when issued by the AI.
+			await ai_forget(message, conversation, command_args)
+			return		# Processed AI's /forget command successfully.
 
 		elif command_name == 'block':
-			# Adds the current user to the block list.
-			
-			_logger.warn(f"***ALERT*** The AI is blocking user '{user_name}' in conversation {chat_id}.")
+			# Adds the current user (or a specified user) to the block list.
 
-			if _isBlocked(user_name):
-				_logger.error(f"User '{user_name}' is already blocked.")
-				DIAG_MSG = f'[DIAGNOSTIC: User {user_name} has already been blocked by {BOT_NAME}.]'
-			else:
-				_blockUser(user_name)
-				DIAG_MSG = f'[DIAGNOSTIC: {BOT_NAME} has blocked user {user_name}.]'
-			
-			try:
-				await message.reply_text(DIAG_MSG)
-			except BadRequest or Forbidden or ChatMigrated as e:
-				_logger.error(f"Got a {type(e).__name__} exception from "
-							  f"Telegram ({e}) for conversation {chat_id}; "
-							  "aborting.")
-				return
+			# Should we issue a warning here if there is remaining text
+			# after the command line that we're ignoring?  Or should we
+			# send the remaining text as a normal message?
 
-			# Record the diagnostic for the AI also.
-			conversation.add_message(Message(SYS_NAME, DIAG_MSG))
-				
+			# This does all the work of handling the '/block' command
+			# when issued by the AI.
+			await ai_block(message, conversation, command_args)
 			return		# Processed AI's /block command successfully.
 
 		elif command_name == 'image':
-
-			# Error-checking for null argument.
-			if command_args == None or command_args=="":
-				_logger.error(f"The AI sent an /image command with no argument in conversation {chat_id}.")
-				DIAG_MSG = "[DIAGNOSTIC: /remember command needs an argument.]"
-				try:
-					await message.reply_text(DIAG_MSG)
-				except BadRequest or Forbidden or ChatMigrated as e:
-					_logger.error(f"Got a {type(e).__name__} exception from "
-								  f"Telegram ({e}) for conversation {chat_id}; "
-								  "aborting.")
-					return
-				# Record the diagnostic for the AI also.
-				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
-				return
-
-			# Get the image description.
-			imageDesc = command_args
-
-			# Generate and send an image described by the /image command argument string.
-			_logger.normal("\nGenerating an image with description "
-						   f"[{imageDesc}] for user '{user_name}' in "
-						   f"conversation {chat_id}.")
-			await send_image(update, context, imageDesc)
-
-			# Make a note in conversation archive to indicate that the image was sent.
-			conversation.add_message(Message(SYS_NAME, f'[Generated image "{imageDesc}"]'))
-
-			# Send the remaining text after the command line, if any, as a normal message.
-			if remaining_text != '':
-				await send_response(update, context, remaining_text)
+			# This is a command to generate an image and send it to the user.
+			
+			# This does all the work of handling the '/image' command
+			# when issued by the AI.
+			await ai_image(update, context, command_args, remaining_text)
+				# NOTE: We're passing the entire update object here, as well
+				# as the context, because we need to be able to send a message
+				# to the user, and we can't do that with just the message object.
+				# We also pass the remaining text after the command line, if any,
+				# so that it can be sent as a normal message after the image is
+				# sent.
 
 			return		# Processed AI's /image command successfully.
 
@@ -3141,7 +3287,7 @@ async def process_response(update:Update, context:Context, response_message:str)
 						  f"({e}) for conversation {chat_id}; ignoring.")
 			return
 
-	return		# Processed AI's response successfully.
+	# Processed AI's response successfully.
 
 #__/ End of process_response() function definition.
 
@@ -3467,7 +3613,7 @@ def _initPersistentContext() -> None:
 		MESSAGE_DELIMITER + " ~~~ Commands available for me to use: ~~~\n" + \
 		"  /pass - Refrain from responding to the last user message.\n" + \
 		"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
-		"  /block - Adds the current user to my block list.\n" + \
+		"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
 		"  /remember <text> - Adds <text> to my persistent context data.\n" + \
 		"  /forget <text> - Removes <text> from my persistent context data.\n" + \
 		MESSAGE_DELIMITER + " ~~~ Recent Telegram messages: ~~~"
