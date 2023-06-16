@@ -2460,13 +2460,15 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 		if response_text == "":
 			# Delete the last message from the conversation.
 			conversation.delete_last_message()
-			# Send the user a diagnostic message indicating that the response was empty.
-			# (Doing this temporarily during development.)
-			try:
-				await message.reply_text("[DIAGNOSTIC: Response was empty.]")
-			except BadRequest or Forbidden or ChatMigrated as e:
-				_logger.error(f"Got a {type(e).__name__} exception from "
-							  f"Telegram ({e}) for conversation {chat_id}; ignoring.")
+
+			## Commenting this out now for production.
+			# # Send the user a diagnostic message indicating that the response was empty.
+			# # (Doing this temporarily during development.)
+			# try:
+			# 	await message.reply_text("[DIAGNOSTIC: Response was empty.]")
+			# except BadRequest or Forbidden or ChatMigrated as e:
+			# 	_logger.error(f"Got a {type(e).__name__} exception from "
+			# 				  f"Telegram ({e}) for conversation {chat_id}; ignoring.")
 			
 				# Note that this message doesn't get added to the conversation, so it won't be
 				# visible to the AI, only to the user.
@@ -2758,6 +2760,14 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				_logger.normal(f"AI wants to call function {function_name} with " \
 					"arguments: \n" + pformat(function_args))
 
+				# Generate a description of the function call, for diagnostic purposes.
+				kwargstr = ', '.join([f"{key}='{value}'" for key, value in function_args.items()])
+				call_desc = f"{function_name}({kwargstr})"
+
+				# Have the AI make a note to itself to remember that it did the function call.
+				self_note = f"[Note to self: Doing function call {call_desc}.]"
+				conversation.add_message(Message(BOT_NAME, self_note))
+
 				# Extract the optional remark argument from the argument list.
 				if 'remark' in function_args:
 					remark = function_args['remark']
@@ -2768,10 +2778,12 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				if response_text is None:
 					response_text = ""
 
+				# Generate a description of the function call, for diagnostic purposes.
+				kwargstr = ','.join([f"{key}='{value}'" for key, value in function_args.items()])
+				call_desc = f"{function_name}({kwargstr})"
+
 				## Just did this temporarily while debugging.
 				# # Prepend a diagnostic with the call description to the response_text (which is probably null).
-				# kwargstr = ','.join([f"{key}='{value}'" for key, value in function_args.items()])
-				# call_desc = f"{function_name}({kwargstr})"
 				# response_text = f"[SYSTEM DIAGNOSTIC: Called {call_desc}]\n\n" + remark + '\n' + response_text
 
 				# This probably is just the remark. Use it as our response text below.
@@ -2887,16 +2899,18 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 		# Delete the last message from the conversation.
 		conversation.delete_last_message()
-		# Send the user a diagnostic message indicating that the response was empty.
-		# (Doing this temporarily during development.)
-		try:
-			await message.reply_text("[DIAGNOSTIC: Response was empty.]")
-			# Note that this message doesn't get added to the conversation, so it won't be
-			# visible to the AI, only to the user.
-		except BadRequest or Forbidden or ChatMigrated as e:
-			_logger.error(f"Got a {type(e).__name__} exception from "
-						  f"Telegram ({e}) for conversation {chat_id}; "
-						  "ignoring.")
+
+		## Commenting this out for production.
+		# # Send the user a diagnostic message indicating that the response was empty.
+		# # (Doing this temporarily during development.)
+		# try:
+		# 	await message.reply_text("[DIAGNOSTIC: Response was empty.]")
+		# 	# Note that this message doesn't get added to the conversation, so it won't be
+		# 	# visible to the AI, only to the user.
+		# except BadRequest or Forbidden or ChatMigrated as e:
+		# 	_logger.error(f"Got a {type(e).__name__} exception from "
+		# 				  f"Telegram ({e}) for conversation {chat_id}; "
+		# 				  "ignoring.")
 			
 		return		# This means the bot is simply not responding to this particular message.
 	
@@ -3186,7 +3200,7 @@ async def ai_image(update:Update, context:Context, imageDesc:str, remaining_text
 	await send_image(update, context, imageDesc)
 
 	# Make a note in conversation archive to indicate that the image was sent.
-	conversation.add_message(Message(SYS_NAME, f'[Generated image "{imageDesc}"]'))
+	conversation.add_message(Message(SYS_NAME, f'[Generated and sent image "{imageDesc}"]'))
 
 	# Send the remaining text after the command line, if any, as a normal message.
 	if remaining_text != None and remaining_text != '':
