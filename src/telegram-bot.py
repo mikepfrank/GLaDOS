@@ -233,6 +233,8 @@ import re
 	# This simple built-in version of the regex library is sufficient for our
 	# purposes here.
 
+from pprint import pformat
+
 import asyncio	# We need this for python-telegram-bot v20.
 
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2719,7 +2721,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 					# overrides whatever api.Messages object is being maintained 
 					# in the GPT3ChatCore object.
 
-				user = str(user_id),		# Send the user's unique ID for
+				user = "tg_" + str(user_id),		# Send the user's unique ID for
 					# traceability in the event of severe content violations.
 
 				minRepWin = minReplyWinToks,	# Min. reply window size in tokens.
@@ -2738,20 +2740,44 @@ async def process_chat_message(update:Update, context:Context) -> None:
 					# estimates were pretty close, the difference will be small, and 
 					# the AI should still be able to generate a reasonable response.
 
-				functions = functions,	# Available function list, if supported.
-				function_call = 'auto'	# Let AI decide whether/which functions to call.
+				# The following are only relevant in 0613 (June 13, 2023) or later
+				# releases of chat models, which support the functions interface.
+				functionList = functions,	# Available function list, if supported.
+				functionCall = 'auto'		# Let AI decide whether/which functions to call.
 			)
 			# Get the text of the response.
 			response_text = chatCompletion.text
 
 			# If there's a function call in the response, display it.
 			response_message = chatCompletion.message
+			#_logger.normal(f"RETURNED MESSAGE = \n" + pformat(response_message))
+
 			funCall = response_message.get('function_call')
 			if funCall:
 				function_name = funCall['name']
 				function_args = json.loads(funCall['arguments'])
 				_logger.normal(f"AI wants to call function {function_name} with arguments: \n" + pformat(function_args))
+				# Extract the optional remark argument from the argument list.
+				if 'remark' in function_args:
+					remark = function_args['remark']
+					del function_args['remark']
+				else:
+					remark = ""
+
+				if response_text is None:
+					response_text = ""
+
+				## Just did this temporarily while debugging.
+				# # Prepend a diagnostic with the call description to the response_text (which is probably null).
+				# kwargstr = ','.join([f"{key}='{value}'" for key, value in function_args.items()])
+				# call_desc = f"{function_name}({kwargstr})"
+				# response_text = f"[SYSTEM DIAGNOSTIC: Called {call_desc}]\n\n" + remark + '\n' + response_text
+
+				# This probably is just the remark. Use it as our response text below.
+				response_rest = remark + '\n' + response_text
+
 				# Actually do the call here.
+				await ai_call_function(update, context, function_name, function_args)
 
 			# Also check for finish_reason == 'content_filter' and log/send a warning.
 			finish_reason = chatCompletion.finishReason
@@ -3127,7 +3153,7 @@ async def ai_block(updateMsg:TgMsg, conversation:Conversation, userToBlock:str=N
 				
 
 # Define a function to handle the /image command, when issued by the AI.
-async def ai_image(update:Update, context:Context, imageDesc:str, remaining_text:str) -> None:
+async def ai_image(update:Update, context:Context, imageDesc:str, remaining_text:str=None) -> None:
 
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
@@ -3162,14 +3188,65 @@ async def ai_image(update:Update, context:Context, imageDesc:str, remaining_text
 	conversation.add_message(Message(SYS_NAME, f'[Generated image "{imageDesc}"]'))
 
 	# Send the remaining text after the command line, if any, as a normal message.
-	if remaining_text != '':
+	if remaining_text != None and remaining_text != '':
 		await send_response(update, context, remaining_text)
+
 #__/ End of ai_image() function definition.
+
+
+async def ai_call_function(update:Update, context:Context, funcName:str, funcArgs:dict):
+	"""Call the named AI-available function with the given argument dict."""
+
+	# Get the user message, or edited message from the update.
+	(message, edited) = _get_update_msg(update)
+	
+	# Get the chat_id, user_name, and conversation object.
+	chat_id = message.chat.id
+	user_name = _get_user_name(message.from_user)
+	conversation = context.chat_data['conversation']
+	
+	# Dispatch on the function name. See FUNCTIONS_LIST.
+	if funcName == 'remember_item':
+		textToAdd = funcArgs.get('item_text', None)
+
+		if textToAdd:
+			await ai_remember(message, conversation, textToAdd)
+		else:
+			await _report_error(conversation, message,
+					f"remember_item() missing required argument item_text.")
+
+	elif funcName == 'forget_item':
+		textToDel = funcArgs.get('item_text', None)
+
+		if textToDel:
+			await ai_forget(message, conversation, textToDel)
+		else:
+			await _report_error(conversation, message,
+					f"forget_item() missing required argument item_text.")
+
+	elif funcName == 'create_image':
+		imageDesc = funcArgs.get('image_desc', None)
+
+		if imageDesc:
+			await ai_image(update, context, imageDesc)
+		else:
+			await _report_error(conversation, message,
+					f"create_image() missing required argument image_desc.")
+
+	elif funcName == 'block_user':
+		userToBlock = funcArgs.get('image_desc', user_name)		# Default to current user.
+
+		await ai_block(message, conversation, userToBlock)
+
+	else:
+		await _report_error(conversation, message,
+							f"AI tried to call an undefined function '{funcName}()'.")
+#__/
 
 
 async def process_response(update:Update, context:Context, response_message:Message) -> None:
 
-	# Get the message, or edited message from the update.
+	# Get the user message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 	
 	# Get the chat_id, user_name, and conversation object.
@@ -3923,6 +4000,10 @@ FUNCTIONS_LIST = [
 					"type":         "string",   # <item_text> argument has type string.
 					"description":  "Text of item to remember, as a single line."
 				},
+				"remark":	{
+					"type":		"string",	# <remark> argument has type string.
+					"description":	"A textual message to send to the user after the call."
+				},
 			},
 			"required":     ["item_text"]       # <item_text> argument is required.
 		}
@@ -3938,6 +4019,10 @@ FUNCTIONS_LIST = [
 				"item_text":    {
 					"type":         "string",   # <item_text> argument has type string.
 					"description":  "Exact text of item to forget, as a single line."
+				},
+				"remark":	{
+					"type":		"string",	# <remark> argument has type string.
+					"description":	"A textual message to send to the user after the call."
 				},
 			},
 			"required":     ["item_text"]       # <item_text> argument is required.
@@ -3955,6 +4040,10 @@ FUNCTIONS_LIST = [
 					"type":         "string",   # <image_desc> argument has type string.
 					"description":  "Detailed text prompt describing the desired image."
 				},
+				"remark":	{
+					"type":		"string",	# <remark> argument has type string.
+					"description":	"A textual message to send to the user after the call."
+				},
 			},
 			"required":     ["image_desc"]       # <image_desc> argument is required.
 		}
@@ -3963,13 +4052,17 @@ FUNCTIONS_LIST = [
 	# Function for command: /block [<user_name>]
 	{
 		"name":         "block_user",
-		"description":  "Blocks a given user from accessing this Telegram bot.",
+		"description":  "Blocks a given user from accessing this Telegram bot again.",
 		"parameters":   {
 			"type":         "object",
 			"properties":   {
 				"user_name":    {
 					"type":         "string",   # <item_text> argument has type string.
 					"description":  "Name of user to block; defaults to current user."
+				},
+				"remark":	{
+					"type":			"string",	# <remark> argument has type string.
+					"description":	"A textual message to send to the user after the call."
 				},
 			},
 			"required":     []       # <user_name> argument is not required.
