@@ -2754,7 +2754,10 @@ async def process_chat_message(update:Update, context:Context) -> None:
 			if funCall:
 				function_name = funCall['name']
 				function_args = json.loads(funCall['arguments'])
-				_logger.normal(f"AI wants to call function {function_name} with arguments: \n" + pformat(function_args))
+
+				_logger.normal(f"AI wants to call function {function_name} with " \
+					"arguments: \n" + pformat(function_args))
+
 				# Extract the optional remark argument from the argument list.
 				if 'remark' in function_args:
 					remark = function_args['remark']
@@ -2772,7 +2775,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				# response_text = f"[SYSTEM DIAGNOSTIC: Called {call_desc}]\n\n" + remark + '\n' + response_text
 
 				# This probably is just the remark. Use it as our response text below.
-				response_rest = remark + '\n' + response_text
+				response_text = remark + '\n' + response_text
 
 				# Actually do the call here.
 				await ai_call_function(update, context, function_name, function_args)
@@ -4038,7 +4041,8 @@ FUNCTIONS_LIST = [
 				},
 				"remark":	{
 					"type":		"string",	# <remark> argument has type string.
-					"description":	"A textual message to send to the user after the call."
+					"description":	"A textual message to send to the user after the " \
+									"call. (Note, this may serve as an image caption.)"
 				},
 			},
 			"required":     ["image_desc"]       # <image_desc> argument is required.
