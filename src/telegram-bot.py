@@ -2955,7 +2955,7 @@ async def ai_remember(updateMsg:TgMsg, conversation:Conversation, textToAdd:str)
 
 		return
 
-	_logger.info(f"The AI added [{textToAdd}] to persistent memory in conversation {chat_id}.")
+	_logger.normal(f"\tThe AI added [{textToAdd}] to persistent memory in conversation {chat_id}.")
 
 	# Also notify the user that we're remembering the given statement.
 	DIAG_MSG = f"[DIAGNOSTIC: Added [{textToAdd}] to persistent memory.]"
@@ -3011,8 +3011,8 @@ async def ai_forget(updateMsg:TgMsg, conversation:Conversation, textToDel:str) -
 	# it wasn't.
 	if conversation.remove_memory(textToDel):
 
-		# Log this at INFO level.
-		_logger.info(f"The AI removed [{textToDel}] from persistent memory in conversation {chat_id}.")
+		# Log this at normal level.
+		_logger.normal(f"\tThe AI removed [{textToDel}] from persistent memory in conversation {chat_id}.")
 
 		# Also notify the user that we're forgetting the given statement.
 		DIAG_MSG = f"[DIAGNOSTIC: Removed [{textToDel}] from persistent memory.]"
@@ -3128,7 +3128,7 @@ async def ai_image(update:Update, context:Context, imageDesc:str, remaining_text
 		return
 
 	# Generate and send an image described by the /image command argument string.
-	_logger.normal("\nGenerating an image with description "
+	_logger.normal("\tGenerating an image with description "
 					f"[{imageDesc}] for user '{user_name}' in "
 					f"conversation {chat_id}.")
 	await send_image(update, context, imageDesc)
@@ -3155,7 +3155,7 @@ async def process_response(update:Update, context:Context, response_message:Mess
 
 	# First, check to see if the AI typed the '/pass' command, in which case we do nothing.
 	if response_text.lower() == '/pass':
-		_logger.info(f"NOTE: The AI is passing its turn in conversation {chat_id}.")
+		_logger.normal(f"\nNOTE: The AI is passing its turn in conversation {chat_id}.")
 		return
 
 	# Finally, we check to see if the AI's message is a command line;
@@ -3199,6 +3199,8 @@ async def process_response(update:Update, context:Context, response_message:Mess
 		if command_name == 'remember':
 			# This is a command to remember something.
 
+			_logger.normal(f"\nAI {BOT_NAME} entered a /remember command in chat {chat_id}.")
+
 			# Should we issue a warning here if there is remaining text
 			# after the command line that we're ignoring?  Or should we 
 			# include the remaining text as part of the memory to be 
@@ -3214,6 +3216,8 @@ async def process_response(update:Update, context:Context, response_message:Mess
 		elif command_name == 'forget':
 			# This is a command to forget something.
 
+			_logger.normal(f"\nAI {BOT_NAME} entered a /forget command in chat {chat_id}.")
+
 			# Should we issue a warning here if there is remaining text
 			# after the command line that we're ignoring?  Or should we 
 			# include the remaining text as part of the memory to be 
@@ -3227,6 +3231,8 @@ async def process_response(update:Update, context:Context, response_message:Mess
 		elif command_name == 'block':
 			# Adds the current user (or a specified user) to the block list.
 
+			_logger.normal(f"\nAI {BOT_NAME} entered a /block command in chat {chat_id}.")
+
 			# Should we issue a warning here if there is remaining text
 			# after the command line that we're ignoring?  Or should we
 			# send the remaining text as a normal message?
@@ -3238,6 +3244,8 @@ async def process_response(update:Update, context:Context, response_message:Mess
 
 		elif command_name == 'image':
 			# This is a command to generate an image and send it to the user.
+			
+			_logger.normal(f"\nAI {BOT_NAME} entered an /image command in chat {chat_id}.")
 			
 			# This does all the work of handling the '/image' command
 			# when issued by the AI.
@@ -3253,7 +3261,7 @@ async def process_response(update:Update, context:Context, response_message:Mess
 
 		else:
 			# This is a command type that we don't recognize.
-			_logger.info(f"AI {BOT_NAME} entered an unknown command [/{command_name}] in chat {chat_id}.")
+			_logger.warn(f"\nAI {BOT_NAME} entered an unknown command [/{command_name}] in chat {chat_id}.")
 			# Send the user a diagnostic message.
 			DIAG_MSG = f"[DIAGNOSTIC: Unknown command [/{command_name}].]"
 			try:
