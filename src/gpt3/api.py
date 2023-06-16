@@ -2388,6 +2388,8 @@ class ChatCompletion(Completion):
 			# Convert them to actual numbers.
 			numbers = [int(n) for n in numStrs]
 
+			_logger.error(f"Extracted the following numbers: {numbers}")
+
 			if len(numbers) == 4:
 				maxConLen, reqToks, msgsLen, compLen = numbers
 			
@@ -2397,6 +2399,16 @@ class ChatCompletion(Completion):
 
 				raise e
 
+			elif len(numbers) == 5:
+				maxConLen, reqToks, msgsLen, funcsLen, compLen = numbers
+			
+				maxPrompt = maxConLen - reqToks
+
+				e = PromptTooLargeException(msgsLen, maxPrompt)
+
+				raise e
+
+		# If we get here, there was a successful return from the API call.
 		_logger.debug("ChatCompletion._createChatComplStruct(): Got raw chat completion struct:"
 					  + '\n' + pformat(chatComplStruct))
 
