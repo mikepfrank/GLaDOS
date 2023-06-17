@@ -3019,7 +3019,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 	# If the response is empty, then return early. (Can't even send an empty message anyway.)
 	if response_text == "":
 
-		_logger.warn("Got an empty response! Ignoring...")
+		_logger.warn("AI's text response was null. Ignoring...")
 
 		## No longer needed because we don't add an empty message.
 		# Delete the last message from the conversation.
