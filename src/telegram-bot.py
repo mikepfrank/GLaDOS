@@ -2714,7 +2714,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 			# how it's formatted at the back end exactly.)
 			if hasFunctions(ENGINE_NAME):
 				funcsSize = tiktokenCount(json.dumps(FUNCTIONS_LIST), model=ENGINE_NAME)
-				_logger.info(f"Estimating size of FUNCTIONS_LIST is {funcsSize}.)")
+				#_logger.info(f"Estimating size of FUNCTIONS_LIST is {funcsSize}.)")
 				msgsSizeToks += funcsSize
 
 			#_logger.debug(f"In process_chat_message(), msgsSizeToks={msgsSizeToks}.")
@@ -2790,7 +2790,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				user = str(user_id),		# Send the user's unique ID for
 					# traceability in the event of severe content violations.
 
-				minRepWin = minReplyWinToks	# Min. reply window size in tokens.
+				minRepWin = minReplyWinToks,	# Min. reply window size in tokens.
 
 					# This parameter gets passed through to the ChatCompletion()
 					# initializer and thence to ChatCompletion._createComplStruct(),
