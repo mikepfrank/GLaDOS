@@ -2669,7 +2669,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 			# how it's formatted at the back end exactly.)
 			if hasFunctions(ENGINE_NAME):
 				funcsSize = tiktokenCount(json.dumps(FUNCTIONS_LIST), model=ENGINE_NAME)
-				_logger.info(f"Estimating size of FUNCTIONS_LIST is {funcsSize}.)")
+				#_logger.info(f"Estimating size of FUNCTIONS_LIST is {funcsSize}.)")
 				msgsSizeToks += funcsSize
 
 			#_logger.debug(f"In process_chat_message(), msgsSizeToks={msgsSizeToks}.")

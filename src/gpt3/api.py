@@ -1939,8 +1939,8 @@ class ChatCompletion(Completion):
 		
 		"""Instance initializer for class ChatCompletion."""
 		
-		if 'messages' in kwargs:
-			_logger.info(f"In ChatCompletion.__init__() with messages=[list of {len(kwargs['messages'])} messages]")
+		#if 'messages' in kwargs:
+		#	_logger.info(f"In ChatCompletion.__init__() with messages=[list of {len(kwargs['messages'])} messages]")
 
 		chatCompl = newChatCompletion	# For convenience.
 
@@ -2248,8 +2248,8 @@ class ChatCompletion(Completion):
 		"""Private instance method to retrieve a chat completion from the core
 			chat API, with automatic exponential backoff and retry."""
 		
-		if 'messages' in apiArgs:
-			_logger.info(f"In _createChatComplStruct(), apiArgs['messages']=[list of {len(apiArgs['messages'])} messages]")
+		#if 'messages' in apiArgs:
+		#	_logger.info(f"In _createChatComplStruct(), apiArgs['messages']=[list of {len(apiArgs['messages'])} messages]")
 
 		chatCompl = thisChatCompletion	# For convenience.
 
@@ -2408,6 +2408,9 @@ class ChatCompletion(Completion):
 			elif len(numbers) == 5:
 				maxConLen, reqToks, msgsLen, funcsLen, compLen = numbers
 			
+				_logger.error(f"maxConLen={maxConLen}, reqToks={reqToks}, msgsLen={msgsLen}, funcsLen={funcsLen}, compLen={compLen}")
+				_logger.error(f"NOTE: msgsLen+funcsLen = {msgsLen+funcsLen}, but we estimated {estInputLen}.")
+
 				maxPrompt = maxConLen - reqToks
 
 				e = PromptTooLargeException(msgsLen, maxPrompt)
@@ -2467,8 +2470,8 @@ class ChatCompletion(Completion):
 			and returns the estimate. This may be done prior to calling the
 			API, since it does not use the completion result."""
 
-		if 'messages' in apiArgs:
-			_logger.info(f"In _estimateInputLen(), apiArgs['messages']=[list of {len(apiArgs['messages'])} messages]")
+		#if 'messages' in apiArgs:
+		#	_logger.info(f"In _estimateInputLen(), apiArgs['messages']=[list of {len(apiArgs['messages'])} messages]")
 
 		chatCompl = thisChatCompl	# For convenience.
 		
@@ -2478,9 +2481,14 @@ class ChatCompletion(Completion):
 			# Get the raw message list.
 		messages = ChatMessages(apiArgs['messages'])
 
+		if _has_functions(engine) and 'functions' in apiArgs:
+			funcToks = tiktokenCount(json.dumps(apiArgs['functions']), model=engine)
+		else:
+			funcToks = 0
+
 			# This function counts the number of tokens in the prompt
 			# without having to do an API call (since calls cost $$).
-		inToks = messages.totalTokens(model=engine)
+		inToks = messages.totalTokens(model=engine) + funcToks
 
 		_logger.debug(f"Counted {inToks} tokens in input text [{messages}]")
 
@@ -3042,8 +3050,8 @@ class GPT3ChatCore(GPT3Core):
 			Any keyword arguments provided will override the current values
 			in the chat configuration."""
    
-		if 'messages' in kwargs:
-			_logger.info(f"In genChatArgs() with messages=[list of {len(kwargs['messages'])} messages]")
+		#if 'messages' in kwargs:
+		#	_logger.info(f"In genChatArgs() with messages=[list of {len(kwargs['messages'])} messages]")
 
 		chatCore = thisChatCore		# For convenience.
 
@@ -3114,8 +3122,8 @@ class GPT3ChatCore(GPT3Core):
 		if functionList		!= None:	apiargs['functions']		= functionList
 		if functionCall		!= None:	apiargs['function_call']	= functionCall
 
-		if 'messages' in apiargs:
-			_logger.info(f"In genChatArgs(), set apiargs['messages']=[list of {len(apiargs['messages'])} messages]")
+		#if 'messages' in apiargs:
+		#	_logger.info(f"In genChatArgs(), set apiargs['messages']=[list of {len(apiargs['messages'])} messages]")
 
 			# Make sure we don't set both temperature and top_p.		
 		if temperature != None and topP != None:
@@ -3151,8 +3159,8 @@ class GPT3ChatCore(GPT3Core):
 		#prettyArgs = pformat(kwargs)
 		#_logger.debug(f"In GPT3ChatCore.genChatCompletion() with args={args}, keyword args:\n" + prettyArgs)
 
-		if 'messages' in kwargs:
-			_logger.info(f"In genChatCompletion() with messages=[list of {len(kwargs['messages'])} messages]")
+		#if 'messages' in kwargs:
+		#	_logger.info(f"In genChatCompletion() with messages=[list of {len(kwargs['messages'])} messages]")
 
 		return ChatCompletion(self, *args, **kwargs)
 			# Calls the ChatCompletion constructor; this does all the real work 
