@@ -2744,7 +2744,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 					# overrides whatever api.Messages object is being maintained 
 					# in the GPT3ChatCore object.
 
-				user = "tg_" + str(user_id),		# Send the user's unique ID for
+				user = str(user_id),		# Send the user's unique ID for
 					# traceability in the event of severe content violations.
 
 				minRepWin = minReplyWinToks,	# Min. reply window size in tokens.
