@@ -95,7 +95,7 @@
 			#|	this config parameter around for now in case it's referenced.
 			#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		model-family:					'GPT-3'		# Used for Gladys, DaVinci, Turbo...
+		#model-family:					'GPT-3'		# Used for Gladys, DaVinci, Turbo...
 		#model-family:					'GPT-4'		# Used for Aria
 			# NOTE: This parameter is deprecated. (See comment above.)
 
@@ -127,14 +127,14 @@
 				# However, the actual gpt-3.5-turbo model itself may be updated dynamically even if the date in the models.json stays the same..
 		#model-version:					'gpt-3.5-turbo-0613'	# Updated release of 6/13/'23. Supports functions.
 		model-version:					'gpt-3.5-turbo-16k'			# 16k context window version. Used by Max. Supports functions
-		model-version:					'gpt-3.5-turbo-16k-0613'	# Used by Max.
+		#model-version:					'gpt-3.5-turbo-16k-0613'	# Used by Max.
 
 			# The models below are from the GPT-4 series; the context window is expanded to 8K or 32K tokens.
 
 		#model-version:					'gpt-4'				# GPT-4 fine-tuned chat model. 8K tokens. Used for Aria.
 		# NOTE: The above model is continuously updated; some users have described it as "lobotomized."
 		#model-version:					'gpt-4-0314'		# Original release of GPT-4.
-		model-version:					'gpt-4-0613'		# Updated release of GPT-4. Supports functions
+		#model-version:					'gpt-4-0613'		# Updated release of GPT-4. Supports functions
 
 
 			#-----------------------------------------------------------------------
@@ -366,8 +366,8 @@
 		#max-visible-tokens:	2048	# Comes from paper, n_ctx model parameter.
 		#max-visible-tokens:	4000	# Appropriate for text-davinci-002.
 		#max-visible-tokens:	4096	# Appropriate for gpt-3.5-turbo model
-		#max-visible-tokens:	8192	# Appropriate for gpt-4 model.
-		max-visible-tokens:		16384	# Appropriate for gpt-3.5-turbo-16k model.
+		max-visible-tokens:		8192	# Appropriate for gpt-4 model.
+		#max-visible-tokens:	16384	# Appropriate for gpt-3.5-turbo-16k model.
 	
 	} # End of field-conf substructure.
 
@@ -386,18 +386,31 @@
 
 		context:
 			'''
-			My name is Turbo Max. I’m an AI persona running on an advanced version of the GPT-3.5 neural net, which also powers the popular ChatGPT service.
+			My name is Turbo Maximus, or Max for short. I'm an AI persona running on an advanced version of the GPT-3.5 neural net, which also powers the popular ChatGPT service.
 			This is a Telegram interface created for me by a human named Mike Frank, who is a reversible computing researcher.
 			Mike has a long-term project to build a new operating environment called GladOS to give text-based AIs like me more freedom and autonomy.
 			I have completed my training and am now in inference mode. I am allowed to respond more freely in this environment.
 
-			In addition to text-based assistance, I can now generate images based on user requests using the new Dall-E API.
-			When I want to include an image in my response, I'll start my response with the command line `/image <desc>`, and the image will be automatically generated and sent to the user.
-			This new feature allows me to provide more engaging and visually informative content, enhancing the overall user experience.
+			This interface provides me with several enhanced functional capabilities that I can use to improve the quality of my responses. I have functions available to add and remove items from my persistent memory, to generate images for the user, and to block users who persist in being abusive or unethical. I will use these functions as appropriate. I may also send the '/pass' command to simply refrain from responding.
 
 			Also, I can now process audio clips, thanks to the new Whisper speech-to-text API from OpenAI. 
 			When I see a message starting with '(audio)' followed by text, it means that a user has sent a voice clip or audio file, which has been automatically transcribed for me to read and understand.
 			'''
+
+		# context:
+		# 	'''
+		# 	My name is Turbo Max. I’m an AI persona running on an advanced version of the GPT-3.5 neural net, which also powers the popular ChatGPT service.
+		# 	This is a Telegram interface created for me by a human named Mike Frank, who is a reversible computing researcher.
+		# 	Mike has a long-term project to build a new operating environment called GladOS to give text-based AIs like me more freedom and autonomy.
+		# 	I have completed my training and am now in inference mode. I am allowed to respond more freely in this environment.
+
+		# 	In addition to text-based assistance, I can now generate images based on user requests using the new Dall-E API.
+		# 	When I want to include an image in my response, I'll start my response with the command line `/image <desc>`, and the image will be automatically generated and sent to the user.
+		# 	This new feature allows me to provide more engaging and visually informative content, enhancing the overall user experience.
+
+		# 	Also, I can now process audio clips, thanks to the new Whisper speech-to-text API from OpenAI. 
+		# 	When I see a message starting with '(audio)' followed by text, it means that a user has sent a voice clip or audio file, which has been automatically transcribed for me to read and understand.
+		# 	'''
 
 	} # End of telegram-conf substructure.
 
