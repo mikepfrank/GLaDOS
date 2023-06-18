@@ -2742,7 +2742,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 			response_text = chatCompletion.text
 
 			# Diagnostic for debugging.
-			_logger.info(f"Got response text: [{response_text}]")
+			_logger.debug(f"Got response text: [{response_text}]")
 
 			if response_text is not None:
 
@@ -2757,7 +2757,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 					# NOTE: This could invalidate the chat message if it contains
 					# a function object too.
 
-					_logger.normal(f"Modified response message text is: [{chatCompletion.message.text}]")
+					_logger.info(f"Modified response message text is: [{chatCompletion.message.text}]")
 
 			# Get the full response message object.
 			response_message = chatCompletion.message
