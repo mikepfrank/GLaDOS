@@ -2826,16 +2826,13 @@ async def process_chat_message(update:Update, context:Context) -> None:
 			if funCall:
 				function_name = funCall['name']
 				function_args = json.loads(funCall['arguments'])
+				call_desc = _call_desc(function_name, function_args)
+					# Generate a description of the function call, for diagnostic purposes.
 
-				_logger.normal(f"AI wants to call function {function_name} with " \
-					"arguments: \n" + pformat(function_args))
-
-				# Generate a description of the function call, for diagnostic purposes.
-				kwargstr = ', '.join([f"{key}='{value}'" for key, value in function_args.items()])
-				call_desc = f"{function_name}({kwargstr})"
+				_logger.normal(f"AI wants to call {call_desc}.\n")
 
 				# Have the AI make a note to itself to remember that it did the function call.
-				self_note = f"[Note to self: Doing function call {call_desc}.]"
+				self_note = f"[Note to self: Doing function call: {call_desc}.]"
 				conversation.add_message(Message(BOT_NAME, self_note))
 
 				# Extract the optional remark argument from the argument list.
@@ -3729,6 +3726,16 @@ def _blockUser(user:str) -> None:
 		json.dump(block_list, f)
 #__/
 	
+
+def _call_desc(func_name:str, func_args:dict):
+	"""Convert a function name and argument dictionary to a string
+		representing the function call."""
+
+	# Generate a description of the function call, for diagnostic purposes.
+	kwargstr = ', '.join([f'{key}="{value}"' for key, value in func_args.items()])
+	call_desc = f"{func_name}({kwargstr})"
+#__/
+
 
 # This function checks whether the given user name is in our access list.
 # If it is, it returns True; otherwise, it returns False.
