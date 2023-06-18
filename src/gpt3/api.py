@@ -3739,15 +3739,12 @@ def _displayStats(doWrite:bool=True):
 		for engine in _ENGINE_NAMES:
 			
 			engStr 	= "%22s" % engine
-<<<<<<< HEAD
 
 			# If stats structures are out of date, expand them as needed.
 			if not engine in _inputToks:
 				_inputToks[engine] = 0
 				_outputToks[engine] = 0
 				_expenditures[engine] = 0
-=======
->>>>>>> max
 
 			inToks 	= _inputToks[engine]
 			outToks = _outputToks[engine]
