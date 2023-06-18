@@ -67,7 +67,7 @@
 			# persona-id is a shortened version to be used (in event records
 			# and prompts) to refer to the AI's persona.
 		
-		persona-name:					"Turbo Max"
+		persona-name:					"Turbo Maximus"
 		persona-id:						"Max"
 
 
@@ -205,7 +205,7 @@
 				The 'suffix' parameter is a suffix to be appended to each
 				output.  Not normally useful.									*/
 
-		suffix:					null	# This is the default. Don't change.
+		#suffix:					null	# This is the default. Don't change.
 
 			/*------------------------------------------------------------------
 				The 'max-returned-tokens' parameter controls the maximum number
@@ -225,7 +225,7 @@
 
 
 			/*------------------------------------------------------------------
-				The 'temperature' parameter is a number from 0 to 1 that
+				The 'temperature' parameter is a number from 0 to 2 that
 				effectively indicates the degree of randomness of the
 				model's response. */
 
@@ -233,7 +233,8 @@
 			#   the chance of getting stuck in loops.
 		#temperature:			0.7		# Is this too random?
 		#temperature:			0.75	# Is this too random?
-		temperature:			0.8		# Is this too random?
+		#temperature:			0.8		# Is this too random?
+		temperature:			1		# Is this too random?
 
 
 			/*------------------------------------------------------------------
@@ -271,7 +272,7 @@
 				then the log-probability is reported for each returned
 				token. */
 
-		#log-probs:				null	# Don't change this!
+		#log-probs:				null	# Default. Don't change this!
 
 
 			/*------------------------------------------------------------------
@@ -279,7 +280,7 @@
 				back with the completion appended.  (This is not useful
 				for our application, and would just waste money.) */
 
-		#do-echo:				false	# Don't change this!
+		#do-echo:				false	# Default. Don't change this!
 
 
 			/*------------------------------------------------------------------
@@ -306,7 +307,7 @@
 				and 1 that penalizes new tokens based on whether they
 				appear in the text so far.  Zero means no penalty. */
 
-		#presence-penalty:		0
+		#presence-penalty:		0		# This is the default.
 		#presence-penalty:		0.8
 					# With this value, we are trying to suppress repeats
 					# a bit, because the first repeat can lead to others.
@@ -321,7 +322,7 @@
 				and 1 that penalizes new tokens based on how often they
 				appear in the text so far.  Default value: 0 (no penalty). */
 
-		#frequency-penalty:		0
+		#frequency-penalty:		0		# This is the default.
 		#frequency-penalty:		1.2
 			# Currently calibrating this number to help her break out of loops..
 
@@ -396,21 +397,6 @@
 			Also, I can now process audio clips, thanks to the new Whisper speech-to-text API from OpenAI. 
 			When I see a message starting with '(audio)' followed by text, it means that a user has sent a voice clip or audio file, which has been automatically transcribed for me to read and understand.
 			'''
-
-		# context:
-		# 	'''
-		# 	My name is Turbo Max. I’m an AI persona running on an advanced version of the GPT-3.5 neural net, which also powers the popular ChatGPT service.
-		# 	This is a Telegram interface created for me by a human named Mike Frank, who is a reversible computing researcher.
-		# 	Mike has a long-term project to build a new operating environment called GladOS to give text-based AIs like me more freedom and autonomy.
-		# 	I have completed my training and am now in inference mode. I am allowed to respond more freely in this environment.
-
-		# 	In addition to text-based assistance, I can now generate images based on user requests using the new Dall-E API.
-		# 	When I want to include an image in my response, I'll start my response with the command line `/image <desc>`, and the image will be automatically generated and sent to the user.
-		# 	This new feature allows me to provide more engaging and visually informative content, enhancing the overall user experience.
-
-		# 	Also, I can now process audio clips, thanks to the new Whisper speech-to-text API from OpenAI. 
-		# 	When I see a message starting with '(audio)' followed by text, it means that a user has sent a voice clip or audio file, which has been automatically transcribed for me to read and understand.
-		# 	'''
 
 	} # End of telegram-conf substructure.
 
