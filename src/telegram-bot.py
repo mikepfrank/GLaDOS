@@ -2736,7 +2736,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 			response_message = chatCompletion.message
 
 			# In case there's a function call in the response, display it.
-			_logger.info(f"RETURNED MESSAGE = [{pformat(response_message)}]")
+			_logger.debug(f"RETURNED MESSAGE = [{pformat(response_message)}]")
 
 			# Get the text field of the response. (Could be None, if function call.)
 			response_text = chatCompletion.text
@@ -2757,7 +2757,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 					# NOTE: This could invalidate the chat message if it contains
 					# a function object too.
 
-					_logger.info(f"Modified response message text is: [{chatCompletion.message.text}]")
+					_logger.debug(f"Modified response message text is: [{chatCompletion.message.text}]")
 
 			# Get the full response message object.
 			response_message = chatCompletion.message
@@ -3325,7 +3325,7 @@ async def ai_image(update:Update, context:Context, imageDesc:str, caption:str=No
 		return "error: null image description"
 
 	# Generate and send an image described by the /image command argument string.
-	_logger.normal("Generating an image with description "
+	_logger.normal("\nGenerating an image with description "
 					f"[{imageDesc}] for user '{user_name}' in "
 					f"conversation {chat_id}.")
 	if caption:
@@ -3778,6 +3778,7 @@ def _call_desc(func_name:str, func_args:dict):
 	# Generate a description of the function call, for diagnostic purposes.
 	kwargstr = ', '.join([f'{key}="{value}"' for key, value in func_args.items()])
 	call_desc = f"{func_name}({kwargstr})"
+	return call_desc
 #__/
 
 
@@ -4174,7 +4175,7 @@ def _trim_prompt(response_text:str) -> str:
 
 	firstline = response_text.split('\n')[0]
 
-	_logger.info(f"Matching regex against: [{firstline}]")
+	_logger.debug(f"Matching regex against: [{firstline}]")
 	
 	match = re.match(regex, firstline)
 
@@ -4187,16 +4188,16 @@ def _trim_prompt(response_text:str) -> str:
 			prefix = ""
 			sender = match.group(1)
 
-		_logger.info(f"AI output a message from [{sender}]...")
+		_logger.debug(f"AI output a message from [{sender}]...")
 		if sender == BOT_NAME:
 
 			# Trim the sender and prompt part off of the front of the message text.
 			toTrim = prefix + sender + '> '
-			_logger.info(f"Trimming this part off the front: [{toTrim}]")
+			_logger.debug(f"Trimming this part off the front: [{toTrim}]")
 			rest = response_text[len(toTrim):]
 			response_text = rest
 			
-			_logger.info(f"Now we are left with [{response_text}]...")
+			_logger.debug(f"Now we are left with [{response_text}]...")
 			
 		#__/
 	#__/
