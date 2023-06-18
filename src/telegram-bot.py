@@ -146,12 +146,13 @@
 #|
 #|		_report_error() - Report a given error response from a Telegram send.
 #|
+#|		_unblockUser() - Removes a given user from the block list.
+#|
 #|
 #|	TO DO:
 #|	~~~~~~
 #|
-#|		o Cleanup: Handler functions don't need to return booleans.
-#|		o Migrate to python-telegram-bot library v20, upgrade to asyncio.
+#|		o Add 'pass_turn' and 'unblock_user' functions.
 #|		o Move more of the data files to AI_DATADIR.
 #|		o Implement user-specific and chat-specific persistent memory.
 #|		o Add commands to adjust parameters of the OpenAI GPT-3 API.
@@ -212,6 +213,7 @@
 
 
 # Set these flags to configure diagnostic output.
+
 CONS_INFO = False	# True shows info-level messages on the console.
 LOG_DEBUG = False	# True shows debug-level messages in the log file.
 
@@ -496,15 +498,18 @@ class Message:
 	#__/ End definition of instance initializer for class Message.
 
 
-	# Note that the following method is only used for GPT text engines,
-	# not chat engines. For chat engines, instead we'll use the
-	# Conversation class's get_chat_messages() method to format the
-	# conversation data appropriately for sending to GPT.
+	# This used to be used just for text engines, but now we are
+	# using it for chat engines as well.
 
 	def __str__(thisMsg:Message) -> str:
 		"""A string representation of the message object.
 			It is properly delimited for reading by the GPT-3 model."""
-		return f"{MESSAGE_DELIMITER} {thisMsg.sender}> {thisMsg.text}"
+
+		if MESSAGE_DELIMITER != "":
+			return f"{MESSAGE_DELIMITER} {thisMsg.sender}> {thisMsg.text}"
+		else:
+			return f"{thisMsg.sender}> {thisMsg.text}"
+
 	#__/
 
 
@@ -1219,8 +1224,9 @@ class Conversation:
 				role = CHAT_ROLE_USER
 			
 			chatMessage = {
-				'role': role,				# Note: The role field is always required.
-				'content': message.text		# The content field is also expected.
+				'role':		role,			# Note: The role field is always required.
+				#'content':	message.text	# The content field is also expected.
+				'content':	str(message)	# The content field is also expected.
 			}
 
 			# Change to try to reduce API errors:
@@ -1232,6 +1238,8 @@ class Conversation:
 
 			# Add the message we just constructed.
 			chat_messages.append(chatMessage)
+
+		#__/
 
 		# We'll add one more system message to the list of chat messages,
 		# to make sure it's clear to the AI that it is responding in the 
@@ -1245,13 +1253,17 @@ class Conversation:
 		#response_prompt = f"Respond as {botName}. (If you want to include an " \
 		#	"image in your response, you must put the command ‘/image <desc>’ at the " \
 		#	"very start of your response.)"
-		response_prompt = f"Respond as {botName}. (Remember you can use an available " \
+		#response_prompt = f"Respond as {botName}. (Remember you can use an available " \
+		#	"function if there is one that is appropriate.)"
+		response_prompt = f"Respond below. (Remember you can also call an available " \
 			"function if there is one that is appropriate.)"
 
 		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
 			# Only give this instruction in group chats:
 			response_prompt += " However, if the user is not addressing you, " \
 							   "type '/pass' to remain silent."
+		else:
+			response_prompt += " You may also send '/pass' to refrain from responding."
 
 		chat_messages.append({
 			'role': CHAT_ROLE_SYSTEM,
@@ -2672,10 +2684,34 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				functionCall = 'auto'		# Let AI decide whether/which functions to call.
 			)
 
+			# Get the full response message object.
+			response_message = chatCompletion.message
+
+			# In case there's a function call in the response, display it.
+			_logger.info(f"RETURNED MESSAGE = [{pformat(response_message)}]")
+
 			# Get the text field of the response. (Could be None, if function call.)
 			response_text = chatCompletion.text
 
-			# Get the full response message.
+			# Diagnostic for debugging.
+			_logger.info(f"Got response text: [{response_text}]")
+
+			if response_text is not None:
+
+				# Trim prompt off start of response.
+				new_response_text = _trim_prompt(response_text)
+
+				if new_response_text != response_text:
+					response_text = new_response_text
+
+					# Do surgery on the chat message object to fix it there also.
+					chatCompletion.message.text = response_text
+					# NOTE: This could invalidate the chat message if it contains
+					# a function object too.
+
+					_logger.normal(f"Modified response message text is: [{chatCompletion.message.text}]")
+
+			# Get the full response message object.
 			response_message = chatCompletion.message
 
 			# In case there's a function call in the response, display it.
@@ -2686,14 +2722,14 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				function_name = funCall['name']
 				function_args = json.loads(funCall['arguments'])
 
-				_logger.normal(f"AI wants to call function {function_name} with " \
+				_logger.info(f"AI wants to call function {function_name} with " \
 					"arguments: \n" + pformat(function_args))
 
 				# Generate a description of the function call, for diagnostic purposes.
 				kwargstr = ', '.join([f"{key}='{value}'" for key, value in function_args.items()])
 				call_desc = f"{function_name}({kwargstr})"
 
-				# Have the AI make a note to itself to remember that it did the function call.
+				# Have the bot server make a note to help the AI remember that it did the function call.
 				fcall_note = f"[NOTE: {BOT_NAME} is doing function call {call_desc}.]"
 				conversation.add_message(Message(SYS_NAME, fcall_note))
 
@@ -2709,6 +2745,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 					response_text = ""
 
 				# Generate a description of the function call, for diagnostic purposes.
+				# (This differs from the earlier one in that it doesn't include any remark.)
 				kwargstr = ', '.join([f"{key}='{value}'" for key, value in function_args.items()])
 				call_desc = f"{function_name}({kwargstr})"
 
@@ -2717,15 +2754,15 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				# response_text = f"[SYSTEM DIAGNOSTIC: Called {call_desc}]\n\n" + remark + '\n' + response_text
 
 				# This probably is just the remark. Use it as our response text below.
-				response_text = (remark + '\n' + response_text).strip()
+				response_text = (response_text + '\n' + remark).strip()
 
-				# Before calling the function, we'll send the response_text
+				# Before calling the function, we'll send the response_text, if non-empty.
 				# (which is probably contents of a remark argument, if anything)'
 				if response_text != "":
 
 					conversation.add_message(Message(BOT_NAME, response_text))
 					
-					# Try sending the response text to the user. (But ignore send errors.)
+					# Try sending the response text to the user. (But ignore send errors here.)
 					await send_response(update, context, response_text)
 				#__/
 
@@ -2737,63 +2774,113 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 				_logger.info(f"The AI's function call returned the result: [{result}]")
 				
-				# I don't think any of the below mess is actually needed right now.
+				# I don't think any of the below mess is strictly needed right now.
 				# Because none of our functions actually return a value at present.
-				if False:
-					result_msgs = [
-						response_message,	# This is the message that contains the AI's function call.
-					]
-					result_msgs += [
-						{
+				if True:
+
+					_logger.info("Assembling temporary message list for function call & return...")
+
+					# Get current chat message list.
+					temp_chat_messages = conversation.get_chat_messages()[:-1]
+						# Trim off final message which is the system prompt. Not needed right now.
+
+					# Trim off all trailing messages back to the function call note,
+					# since these would be remarks and various system notifications
+					# and errors generated during function execution.
+
+					trailing_msgs = []
+					# Scan back until we get to the "system: [NOTE: " message...
+					while not (temp_chat_messages[-1]['role'] == 'system'
+							   and temp_chat_messages[-1]['content'].startswith(f'{SYS_NAME}> [NOTE: ')):
+						# NOTE: Above will break if MESSAGE_DELIMITER is not empty string.
+
+						_logger.info(f"Flipping back through message: [{pformat(temp_chat_messages[-1])}]")
+
+						sys_msg = temp_chat_messages.pop()
+						trailing_msgs = [sys_msg] + trailing_msgs
+					#__/
+
+					# Construct some messages to represent the function call
+					# and return value.
+
+					# This message represents the actual function call.
+					funcall_msg = response_message
+							# This is the message that contains the AI's function call.
+
+					# Make sure we didn't add a text field to the message cuz the API will choke.
+					if 'text' in funcall_msg:
+						del funcall_msg['text']
+
+					# This message represents the actual return value of the function.
+					funcret_msg = {
 							'role':		'function',
 							'name':		function_name,
 							'content':	result
 						}
-					]
-					if response_text != "":
-						result_msgs += [{
-							'role':		'assistant',
-							'content':	response_text,
-						}]
 
-					# Append the dummy result messages onto the end of our existing chat messages.
-					chat_messages.extend(result_msgs)
+					# Finish building the message list. So, the sequence here is:
+					#
+					#	system:		[NOTE: ... is doing function call ...]
+					#	assistant:	(function call)
+					#	assistant:	{remark emitted by bot, if any}
+					#   function:	(function return)
+
+					temp_chat_messages += [funcall_msg]
+					temp_chat_messages += trailing_msgs
+					temp_chat_messages += [funcret_msg]
+					temp_chat_messages += [{
+							'role':		'system',
+							'content':	f"{BOT_NAME} now provides its response, if any, to the function's return value:",
+						}]
 					
+					# Display the most recent 10 chat messages from temp list.
+					_logger.debug(f"Last few chat messages are [\n{pformat(temp_chat_messages[-10:])}\n].")
+
 					# We'll just do a quick-and-dirty approach here to the context length management.
 					while True:
 						try:
 							# Do a dummy 2nd API call with the result.
 							second_chatCompl = gptCore.genChatCompletion(
-								messages 		= chat_messages,
+								messages 		= temp_chat_messages,
 								functionList	= functions,
 							)
 							break
 						except PromptTooLargeException:
 							# Just trim off the oldest message after the first two (time & system instructions).
-							_logger.info(f"NOTE: Expunging oldest chat message:\n" + pformat(chat_messages[2]))
-							chat_messages = chat_messages[0:2].extend(chat_messages[3:])
+							_logger.info(f"NOTE: Expunging oldest chat message:\n" + pformat(temp_chat_messages[2]))
+							temp_chat_messages = temp_chat_messages[0:2].extend(chat_messages[3:])
 							continue
 
 					# Just for diagnostic purposes.
-					_logger.info("API response to function return:\n" + pformat(second_chatCompl.message))
+					_logger.info(f"GPT response to function return: [{pformat(second_chatCompl.message)}]")
 
 					# Go ahead and add the danged thing. It better not be another function call though,
 					# or empty, or trigger a content filter, or be a '/pass' command, because we just
 					# aren't handling any of that here. Really need to rethink whole code structure.
 
 					second_response_text = second_chatCompl.text
+
 					_logger.info(f"Text of function return response: [{second_response_text}].")
 
+					# If second response text has prompt in it, fix it.
+					if second_response_text is not None:
+						second_response_text = _trim_prompt(second_response_text)
+
 					second_response_myMsg = Message(conversation.bot_name, second_response_text)
-					_logger.info(f"Resulting message object is: [str(second_response_myMsg)].")
-				
+
+					_logger.info(f"Resulting message object is: [{str(second_response_myMsg)}].")
+
 					conversation.add_message(second_response_myMsg)
 
-					# Is this even necessary in the case of chat engines?
-					conversation.finalize_message(second_response_myMsg)
+					if second_response_myMsg.text != '':	# Don't bother sending empty responses.
 
-					# Process the AI's response to the function call's return.
-					await process_response(update, context, second_response_myMsg)
+						# Is this even necessary in the case of chat engines?
+						conversation.finalize_message(second_response_myMsg)
+
+						# Process the AI's response to the function call's return.
+						await process_response(update, context, second_response_myMsg)
+
+				#__/ End of stubbed-out code for letting AI see and respond to the function return value.
 
 				# At this point, we finished processing the function call. Just return.
 				return
@@ -3075,7 +3162,7 @@ async def ai_forget(updateMsg:TgMsg, conversation:Conversation, textToDel:str) -
 
 
 # Define a function to handle the /block command, when issued by the AI.
-async def ai_block(updateMsg:TgMsg, conversation:Conversation, userToBlock:str=None) -> None:
+async def ai_block(updateMsg:TgMsg, conversation:Conversation, userToBlock:str=None) -> str:
 	"""The AI calls this function to block the given user. If no user is specified,
 		it blocks the current user (the one who sent the current update)."""
 	
@@ -3102,11 +3189,16 @@ async def ai_block(updateMsg:TgMsg, conversation:Conversation, userToBlock:str=N
 	if _isBlocked(userToBlock):
 		_logger.error(f"User '{userToBlock}' is already blocked.")
 		diagMsg = f'User {userToBlock} has already been blocked by {BOT_NAME}.'
-		return_msg = "user {userToBlock} is already blocked"
+		return_msg = "User {userToBlock} is already blocked!"
 	else:
-		_blockUser(userToBlock)
-		diagMsg = f'{BOT_NAME} has blocked user {userToBlock}.'
-		return_msg = "success: blocked user {userToBlock}"
+		success = _blockUser(userToBlock)
+		if success:
+			diagMsg = f'{BOT_NAME} has blocked user {userToBlock}.'
+			return_msg = "Success: blocked user {userToBlock}."
+		else:
+			error = _lastError	# Fetch the error message.
+			await _report_error(conversation, message, error)
+			return 'blocking the app developer is not allowed'
 	
 	# Send diagnostic message to AI and to user.
 	sendRes = await _send_diagnostic(message, conversation, diagMsg)
@@ -3115,6 +3207,52 @@ async def ai_block(updateMsg:TgMsg, conversation:Conversation, userToBlock:str=N
 	return return_msg
 
 #__/ End of ai_block() function definition.
+				
+
+# Define a function to handle the /unblock command, when issued by the AI.
+async def ai_unblock(updateMsg:TgMsg, conversation:Conversation, userToUnblock:str=None) -> str:
+	"""The AI calls this function to unblock the given user. If no user is specified,
+		it unblocks the current user (the one who sent the current update).
+		(Note this case will normally never occur.)
+	"""
+	
+	# Put the message from the Telegram update in a convenient variable.
+	message = updateMsg
+
+	# Retrieve the current user's name, in case we need it.
+	user_name = _get_user_name(message.from_user)
+
+	# Retrieve the conversation's chat ID.
+	chat_id = conversation.chatID	# Public property. Type: int.
+
+	# The following code used to appear directly inside handle_response(), but I've
+	# moved it here to make it easier to call it from other places, such as the
+	# code to handle function-call responses from the AI.
+
+	# If no user was specified, then we'll unblock the current user.
+	if userToUnblock == None:
+		userToUnblock = user_name
+
+	# Generate a warning-level log message to indicate that we're blocking the user.
+	_logger.warn(f"***ALERT*** The AI is unblocking user '{userToUnblock}' in conversation {chat_id}.")
+
+	if not _isBlocked(userToUnblock):
+		_logger.error(f"User '{userToUnblock}' is not blocked.")
+		diagMsg = f'User {userToUnblock} is not currently blocked by {BOT_NAME}.'
+		return_msg = "User {userToUnblock} is not blocked!"
+	else:
+		# This always succeeds.
+		_unblockUser(userToUnblock)
+		diagMsg = f'{BOT_NAME} has unblocked user {userToUnblock}.'
+		return_msg = "Success: unblocked user {userToUnblock}."
+	
+	# Send diagnostic message to AI and to user.
+	sendRes = await _send_diagnostic(message, conversation, diagMsg)
+	if sendRes != 'success': return sendRes
+
+	return return_msg
+
+#__/ End of ai_unblock() function definition.
 				
 
 # Define a function to handle the /image command, when issued by the AI.
@@ -3140,7 +3278,7 @@ async def ai_image(update:Update, context:Context, imageDesc:str, caption:str=No
 		return "error: null image description"
 
 	# Generate and send an image described by the /image command argument string.
-	_logger.normal("\tGenerating an image with description "
+	_logger.normal("Generating an image with description "
 					f"[{imageDesc}] for user '{user_name}' in "
 					f"conversation {chat_id}.")
 	if caption:
@@ -3205,15 +3343,25 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 			return "error: required argument image_desc is missing"
 
 	elif funcName == 'block_user':
-		userToBlock = funcArgs.get('image_desc', user_name)		# Default to current user.
+		userToBlock = funcArgs.get('user_name', user_name)		# Default to current user.
 
 		return await ai_block(message, conversation, userToBlock)
+
+	elif funcName == 'unblock_user':
+		userToUnblock = funcArgs.get('user_name', user_name)		# Default to current user.
+
+		return await ai_unblock(message, conversation, userToUnblock)
+
+	elif funcName == 'pass_turn':
+		_logger.normal(f"\nNOTE: The AI is passing its turn in conversation {chat_id}.")
+		return None		# Just do nothing; no return.
 
 	else:
 		await _report_error(conversation, message,
 							f"AI tried to call an undefined function '{funcName}()'.")
 		return f"error: {funcName} is not an available function"
-#__/
+
+#__/ End definition of private function ai_call_function().
 
 
 # Process a command (message starting with '/') from the AI.
@@ -3311,6 +3459,19 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 		# This does all the work of handling the '/block' command
 		# when issued by the AI.
 		await ai_block(message, conversation, command_args)
+
+	elif command_name == 'unblock':
+		# Removes the current user (or a specified user) from the block list.
+
+		_logger.normal(f"\nAI {BOT_NAME} entered an /unblock command in chat {chat_id}.")
+
+		# Should we issue a warning here if there is remaining text
+		# after the command line that we're ignoring?  Or should we
+		# send the remaining text as a normal message?
+
+		# This does all the work of handling the '/unblock' command
+		# when issued by the AI.
+		await ai_unblock(message, conversation, command_args)
 
 	elif command_name == 'image':
 		# This is a command to generate an image and send it to the user.
@@ -3426,7 +3587,7 @@ async def send_image(update:Update, context:Context, desc:str, caption=None, sav
 		# We could also do a traceback here. Should we bother?
 		raise
 
-	_logger.normal(f"\tDownloading generated image from url [{image_url}]...")
+	_logger.normal(f"\tDownloading generated image from url [{image_url[0:50]}...]")
 
 	# Download the image from the URL
 	response = requests.get(image_url)
@@ -3519,10 +3680,19 @@ def timeString() -> str:
 	#|	4.2. Misc. minor/private functions.			[python module code section]
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-def _blockUser(user:str) -> None:
-	"""Blocks the given user from accessing the bot."""
+def _blockUser(user:str) -> bool:
+	"""Blocks the given user from accessing the bot.
+		Returns True if successful; False if failure."""
+
+	global _lastError
 	
 	ai_datadir = AI_DATADIR
+
+	# If the AI is trying to block the Creator, don't let him.
+	if user == 'Michael':
+		_logger.error("The AI tried to block the app developer! Disallowed.")
+		_lastError = "Blocking the bot's creator, Michael, is not allowed."
+		return False
 
 	block_list = []
 
@@ -3532,11 +3702,13 @@ def _blockUser(user:str) -> None:
 			block_list = json.load(f)
 	
 	if user in block_list:
-		_logger.error(f"_blockUser(): User {user} is already blocked. Ignoring.")
+		_logger.warn(f"_blockUser(): User {user} is already blocked. Ignoring.")
 
 	block_list.append(user)
 	with open(bcl_file, 'w') as f:
 		json.dump(block_list, f)
+
+	return True
 #__/
 	
 
@@ -3709,13 +3881,14 @@ def _initPersistentContext() -> None:
 		# Initialize the AI's persistent context information.
 		PERSISTENT_CONTEXT = \
 			MESSAGE_DELIMITER + PERMANENT_CONTEXT_HEADER + \
-			PERSISTENT_DATA + \
+				PERSISTENT_DATA + \
 			MESSAGE_DELIMITER + COMMAND_LIST_HEADER + \
-			"  /pass - Refrain from responding to the last user message.\n" + \
-			"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
-			"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
-			"  /remember <text> - Adds <text> to my persistent context data.\n" + \
-			"  /forget <text> - Removes <text> from my persistent context data.\n" + \
+				"  /pass - Refrain from responding to the last user message.\n" + \
+				"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
+				"  /remember <text> - Adds <text> to my persistent context data.\n" + \
+				"  /forget <text> - Removes <text> from my persistent context data.\n" + \
+				"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
+				"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n" + \
 			MESSAGE_DELIMITER + RECENT_MESSAGES_HEADER
 		#__/
 	#__/
@@ -3903,7 +4076,83 @@ async def _send_diagnostic(userTgMessage:TgMsg, convo:Conversation,
 #__/
 
 
-################################################################################		
+def _trim_prompt(response_text:str) -> str:
+	"""Trims the prompt portion off the front of the given
+		response text, if present."""
+
+	# Check to see if text response starts with a line that's
+	# formatted like
+	#
+	#		MESSAGE_DELIMITER + " (sender)> (text)"
+	#
+	# or (if delimiter is null) "(sender)> (text)".  If so,
+	# and if the sender is the bot itself (as expected),
+	# trim the prompt part off the front.
+
+	# Regex to match the prompt portion at the start of a message string.
+	if MESSAGE_DELIMITER != "":
+		regex = f"({MESSAGE_DELIMITER} ?)" + r"([a-zA-Z0-9_-]{1,64})> "
+	else:
+		regex = r"([a-zA-Z0-9_-]{1,64})> "
+	# Note we don't need to start the regex with '^' because re.match()
+	# only matches at the start of a string anyway.
+
+	#_logger.normal("Using regex: [" + regex + "]")
+
+	firstline = response_text.split('\n')[0]
+
+	_logger.info(f"Matching regex against: [{firstline}]")
+	
+	match = re.match(regex, firstline)
+
+	if match:
+
+		if MESSAGE_DELIMITER != "":
+			prefix = match.group(1)
+			sender = match.group(2)
+		else:
+			prefix = ""
+			sender = match.group(1)
+
+		_logger.info(f"AI output a message from [{sender}]...")
+		if sender == BOT_NAME:
+
+			# Trim the sender and prompt part off of the front of the message text.
+			toTrim = prefix + sender + '> '
+			_logger.info(f"Trimming this part off the front: [{toTrim}]")
+			rest = response_text[len(toTrim):]
+			response_text = rest
+			
+			_logger.info(f"Now we are left with [{response_text}]...")
+			
+		#__/
+	#__/
+
+	return response_text
+
+def _unblockUser(user:str) -> bool:
+	"""Removes the given user from the bot's block list.
+		Returns True if successful; False if failure."""
+
+	ai_datadir = AI_DATADIR
+
+	block_list = []
+
+	bcl_file = os.path.join(ai_datadir, 'bcl.json')
+	if os.path.exists(bcl_file):
+		with open(bcl_file, 'r') as f:
+			block_list = json.load(f)
+	
+	if user not in block_list:
+		_logger.warn(f"_blockUser(): User {user} is not blocked. Ignoring.")
+
+	block_list.remove(user)
+	with open(bcl_file, 'w') as f:
+		json.dump(block_list, f)
+
+	return True
+#__/
+	
 
 #/=============================================================================|
 #|	5. Define globals.														   |
@@ -4053,15 +4302,15 @@ FUNCTIONS_LIST = [
 				"remark":	{
 					"type":		"string",	# <remark> argument has type string.
 					"description":	"A textual message to send to the user just " \
-									"before calling the function."
-				},
+									"before executing the function."
+				}
 			},
-			"required":     ["item_text"],       # <item_text> argument is required.
-			"returns":	{	# This describes the function's return type.
-				"description":	"A string indicating the success or failure of " \
-								"the operation.",
-				"type": "string"
-			}
+			"required":     ["item_text"]       # <item_text> argument is required.
+		},
+		"returns":	{	# This describes the function's return type.
+			"description":	"A string indicating the success or failure of " \
+							"the operation.",
+			"type": "string"
 		}
 	},
 
@@ -4079,15 +4328,15 @@ FUNCTIONS_LIST = [
 				"remark":	{
 					"type":		"string",	# <remark> argument has type string.
 					"description":	"A textual message to send to the user just " \
-									"before calling the function."
-				},
+									"before executing the function."
+				}
 			},
-			"required":     ["item_text"],       # <item_text> argument is required.
-			"returns":	{	# This describes the function's return type.
-				"description":	"A string indicating the success or failure of " \
-								"the operation.",
-				"type": "string"
-			}
+			"required":     ["item_text"]       # <item_text> argument is required.
+		},
+		"returns":	{	# This describes the function's return type.
+			"description":	"A string indicating the success or failure of " \
+							"the operation.",
+			"type": "string"
 		}
 	},
 
@@ -4109,15 +4358,15 @@ FUNCTIONS_LIST = [
 				"remark":	{
 					"type":		"string",	# <remark> argument has type string.
 					"description":	"A textual message to send to the user just " \
-									"before calling the function."
-				},
+									"before executing the function."
+				}
 			},
-			"required":     ["image_desc"],      # <image_desc> argument is required.
-			"returns":	{	# This describes the function's return type.
-				"description":	"A string indicating the success or failure of " \
-								"the operation.",
-				"type": "string"
-			}
+			"required":     ["image_desc"]      # <image_desc> argument is required.
+		},
+		"returns":	{	# This describes the function's return type.
+			"description":	"A string indicating the success or failure of " \
+							"the operation.",
+			"type": "string"
 		}
 	},
 
@@ -4135,12 +4384,58 @@ FUNCTIONS_LIST = [
 				"remark":	{
 					"type":			"string",	# <remark> argument has type string.
 					"description":	"A textual message to send to the user just " \
-									"before calling the function."
+									"before executing the function."
+				},
+			},
+			"required":     []     # <user_name> argument is not required.
+		},
+		"returns":	{	# This describes the function's return type.
+			"description":	"A string indicating the success or failure of " \
+							"the operation.",
+			"type": "string"
+		}
+	},        
+
+	# Function for command: /unblock [<user_name>]
+	{
+		"name":         "unblock_user",
+		"description":  "Removes a given user from this Telegram bot's block list.",
+		"parameters":   {
+			"type":         "object",
+			"properties":   {
+				"user_name":    {
+					"type":         "string",   # <item_text> argument has type string.
+					"description":  "Name of user to unblock; defaults to current user."
+				},
+				"remark":	{
+					"type":			"string",	# <remark> argument has type string.
+					"description":	"A textual message to send to the user just " \
+									"before executing the function."
 				},
 			},
 			"required":     []       # <user_name> argument is not required.
+		},
+		"returns":	{	# This describes the function's return type.
+			"description":	"A string indicating the success or failure of " \
+							"the operation.",
+			"type": "string"
 		}
 	},        
+
+	# Function for command: /pass
+	{
+		"name":			"pass_turn",
+		"description":	"Refrain from responding to the user's current message.",
+		"parameters":   {
+			"type":         "object",
+			"properties":	{},			# No parameters.
+			"required":     []
+		},
+		"returns":	{	# No return value.
+			"type":	"null"
+		}
+	}
+
 ]
 
 

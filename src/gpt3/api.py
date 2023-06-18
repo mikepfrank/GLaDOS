@@ -2083,6 +2083,11 @@ class ChatCompletion(Completion):
 		# Note the following code differs from the code in the Completion class.
 		return thisChatCompletion.message['content']
 
+	@text.setter
+	def text(thisChatCompletion:ChatCompletion, newText:str):
+		"""Sets the value of the chat completion text content."""
+		thisChatCompletion.message['content'] = newText
+
 	@property
 	def finishReason(thisChatCompletion:ChatCompletion):
 		"""Returns the value of the finish_reason field of the result."""
