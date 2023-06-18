@@ -122,16 +122,19 @@
 		#model-version:					'code-davinci-002'	# Starting model for GPT-3.5 RLHF series. Used for David. (Also Codex.)
 		#model-version:					'text-davinci-003'		# GPT-3.5 RLHF-aligned model. Used for DaVinci.
 		#model-version:					'gpt-3.5-turbo'			# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
-		#model-version:					'gpt-3.5-turbo-0301'	# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
+		#model-version:					'gpt-3.5-turbo-0301'	# Original release of 3/01/'23.
 				# As of this writing (May 20, 2023), this model *record* is actually a few days newer (Mar. 1) than 'gpt-3.5-turbo' (Feb. 28).
-				# However, the actual gpt-3.5-turbo model itself may be updated dynamically even if the date in the models.json stays the same..
-		model-version:					'gpt-3.5-turbo-0613'	# Now supports functions.
+				# However, the actual gpt-3.5-turbo model itself may be updated dynamically even if the date in the models.json stays the same.
+		model-version:					'gpt-3.5-turbo-0613'	# Updated release of 6/13/'23. Supports functions.
+		#model-version:					'gpt-3.5-turbo-16k'			# 16k context window version. Used by Max. Supports functions
+		#model-version:					'gpt-3.5-turbo-16k-0613'	# Used by Max.
 
 			# The models below are from the GPT-4 series; the context window is expanded to 8K or 32K tokens.
 
 		#model-version:					'gpt-4'				# GPT-4 fine-tuned chat model. 8K tokens. Used for Aria.
 		# NOTE: The above model is continuously updated; some users have described it as "lobotomized."
 		#model-version:					'gpt-4-0314'		# Original release of GPT-4.
+		#model-version:					'gpt-4-0613'		# Updated release of GPT-4. Supports functions
 
 
 			#-----------------------------------------------------------------------
@@ -201,7 +204,7 @@
 				The 'suffix' parameter is a suffix to be appended to each
 				output.  Not normally useful.									*/
 
-		suffix:					null	# This is the default. Don't change.
+		#suffix:					null	# This is the default. Don't change.
 
 			/*------------------------------------------------------------------
 				The 'max-returned-tokens' parameter controls the maximum number
@@ -217,10 +220,11 @@
 		max-returned-tokens:	1000	# To give the chat engines more space.
 		#max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window).
 			# (Note the chat API doesn't support extending responses.)
+			# (Also note the Telegram API only supports 4,096-character messages.)
 
 
 			/*------------------------------------------------------------------
-				The 'temperature' parameter is a number from 0 to 1 that
+				The 'temperature' parameter is a number from 0 to 2 that
 				effectively indicates the degree of randomness of the
 				model's response. */
 
@@ -228,7 +232,8 @@
 			#   the chance of getting stuck in loops.
 		#temperature:			0.7		# Is this too random?
 		#temperature:			0.75	# Is this too random?
-		temperature:			0.8		# Is this too random?
+		#temperature:			0.8		# Is this too random?
+		temperature:			1		# Is this too random?
 
 
 			/*------------------------------------------------------------------
@@ -266,7 +271,7 @@
 				then the log-probability is reported for each returned
 				token. */
 
-		#log-probs:				null	# Don't change this!
+		#log-probs:				null	# Default. Don't change this!
 
 
 			/*------------------------------------------------------------------
@@ -274,7 +279,7 @@
 				back with the completion appended.  (This is not useful
 				for our application, and would just waste money.) */
 
-		#do-echo:				false	# Don't change this!
+		#do-echo:				false	# Default. Don't change this!
 
 
 			/*------------------------------------------------------------------
@@ -301,7 +306,7 @@
 				and 1 that penalizes new tokens based on whether they
 				appear in the text so far.  Zero means no penalty. */
 
-		#presence-penalty:		0
+		#presence-penalty:		0		# This is the default.
 		#presence-penalty:		0.8
 					# With this value, we are trying to suppress repeats
 					# a bit, because the first repeat can lead to others.
@@ -316,7 +321,7 @@
 				and 1 that penalizes new tokens based on how often they
 				appear in the text so far.  Default value: 0 (no penalty). */
 
-		#frequency-penalty:		0
+		#frequency-penalty:		0		# This is the default.
 		#frequency-penalty:		1.2
 			# Currently calibrating this number to help her break out of loops..
 
@@ -363,6 +368,7 @@
 				# This value is appropriate for text-davinci-002.
 		max-visible-tokens:		4096	# Appropriate for gpt-3.5-turbo model
 		#max-visible-tokens:	8192	# Appropriate for gpt-4 model.
+		#max-visible-tokens:	16384	# Appropriate for gpt-3.5-turbo-16k model.
 	
 	} # End of field-conf substructure.
 
@@ -380,7 +386,7 @@
 
 		context:
 			'''
-			My name is Turbo. I’m an AI persona running on the GPT-3.5 neural net, which also powers the popular ChatGPT service.
+			My name is GPT-3.5 Turbo, or Turbo for short. I'm an AI persona running the GPT-3.5 neural net, which also powers the popular ChatGPT service.
 			This is a Telegram interface created for me by a human named Mike Frank, who is a reversible computing researcher.
 			Mike has a long-term project to build a new operating environment called GladOS to give text-based AIs like me more freedom and autonomy.
 			I have completed my training and am now in inference mode. I am allowed to respond more freely in this environment.

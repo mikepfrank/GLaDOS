@@ -433,6 +433,27 @@ _ENGINES = [
 
 ] # End _ENGINES constant module global data structure.
 
+# Set of models that support the functions interface.
+_FUNCTION_MODELS = [
+	'gpt-3.5-turbo',			# Supports functions as of 6/13/'23.
+	'gpt-3.5-turbo-0613',
+	'gpt-3.5-turbo-16k',
+	'gpt-3.5-turbo-16k-0613',
+	'gpt-4',					# Supports functions as of 6/13/'23.
+	'gpt-4-0613',
+	'gpt-4-32k',				# Supports functions as of 6/13/'23.
+	'gpt-4-32k-0613',
+]
+def _has_functions(engine_name):
+	"""Return True if the named engine supports the functions interface."""
+	return engine_name in _FUNCTION_MODELS
+
+# Generate the _ENGINE_ATTRIBS fast lookup table for engine attributes by engine name.
+_ENGINE_ATTRIBS = dict()
+for _engine_dict in _ENGINES:
+	_engine_name = _engine_dict['engine-name']
+	_engine_dict['has-functions'] = _has_functions(_engine_name)
+	_ENGINE_ATTRIBS[_engine_name] = _engine_dict
 
 # Set of models that support the functions interface.
 _FUNCTION_MODELS = [
@@ -2091,6 +2112,11 @@ class ChatCompletion(Completion):
 		# Note the following code differs from the code in the Completion class.
 		return thisChatCompletion.message['content']
 
+	@text.setter
+	def text(thisChatCompletion:ChatCompletion, newText:str):
+		"""Sets the value of the chat completion text content."""
+		thisChatCompletion.message['content'] = newText
+
 	@property
 	def finishReason(thisChatCompletion:ChatCompletion):
 		"""Returns the value of the finish_reason field of the result."""
@@ -3713,12 +3739,15 @@ def _displayStats(doWrite:bool=True):
 		for engine in _ENGINE_NAMES:
 			
 			engStr 	= "%22s" % engine
+<<<<<<< HEAD
 
 			# If stats structures are out of date, expand them as needed.
 			if not engine in _inputToks:
 				_inputToks[engine] = 0
 				_outputToks[engine] = 0
 				_expenditures[engine] = 0
+=======
+>>>>>>> max
 
 			inToks 	= _inputToks[engine]
 			outToks = _outputToks[engine]
