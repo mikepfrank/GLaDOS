@@ -152,7 +152,13 @@
 #|	TO DO:
 #|	~~~~~~
 #|
-#|		o Add 'pass_turn' and 'unblock_user' functions.
+#|		o Clean up naming convention for variables for message objects.
+#|			(Distinguish Telegram messages, chat messages, my messages.)
+#|
+#|			- Telegram messages: 							End in _tgm.
+#|			- Message dicts for OpenAI GPT chat API:		End in _dict.
+#|			- Instances of this module's Message class:		End in _obj.
+#|
 #|		o Move more of the data files to AI_DATADIR.
 #|		o Implement user-specific and chat-specific persistent memory.
 #|		o Add commands to adjust parameters of the OpenAI GPT-3 API.
@@ -494,7 +500,7 @@ class Message:
 						 'of None; using "[null message]" instead.')
 			text = "[null message]"
 
-		newMessage.text	  = text
+		newMessage.text	  	= text
 		newMessage.archived = False		# Not archived initially.
 			# Has this message been written to the archive file yet?
 
@@ -885,6 +891,9 @@ class Conversation:
 		global MEMORIES
 		global PERSISTENT_DATA	# We declare this global so we can modify it.
 		global _anyMemories
+
+		thisConv.report_error("The ability to add new memories is temporarily disabled.")
+		return False
 
 		if new_memory is None or new_memory == "" or new_memory == "\n":
 			thisConv.report_error("The text of the new memory was not provided.")
@@ -2156,7 +2165,9 @@ async def handle_audio(update:Update, context:Context) -> None:
 async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 		# Note that <context>, in this context, denotes the Telegram context object.
 		# Call with new_msg=True to skip new-message processing.
-	"""Process a message."""
+
+	"""Handles receipt of a text or audio message sent to the bot by a user.
+		"""
 
 	# The following code is here in case the user edited
 	# an old message instead of sending a new one.
@@ -2187,8 +2198,11 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 		_logger.error("Couldn't load conversation in handle_message(); aborting.")
 		return
 
-	# If the message contained audio or voice, then represent it using an
-	# appropriate text format.
+
+		#|----------------------------------------------------------------------
+		#| Audio transcripts. If the original message contained audio or voice
+		#| data, then present its transcription using an appropriate text
+		#| format.
 
 	if new_msg and 'audio_text' in context.user_data:	# We added this earlier if appropriate.
 
@@ -2210,7 +2224,8 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 		text = "(edited) " + text
 
 	# If this is a group chat and the message text is empty or None,
-	# assume we were just added to the chat, and just delegate to the handle_start() function.
+	# assume we were just added to the chat, and just delegate to the
+	# handle_start() function.
 	if chat_id < 0 and (text is None or text == ""):
 		_logger.normal(f"Added to group chat {chat_id} by user {user_name}. Auto-starting.")
 		#update.message.text = '/start'
@@ -2244,15 +2259,21 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 	if gptCore.isChat:
 		return await process_chat_message(update, context)
 
-	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	#|	At this point, we know that we're using a standard GPT-3 engine, and we 
-	#|	need to query the API with the updated context and process its response.
+	## Also move the below code to this new function:
+	# else:
+	#	return await process_text_message(update, context)
+
+	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|	At this point, we know that we're using a standard GPT text engine (not
+	#|	a GPT chat engine), and we need to query the API with the updated
+	#|  context and process its response.
+	#|
 	#|	We do this inside a while loop, because we may need to retry the query 
-	#|	if the response is empty or is a repeat of a message that the bot 
+	#|	if the response was empty or was a repeat of a message that the bot 
 	#|	already sent earlier. Also, we use the loop to allow the AI to generate 
 	#|	longer outputs by accumulating results from multiple queries. (However, 
 	#|	we need to be careful in this process not to exceed the available space
-	#|	the AI's receptive field.)
+	#|	in the AI's receptive field.)
 	#|
 	#|	NOTE: At present, the below algorithm to allow the AI to extend its 
 	#|	response and generate longer outputs includes no limit on the length
@@ -2260,9 +2281,11 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 	#|	remaining on the receptive field. This may not be desirable, since the
 	#|	AI will lose all prior context in the conversation if it generates a
 	#|	sufficiently long message. Thus, we may want to add a limit on the 
-	#|	length of the generated message at some point in the future.
+	#|	length of extended messages at some point in the future. A sensible
+	#|	thing to do would be to limit it to the value of the 'max-returned-
+	#|	tokens' config parameter, or some new config parameter that is inten-
+	#|	ded for this purpose.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
 
 	# We'll need to keep track of whether we're extending an existing response or starting a new one.
 	extending_response = False
@@ -2759,7 +2782,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 					_logger.debug(f"Modified response message text is: [{chatCompletion.message.text}]")
 
-			# Get the full response message object.
+			# Get the full response message dict.
 			response_message = chatCompletion.message
 
 			# In case there's a function call in the response, display it.
@@ -3098,7 +3121,6 @@ async def ai_remember(updateMsg:TgMsg, conversation:Conversation, textToAdd:str)
 	# All the following code used to appear directly inside handle_response(),
 	# but I've moved it here to make it easier to call it from other places,
 	# such as the new code to handle function-call responses from the AI.
-
 
 	# Check for missing <textToAdd> argument.
 	if textToAdd == None:
@@ -4111,8 +4133,9 @@ async def _report_error(convo:Conversation, telegramMessage,
 
 	if logIt:
 		# Record the error in the log file.
-		_logger.error(errMsg, exc_info=logmaster.doDebug)
+		#_logger.error(errMsg, exc_info=logmaster.doDebug)
 			# The exc_info option includes a stack trace if we're in debug mode.
+		_logger.error(errMsg, exc_info=True)
 
 	# Compose formatted error message.
 	msg = f"ERROR: {errMsg}"
