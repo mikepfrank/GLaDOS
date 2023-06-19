@@ -155,9 +155,11 @@
 #|		o Clean up naming convention for variables for message objects.
 #|			(Distinguish Telegram messages, chat messages, my messages.)
 #|
-#|			- Telegram messages: 							End in _tgm.
-#|			- Message dicts for OpenAI GPT chat API:		End in _dict.
-#|			- Instances of this module's Message class:		End in _obj.
+#|			- Telegram messages: 							tgmMessage.
+#|			- Message "dicts" for OpenAI GPT chat API:		oaiMessage.
+#|				(But they aren't true dicts, b/c they don't support del.)
+#|			- Instances of this module's Message class:		botMessage.
+#|			- Generic message strings:						messageStr.
 #|
 #|		o Move more of the data files to AI_DATADIR.
 #|		o Implement user-specific and chat-specific persistent memory.
@@ -684,7 +686,7 @@ class Conversation:
 		newConv.messages = []			# No messages initially (until added or loaded).
 
 		# The following is a string which we'll use to accumulate the conversation text.
-		newConv.context_string = PERSISTENT_CONTEXT	# Start with just the global persistent context data.
+		newConv.context_string = globalPersistentContext	# Start with just the global persistent context data.
 
 		# These attributes are for managing the length (in messages) of the message list.
 		newConv.context_length = 0				# Initially there are no Telegram messages in the context.
@@ -780,7 +782,7 @@ class Conversation:
 		thisConv.context_string = f"Current time: {timeString()}\n"	# This function is defined above.
 
 		# Now we'll add the persistent context, and then the last N messages.
-		thisConv.context_string += PERSISTENT_CONTEXT + '\n'.join([str(m) for m in thisConv.messages])
+		thisConv.context_string += globalPersistentContext + '\n'.join([str(m) for m in thisConv.messages])
 			# Join the messages into a single string, with a newline between each.
 			# Include the persistent context at the beginning of the string.
 
@@ -828,7 +830,7 @@ class Conversation:
 		"""Loads persistent memories."""
 
 			# We declare these globals so we can modify them.
-		global PERSISTENT_DATA, MEMORIES, _anyMemories
+		global globalPersistentData, MEMORIES, _anyMemories
 
 			# Boolean to keep track of whether we've already read any lines from the persistent memory file.
 		read_lines = False
@@ -889,7 +891,7 @@ class Conversation:
 		"""Adds a new item to the AI's persistent memory."""
 
 		global MEMORIES
-		global PERSISTENT_DATA	# We declare this global so we can modify it.
+		global globalPersistentData	# We declare this global so we can modify it.
 		global _anyMemories
 
 		thisConv.report_error("The ability to add new memories is temporarily disabled.")
@@ -908,12 +910,12 @@ class Conversation:
 			return False
 
 		if not _anyMemories:
-			PERSISTENT_DATA += MESSAGE_DELIMITER + PERSISTENT_MEMORY_HEADER
+			globalPersistentData += MESSAGE_DELIMITER + PERSISTENT_MEMORY_HEADER
 			_anyMemories = True		# So we only add one new section header!
 
 		# Add the new memory to the persistent data string.
 		MEMORIES += new_memory
-		PERSISTENT_DATA += new_memory
+		globalPersistentData += new_memory
 
 		# Update the persistent context string.
 		_initPersistentContext()
@@ -1213,7 +1215,7 @@ class Conversation:
 				f"humanlike AI persona named {botName} in a Telegram chat. Here " \
 				"are the context headers for the persona, followed by recent " \
 				"messages in the chat:\n" + \
-					PERSISTENT_CONTEXT
+					globalPersistentContext
 		})
 
 		# Next, add the messages from the recent part of the conversation.
@@ -1438,13 +1440,13 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 		on command, or automatically after a server restart."""
 
 	# Get the message, or edited message from the update.
-	(message, edited) = _get_update_msg(update)
+	(tgMessage, edited) = _get_update_msg(update)
 		
-	if message is None:
+	if tgMessage is None:
 		_logger.warning("In handle_start() with no message? Aborting.")
 		return
 
-	chat_id = message.chat.id
+	chat_id = tgMessage.chat.id
 
 	# Make sure the thread component is set to this application (for logging).
 	logmaster.setComponent(_appName)
@@ -1454,7 +1456,7 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Get user_name
-	user_name = _get_user_name(message.from_user)
+	user_name = _get_user_name(tgMessage.from_user)
 	which_name = _which_name	# Global set by _get_user_name() call.
 
 	# Print diagnostic information.
@@ -1483,7 +1485,7 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 		conversation.add_message(Message(SYS_NAME, '/start'))
 			# This is to tell the AI that the server is auto-starting.
 	else:
-		conversation.add_message(Message(user_name, message.text))
+		conversation.add_message(Message(user_name, tgMessage.text))
 
 	# Send an initial message to the user.
 		# NOTE: If messages were read from the conversation archive file,
@@ -1500,7 +1502,7 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 		conversation.add_message(Message(conversation.bot_name, START_MESSAGE))
 
 		# Now try to also send it to the user.
-		if await _reply_user(message, conversation, START_MESSAGE) != 'success':
+		if await _reply_user(tgMessage, conversation, START_MESSAGE) != 'success':
 			return	# Connection broken; failure; abort.
 
 	else:	# Two or more messages? We must be continuing an existing conversation.
@@ -1513,21 +1515,21 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 				  f"messages from archive."
 
 		# Send it to the AI and to the user.
-		sendRes = await _send_diagnostic(message, conversation, diagMsg)
+		sendRes = await _send_diagnostic(tgMessage, conversation, diagMsg)
 		if sendRes != 'success': return sendRes
 	#__/
 
 
 	# Give the user a system warning if their first name contains unsupported characters or is too long.
-	if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", message.from_user.first_name):
+	if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", tgMessage.from_user.first_name):
 		
 	       # Log the warning.
-		_logger.warning(f"User {message.from_user.first_name} has an "
+		_logger.warning(f"User {tgMessage.from_user.first_name} has an "
 						"unsupported first name.")
 
            # Add the warning message to the conversation, so the AI can see it.
 		warning_msg = "NOTIFICATION: Welcome, " \
-					  	f'"{message.from_user.first_name}". ' \
+					  	f'"{tgMessage.from_user.first_name}". ' \
 						"The AI will identify you in this conversation by your " \
 						f"{which_name}, {user_name}."
 
@@ -1542,7 +1544,7 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
             # Also send the warning message to the user. (Making it clear that 
             # it's a system message, not from the AI persona itself.)
 		reply_msg = f"[SYSTEM {warning_msg}]"
-		await _reply_user(message, conversation, reply_msg, ignore=True)
+		await _reply_user(tgMessage, conversation, reply_msg, ignore=True)
 	#__/
 
 #__/ End handle_start() function definition.
@@ -3964,29 +3966,32 @@ def _get_user_name(user) -> str:
 	
 def _initPersistentContext() -> None:
 
-	global PERSISTENT_DATA, PERSISTENT_CONTEXT	# So we can modify these.
+	global globalPersistentData, globalPersistentContext	# So we can modify these.
 
 	# Initialize the AI's persistent context information.
-	if hasFunctions(ENGINE_NAME) and False:
-		PERSISTENT_CONTEXT = \
-			MESSAGE_DELIMITER + PERMANENT_CONTEXT_HEADER + \
-			PERSISTENT_DATA + \
-			MESSAGE_DELIMITER + RECENT_MESSAGES_HEADER
-		#__/
-	else:
-		# Initialize the AI's persistent context information.
-		PERSISTENT_CONTEXT = \
-			MESSAGE_DELIMITER + PERMANENT_CONTEXT_HEADER + \
-				PERSISTENT_DATA + \
-			MESSAGE_DELIMITER + COMMAND_LIST_HEADER + \
-				"  /pass - Refrain from responding to the last user message.\n" + \
-				"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
-				"  /remember <text> - Adds <text> to my persistent context data.\n" + \
-				"  /forget <text> - Removes <text> from my persistent context data.\n" + \
-				"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
-				"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n" + \
-			MESSAGE_DELIMITER + RECENT_MESSAGES_HEADER
-		#__/
+	
+	## No longer needed because we now give a command menu even 
+	## when the AI has functions as well.
+	#
+	#if hasFunctions(ENGINE_NAME):
+	#	globalPersistentContext = \
+	#		MESSAGE_DELIMITER + PERMANENT_CONTEXT_HEADER + \
+	#		globalPersistentData + \
+	#		MESSAGE_DELIMITER + RECENT_MESSAGES_HEADER
+	#	#__/
+	#else:
+
+	globalPersistentContext = \
+		MESSAGE_DELIMITER + PERMANENT_CONTEXT_HEADER + \
+			globalPersistentData + \
+		MESSAGE_DELIMITER + COMMAND_LIST_HEADER + \
+			"  /pass - Refrain from responding to the last user message.\n" + \
+			"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
+			"  /remember <text> - Adds <text> to my persistent context data.\n" + \
+			"  /forget <text> - Removes <text> from my persistent context data.\n" + \
+			"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
+			"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n" + \
+		MESSAGE_DELIMITER + RECENT_MESSAGES_HEADER
 	#__/
 #__/
 
@@ -4002,22 +4007,22 @@ def _initPersistentContext() -> None:
 def _initPersistentData() -> None:
 	"""Initialize the persistent data string (including memories, if any)."""
 
-	global PERSISTENT_DATA
+	global globalPersistentData
 
 	# This function initializes the AI's persistent context data.
 
 	# Initialize the main data for the AI's persistent context.
-	PERSISTENT_DATA = aiConf.context 
+	globalPersistentData = aiConf.context 
 		# NOTE: This should end with a newline. But if it doesn't, we'll add one.
 
 	# Ensure that PERSISTENT_DATA ends with a newline.
-	if PERSISTENT_DATA[-1] != '\n':
-		PERSISTENT_DATA += '\n'
+	if globalPersistentData[-1] != '\n':
+		globalPersistentData += '\n'
 
 	# Append current memories, if any.
 	if MEMORIES != "":
-		PERSISTENT_DATA += MESSAGE_DELIMITER + PERSISTENT_MEMORY_HEADER
-		PERSISTENT_DATA += MEMORIES
+		globalPersistentData += MESSAGE_DELIMITER + PERSISTENT_MEMORY_HEADER
+		globalPersistentData += MEMORIES
 
 	# NOTE: The MEMORIES variable is intended for global (but dynamic) memories
 	# for the current bot. Eventually we need to also add a section for user-
@@ -4617,8 +4622,8 @@ _which_name = None		# Not yet assigned.
 	#|		
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-global PERSISTENT_DATA, MEMORIES
-PERSISTENT_DATA = ""  	# Empty string initially.
+global globalPersistentData, MEMORIES
+globalPersistentData = ""  	# Empty string initially.
 MEMORIES = ""			# Will be loaded from TelegramBot.memories.txt.
 
 		#-----------------------------------------------------------------------
