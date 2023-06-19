@@ -34,7 +34,7 @@ Step 2. - Clone the git repo.
 
     2c. Clone the GLaDOS GitHub repository.
     
-            $ git clone git@github.com:mikepfrank/GLaDOS.git
+            $ git clone https://github.com/mikepfrank/GLaDOS.git
 
     2d. Check out the desired branch. (See the README.md file
         on the 'main' branch for branch descriptions.)
@@ -220,8 +220,9 @@ Step 9. - Start using the servers.
 --------------------------------
 
 The bot is used like any Telegram bot. It understands text
-messages only. You may want to adjust the following settings 
-pertaining to behavior in group chats:
+and audio/voice messages only. Commands must be typed as text
+or selected from the command menu. You may want to adjust
+the following settings pertaining to behavior in group chats:
 
     * Allow Groups? - Set this to ON/ENABLED if you want people
                         to be able to add your bot to groups.
