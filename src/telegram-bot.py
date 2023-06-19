@@ -155,11 +155,11 @@
 #|		o Clean up naming convention for variables for message objects.
 #|			(Distinguish Telegram messages, chat messages, my messages.)
 #|
-#|			- Telegram messages: 							tgmMessage.
+#|			- Telegram messages: 							tgMessage.
 #|			- Message "dicts" for OpenAI GPT chat API:		oaiMessage.
 #|				(But they aren't true dicts, b/c they don't support del.)
 #|			- Instances of this module's Message class:		botMessage.
-#|			- Generic message strings:						messageStr.
+#|			- Generic message strings:						message_str.
 #|
 #|		o Move more of the data files to AI_DATADIR.
 #|		o Implement user-specific and chat-specific persistent memory.
@@ -482,15 +482,15 @@ logmaster.configLogMaster(
 	# 2.1. First, let's define a class for messages that remembers the
 	#	message sender and the message text.
 
-class Message: pass
-class Message:
+class BotMessage: pass
+class BotMessage:
 
 	"""An object that instantiates this class stores the message sender and the
 		message text for an incoming or outgoing message."""
 
 
 	# New instance initializer (called automatically by class constructor).
-	def __init__(newMessage:Message, sender:str, text:str):
+	def __init__(newMessage:BotMessage, sender:str, text:str):
 
 		# Print diagnostic information.
 		#_logger.debug(f"Creating message object for: {sender}> {text}")
@@ -512,7 +512,7 @@ class Message:
 	# This used to be used just for text engines, but now we are
 	# using it for chat engines as well.
 
-	def __str__(thisMsg:Message) -> str:
+	def __str__(thisMsg:BotMessage) -> str:
 		"""A string representation of the message object.
 			It is properly delimited for reading by the GPT-3 model."""
 
@@ -542,7 +542,7 @@ class Message:
 	# then later read back in when restoring the conversation. The
 	# serialized format is 1 line per message, with controls escaped.
 
-	def serialize(thisMsg:Message) -> str:
+	def serialize(thisMsg:BotMessage) -> str:
 
 		"""Returns a string representation of a given message suitable for
 			archiving, as a single newline-terminated line of text. Embedded
@@ -580,7 +580,7 @@ class Message:
 	# deserializes the message object from its encoding in the archive line.
 
 	@staticmethod	# Static because we use this for constructing the object.
-	def deserialize(line:str) -> Message:
+	def deserialize(line:str) -> BotMessage:
 
 		"""Deserialize a line in "Sender> Text" format from a message archive, 
 			whose text is encoded using escaped '\\n' newlines and all '\\xHH' 
@@ -633,7 +633,7 @@ class Message:
 		text = pattern.sub(deserialize_replacer, text)
 
 		# Return a new object for the deserialized message.
-		return Message(sender, text)
+		return BotMessage(sender, text)
 	
 	#__/ End of message.deserialize() instance method definition.
 
@@ -662,8 +662,8 @@ class ConversationError(Exception):
 # Next, let's define a class for conversations that remembers the messages in
 # the conversation.  We'll use a list of Message objects to store the messages.
 
-class Conversation: pass
-class Conversation:
+class BotConversation: pass
+class BotConversation:
 
 	"""An object instantiating this class stores the recent messages
 		in an individual Telegram conversation."""
@@ -673,7 +673,7 @@ class Conversation:
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# New instance initializer.
-	def __init__(newConv:Conversation, chat_id:int):
+	def __init__(newConv:BotConversation, chat_id:int):
 
 		"""Instance initializer for a new conversation object for a given
 			Telegram chat (identified by an integer ID)."""
@@ -725,7 +725,7 @@ class Conversation:
 	#__/ End of conversation instance initializer.
 
 
-	def __len__(thisConv:Conversation) -> int:
+	def __len__(thisConv:BotConversation) -> int:
 		"""Returns the number of messages in the conversation."""
 		return thisConv.context_length
 			# Note this depends on the context_length attribute having been updated
@@ -735,7 +735,7 @@ class Conversation:
 
 	# This is needed so we don't eventually run out of file descriptors
 	# after conversations are restarted repeatedly.
-	def __del__(thisConv:Conversation):
+	def __del__(thisConv:BotConversation):
 		# Close our open files to recycle their file descriptors.
 		thisConv.archive_file.close()
 		thisConv.memory_file.close()
@@ -749,7 +749,7 @@ class Conversation:
 
 	# This property returns the chat ID associated with the conversation.
 	@property
-	def chatID(thisConv:Conversation) -> int:
+	def chatID(thisConv:BotConversation) -> int:
 		"""Returns the chat ID associated with the conversation."""
 		return thisConv.chat_id
 	
@@ -759,7 +759,7 @@ class Conversation:
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
-	def lastMessage(thisConv:Conversation) -> Message:
+	def lastMessage(thisConv:BotConversation) -> BotMessage:
 		"""Returns the last message in the conversation, if any."""
 		if thisConv.context_length > 0:
 			return thisConv.messages[-1]
@@ -772,7 +772,7 @@ class Conversation:
 	# NOTE: This method is only really needed for the GPT text engines; the
 	# chat engines include the same functionality in get_chat_messages().
 
-	def expand_context(thisConv:Conversation):
+	def expand_context(thisConv:BotConversation):
 
 		"""Flesh out the conversation's context string by filling in the
 			current time at the top, and the message list at the bottom."""
@@ -794,7 +794,7 @@ class Conversation:
 	# file instead of just # the last 200 lines. This could be improved upon,
 	# with some effort. (E.g., via exponential back-seeking from end.)
 
-	def read_archive(thisConv:Conversation):
+	def read_archive(thisConv:BotConversation):
 		"""Loads messages from conversation archive."""
 
 		# If the conversation archive file exists, read it.
@@ -805,7 +805,7 @@ class Conversation:
 				for line in f:
 
 					# Deserialize the message object from the line.
-					message = Message.deserialize(line)
+					message = BotMessage.deserialize(line)
 
 					# If we're already at the maximum context length, pop the oldest message
 					if thisConv.context_length >= thisConv.context_length_max:
@@ -826,7 +826,7 @@ class Conversation:
 	# file, if it exists. NOTE: At present there's only one global persistent
 	# memory file shared across all conversations. This is not a good design!
 
-	def read_memory(thisConv:Conversation):
+	def read_memory(thisConv:BotConversation):
 		"""Loads persistent memories."""
 
 			# We declare these globals so we can modify them.
@@ -887,7 +887,7 @@ class Conversation:
 	# This method adds a message to the AI's persistent memory file.
 	# It also updates the persistent context string.
 
-	def add_memory(thisConv:Conversation, new_memory:str) -> bool:
+	def add_memory(thisConv:BotConversation, new_memory:str) -> bool:
 		"""Adds a new item to the AI's persistent memory."""
 
 		global MEMORIES
@@ -940,7 +940,7 @@ class Conversation:
 	# It also updates the persistent context string. It returns true if the 
 	# memory was removed, false otherwise.
 
-	def remove_memory(thisConv:Conversation, text_to_remove:str) -> bool:
+	def remove_memory(thisConv:BotConversation, text_to_remove:str) -> bool:
 		"""Remove a specified item from the AI's persistent memory."""
 
 		global MEMORIES
@@ -1031,7 +1031,7 @@ class Conversation:
 	# This method is called to expunge the oldest message from the conversation
 	# when the context string gets too long to fit in GPT-3's receptive field.
 
-	def expunge_oldest_message(thisConv:Conversation):
+	def expunge_oldest_message(thisConv:BotConversation):
 		"""This method is called to expunge the oldest message from the conversation."""
 
 		# There's an important error case that we need to consider:
@@ -1058,7 +1058,7 @@ class Conversation:
 	# so that the user does not see error messages that might embarrass us.
 	# (Of course, the caller can always show the error to the user if desired.)
 
-	def report_error(thisConv:Conversation, errmsg:str):
+	def report_error(thisConv:BotConversation, errmsg:str):
 
 		"""Adds an error report to the conversation memory so that the AI can
 			see it. Also logs the error to the application's main log file."""
@@ -1070,14 +1070,14 @@ class Conversation:
 		_logger.error(msg)	# Log the error.
 
 		# Add the error report to the conversation.
-		thisConv.add_message(Message(SYS_NAME, msg))
+		thisConv.add_message(BotMessage(SYS_NAME, msg))
 
 		_lastError = msg	# So higher-level callers can access it.
 
 	#__/ End report_error() instance method for class Conversation.
 
 
-	def add_message(thisConv:Conversation, message:Message, finalize=True):
+	def add_message(thisConv:BotConversation, message:BotMessage, finalize=True):
 
 		"""Adds a message to the conversation. Also archives the message
 			unless finalize=False is specified."""
@@ -1100,7 +1100,7 @@ class Conversation:
 	# NOTE: This should only be called on the last message in the conversation.
 	# NOTE: Seems like this method should really be moved to the Message class.
 
-	def extend_message(thisConv:Conversation, message:Message, extra_text):
+	def extend_message(thisConv:BotConversation, message:BotMessage, extra_text):
 		"""Extends a non-finalized message by adding some extra text to it."""
 
 		# First, make sure the message has not already been finalized.
@@ -1120,7 +1120,7 @@ class Conversation:
 	# (This is normally only done if the message is empty, since Telegram
 	# will not send an empty message anyway.)
 
-	def delete_last_message(thisConv:Conversation):
+	def delete_last_message(thisConv:BotConversation):
 		"""Deletes the last message in a conversation; use it only if the
 			message is empty and hasn't been archived already."""
 
@@ -1139,7 +1139,7 @@ class Conversation:
 	#__/
 
 
-	def finalize_message(thisConv:Conversation, message:Message):
+	def finalize_message(thisConv:BotConversation, message:BotMessage):
 		"""Finalize a message in the conversation (should be the last message)."""
 
 		if not hasattr(message,'archived') or not message.archived:
@@ -1147,7 +1147,7 @@ class Conversation:
 	#__/
 
 
-	def archive_message(thisConv:Conversation, message:Message):
+	def archive_message(thisConv:BotConversation, message:BotMessage):
 		"""Commit a message to the conversation, and archive it."""
 		thisConv.archive_file.write(message.serialize())
 		thisConv.archive_file.flush()
@@ -1159,7 +1159,7 @@ class Conversation:
 	# However, it does not erase the archive file or clear the 
 	# persistent memory file.
 
-	def clear(thisConv:Conversation):
+	def clear(thisConv:BotConversation):
 		"""Clear the entire conversational memory."""
 		thisConv.messages = []
 		thisConv.context_length = 0
@@ -1172,7 +1172,7 @@ class Conversation:
 	# the bot from getting into a loop where it sends the same message over and 
 	# over too frequently.
 
-	def is_repeated_message(thisConv:Conversation, message:Message):
+	def is_repeated_message(thisConv:BotConversation, message:BotMessage):
 		"""Check whether a message (with the same sender and text) is already 
 			included in the most recent <NOREPEAT_WINDOW_SIZE> messages of the 
 			conversation."""
@@ -1187,7 +1187,7 @@ class Conversation:
 	# This method converts the persistent context and the list of messages
 	# into the format of a 'messages' list as expected by the GPT-3 chat API.
 
-	def get_chat_messages(thisConv:Conversation):
+	def get_chat_messages(thisConv:BotConversation):
 
 		"""Convert the persistent context and the list of messages into the 
 			format of a 'messages' list as expected by the GPT-3 chat API."""
@@ -1467,7 +1467,7 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 	# will be specific to this chat_id. This will also allow updates from different
 	# users in the same chat to all appear in the same conversation.
 
-	conversation = Conversation(chat_id)
+	conversation = BotConversation(chat_id)
 		# Note this constructor call will also reload the conversation data, if it exists.
 
 	context.chat_data['conversation'] = conversation
@@ -1482,10 +1482,10 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 	# Add the /start command itself to the conversation archive.
 
 	if autoStart:
-		conversation.add_message(Message(SYS_NAME, '/start'))
+		conversation.add_message(BotMessage(SYS_NAME, '/start'))
 			# This is to tell the AI that the server is auto-starting.
 	else:
-		conversation.add_message(Message(user_name, tgMessage.text))
+		conversation.add_message(BotMessage(user_name, tgMessage.text))
 
 	# Send an initial message to the user.
 		# NOTE: If messages were read from the conversation archive file,
@@ -1499,7 +1499,7 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 					   f"conversation {chat_id}.")
 
 		# First record the initial message in our conversation data structure.
-		conversation.add_message(Message(conversation.bot_name, START_MESSAGE))
+		conversation.add_message(BotMessage(conversation.bot_name, START_MESSAGE))
 
 		# Now try to also send it to the user.
 		if await _reply_user(tgMessage, conversation, START_MESSAGE) != 'success':
@@ -1511,11 +1511,11 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 					   f"existing conversation {chat_id}.")
 
 		# Compose a system diagnostic message explaining what we're doing.
-		diagMsg = f"Restarted bot with last {len(conversation.messages)} " \
+		diag_msgStr = f"Restarted bot with last {len(conversation.messages)} " \
 				  f"messages from archive."
 
 		# Send it to the AI and to the user.
-		sendRes = await _send_diagnostic(tgMessage, conversation, diagMsg)
+		sendRes = await _send_diagnostic(tgMessage, conversation, diag_msgStr)
 		if sendRes != 'success': return sendRes
 	#__/
 
@@ -1528,7 +1528,7 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 						"unsupported first name.")
 
            # Add the warning message to the conversation, so the AI can see it.
-		warning_msg = "NOTIFICATION: Welcome, " \
+		warning_msgStr = "NOTIFICATION: Welcome, " \
 					  	f'"{tgMessage.from_user.first_name}". ' \
 						"The AI will identify you in this conversation by your " \
 						f"{which_name}, {user_name}."
@@ -1539,12 +1539,12 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 		#	f"you will be identified by your {which_name}, {user_name}.]"
 				
 			# Make sure the AI sees that message, even if we fail in sending it to the user.
-		conversation.add_message(Message(SYS_NAME, warning_msg))
+		conversation.add_message(BotMessage(SYS_NAME, warning_msgStr))
 		
             # Also send the warning message to the user. (Making it clear that 
             # it's a system message, not from the AI persona itself.)
-		reply_msg = f"[SYSTEM {warning_msg}]"
-		await _reply_user(tgMessage, conversation, reply_msg, ignore=True)
+		reply_msgStr = f"[SYSTEM {warning_msgStr}]"
+		await _reply_user(tgMessage, conversation, reply_msgStr, ignore=True)
 	#__/
 
 #__/ End handle_start() function definition.
@@ -1555,13 +1555,13 @@ async def handle_help(update:Update, context:Context) -> None:
 	"""Display the help string when the command /help is issued."""
 
 	# Get the message, or edited message from the update.
-	(message, edited) = _get_update_msg(update)
+	(tgMessage, edited) = _get_update_msg(update)
 
-	if message is None:
+	if tgMessage is None:
 		_logger.warning("In handle_help() with no message? Aborting.")
 		return
 
-	chat_id = message.chat.id
+	chat_id = tgMessage.chat.id
 
 	# Make sure the thread component is set to this application (for logging).
 	logmaster.setComponent(_appName)
@@ -1571,7 +1571,7 @@ async def handle_help(update:Update, context:Context) -> None:
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Get user name to use in message records.
-	user_name = _get_user_name(message.from_user)
+	user_name = _get_user_name(tgMessage.from_user)
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not await _ensure_convo_loaded(update, context):
@@ -1586,7 +1586,7 @@ async def handle_help(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# Add the /help command itself to the conversation archive.
-	conversation.add_message(Message(user_name, message.text))
+	conversation.add_message(BotMessage(user_name, tgMessage.text))
 
 	_logger.normal(f"\nUser {user_name} entered a /help command for chat {chat_id}.")
 
@@ -1595,10 +1595,10 @@ async def handle_help(update:Update, context:Context) -> None:
 
 	# Also record the help string in our conversation data structure.
 	who = BOT_NAME if customHelp else SYS_NAME
-	conversation.add_message(Message(who, HELP_STRING))
+	conversation.add_message(BotMessage(who, HELP_STRING))
 
 	# Send the help string to the user.
-	if 'success' != await _reply_user(message, conversation, HELP_STRING):
+	if 'success' != await _reply_user(tgMessage, conversation, HELP_STRING):
 		return
 
 	# Finished processing this message.
@@ -1610,10 +1610,10 @@ async def handle_image(update:Update, context:Context) -> None:
 	"""Generate an image with a given description."""
 
 	# Get the message, or edited message from the update.
-	(message, edited) = _get_update_msg(update)
+	(tgMessage, edited) = _get_update_msg(update)
 
 	# Get the ID of the present chat.
-	chat_id = message.chat.id
+	chat_id = tgMessage.chat.id
 
 	# Make sure the thread component is set to this application (for logging).
 	logmaster.setComponent(_appName)
@@ -1623,7 +1623,7 @@ async def handle_image(update:Update, context:Context) -> None:
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Get user name to use in message records.
-	user_name = _get_user_name(message.from_user)
+	user_name = _get_user_name(tgMessage.from_user)
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not await _ensure_convo_loaded(update, context):
@@ -1637,12 +1637,12 @@ async def handle_image(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# Add the /help command itself to the conversation archive.
-	conversation.add_message(Message(user_name, message.text))
+	conversation.add_message(BotMessage(user_name, tgMessage.text))
 
 	_logger.normal(f"\nUser {user_name} entered an /image command for chat {chat_id}.")
 
 	# Get just the first line of the message as the actual /image command line.
-	cmdLine = message.text.split('\n')[0]
+	cmdLine = tgMessage.text.split('\n')[0]
 
 	if len(cmdLine) > 7:		# Anything after '/', 'i', 'm', 'a', 'g', 'e', ' '?
 		imageDesc = cmdLine[7:]	# Rest of line after '/image ' 
@@ -1655,16 +1655,16 @@ async def handle_image(update:Update, context:Context) -> None:
 		await send_image(update, context, imageDesc)
 
 		# Make a note in conversation archive to indicate that the image was sent.
-		conversation.add_message(Message(SYS_NAME, f'[Generated image "{imageDesc}" and sent it to the user.]'))
+		conversation.add_message(BotMessage(SYS_NAME, f'[Generated image "{imageDesc}" and sent it to the user.]'))
 
 		# Allow the AI to follow up (but without re-processing the message).
-		await handle_message(update, context, new_msg=False)
+		await handle_message(update, context, isNewMsg=False)
 
 	else:
 		_logger.error("The '/image' command requires a non-empty argument.")
 
-		errMsg = f"The '/image' command requires an argument. (Usage: /image <description>)"
-		await _report_error(conversation, message, errMsg, logIt=False)	# Logged above.
+		errMsgStr = f"The '/image' command requires an argument. (Usage: /image <description>)"
+		await _report_error(conversation, tgMessage, errMsgStr, logIt=False)	# Logged above.
 
 		return
 	#__/
@@ -1678,9 +1678,9 @@ async def handle_echo(update:Update, context:Context) -> None:
 	"""Echo the user's message."""
 
 	# Get the message, or edited message from the update.
-	(message, edited) = _get_update_msg(update)
+	(tgMessage, edited) = _get_update_msg(update)
 
-	chat_id = message.chat.id
+	chat_id = tgMessage.chat.id
 
 	# Make sure the thread component is set to this application (for logging).
 	logmaster.setComponent(_appName)
@@ -1690,7 +1690,7 @@ async def handle_echo(update:Update, context:Context) -> None:
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Get user name to use in message records.
-	user_name = _get_user_name(message.from_user)
+	user_name = _get_user_name(tgMessage.from_user)
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not await _ensure_convo_loaded(update, context):
@@ -1703,10 +1703,10 @@ async def handle_echo(update:Update, context:Context) -> None:
 	# Fetch the conversation object.
 	conversation = context.chat_data['conversation']
 
-	cmdLine = message.text
+	cmdLine = tgMessage.text
 
 	# Add the /echo command itself to the conversation archive.
-	conversation.add_message(Message(user_name, cmdLine))
+	conversation.add_message(BotMessage(user_name, cmdLine))
 
 	_logger.normal(f"\nUser {user_name} entered an /echo command for chat {chat_id}.")
 
@@ -1715,8 +1715,8 @@ async def handle_echo(update:Update, context:Context) -> None:
 	else:
 		_logger.error("The '/echo' command requires a non-empty argument.")
 		
-		errMsg = f"The '/echo' command requires an argument. (Usage: /echo <text to echo>)"
-		await _report_error(conversation, message, errMsg, logIt=False)	# Logged above.
+		errMsgStr = f"The '/echo' command requires an argument. (Usage: /echo <text to echo>)"
+		await _report_error(conversation, tgMessage, errMsgStr, logIt=False)	# Logged above.
 
 		return
 	#__/
@@ -1727,9 +1727,9 @@ async def handle_echo(update:Update, context:Context) -> None:
 	_logger.normal(f"\tEchoing [{textToEcho}] in conversation {chat_id}.")
 
 	# Record the echo text in our conversation data structure.
-	conversation.add_message(Message(SYS_NAME, responseText))
+	conversation.add_message(BotMessage(SYS_NAME, responseText))
 
-	await _reply_user(message, conversation, responseText)
+	await _reply_user(tgMessage, conversation, responseText)
 
 #__/ End '/echo' user command handler.
 
@@ -1740,13 +1740,13 @@ async def handle_greet(update:Update, context:Context) -> None:
 	"""Greet the user."""
 
 	# Get the message, or edited message from the update.
-	(message, edited) = _get_update_msg(update)
+	(tgMessage, edited) = _get_update_msg(update)
 
-	if message is None:
+	if tgMessage is None:
 		_logger.warning("In handle_greet() with no message? Aborting.")
 		return
 
-	chat_id = message.chat.id
+	chat_id = tgMessage.chat.id
 
 	# Make sure the thread component is set to this application (for logging).
 	logmaster.setComponent(_appName)
@@ -1756,7 +1756,7 @@ async def handle_greet(update:Update, context:Context) -> None:
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Get user name to use in message records.
-	user_name = _get_user_name(message.from_user)
+	user_name = _get_user_name(tgMessage.from_user)
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not await _ensure_convo_loaded(update, context):
@@ -1771,20 +1771,18 @@ async def handle_greet(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# Add the /greet command itself to the conversation archive.
-	conversation.add_message(Message(user_name, message.text))
+	conversation.add_message(BotMessage(user_name, tgMessage.text))
 
 	_logger.normal(f"\nUser {user_name} entered a /greet command for chat {chat_id}.")
 
 	# Log diagnostic information.
 	_logger.normal(f"\tSending greeting in conversation {chat_id}.")
 
-	GREETING_TEXT = "Hello! I'm glad you're here. I'm glad you're here.\n"
-		# Copilot composed this. 
+	# Record the greeting text in our conversation data structure.
+	conversation.add_message(BotMessage(SYS_NAME, GREETING_TEXT))
 
-	# Also record the echo text in our conversation data structure.
-	conversation.add_message(Message(SYS_NAME, GREETING_TEXT))
-
-	await _reply_user(message, conversation, GREETING_TEXT)
+	# Send the greeting to the user.
+	await _reply_user(tgMessage, conversation, GREETING_TEXT)
 
 #__/ End '/greet' user command handler.
 
@@ -1794,13 +1792,13 @@ async def handle_reset(update:Update, context:Context) -> None:
 	"""Reset the conversation."""
 
 	# Get the message, or edited message from the update.
-	(message, edited) = _get_update_msg(update)
+	(tgMsg, edited) = _get_update_msg(update)
 
-	if message is None:
+	if tgMsg is None:
 		_logger.warning("In handle_reset() with no message? Aborting.")
 		return
 
-	chat_id = message.chat.id
+	chat_id = tgMsg.chat.id
 
 	# Make sure the thread component is set to this application (for logging).
 	logmaster.setComponent(_appName)
@@ -1810,7 +1808,7 @@ async def handle_reset(update:Update, context:Context) -> None:
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Get user name to use in message records.
-	user_name = _get_user_name(message.from_user)
+	user_name = _get_user_name(tgMsg.from_user)
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not await _ensure_convo_loaded(update, context):
@@ -1825,7 +1823,7 @@ async def handle_reset(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# Add the /reset command itself to the conversation archive.
-	conversation.add_message(Message(user_name, message.text))
+	conversation.add_message(BotMessage(user_name, tgMsg.text))
 
 	_logger.normal(f"\nUser {user_name} entered a /reset command for chat {chat_id}.")
 
@@ -1836,19 +1834,19 @@ async def handle_reset(update:Update, context:Context) -> None:
 	conversation.clear()
 
 	# Send a diagnostic message to AI & user.
-	diagMsg = f"Cleared conversation {chat_id}."
-	sendRes = await _send_diagnostic(message, conversation, diagMsg)
+	diagMsgStr = f"Cleared conversation {chat_id}."
+	sendRes = await _send_diagnostic(tgMsg, conversation, diagMsgStr)
 	if sendRes != 'success': return sendRes
 
 	# Send an initial message to the user.
 
-	reset_message = f"This is {BOT_NAME}. I've cleared my memory of our previous conversation."
+	reset_msgStr = f"This is {BOT_NAME}. I've cleared my memory of our previous conversation."
 
 		# Record the reset message in our conversation data structure.
-	conversation.add_message(Message(conversation.bot_name, reset_message))
+	conversation.add_message(BotMessage(conversation.bot_name, reset_msgStr))
 
 		# Send it to the user as well.
-	await _reply_user(message, conversation, reset_message)
+	await _reply_user(tgMsg, conversation, reset_msgStr)
 
 #__/ End definition of /reset command handler function.
 
@@ -1859,13 +1857,13 @@ async def handle_remember(update:Update, context:Context) -> None:
 	"""Add the given message as a new memory."""
 
 	# Get the message, or edited message from the update.
-	(message, edited) = _get_update_msg(update)
+	(tgMsg, edited) = _get_update_msg(update)
 
-	if message is None:
+	if tgMsg is None:
 		_logger.warning("In handle_remember() with no message? Aborting.")
 		return
 
-	chat_id = message.chat.id
+	chat_id = tgMsg.chat.id
 
 	# Make sure the thread component is set to this application (for logging).
 	logmaster.setComponent(_appName)
@@ -1875,7 +1873,7 @@ async def handle_remember(update:Update, context:Context) -> None:
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Get the name that we'll use for the user.
-	user_name = _get_user_name(message.from_user)
+	user_name = _get_user_name(tgMsg.from_user)
 
 	# Block /remember command for users other than Mike.
 	if user_name != 'Michael':
@@ -1884,7 +1882,7 @@ async def handle_remember(update:Update, context:Context) -> None:
 	
 		# Send a diagnostic message to the AI and to the user.
 		diagMsg = f"Sorry, the /remember command is currently disabled."
-		sendRes = await _send_diagnostic(message, conversation, diagMsg)
+		sendRes = await _send_diagnostic(tgMsg, conversation, diagMsg)
 		if sendRes != 'success': return sendRes
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
@@ -1900,7 +1898,7 @@ async def handle_remember(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# First, we'll add the whole /remember command line to the conversation, so that the AI can see it.
-	conversation.add_message(Message(user_name, message.text))
+	conversation.add_message(BotMessage(user_name, tgMsg.text))
 
 	# Check whether the user is in our access list.
 	if not _check_access(user_name):
@@ -1910,7 +1908,7 @@ async def handle_remember(update:Update, context:Context) -> None:
 		#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
 		errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
 
-		await _report_error(conversation, message, errMsg, logIt=False)	# Logged above.
+		await _report_error(conversation, tgMsg, errMsg, logIt=False)	# Logged above.
 
 		return
 	#__/
@@ -1918,7 +1916,7 @@ async def handle_remember(update:Update, context:Context) -> None:
 	_logger.normal(f"\nUser {user_name} entered a /remember command for chat {chat_id}.")
 
 	# Get the command's argument, which is the text to remember.
-	text = ' '.join(message.text.split(' ')[1:])
+	text = ' '.join(tgMsg.text.split(' ')[1:])
 
 	# Tell the conversation object to add the given message to the AI's persistent memory.
 	if not conversation.add_memory(text):
@@ -1930,7 +1928,7 @@ async def handle_remember(update:Update, context:Context) -> None:
 		# Send a diagnostic message to the AI and to the user.
 		diagMsg = f"Could not add [{text.strip()}] to persistent memory. " \
 				  f'Error message was: "{errmsg}"'
-		sendRes = await _send_diagnostic(message, conversation, diagMsg)
+		sendRes = await _send_diagnostic(tgMsg, conversation, diagMsg)
 		if sendRes != 'success': return sendRes
 	#__/
 
@@ -1938,7 +1936,7 @@ async def handle_remember(update:Update, context:Context) -> None:
 
 	# Send a diagnostic message to the AI and as a reply to the user.
 	diagMsg = f"Added [{text.strip()}] to persistent memory."
-	await _send_diagnostic(message, conversation, diagMsg, ignore=True)
+	await _send_diagnostic(tgMsg, conversation, diagMsg, ignore=True)
 
 #__/ End definition of /remember command handler.
 
@@ -1949,13 +1947,13 @@ async def handle_forget(update:Update, context:Context) -> None:
 	"""Remove the given message from the AI's persistent memory."""
 	
 	# Get the message, or edited message from the update.
-	(message, edited) = _get_update_msg(update)
+	(tgMsg, edited) = _get_update_msg(update)
 
-	if message is None:
+	if tgMsg is None:
 		_logger.warning("In handle_forget() with no message? Aborting.")
 		return
 
-	chat_id = message.chat.id
+	chat_id = tgMsg.chat.id
 
 	# Make sure the thread component is set to this application (for logging).
 	logmaster.setComponent(_appName)
@@ -1965,7 +1963,7 @@ async def handle_forget(update:Update, context:Context) -> None:
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
 	# Get the name that we'll use for the user.
-	user_name = _get_user_name(message.from_user)
+	user_name = _get_user_name(tgMsg.from_user)
 
 	_logger.normal(f"\nUser {user_name} entered a /forget command for chat {chat_id}.")
 
@@ -1981,22 +1979,22 @@ async def handle_forget(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# First, we'll add the whole /forget command line to the conversation, so that the AI can see it.
-	conversation.add_message(Message(user_name, message.text))
+	conversation.add_message(BotMessage(user_name, tgMsg.text))
 
 	# Check whether the user is in our access list.
 	if not _check_access(user_name):
 		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
 
 		#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
-		errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+		errMsgStr = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
 
-		await _report_error(conversation, message, errMsg, logIt=False)
+		await _report_error(conversation, tgMsg, errMsgStr, logIt=False)
 			# Note we already did a log entry above.
 
 		return
 
 	# Get the command's argument, which is the text to forget.
-	text = ' '.join(message.text.split(' ')[1:])
+	text = ' '.join(tgMsg.text.split(' ')[1:])
 
 	# Tell the conversation object to remove the given message from the AI's persistent memory.
 	# This returns a boolean indicating whether the operation was successful.
@@ -2009,20 +2007,20 @@ async def handle_forget(update:Update, context:Context) -> None:
 		_logger.normal(f"\t{user_name} removed memory: [{text.strip()}]")
 
 		# Send a diagnostic message to the AI and as a reply to the user.
-		diagMsg = f"Removed [{text.strip()}] from persistent memory."
-		await _send_diagnostic(message, conversation, diagMsg, ignore=True)
+		diagMsgStr = f"Removed [{text.strip()}] from persistent memory."
+		await _send_diagnostic(tgMsg, conversation, diagMsgStr, ignore=True)
 	
 	# If the operation was not successful, send a different reply to the user.
 	else:
 		
-		errmsg = _lastError
+		errMsgStr = _lastError
 
 		# Generate an error-level report to include in the application log.
 		_logger.error(f"{user_name} failed to remove memory: [{text.strip()}]")
 	
-		diagMsg = f"Could not remove [{text.strip()}] from persistent memory. "\
-				  f'Error message was: "{errmsg}"'
-		await _send_diagnostic(message, conversation, diagMsg, ignore=True)
+		diagMsgStr = f"Could not remove [{text.strip()}] from persistent memory. "\
+				  f'Error message was: "{errMsgStr}"'
+		await _send_diagnostic(tgMsg, conversation, diagMsgStr, ignore=True)
 
 	#__/
 
@@ -2057,16 +2055,16 @@ async def handle_audio(update:Update, context:Context) -> None:
 	"""Handle an audio message from the user."""
 
 	# Get the message, or edited message from the update.
-	(message, edited) = _get_update_msg(update)
+	(tgMsg, edited) = _get_update_msg(update)
 		
-	if message is None:
+	if tgMsg is None:
 		_logger.warning("In handle_audio() with no message? Aborting.")
 		return
 
-	user_name = _get_user_name(message.from_user)
+	user_name = _get_user_name(tgMsg.from_user)
 
 	# Get the chat ID.
-	chat_id = message.chat.id
+	chat_id = tgMsg.chat.id
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not await _ensure_convo_loaded(update, context):
@@ -2079,10 +2077,10 @@ async def handle_audio(update:Update, context:Context) -> None:
 	_logger.normal(f"\nReceived a message with audio from user {user_name} in chat {chat_id}.")
 
 	# Check if the message contains audio or voice
-	if message.audio:
-		audio = message.audio
-	elif message.voice:
-		audio = message.voice
+	if tgMsg.audio:
+		audio = tgMsg.audio
+	elif tgMsg.voice:
+		audio = tgMsg.voice
 	else:
 		_logger.error("A message passed the audio/voice filter, but did not contain either.")
 		return	# Dispatcher will still try other filters.
@@ -2131,7 +2129,7 @@ async def handle_audio(update:Update, context:Context) -> None:
 	try:
 		text = transcribeAudio(mp3_file_path)
 	except Exception as e:
-		await _report_error(conversation, message,
+		await _report_error(conversation, tgMsg,
 					  f"In handle_audio(), transcribeAudio() threw an exception: {type(e).__name__} {e}")
 
 		text = f"[Audio transcription error: {e}]"
@@ -2164,9 +2162,9 @@ async def handle_audio(update:Update, context:Context) -> None:
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 # Now, let's define a function to handle the rest of the messages.
-async def handle_message(update:Update, context:Context, new_msg=True) -> None:
+async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		# Note that <context>, in this context, denotes the Telegram context object.
-		# Call with new_msg=True to skip new-message processing.
+		# Call with new_msg=False to skip new-message processing.
 
 	"""Handles receipt of a text or audio message sent to the bot by a user.
 		"""
@@ -2175,18 +2173,18 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 	# an old message instead of sending a new one.
 
 	# Get the message, or edited message from the update.
-	(message, edited) = _get_update_msg(update)
+	(tgMsg, edited) = _get_update_msg(update)
 		
-	if message is None:
+	if tgMsg is None:
 		_logger.error("In handle_message() with no message! Aborting...")
 		return
 
-	text = message.text
+	text = tgMsg.text
 
-	user_name = _get_user_name(message.from_user)
+	user_name = _get_user_name(tgMsg.from_user)
 
 	# Get the chat ID.
-	chat_id = message.chat.id
+	chat_id = tgMsg.chat.id
 
 	# Make sure the thread component is set to this application (for logging).
 	logmaster.setComponent(_appName)
@@ -2206,13 +2204,13 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 		#| data, then present its transcription using an appropriate text
 		#| format.
 
-	if new_msg and 'audio_text' in context.user_data:	# We added this earlier if appropriate.
+	if isNewMsg and 'audio_text' in context.user_data:	# We added this earlier if appropriate.
 
 		# Utilize the transcript created by handle_audio() above.
 		text = f"(audio) {context.user_data['audio_text']}"	
 
 		# Append the text caption, if present.
-		if message.caption:
+		if tgMsg.caption:
 			text += f"\n(message.caption)"
 
 		# Clear the audio_text entry from the user_data dictionary
@@ -2240,8 +2238,8 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 	conversation = context.chat_data['conversation']
 
 	# Add the message just received to the conversation.
-	if new_msg:
-		conversation.add_message(Message(user_name, text))
+	if isNewMsg:
+		conversation.add_message(BotMessage(user_name, text))
 
 	# Check whether the user is in our access list.
 	if not _check_access(user_name):
@@ -2249,9 +2247,9 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 					   "but is not in the access list. Denying access.")
 
 		#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
-		errMsg = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+		errMsgStr = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
 
-		await _report_error(conversation, message, errMsg, logIt=False)
+		await _report_error(conversation, tgMsg, errMsgStr, logIt=False)
 
 		return
 
@@ -2366,8 +2364,8 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 				_logger.error(f"Got a {type(e).__name__} from OpenAI ({e}) for "
 							  f"conversation {chat_id}.")
 
-				diagMsg = "AI model is overloaded; please try again later."
-				await _send_diagnostic(message, conversation, diagMsg, ignore=True)
+				diagMsgStr = "AI model is overloaded; please try again later."
+				await _send_diagnostic(tgMsg, conversation, diagMsgStr, ignore=True)
 				return	# That's all she wrote.
 			#__/
 		#__/
@@ -2389,8 +2387,8 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 							  f"with text: [{response_text}].")
 
 				# Create a new Message object and add it to the conversation, but, don't finalize it yet.
-				response_message = Message(conversation.bot_name, response_text)
-				conversation.add_message(response_message, finalize=False)
+				response_botMsg = BotMessage(conversation.bot_name, response_text)
+				conversation.add_message(response_botMsg, finalize=False)
 
 			else:
 				# We're extending an existing response.
@@ -2401,10 +2399,10 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 							  f"with additional text: [{response_text}].")
 
 				# Extend the existing response.
-				response_message.text += response_text
+				response_botMsg.text += response_text
 
 				# Add the response to the existing Message object.
-				conversation.extend_message(response_message, response_text)
+				conversation.extend_message(response_botMsg, response_text)
 
 			# Add the response text to the full response.
 			full_response += response_text
@@ -2429,8 +2427,8 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 
 				# Send the user a diagnostic message indicating that we're extending the response.
 				# (Doing this temporarily during development.)
-				diagMsg = "Length limit reached; extending response."
-				sendRes = await _send_diagnostic(message, conversation, diagMsg, toAI=False)
+				diagMsgStr = "Length limit reached; extending response."
+				sendRes = await _send_diagnostic(tgMsg, conversation, diagMsgStr, toAI=False)
 				if sendRes != 'success': return sendRes
 
 				continue	# Loop back and get another response extending the existing one.
@@ -2476,7 +2474,7 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 			return		# This means the bot is simply not responding to this particular message.
 
 		# Update the message object, and the context.
-		response_message.text = response_text
+		response_botMsg.text = response_text
 		conversation.expand_context()
 
 		# If this message is already in the conversation, then we need to retry the query,
@@ -2494,7 +2492,7 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 		# not to exacerbate the AI's tendency to repeat itself.	 (So, as a user, if you 
 		# see that the AI isn't responding to a message, this may mean that it has the 
 		# urge to repeat something it said earlier, but is holding its tongue.)
-		if response_text.lower() != '/pass' and conversation.is_repeated_message(response_message):
+		if response_text.lower() != '/pass' and conversation.is_repeated_message(response_botMsg):
 
 			# Generate an info-level log message to indicate that we're suppressing the response.
 			_logger.info(f"Suppressing response [{response_text}]; it's a repeat.")
@@ -2513,7 +2511,7 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 		# It's finally OK at this point to archive the message and send it to the user.
 
 		# Make sure the response message has been finalized (this also archives it).
-		conversation.finalize_message(response_message)
+		conversation.finalize_message(response_botMsg)
 
 		# At this point, we can break out of the loop and actually send the message.
 		break
@@ -2523,7 +2521,7 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 	# already-archived message that we can go ahead and send to the user.
 	# We also check to see if the message is a command line.
 
-	await process_response(update, context, response_message)	   # Defined later.
+	await process_response(update, context, response_botMsg)	   # Defined later.
 
 #__/ End of handle_message() function definition.
 
@@ -2578,17 +2576,17 @@ async def process_chat_message(update:Update, context:Context) -> None:
 	global maxRetToks
 
 	# Get the message, or edited message from the update.
-	(message, edited) = _get_update_msg(update)
+	(tgMsg, edited) = _get_update_msg(update)
 		
-	if message is None:
+	if tgMsg is None:
 		_logger.error("In process_chat_message() with no message! Aborting.")
 		return
 
-	chat_id = message.chat.id
+	chat_id = tgMsg.chat.id
 
 	# Get user_name & unique ID (for content violation logging).
-	user_name = _get_user_name(message.from_user)
-	user_id = message.from_user.id
+	user_name = _get_user_name(tgMsg.from_user)
+	user_id = tgMsg.from_user.id
 
 	# Get our Conversation object.
 	conversation = context.chat_data['conversation']
@@ -2600,7 +2598,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 	while True:		# Loop until we get a response from the API.
 
 		# Construct the message list in the format expected by the GPT-3 chat API.
-		chat_messages = conversation.get_chat_messages()
+		oaiMessages = conversation.get_chat_messages()
 
 		# At this point, we want to archive the chat messages to a file in the
 		# log/ directory called 'latest-messages.txt'. This provides an easy way
@@ -2609,9 +2607,9 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 		# Open the file for writing.
 		with open(f"{LOG_DIR}/latest-messages.txt", "w") as f:
-			for chat_message in chat_messages:
+			for oaiMessage in oaiMessages:
 
-				f.write(messageRepr(chat_message))
+				f.write(messageRepr(oaiMessage))
 				
 				#if 'role' in chat_message:
 				#	roleOrName = chat_message['role']
@@ -2623,7 +2621,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 		# Also do a json dump
 		with open(f"{LOG_DIR}/latest-messages.json", "w") as outfile:
-			json.dump(chat_messages, outfile)
+			json.dump(oaiMessages, outfile)
 
 		# Now we'll try actually calling the API.
 		try:
@@ -2652,7 +2650,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 			#_logger.debug(f"In process_chat_message(), contextWinSizeToks={contextWinSizeToks}.")
 
 			# Get the length of the chat messages in tokens.
-			msgsSizeToks = ChatMessages(chat_messages).totalTokens(model=ENGINE_NAME)
+			msgsSizeToks = ChatMessages(oaiMessages).totalTokens(model=ENGINE_NAME)
 
 			# If this engine supports functions, add in the estimated size in tokens
 			# of the functions structure. (This is a guesstimate since we don't know
@@ -2727,7 +2725,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				maxTokens=maxTokens,	# Max. number of tokens to return.
 					# We went to a lot of trouble to set this up properly above!
 
-				messages=chat_messages,		# Current message list for chat API.
+				messages=oaiMessages,		# Current message list for chat API.
 					# Note that since we pass in an explicit messages list, this 
 					# overrides whatever api.Messages object is being maintained 
 					# in the GPT3ChatCore object.
@@ -2758,10 +2756,16 @@ async def process_chat_message(update:Update, context:Context) -> None:
 			)
 
 			# Get the full response message object.
-			response_message = chatCompletion.message
+			response_oaiMsg = chatCompletion.message
+
+			# Really, what we should do here is to call out to a separate function
+			# to process the response message object. That way, we can also call the
+			# same function to process the response message object that we get in
+			# response to a function's return value after we process a function call 
+			# from the AI. (This is a TODO item for the future.)
 
 			# In case there's a function call in the response, display it.
-			_logger.debug(f"RETURNED MESSAGE = [{pformat(response_message)}]")
+			_logger.debug(f"RETURNED MESSAGE = [{pformat(response_oaiMsg)}]")
 
 			# Get the text field of the response. (Could be None, if function call.)
 			response_text = chatCompletion.text
@@ -2786,12 +2790,12 @@ async def process_chat_message(update:Update, context:Context) -> None:
 					_logger.debug(f"Modified response message text is: [{chatCompletion.text}]")
 
 			# Get the full response message dict.
-			response_message = chatCompletion.message
+			response_oaiMsg = chatCompletion.message
 
 			# In case there's a function call in the response, display it.
 			#_logger.normal(f"RETURNED MESSAGE = \n" + pformat(response_message))
 
-			funCall = response_message.get('function_call')
+			funCall = response_oaiMsg.get('function_call')
 			if funCall:
 				function_name = funCall['name']
 				function_args = json.loads(funCall['arguments'])
@@ -2804,7 +2808,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 				# Have the bot server make a note to help the AI remember that it did the function call.
 				fcall_note = f"[NOTE: {BOT_NAME} is doing function call {call_desc}.]"
-				conversation.add_message(Message(SYS_NAME, fcall_note))
+				conversation.add_message(BotMessage(SYS_NAME, fcall_note))
 
 				# Extract the optional remark argument from the argument list.
 				if 'remark' in function_args:
@@ -2831,7 +2835,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				# (which is probably contents of a remark argument, if anything)'
 				if response_text != "":
 
-					conversation.add_message(Message(BOT_NAME, response_text))
+					conversation.add_message(BotMessage(BOT_NAME, response_text))
 					
 					# Try sending the response text to the user. (But ignore send errors here.)
 					await send_response(update, context, response_text)
@@ -2852,39 +2856,39 @@ async def process_chat_message(update:Update, context:Context) -> None:
 					_logger.info("Assembling temporary message list for function call & return...")
 
 					# Get current chat message list.
-					temp_chat_messages = conversation.get_chat_messages()[:-1]
+					temp_chat_oaiMsgs = conversation.get_chat_messages()[:-1]
 						# Trim off final message which is the system prompt. Not needed right now.
 
 					# Trim off all trailing messages back to the function call note,
 					# since these would be remarks and various system notifications
 					# and errors generated during function execution.
 
-					trailing_msgs = []
+					trailing_oaiMsgs = []
 					# Scan back until we get to the "system: [NOTE: " message...
-					while not (temp_chat_messages[-1]['role'] == 'system'
-							   and temp_chat_messages[-1]['content'].startswith(f'{SYS_NAME}> [NOTE: ')):
+					while not (temp_chat_oaiMsgs[-1]['role'] == 'system'
+							   and temp_chat_oaiMsgs[-1]['content'].startswith(f'{SYS_NAME}> [NOTE: ')):
 						# NOTE: Above will break if MESSAGE_DELIMITER is not empty string.
 
-						_logger.info(f"Flipping back through message: [{pformat(temp_chat_messages[-1])}]")
+						_logger.info(f"Flipping back through message: [{pformat(temp_chat_oaiMsgs[-1])}]")
 
-						sys_msg = temp_chat_messages.pop()
-						trailing_msgs = [sys_msg] + trailing_msgs
+						sys_oaiMsg = temp_chat_oaiMsgs.pop()
+						trailing_oaiMsgs = [sys_oaiMsg] + trailing_oaiMsgs
 					#__/
 
 					# Construct some messages to represent the function call
 					# and return value.
 
 					# This message represents the actual function call.
-					funcall_msg = response_message
+					funcall_oaiMsg = response_oaiMsg
 							# This is the message that contains the AI's function call.
 
 					# Make sure we didn't add a content field to the message cuz the API will choke.
-					if 'content' in funcall_msg and funcall_msg['content'] is not None:
-						_logger.info(f"Oops, our funcall message has text content?? [\n{pformat(funcall_msg)}\n]")
-						funcall_msg['content'] = None
+					if 'content' in funcall_oaiMsg and funcall_oaiMsg['content'] is not None:
+						_logger.info(f"Oops, our funcall message has text content?? [\n{pformat(funcall_oaiMsg)}\n]")
+						funcall_oaiMsg['content'] = None
 
 					# This message represents the actual return value of the function.
-					funcret_msg = {
+					funcret_oaiMsg = {
 							'role':		'function',
 							'name':		function_name,
 							'content':	result
@@ -2897,30 +2901,30 @@ async def process_chat_message(update:Update, context:Context) -> None:
 					#	assistant:	{remark emitted by bot, if any}
 					#   function:	(function return)
 
-					temp_chat_messages += [funcall_msg]
-					temp_chat_messages += trailing_msgs
-					temp_chat_messages += [funcret_msg]
-					temp_chat_messages += [{
+					temp_chat_oaiMsgs += [funcall_oaiMsg]
+					temp_chat_oaiMsgs += trailing_oaiMsgs
+					temp_chat_oaiMsgs += [funcret_oaiMsg]
+					temp_chat_oaiMsgs += [{
 							'role':		'system',
 							'content':	f"{BOT_NAME} now provides its response, if any, to the function's return value:",
 						}]
 					
 					# Display the most recent 10 chat messages from temp list.
-					_logger.debug(f"Last few chat messages are [\n{pformat(temp_chat_messages[-10:])}\n].")
+					_logger.debug(f"Last few chat messages are [\n{pformat(temp_chat_oaiMsgs[-10:])}\n].")
 
 					# We'll just do a quick-and-dirty approach here to the context length management.
 					while True:
 						try:
 							# Do a dummy 2nd API call with the result.
 							second_chatCompl = gptCore.genChatCompletion(
-								messages 		= temp_chat_messages,
+								messages 		= temp_chat_oaiMsgs,
 								functionList	= functions,
 							)
 							break
 						except PromptTooLargeException:
 							# Just trim off the oldest message after the first two (time & system instructions).
-							_logger.info(f"NOTE: Expunging oldest chat message:\n" + pformat(temp_chat_messages[2]))
-							temp_chat_messages = temp_chat_messages[0:2].extend(chat_messages[3:])
+							_logger.info(f"NOTE: Expunging oldest chat message:\n" + pformat(temp_chat_oaiMsgs[2]))
+							temp_chat_oaiMsgs = temp_chat_oaiMsgs[0:2].extend(oaiMessages[3:])
 							continue
 
 					# Just for diagnostic purposes.
@@ -2938,19 +2942,22 @@ async def process_chat_message(update:Update, context:Context) -> None:
 					if second_response_text is not None:
 						second_response_text = _trim_prompt(second_response_text)
 
-					second_response_myMsg = Message(conversation.bot_name, second_response_text)
+					second_response_botMsg = BotMessage(conversation.bot_name, second_response_text)
 
-					_logger.info(f"Resulting message object is: [{str(second_response_myMsg)}].")
+					_logger.info(f"Resulting message object is: [{str(second_response_botMsg)}].")
 
-					conversation.add_message(second_response_myMsg)
+					conversation.add_message(second_response_botMsg)
 
-					if second_response_myMsg.text != '':	# Don't bother sending empty responses.
+					if second_response_botMsg.text != '':	# Don't bother sending empty responses.
 
 						# Is this even necessary in the case of chat engines?
-						conversation.finalize_message(second_response_myMsg)
+						conversation.finalize_message(second_response_botMsg)
 
 						# Process the AI's response to the function call's return.
-						await process_response(update, context, second_response_myMsg)
+						await process_response(update, context, second_response_botMsg)
+
+					# NOTE: If the second response is a function call or a command,
+					# we don't handle those cases properly here!  Fix this sometime.
 
 				#__/ End of stubbed-out code for letting AI see and respond to the function return value.
 
@@ -2972,9 +2979,9 @@ async def process_chat_message(update:Update, context:Context) -> None:
 							  "filter. Repeated violations could result in a ban."
 
 				# This allows the AI to see this warning message too.
-				conversation.add_message(Message(SYS_NAME, WARNING_MSG))
+				conversation.add_message(BotMessage(SYS_NAME, WARNING_MSG))
 
-				repRes = await _reply_user(message, conversation, "[SYSTEM {WARNING_MSG}]")
+				repRes = await _reply_user(tgMsg, conversation, "[SYSTEM {WARNING_MSG}]")
 				if repRes != 'success': return
 				
 			break	# We got a response, so we can break out of the loop.
@@ -3002,7 +3009,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 			# Send a diagnostic message to the AI and to the user.
 			diagMsg = "AI model is overloaded; please try again later."
-			await _send_diagnostic(message, conversation, diagMsg)
+			await _send_diagnostic(tgMsg, conversation, diagMsg)
 
 			return	# That's all she wrote.
 		#__/
@@ -3030,9 +3037,8 @@ async def process_chat_message(update:Update, context:Context) -> None:
 			# a diagnostic message to the user.
 			# (And also add it to the conversation so the AI can see it.)
 			
-			await _report_error(conversation, message, f"Exception while "
+			await _report_error(conversation, tgMsg, f"Exception while "
 								f"getting response: {type(e).__name__} ({e})")
-
 			return
 		#__/
 	#__/
@@ -3062,21 +3068,21 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				  f"text: [{response_text}].")
 
 	# Create a new Message object and add it to the conversation.
-	response_message = Message(conversation.bot_name, response_text)
-	conversation.add_message(response_message)
+	response_botMsg = BotMessage(conversation.bot_name, response_text)
+	conversation.add_message(response_botMsg)
 
 	# Strip off any leading or trailing whitespace (Telegram won't display it anyway.).
 	response_text = response_text.strip()
 
 	# Update the message object, and the context.
-	response_message.text = response_text
+	response_botMsg.text = response_text
 	conversation.expand_context()	 
 
 	# If this message is already in the conversation, then we'll suppress it, so as
 	# not to exacerbate the AI's tendency to repeat itself.	 (So, as a user, if you 
 	# see that the AI isn't responding to a message, this may mean that it has the 
 	# urge to repeat something it said earlier, but is holding its tongue.)
-	if response_text.lower() != '/pass' and conversation.is_repeated_message(response_message):
+	if response_text.lower() != '/pass' and conversation.is_repeated_message(response_botMsg):
 
 		# Generate an info-level log message to indicate that we're suppressing the response.
 		_logger.info(f"Suppressing response [{response_text}]; it's a repeat.")
@@ -3094,13 +3100,13 @@ async def process_chat_message(update:Update, context:Context) -> None:
 	# It's finally OK at this point to archive the message and send it to the user.
 
 	# Make sure the response message has been finalized (this also archives it).
-	conversation.finalize_message(response_message)
+	conversation.finalize_message(response_botMsg)
 
 	# If we get here, we have finally obtained a non-empty, non-repeat,
 	# already-archived message that we can go ahead and send to the user.
 	# We also check to see if the message is a command line.
 
-	await process_response(update, context, response_message)	   # Defined below.
+	await process_response(update, context, response_botMsg)	   # Defined below.
 
 #__/ End of process_chat_message() function definition.
 
@@ -3113,7 +3119,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 #	* /image <desc> - Generates an image with a given text description and sends it to the user.
 
 # Define a function to handle the /remember command, when issued by the AI.
-async def ai_remember(updateMsg:TgMsg, conversation:Conversation, textToAdd:str) -> None:
+async def ai_remember(updateMsg:TgMsg, conversation:BotConversation, textToAdd:str) -> None:
 	"""The AI calls this function to add the given text to its persistent memory."""
 
 	# Put the message from the Telegram update in a convenient variable.
@@ -3171,7 +3177,7 @@ async def ai_remember(updateMsg:TgMsg, conversation:Conversation, textToAdd:str)
 				
 
 # Define a function to handle the /forget command, when issued by the AI.
-async def ai_forget(updateMsg:TgMsg, conversation:Conversation, textToDel:str) -> None:
+async def ai_forget(updateMsg:TgMsg, conversation:BotConversation, textToDel:str) -> None:
 	"""The AI calls this function to remove the given text from its persistent memory."""
 
 	# Put the message from the Telegram update in a convenient variable.
@@ -3235,7 +3241,7 @@ async def ai_forget(updateMsg:TgMsg, conversation:Conversation, textToDel:str) -
 
 
 # Define a function to handle the /block command, when issued by the AI.
-async def ai_block(updateMsg:TgMsg, conversation:Conversation, userToBlock:str=None) -> str:
+async def ai_block(updateMsg:TgMsg, conversation:BotConversation, userToBlock:str=None) -> str:
 	"""The AI calls this function to block the given user. If no user is specified,
 		it blocks the current user (the one who sent the current update)."""
 	
@@ -3283,7 +3289,7 @@ async def ai_block(updateMsg:TgMsg, conversation:Conversation, userToBlock:str=N
 				
 
 # Define a function to handle the /unblock command, when issued by the AI.
-async def ai_unblock(updateMsg:TgMsg, conversation:Conversation, userToUnblock:str=None) -> str:
+async def ai_unblock(updateMsg:TgMsg, conversation:BotConversation, userToUnblock:str=None) -> str:
 	"""The AI calls this function to unblock the given user. If no user is specified,
 		it unblocks the current user (the one who sent the current update).
 		(Note this case will normally never occur.)
@@ -3360,7 +3366,7 @@ async def ai_image(update:Update, context:Context, imageDesc:str, caption:str=No
 	await send_image(update, context, imageDesc, caption=caption)
 
 	# Make a note in conversation archive to indicate that the image was sent.
-	conversation.add_message(Message(SYS_NAME, f'[Generated and sent image "{imageDesc}"]'))
+	conversation.add_message(BotMessage(SYS_NAME, f'[Generated and sent image "{imageDesc}"]'))
 
 	## NOTE: This is now done in process_command() more generically.
 	# Send the remaining text after the command line, if any, as a normal message.
@@ -3579,20 +3585,20 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 #__/
 
 
-async def process_response(update:Update, context:Context, response_message:Message) -> None:
+async def process_response(update:Update, context:Context, response_botMsg:BotMessage) -> None:
 	"""Given a message object (of our Message class) representing a response
 		issued by the AI to some user message, this function processes it
 		appropriately; it may be interpreted as a text command issued by the
 		AI, or as a normal message to be sent to the user."""
 
 	# Get the user message, or edited message from the update.
-	(message, edited) = _get_update_msg(update)
+	(tgMsg, edited) = _get_update_msg(update)
 	
 	# Get the chat_id, user_name, and conversation object.
-	chat_id = message.chat.id
-	user_name = _get_user_name(message.from_user)
-	conversation = context.chat_data['conversation']
-	response_text = response_message.text
+	chat_id = tgMsg.chat.id
+	#user_name = _get_user_name(tgMsg.from_user)
+	#conversation = context.chat_data['conversation']
+	response_text = response_botMsg.text
 
 	# First, check to see if the AI typed the '/pass' command, in which case we do nothing.
 	if response_text.lower() == '/pass':
@@ -3600,7 +3606,7 @@ async def process_response(update:Update, context:Context, response_message:Mess
 		return
 
 	if response_text == "":		# Response is empty string??
-		_logger.error(f"In process_response(), got an empty response message: [{str(response_message)}].")
+		_logger.error(f"In process_response(), got an empty response message: [{str(response_botMsg)}].")
 		return
 
 	# Finally, we check to see if the AI's message is a command line;
@@ -3621,11 +3627,11 @@ async def process_response(update:Update, context:Context, response_message:Mess
 	# One more thing to do here: If the AI's response ends with the string "(cont)" or "(cont.)"
 	# or "(more)" or "...", then we'll send a message to the user asking them to continue the 
 	# conversation.
-	if response_text.endswith("(cont)") or response_message.text.endswith("(cont.)") or \
-	   response_text.endswith("(more)") or response_message.text.endswith("..."):
+	if response_text.endswith("(cont)") or response_botMsg.text.endswith("(cont.)") or \
+	   response_text.endswith("(more)") or response_botMsg.text.endswith("..."):
 
 		contTxt = "[If you want me to continue my response, type '/continue'.]"
-		await _reply_user(message, None, contTxt, toAI=False, ignore=True)
+		await _reply_user(tgMsg, None, contTxt, toAI=False, ignore=True)
 	#__/
 
 	# Processed AI's response successfully.
@@ -3638,17 +3644,17 @@ async def send_image(update:Update, context:Context, desc:str, caption=None, sav
 		Also archives a copy on the server unless save_copy=False is specified."""
 
 	# Get the message, or edited message from the update.
-	(message, edited) = _get_update_msg(update)
+	(tgMsg, edited) = _get_update_msg(update)
 		
-	if message is None:
+	if tgMsg is None:
 		_logger.warning("In send_image() with no message? Aborting.")
 		return
 
 	# Get the message's chat ID.
-	chat_id = message.chat.id
+	chat_id = tgMsg.chat.id
 
 	# Get our preferred name for the user.
-	username = _get_user_name(message.from_user)
+	username = _get_user_name(tgMsg.from_user)
 
 	# Get our Conversation object.
 	conversation = context.chat_data['conversation']
@@ -3660,7 +3666,7 @@ async def send_image(update:Update, context:Context, desc:str, caption=None, sav
 	try:
 		image_url = genImage(desc)
 	except Exception as e:
-		await _report_error(conversation, message,
+		await _report_error(conversation, tgMsg,
 					  f"In send_image(), genImage() threw an exception: {type(e).__name__} ({e})")
 
 		# We could also do a traceback here. Should we bother?
@@ -3692,11 +3698,11 @@ async def send_image(update:Update, context:Context, desc:str, caption=None, sav
 	
 	# Send the image as a reply in Telegram
 	try:
-		await message.reply_photo(photo=image_data, caption=caption)
+		await tgMsg.reply_photo(photo=image_data, caption=caption)
 	except BadRequest or Forbidden or ChatMigrated as e:
 		_logger.error(f"Got a {type(e).__name__} exception from Telegram "
 					  "({e}) for conversation {chat_id}; aborting.")
-		conversation.add_message(Message(SYS_NAME, "[ERROR: Telegram " \
+		conversation.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram " \
 			"exception {exType} ({e}) while sending to user {user_name}.]"))
 	#__/
 #__/
@@ -4083,7 +4089,7 @@ def _isBlocked(user:str) -> bool:
 # Returns 'success' if the send succeeded, or an error string if it failed.
 # If ignore=True, then the error string indicates that the error is being
 # ignored by the program.
-async def _reply_user(userTgMessage:TgMsg, convo:Conversation,
+async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 					  msgToSend:str, ignore:bool=False) -> str:
 
 	"""Sends text message <msgToSend> in reply to the user's
@@ -4114,7 +4120,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:Conversation,
 					  f"for conversation {chat_id}; {whatDoing}.")
 
 		if convo is not None:
-			convo.add_message(Message(SYS_NAME, "[ERROR: Telegram exception " \
+			convo.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram exception " \
 				"{exType} ({e}) while sending to user {user_name}.]"))
 
 		# Note: Eventually we need to do something smarter here -- like, if we've
@@ -4128,7 +4134,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:Conversation,
 #__/
 
 
-async def _report_error(convo:Conversation, telegramMessage,
+async def _report_error(convo:BotConversation, telegramMessage,
 				 errMsg:str, logIt:bool=True,
 				 showAI:bool=True, showUser:bool=True) -> None:
 
@@ -4149,7 +4155,7 @@ async def _report_error(convo:Conversation, telegramMessage,
 
 	if showAI:
 		# Add the error message to the conversation.
-		convo.add_message(Message(SYS_NAME, msg))
+		convo.add_message(BotMessage(SYS_NAME, msg))
 
 	if showUser:
 		await _reply_user(telegramMessage, convo, f"[SYSTEM {msg}]")
@@ -4161,7 +4167,7 @@ async def _report_error(convo:Conversation, telegramMessage,
 # with some appropriate exception handling. Returns 'success'
 # if the send succeeded, or an error string if it failed.
 # If toAI=False, we skip sending the message to the AI.
-async def _send_diagnostic(userTgMessage:TgMsg, convo:Conversation,
+async def _send_diagnostic(userTgMessage:TgMsg, convo:BotConversation,
 						   diagMsg:str, toAI=True, ignore:bool=False) -> str:
 	"""Sends diagnostic message <diagMsg> in reply to the user's
 		Telegram message <userTgMessage> in conversation <convo>.
@@ -4173,7 +4179,7 @@ async def _send_diagnostic(userTgMessage:TgMsg, convo:Conversation,
 
 	# First, record the diagnostic for the AI's benefit.
 	if toAI:
-		convo.add_message(Message(SYS_NAME, fullMsg))
+		convo.add_message(BotMessage(SYS_NAME, fullMsg))
 
 	# Now also send it to the user.
 	return await _reply_user(userTgMessage, convo, fullMsg, ignore)
@@ -4563,6 +4569,10 @@ BOT_NAME = aiConf.botName		# This is the name of the bot.
 
 # Retrieve the bot's startup message from the AI persona's configuration.
 START_MESSAGE = aiConf.startMsg
+
+# Text to send in response to the /greet command.
+GREETING_TEXT = "Hello! I'm glad you're here. I'm glad you're here.\n"
+	# Copilot composed this. 
 
 # This is a string that we'll always use to prompt the AI to begin generating a new message.
 AI_PROMPT = f'\n{MESSAGE_DELIMITER} {BOT_NAME}>'	# Used with GPT text API only.
