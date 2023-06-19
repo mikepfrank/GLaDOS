@@ -11,14 +11,14 @@
 	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
 	SYSTEM NAME:	GladOS (Gladys' Lovely and Dynamic Operating System)
 	APP NAME:		GLaDOS.server (GladOS server application)
-	SW COMPONENT:	GLaDOS.gpt3 (GladOS GPT-3 interface component)
+	SW COMPONENT:	GLaDOS.gpt3 (GladOS GPT interface component)
 
 
 	MODULE DESCRIPTION:
 	===================
 
 		This module implements a convenience wrapper around OpenAI's API
-		for accessing their GPT-3 language models.	The main feature that
+		for accessing their GPT language models.  The main feature that
 		this wrapper provides at the moment is keeping track of the current
 		values of various API parameters.  It also provides handy functions
 		for things like measuring string lengths in tokens.
@@ -32,7 +32,7 @@
 		GPT3APIConfig - Keeps track of a set of API parameter settings.
 			These can also be modified dynamically.
 		
-		GPT3Core - A connection to the core GPT-3 system that maintains
+		GPT3Core - A connection to the core GPT system that maintains
 			its own persistent API parameters.
 
 		Completion - For objects representing results returned by the 
@@ -44,7 +44,7 @@
 		GPT3ChatAPIConfig - Keeps track of a set of API parameter settings
 			for the chat API.  These can also be modified dynamically.
 
-		GPT3ChatCore - A connection to the chat GPT-3 system that maintains
+		GPT3ChatCore - A connection to the chat GPT system that maintains
 			its own persistent API parameters, including a persistent list
 			of in-context chat messages.
 		
@@ -73,7 +73,7 @@
 		existing instances.	 To modify an existing instance, access
 		its .conf property.
 
-			DEF_ENGINE	- GPT-3 engine name (default 'davinci').
+			DEF_ENGINE	- GPT engine name (default 'davinci').
 			DEF_TOKENS	- Max. number of tokens to output (def. 42).
 			DEF_TEMP	- Default temperature (default is 0.5).
 			DEF_STOP	- Stop string or strings (3 newlines).
@@ -106,7 +106,7 @@
 				tokenizer.  This is much faster than the above function, but
 				requires GPT-2 to be installed locally.  It is also not as
 				accurate as the below function in all cases, since it does 
-				not use the correct tokenizer encoding for all GPT-3 models.
+				not use the correct tokenizer encoding for all GPT models.
 				[DEPRECATED]
 			
 			tiktokenCount() - Counts tokens in a string using the local
@@ -254,6 +254,7 @@ _sw_component = sysName + '.' + _component
 		#|	1.3.2. The below modules are specific to the present application.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+# Comment this out eventually.
 from	tokenizer.tokenizer		import	countTokens as local_countTokens
 	# Method to count tokens without a remote API call.
 	# (NOTE: This is now superseded by the tiktokenCount() function
@@ -308,7 +309,7 @@ __all__ = [
 		'GPT3Core',			# Class: Instance of the API that remembers its config.
 		'Completion',		# Class: An object for a result returned by the API.
 
-			# Module public classes for the GPT-3 chat API.
+			# Module public classes for the GPT chat API.
 
 		'GPT3ChatAPIConfig',	# Class: A collection of chat API parameter settings.
 		'ChatMessages',			# Class: Maintains a list of chat messages.
@@ -340,7 +341,7 @@ __all__ = [
 		'loadStatsIfNeeded',	# Function: Loads the GPT-3 usage statistics file 
 			# if not already loaded.
 
-		'local_countTokens',	# Function: Counts tokens in a string. (No cost.)
+#		'local_countTokens',	# Function: Counts tokens in a string. (No cost.)
 			# NOTE: This function is deprecated since it creates a dependency on
 			# GPT-2 having been installed; use the tiktokenCount() function instead.
 
@@ -407,7 +408,7 @@ _ENGINES = [
     {'model-family': 'GPT-3.5',	'engine-name': 'code-davinci-002', 'field-size': 8001, 'price': 0,			'is-chat': False,	'encoding': 'p50k_base'},
     {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02,		'is-chat': False,	'encoding': 'p50k_base'},
     
-		# ChatGPT models. (These use the chat API. Data through Sep. 2021.)
+		# ChatGPT-3.5 models. (These use the chat API. Data through Sep. 2021.)
 
     {'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo', 		'field-size': 4096, 	'price': 0.002,		'prompt-price': 0.0015,		'is-chat': True,	'encoding': 'p50k_base'},
 	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0301', 	'field-size': 4096, 	'price': 0.002,		'prompt-price': 0.0015,		'is-chat': True,	'encoding': 'p50k_base'},
@@ -433,6 +434,27 @@ _ENGINES = [
 
 ] # End _ENGINES constant module global data structure.
 
+# Set of models that support the functions interface.
+_FUNCTION_MODELS = [
+	'gpt-3.5-turbo',			# Supports functions as of 6/13/'23.
+	'gpt-3.5-turbo-0613',
+	'gpt-3.5-turbo-16k',
+	'gpt-3.5-turbo-16k-0613',
+	'gpt-4',					# Supports functions as of 6/13/'23.
+	'gpt-4-0613',
+	'gpt-4-32k',				# Supports functions as of 6/13/'23.
+	'gpt-4-32k-0613',
+]
+def _has_functions(engine_name):
+	"""Return True if the named engine supports the functions interface."""
+	return engine_name in _FUNCTION_MODELS
+
+# Generate the _ENGINE_ATTRIBS fast lookup table for engine attributes by engine name.
+_ENGINE_ATTRIBS = dict()
+for _engine_dict in _ENGINES:
+	_engine_name = _engine_dict['engine-name']
+	_engine_dict['has-functions'] = _has_functions(_engine_name)
+	_ENGINE_ATTRIBS[_engine_name] = _engine_dict
 
 # Set of models that support the functions interface.
 _FUNCTION_MODELS = [
@@ -1570,7 +1592,7 @@ class Completion:
 				origMax = apiArgs['max_tokens']	# Save the original value.
 				apiArgs['max_tokens'] = maxTok = fieldSize - _inputLength
 
-				_logger.warn(f"[GPT-3 API] Trimmed max_tokens from {origMax} to {maxTok}.")
+				_logger.warn(f"[GPT-3 API] Trimmed max_tokens from {origMax} to {maxToks}.")
 
 			# If we get here, we know we have enough space for our query + result,
 			# so we can proceed with the request to the actual underlying API.
@@ -1612,11 +1634,17 @@ class Completion:
 
 			# This function counts the number of tokens in the prompt
 			# without having to do an API call (since calls cost $$).
-		nToks = local_countTokens(prompt)
+		nToks = tiktokenCount(prompt, model=engine)
 
 		_inputLength = nToks
 
 		_logger.debug(f"Counted {nToks} tokens in input text [{prompt}]")
+
+		# If stats structures are out of date, expand them as needed.
+		if not engine in _inputToks:
+			_inputToks[engine] = 0
+			_outputToks[engine] = 0
+			_expenditures[engine] = 0
 
 			# Update the global record of API usage statistics.
 		_inputToks[engine] = _inputToks[engine] + nToks
@@ -1639,7 +1667,7 @@ class Completion:
 
 			# This function counts the number of tokens in the response
 			# without having to do an API call (since calls cost $$).
-		nToks = local_countTokens(text)
+		nToks = tiktokenCount(text, model=engine)
 
 		_logger.debug(f"Counted {nToks} tokens in output text [{text}].")
 
@@ -1813,7 +1841,7 @@ class ChatMessages:
 #|	gpt3.api.ChatCompletion								[module public class]
 #|
 #|		This class is a wrapper for the completion data structure 
-#|		returned by the underlying GPT-3 chat API.  The constructor 
+#|		returned by the underlying GPT chat API.  The constructor 
 #|		calls the API to create this structure.  Various properties 
 #|		allow easy access to information contained in the structure.
 #|
@@ -1889,7 +1917,7 @@ class ChatCompletion(Completion):
 	#
 
 	"""An instance of this class represents a completion object returned
-		by the GPT-3 chat API.  It wraps the underlying completion structure
+		by the GPT chat API.  It wraps the underlying completion structure
 		provided by the API."""
 	
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2084,6 +2112,11 @@ class ChatCompletion(Completion):
 
 		# Note the following code differs from the code in the Completion class.
 		return thisChatCompletion.message['content']
+
+	@text.setter
+	def text(thisChatCompletion:ChatCompletion, newText:str):
+		"""Sets the value of the chat completion text content."""
+		thisChatCompletion.message['content'] = newText
 
 	@property
 	def finishReason(thisChatCompletion:ChatCompletion):
@@ -2350,7 +2383,7 @@ class ChatCompletion(Completion):
 
 			#_logger.debug(f"In ._createChatComplStruct(), maxToks={maxToks}.")
 
-			_logger.warn(f"[GPT-3 chat API] Trimmed max_tokens window from {origMax} to {maxToks}.")
+			_logger.warn(f"[GPT chat API] Trimmed max_tokens window from {origMax} to {maxToks}.")
 
 		#__/ End if result window too big.
 
@@ -2363,7 +2396,7 @@ class ChatCompletion(Completion):
 			if apiArgs['max_tokens'] is None:
 				apiArgs['max_tokens'] = float('inf')
 
-			_logger.debug(f"[GPT-3 chat API] Requesting up to {apiArgs['max_tokens']} tokens.")
+			_logger.debug(f"[GPT chat API] Requesting up to {apiArgs['max_tokens']} tokens.")
 
 			if apiArgs['max_tokens'] == float('inf'):
 				del apiArgs['max_tokens']	# Equivalent to float('inf')?
@@ -2520,8 +2553,13 @@ class ChatCompletion(Completion):
 
 		_logger.debug(f"Accounting for {inToks} tokens in input text.")
 
-			# Update the global record of API usage statistics.
+		# If stats structures are out of date, expand them as needed.
+		if not engine in _inputToks:
+			_inputToks[engine] = 0
+			_outputToks[engine] = 0
+			_expenditures[engine] = 0
 
+			# Update the global record of API usage statistics.
 		_inputLength = inToks	# Do we even need this any more?
 		_inputToks[engine] += inToks
 	
@@ -3018,7 +3056,7 @@ class GPT3ChatCore(GPT3Core):
 		#|	.adjustConf(params)						[instance public method]
 		#|
 		#|		Adjusts the API parameter values of this connection to 
-		#|		the core GPT-3 chat system as specified by the argument 
+		#|		the core GPT chat system as specified by the argument 
 		#|		list.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -3547,7 +3585,7 @@ def _loadStats():
 			newDay = True
 
 			_logger.info(f"Today's date is {today}, but the last-modified date of the API usage statistics file {statsPath} is {lastModDate}.")
-			_logger.normal("Stats file loader: Starting a new day!")
+			_logger.normal("\nStats file loader: Starting a new day!")
 
 			# Construct the name of the archive file.
 			archivePath = _statsPathname(prefix = str(lastModDate))
@@ -3556,7 +3594,7 @@ def _loadStats():
 			# Rename the old file to the archive file.
 			try:
 				rename(statsPath, archivePath)
-				_logger.normal(f"NOTE: Archived old API usage statistics data file {statsPath} to {archivePath}.")
+				_logger.normal(f"\tNOTE: Archived old API usage statistics data file {statsPath}\n\t\tto {archivePath}.")
 			except:
 				_logger.warn(f"Couldn't rename {statsPath} to {archivePath}.")
 
@@ -3671,7 +3709,7 @@ def _displayStats(doWrite:bool=True):
 				newPath = path.join(_aiPath, 'stats', f"api-stats-{lastMod}.txt")
 				try:
 					rename(oldPath, newPath)
-					_logger.normal(f"NOTE: Archived old API usage statistics text file {oldPath} to {newPath}.")
+					_logger.normal(f"\tNOTE: Archived old API usage statistics text file {oldPath}\n\t\tto {newPath}.")
 				except:
 					_logger.error(f"Couldn't rename {oldPath} to {newPath}. Old stats will get stomped!")
 
@@ -3702,6 +3740,12 @@ def _displayStats(doWrite:bool=True):
 		for engine in _ENGINE_NAMES:
 			
 			engStr 	= "%22s" % engine
+
+			# If stats structures are out of date, expand them as needed.
+			if not engine in _inputToks:
+				_inputToks[engine] = 0
+				_outputToks[engine] = 0
+				_expenditures[engine] = 0
 
 			inToks 	= _inputToks[engine]
 			outToks = _outputToks[engine]
