@@ -1653,7 +1653,7 @@ async def handle_image(update:Update, context:Context) -> None:
 		await send_image(update, context, imageDesc)
 
 		# Make a note in conversation archive to indicate that the image was sent.
-		conversation.add_message(Message(SYS_NAME, f'[Generated image "{imageDesc}"]'))
+		conversation.add_message(Message(SYS_NAME, f'[Generated image "{imageDesc}" and sent it to the user.]'))
 
 		# Allow the AI to follow up (but without re-processing the message).
 		await handle_message(update, context, new_msg=False)
@@ -2776,11 +2776,12 @@ async def process_chat_message(update:Update, context:Context) -> None:
 					response_text = new_response_text
 
 					# Do surgery on the chat message object to fix it there also.
-					chatCompletion.message.text = response_text
+					chatCompletion.text = response_text
+
 					# NOTE: This could invalidate the chat message if it contains
 					# a function object too.
 
-					_logger.debug(f"Modified response message text is: [{chatCompletion.message.text}]")
+					_logger.debug(f"Modified response message text is: [{chatCompletion.text}]")
 
 			# Get the full response message dict.
 			response_message = chatCompletion.message
@@ -2875,9 +2876,10 @@ async def process_chat_message(update:Update, context:Context) -> None:
 					funcall_msg = response_message
 							# This is the message that contains the AI's function call.
 
-					# Make sure we didn't add a text field to the message cuz the API will choke.
-					if 'text' in funcall_msg:
-						del funcall_msg['text']
+					# Make sure we didn't add a content field to the message cuz the API will choke.
+					if 'content' in funcall_msg and funcall_msg['content'] is not None:
+						_logger.info(f"Oops, our funcall message has text content?? [\n{pformat(funcall_msg)}\n]")
+						funcall_msg['content'] = None
 
 					# This message represents the actual return value of the function.
 					funcret_msg = {
