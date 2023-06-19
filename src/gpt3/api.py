@@ -385,42 +385,77 @@ __all__ = [
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-_ENGINE_ATTRIBS = {
-
+_ENGINES = [
 		# OG GPT-3 models; data through Oct. 2019.
 
-    'ada':					{'model-family': 'GPT-3',	'engine-name': 'ada', 					'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
-    'babbage':				{'model-family': 'GPT-3',	'engine-name': 'babbage',				'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
-    'curie':				{'model-family': 'GPT-3',	'engine-name': 'curie',	    			'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
-    'davinci':				{'model-family': 'GPT-3',	'engine-name': 'davinci',				'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
-    'davinci:2020-05-03':	{'model-family': 'GPT-3',	'engine-name': 'davinci:2020-05-03',	'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
+    {'model-family': 'GPT-3',	'engine-name': 'ada', 					'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
+    {'model-family': 'GPT-3',	'engine-name': 'babbage',				'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
+    {'model-family': 'GPT-3',	'engine-name': 'curie',	    			'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
+    {'model-family': 'GPT-3',	'engine-name': 'davinci',				'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
+    {'model-family': 'GPT-3',	'engine-name': 'davinci:2020-05-03',	'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
     
 		# Early InstructGPT models. (RLHF trained; data through Oct. 2019.)
 
-    'text-ada-001':		{'model-family': 'GPT-3/Instruct',	'engine-name': 'text-ada-001',		'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
-    'text-babbage-001': {'model-family': 'GPT-3/Instruct',	'engine-name': 'text-babbage-001',	'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
-    'text-curie-001':	{'model-family': 'GPT-3/Instruct',	'engine-name': 'text-curie-001',	'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
-    'text-davinci-001': {'model-family': 'GPT-3/Instruct',	'engine-name': 'text-davinci-001',	'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
+    {'model-family': 'GPT-3/Instruct',	'engine-name': 'text-ada-001',		'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
+    {'model-family': 'GPT-3/Instruct',	'engine-name': 'text-babbage-001',	'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
+    {'model-family': 'GPT-3/Instruct',	'engine-name': 'text-curie-001',	'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
+    {'model-family': 'GPT-3/Instruct',	'engine-name': 'text-davinci-001',	'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
 
 		# GPT-3.5 models. (Increased context length; data through June 2021.)
 
-    'text-davinci-002': {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06,		'is-chat': False,	'encoding': 'p50k_base'},
-    'code-davinci-002': {'model-family': 'GPT-3.5',	'engine-name': 'code-davinci-002', 'field-size': 4000, 'price': 0,			'is-chat': False,	'encoding': 'p50k_base'},
-    'text-davinci-003': {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02,		'is-chat': False,	'encoding': 'p50k_base'},
+    {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06,		'is-chat': False,	'encoding': 'p50k_base'},
+    {'model-family': 'GPT-3.5',	'engine-name': 'code-davinci-002', 'field-size': 8001, 'price': 0,			'is-chat': False,	'encoding': 'p50k_base'},
+    {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02,		'is-chat': False,	'encoding': 'p50k_base'},
     
 		# ChatGPT models. (These use the chat API. Data through Sep. 2021.)
 
-	'gpt-3.5-turbo-0301':   {'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0301', 	'field-size': 4096, 'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
-    'gpt-3.5-turbo':    	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo', 		'field-size': 4096, 'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
+    {'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo', 		'field-size': 4096, 	'price': 0.002,		'prompt-price': 0.0015,		'is-chat': True,	'encoding': 'p50k_base'},
+	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0301', 	'field-size': 4096, 	'price': 0.002,		'prompt-price': 0.0015,		'is-chat': True,	'encoding': 'p50k_base'},
+		# To be discontinued on 9/13/23. Switch to gpt-3.5-turbo-0613.
+	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0613', 	'field-size': 4096, 	'price': 0.002,		'prompt-price': 0.0015,		'is-chat': True,	'encoding': 'p50k_base'},
     
+		# 16k ChatGPT-3.5 models. (Context window size increased to 16,384.)
+
+	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-16k', 		'field-size': 16384, 	'price': 0.004,		'prompt-price': 0.003,		'is-chat': True,	'encoding': 'p50k_base'},
+	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-16k-0613', 	'field-size': 16384, 	'price': 0.004,		'prompt-price': 0.003,		'is-chat': True,	'encoding': 'p50k_base'},
+
 		# GPT-4 models.  (These also use the chat API. Data through Sep. 2021.)
 
-	'gpt-4-0314':	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-0314',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
-	'gpt-4':		{'model-family': 'GPT-4',	'engine-name': 'gpt-4-0314',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4',	'engine-name': 'gpt-4',			'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-0314',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
+		# To be discontinued on 9/13/23. Switch to gpt-4-0613.
+	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-0613',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
 		# NOTE: In these models, prompt tokens are discounted, so there's a new field 'prompt-price'.
 
-} # End _ENGINE_ATTRIBS constant module global data structure.
+		# 32k GPT-4 models. (Context window size increased to 32,768 tokens.)
+	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-32k',			'field-size': 32768, 'price': 0.12,	'prompt-price': 0.06,	'is-chat': True,	'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-32k-0613',	'field-size': 32768, 'price': 0.12,	'prompt-price': 0.06,	'is-chat': True,	'encoding': 'p50k_base'},
 
+] # End _ENGINES constant module global data structure.
+
+
+# Set of models that support the functions interface.
+_FUNCTION_MODELS = [
+	'gpt-3.5-turbo',			# Supports functions as of 6/13/'23.
+	'gpt-3.5-turbo-0613',
+	'gpt-3.5-turbo-16k',
+	'gpt-3.5-turbo-16k-0613',
+	'gpt-4',					# Supports functions as of 6/13/'23.
+	'gpt-4-0613',
+	'gpt-4-32k',				# Supports functions as of 6/13/'23.
+	'gpt-4-32k-0613',
+]
+def _has_functions(engine_name):
+	"""Return True if the named engine supports the functions interface."""
+	return engine_name in _FUNCTION_MODELS
+
+
+# Generate the _ENGINE_ATTRIBS fast lookup table for engine attributes by engine name.
+_ENGINE_ATTRIBS = dict()
+for _engine_dict in _ENGINES:
+	_engine_name = _engine_dict['engine-name']
+	_engine_dict['has-functions'] = _has_functions(_engine_name)
+	_ENGINE_ATTRIBS[_engine_name] = _engine_dict
 
 		#----------------------------------------------------------------------
 		#  The following are private convenience functions for retrieving
@@ -1459,8 +1494,8 @@ class Completion:
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		# This decorator performs automatic exponential backoff on REST failures.
-	@backoff.on_exception(backoff.expo,
-						  (openai.error.APIError))
+	#@backoff.on_exception(backoff.expo,
+	#					  (openai.error.APIError))
 
 	def _createComplStruct(thisCompletion:Completion, apiArgs, minRepWin:int=DEF_TOKENS):
 			# By default, don't accept shortening the space for the response to less than 100 tokens.
@@ -1904,6 +1939,9 @@ class ChatCompletion(Completion):
 		
 		"""Instance initializer for class ChatCompletion."""
 		
+		#if 'messages' in kwargs:
+		#	_logger.info(f"In ChatCompletion.__init__() with messages=[list of {len(kwargs['messages'])} messages]")
+
 		chatCompl = newChatCompletion	# For convenience.
 
 			# These are things we are going to try to find in our arguments,
@@ -1920,12 +1958,12 @@ class ChatCompletion(Completion):
 		
 				# If there's a GPT3ChatCore instance, remember it.
 
-			if isinstance(arg,GPT3ChatCore):
+			if isinstance(arg, GPT3ChatCore):
 				chatCore = arg
 		
 				# If there's a dict, assume it's a completion object.
 		
-			elif isinstance(arg,dict):
+			elif isinstance(arg, dict):
 				chatComplStruct = arg
 
 				# Remember any other arguments that we don't recognize.
@@ -2198,8 +2236,8 @@ class ChatCompletion(Completion):
 
 		# This decorator performs automatic exponential backoff on REST failures.
 
-	@backoff.on_exception(backoff.expo,
-						  (openai.error.APIError))
+	#@backoff.on_exception(backoff.expo,
+	#					  (openai.error.APIError))
 						  
 	def _createChatComplStruct(thisChatCompletion:ChatCompletion, apiArgs:dict, 
 				minRepWin:int=DEF_TOKENS):
@@ -2210,6 +2248,9 @@ class ChatCompletion(Completion):
 		"""Private instance method to retrieve a chat completion from the core
 			chat API, with automatic exponential backoff and retry."""
 		
+		#if 'messages' in apiArgs:
+		#	_logger.info(f"In _createChatComplStruct(), apiArgs['messages']=[list of {len(apiArgs['messages'])} messages]")
+
 		chatCompl = thisChatCompletion	# For convenience.
 
 		if minRepWin is None:		# Just in case caller explicitly sets this to None,
@@ -2353,6 +2394,8 @@ class ChatCompletion(Completion):
 			# Convert them to actual numbers.
 			numbers = [int(n) for n in numStrs]
 
+			_logger.error(f"Extracted the following numbers: {numbers}")
+
 			if len(numbers) == 4:
 				maxConLen, reqToks, msgsLen, compLen = numbers
 			
@@ -2362,6 +2405,23 @@ class ChatCompletion(Completion):
 
 				raise e
 
+			elif len(numbers) == 5:
+				maxConLen, reqToks, msgsLen, funcsLen, compLen = numbers
+			
+				_logger.error(f"maxConLen={maxConLen}, reqToks={reqToks}, msgsLen={msgsLen}, funcsLen={funcsLen}, compLen={compLen}")
+				_logger.error(f"NOTE: msgsLen+funcsLen = {msgsLen+funcsLen}, but we estimated {estInputLen}.")
+
+				maxPrompt = maxConLen - reqToks
+
+				e = PromptTooLargeException(msgsLen, maxPrompt)
+
+				raise e
+
+			else:	# Maybe this isn't a length issue at all?
+				_logger.error("I don't know what to do with that.")
+				raise e
+
+		# If we get here, there was a successful return from the API call.
 		_logger.debug("ChatCompletion._createChatComplStruct(): Got raw chat completion struct:"
 					  + '\n' + pformat(chatComplStruct))
 
@@ -2410,6 +2470,9 @@ class ChatCompletion(Completion):
 			and returns the estimate. This may be done prior to calling the
 			API, since it does not use the completion result."""
 
+		#if 'messages' in apiArgs:
+		#	_logger.info(f"In _estimateInputLen(), apiArgs['messages']=[list of {len(apiArgs['messages'])} messages]")
+
 		chatCompl = thisChatCompl	# For convenience.
 		
 		engine = apiArgs['model']	# Get the engine ID. 
@@ -2418,9 +2481,14 @@ class ChatCompletion(Completion):
 			# Get the raw message list.
 		messages = ChatMessages(apiArgs['messages'])
 
+		if _has_functions(engine) and 'functions' in apiArgs:
+			funcToks = tiktokenCount(json.dumps(apiArgs['functions']), model=engine)
+		else:
+			funcToks = 0
+
 			# This function counts the number of tokens in the prompt
 			# without having to do an API call (since calls cost $$).
-		inToks = messages.totalTokens(model=engine)
+		inToks = messages.totalTokens(model=engine) + funcToks
 
 		_logger.debug(f"Counted {inToks} tokens in input text [{messages}]")
 
@@ -2982,6 +3050,9 @@ class GPT3ChatCore(GPT3Core):
 			Any keyword arguments provided will override the current values
 			in the chat configuration."""
    
+		#if 'messages' in kwargs:
+		#	_logger.info(f"In genChatArgs() with messages=[list of {len(kwargs['messages'])} messages]")
+
 		chatCore = thisChatCore		# For convenience.
 
 		apiargs = {} 	# Initially empty dict for building up API argument list.
@@ -3022,6 +3093,10 @@ class GPT3ChatCore(GPT3Core):
 		logitBias 			= kwargs.get('logitBias',	chatConf.logitBias)
 		user 				= kwargs.get('user',		chatConf.user)
 
+			# Available only in 0613 (June 13, 2023) or later releases of chat models.
+		functionList		= kwargs.get('functionList')			# Default is None.
+		functionCall		= kwargs.get('functionCall', 'auto')	# Default is 'auto'
+
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| Now, add the selected (non-None) parameter values to the argument list.
 		#| (Note below we have to match the exact keyword argument names supported 
@@ -3042,6 +3117,13 @@ class GPT3ChatCore(GPT3Core):
 		if messages			!= None:	apiargs['messages']			= messages
 		if logitBias		!= None:	apiargs['logit_bias']		= logitBias
 		if user				!= None:	apiargs['user']				= user
+
+			# Available only in 0613 (June 13, 2023) or later releases of chat models.
+		if functionList		!= None:	apiargs['functions']		= functionList
+		if functionCall		!= None:	apiargs['function_call']	= functionCall
+
+		#if 'messages' in apiargs:
+		#	_logger.info(f"In genChatArgs(), set apiargs['messages']=[list of {len(apiargs['messages'])} messages]")
 
 			# Make sure we don't set both temperature and top_p.		
 		if temperature != None and topP != None:
@@ -3076,6 +3158,9 @@ class GPT3ChatCore(GPT3Core):
 		
 		#prettyArgs = pformat(kwargs)
 		#_logger.debug(f"In GPT3ChatCore.genChatCompletion() with args={args}, keyword args:\n" + prettyArgs)
+
+		#if 'messages' in kwargs:
+		#	_logger.info(f"In genChatCompletion() with messages=[list of {len(kwargs['messages'])} messages]")
 
 		return ChatCompletion(self, *args, **kwargs)
 			# Calls the ChatCompletion constructor; this does all the real work 
@@ -3782,18 +3867,25 @@ def _msg_repr(msg:dict) -> str:
 	# Get the message content.
 	content = msg['content']
 
+	# Get the 'function_call' value, if present.
+	fcall = msg.get('function_call')
+
 	# Make sure role isn't still None at this point
 	if role is None:
 		_logger.error("gpt3.api._msg_repr(): Somehow role is None at this line, and it shouldn't be.")
 		role = ""
 
 	# Ditto with content
-	if content is None:
-		_logger.error("gpt3.api._msg_repr(): Message content is None, and it shouldn't be.")
-		content = ""
+	if content is None and fcall is None:
+		_logger.error("gpt3.api._msg_repr(): Message content and function call are both None; this is unexpected.")
 
-	rep = role + '\n' + \
-		  content + chr(RS) + '\n'
+	if content is not None:
+		rep = role + '\n' + \
+			  content + chr(RS) + '\n'
+
+	elif fcall is not None:		# This is a damn guess as to how function calls *might* be formatted. It's probably wrong.
+		rep = role + '\n' + \
+			  '@' + fcall['name'] + '(' + fcall['arguments'] + ')' + chr(RS) + '\n'
 
 	return rep
 
