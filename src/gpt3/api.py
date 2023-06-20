@@ -1514,10 +1514,9 @@ class Completion:
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		# This decorator performs automatic exponential backoff on REST failures.
-	#@backoff.on_exception(backoff.expo,
-	#					  (openai.error.APIError))
+		# This decorator performs automatic exponential backoff on certain REST failures.
 
+	@backoff.on_exception(backoff.expo, (openai.error.APIError), max_tries=6)
 	def _createComplStruct(thisCompletion:Completion, apiArgs, minRepWin:int=DEF_TOKENS):
 			# By default, don't accept shortening the space for the response to less than 100 tokens.
 	
@@ -2280,8 +2279,9 @@ class ChatCompletion(Completion):
 		"""Private instance method to retrieve a chat completion from the core
 			chat API, with automatic exponential backoff and retry."""
 		
-		#if 'messages' in apiArgs:
-		#	_logger.info(f"In _createChatComplStruct(), apiArgs['messages']=[list of {len(apiArgs['messages'])} messages]")
+		if 'messages' in apiArgs:
+			_logger.info(f"In _createChatComplStruct(), apiArgs['messages']="
+						 f"[list of {len(apiArgs['messages'])} messages]")
 
 		chatCompl = thisChatCompletion	# For convenience.
 
@@ -2502,8 +2502,11 @@ class ChatCompletion(Completion):
 			and returns the estimate. This may be done prior to calling the
 			API, since it does not use the completion result."""
 
-		#if 'messages' in apiArgs:
-		#	_logger.info(f"In _estimateInputLen(), apiArgs['messages']=[list of {len(apiArgs['messages'])} messages]")
+		if 'messages' in apiArgs:
+			_logger.info(f"In _estimateInputLen(), apiArgs['messages']="
+						 f"[list of {len(apiArgs['messages'])} messages]")
+		else:
+			_logger.error("Missing 'messages' API argument in _estimateInputLen()!")
 
 		chatCompl = thisChatCompl	# For convenience.
 		
