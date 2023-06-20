@@ -2280,8 +2280,8 @@ class ChatCompletion(Completion):
 			chat API, with automatic exponential backoff and retry."""
 		
 		if 'messages' in apiArgs:
-			_logger.info(f"In _createChatComplStruct(), apiArgs['messages']="
-						 f"[list of {len(apiArgs['messages'])} messages]")
+			_logger.debug(f"In _createChatComplStruct(), apiArgs['messages']="
+						  f"[list of {len(apiArgs['messages'])} messages]")
 
 		chatCompl = thisChatCompletion	# For convenience.
 
@@ -2503,8 +2503,8 @@ class ChatCompletion(Completion):
 			API, since it does not use the completion result."""
 
 		if 'messages' in apiArgs:
-			_logger.info(f"In _estimateInputLen(), apiArgs['messages']="
-						 f"[list of {len(apiArgs['messages'])} messages]")
+			_logger.debug(f"In _estimateInputLen(), apiArgs['messages']="
+						  f"[list of {len(apiArgs['messages'])} messages]")
 		else:
 			_logger.error("Missing 'messages' API argument in _estimateInputLen()!")
 
