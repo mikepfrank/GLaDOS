@@ -260,6 +260,8 @@ import asyncio	# We need this for python-telegram-bot v20.
 	#|	 NOTE: Use pip install <library-name> to install the library.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+import heapq
+
 import json
 import hjson	# Human-readable JSON. Used for access control lists.
 
@@ -277,6 +279,7 @@ from pydub import AudioSegment	# Use this to convert audio files to MP3 format.
 from telegram		import (
 		Update,				# Class for updates (notifications) from Telegram.
 		InputFile,			# Use this to prepare image files to send.
+		User				# Class for User objects from Telegram.
 	)
 from telegram import Message as TgMsg
 	# Type name we'll use as a type hint for messages from Telegram.
@@ -299,10 +302,42 @@ Context = ContextTypes.context
 from telegram.error import BadRequest, Forbidden, ChatMigrated
 	# We use these in our exception handlers when sending things via Telegram.
 
+
+import numpy as np
+
 		#-----------------------------------------------------------------
 		# The following packages are from the openai API library.
 
-from openai.error import RateLimitError			# Detects quota exceeded.
+from openai						import Embedding
+from openai.error				import RateLimitError			# Detects quota exceeded.
+
+## NOTE: embeddings_utils wants to import too much stuff, so instead
+## we'll just copy the two functions we need from it inline into our code.
+#
+#from openai.embeddings_utils	import (
+#		get_embedding,		# Gets the embedding vector of a string.
+#		cosine_similarity	# Computes cosine of angle between vectors.
+#	)
+
+import backoff	# Use instead of retry since we've already installed it?
+
+#@retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(6))
+
+@backoff.on_exception(backoff.expo, Exception, max_tries=6)
+def get_embedding(text: str, engine="text-similarity-davinci-001", **kwargs) -> list:
+
+    # replace newlines, which can negatively affect performance.
+    text = text.replace("\n", " ")
+
+    return Embedding.create(input=[text], engine=engine, **kwargs)["data"][0]["embedding"]
+
+def cosine_similarity(a, b):
+    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
+
+# SQLite database support. We use this for keeping track of users and
+# memories.
+import sqlite3
 
 		#-------------------------------------------------------------------
 		# NOTE: Copilot also wanted to import the following libraries, but
@@ -1046,7 +1081,7 @@ class BotConversation:
 
 		# If we get here, we can safely pop the oldest message.
 
-		_logger.debug(f"Expunging oldest message from {len(thisConv.messages)}-message conversation #{thisConv.chat_id}.")
+		_logger.info(f"Expunging oldest message from {len(thisConv.messages)}-message conversation #{thisConv.chat_id}.")
 		#print("Oldest message was:", thisConv.messages[0])
 		thisConv.messages.pop(0)
 		thisConv.expand_context()	# Update the context string.
@@ -1455,9 +1490,13 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
-	# Get user_name
-	user_name = _get_user_name(tgMessage.from_user)
+	# Get user_name that we'll use in messages.
+	user = tgMessage.from_user
+	user_name = _get_user_name(user)
 	which_name = _which_name	# Global set by _get_user_name() call.
+
+	# Also make sure the user is in our database of known users.
+	_addUser(user)
 
 	# Print diagnostic information.
 	_logger.normal(f"\nUser {user_name} started conversation {chat_id}.")
@@ -1855,6 +1894,12 @@ async def handle_reset(update:Update, context:Context) -> None:
 async def handle_remember(update:Update, context:Context) -> None:
 
 	"""Add the given message as a new memory."""
+
+	# We now just let the AI handle these requests, so that it can
+	# set the 'private' and 'global' fields as appropriate.
+	return await handle_message(update, context)
+
+	### CODE BELOW IS OBSOLETE
 
 	# Get the message, or edited message from the update.
 	(tgMsg, edited) = _get_update_msg(update)
@@ -2847,7 +2892,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				if result is None or result == "":
 					result = "null result"
 
-				_logger.info(f"The AI's function call returned the result: [{result}]")
+				_logger.info(f"The AI's function call returned the result: [{pformat(result)}]")
 				
 				# I don't think any of the below mess is strictly needed right now.
 				# Because none of our functions actually return a value at present.
@@ -2887,11 +2932,18 @@ async def process_chat_message(update:Update, context:Context) -> None:
 						_logger.info(f"Oops, our funcall message has text content?? [\n{pformat(funcall_oaiMsg)}\n]")
 						funcall_oaiMsg['content'] = None
 
+					# Get the result in the form of a string, even if it isn't.
+					resultStr = result if isinstance(result, str) else json.dumps(result)
+
+					# Have the bot server make a note to help the AI remember that it got a function result.
+					fret_note = f'[NOTE: {function_name}() call returned value: """{resultStr}"""]'
+					conversation.add_message(Message(SYS_NAME, fret_note))
+
 					# This message represents the actual return value of the function.
 					funcret_oaiMsg = {
 							'role':		'function',
 							'name':		function_name,
-							'content':	result
+							'content':	resultStr
 						}
 
 					# Finish building the message list. So, the sequence here is:
@@ -2906,7 +2958,8 @@ async def process_chat_message(update:Update, context:Context) -> None:
 					temp_chat_oaiMsgs += [funcret_oaiMsg]
 					temp_chat_oaiMsgs += [{
 							'role':		'system',
-							'content':	f"{BOT_NAME} now provides its response, if any, to the function's return value:",
+							'content':	f"{BOT_NAME}, you may now provide your response, "\
+										"if any, to the function's return value above:",
 						}]
 					
 					# Display the most recent 10 chat messages from temp list.
@@ -2918,7 +2971,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 							# Do a dummy 2nd API call with the result.
 							second_chatCompl = gptCore.genChatCompletion(
 								messages 		= temp_chat_oaiMsgs,
-								functionList	= functions,
+								functionList	= functions
 							)
 							break
 						except PromptTooLargeException:
@@ -3119,11 +3172,15 @@ async def process_chat_message(update:Update, context:Context) -> None:
 #	* /image <desc> - Generates an image with a given text description and sends it to the user.
 
 # Define a function to handle the /remember command, when issued by the AI.
-async def ai_remember(updateMsg:TgMsg, conversation:BotConversation, textToAdd:str) -> None:
-	"""The AI calls this function to add the given text to its persistent memory."""
+async def ai_remember(updateMsg:TgMsg, conversation:Conversation, textToAdd:str,
+					  isPublic:bool=False, isGlobal:bool=False) -> None:
+
+	"""The AI calls this function to add the given text to its persistent
+		memory."""
 
 	# Put the message from the Telegram update in a convenient variable.
 	message = updateMsg
+	user = message.from_user
 
 	# Retrieve the conversation's chat ID.
 	chat_id = conversation.chatID	# Public property. Type: int.
@@ -3144,6 +3201,10 @@ async def ai_remember(updateMsg:TgMsg, conversation:BotConversation, textToAdd:s
 		return "error: missing required argument"
 	#__/
 
+	newItemID = _addMemoryItem(user.id, chat_id, textToAdd, isPublic, isGlobal)
+	return f"success: created new memory item {newItemID}"
+
+	# Obsolete code below.
 
 	# Tell the conversation object to add the given message to the AI's persistent memory.
 	if not conversation.add_memory(textToAdd):
@@ -3175,6 +3236,24 @@ async def ai_remember(updateMsg:TgMsg, conversation:BotConversation, textToAdd:s
 
 #__/ End of ai_remember() function definition.
 				
+
+async def ai_search(updateMsg:TgMsg, conversation:Conversation, queryPhrase:str, nItems:int=5) -> list:
+
+	"""Do a context-sensitive semantic search for memory items that
+		are related to the query phrase. Returns the closest few
+		matching items (by default 5)."""
+
+	userID = updateMsg.from_user.id
+	chatID = conversation.chat_id
+
+	_logger.normal(f"AI is searching for memories matching the search query: [{queryPhrase}].")
+
+	matchList = _searchMemories(userID, chatID, queryPhrase, nItems)
+
+	_logger.normal(f"Found the following matches: [\n{matchList}\n].")
+
+	return matchList
+
 
 # Define a function to handle the /forget command, when issued by the AI.
 async def ai_forget(updateMsg:TgMsg, conversation:BotConversation, textToDel:str) -> None:
@@ -3392,14 +3471,40 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 	
 	# Dispatch on the function name. See FUNCTIONS_LIST.
 	if funcName == 'remember_item':
+
+		# Get the arguments.
+
 		textToAdd = funcArgs.get('item_text', None)
 
+		isPrivate = funcArgs.get('is_private', True)
+			# Is this information considered private
+			# to the specific user or group chat?
+
+		isGlobal = funcArgs.get('is_global', False)
+			# Is this information available for the
+			# AI to see in any context?
+
 		if textToAdd:
-			return await ai_remember(message, conversation, textToAdd)
+			return await ai_remember(message, conversation, textToAdd,
+									 isPublic=not isPrivate, isGlobal=isGlobal)
 		else:
 			await _report_error(conversation, message,
 					f"remember_item() missing required argument item_text.")
 			return "error: required argument item_text is missing"
+
+	elif funcName == 'search_memory':
+
+			# Get the arguments.
+
+		queryPhrase = funcArgs.get('query_phrase', None)
+
+		if queryPhrase:
+			return await ai_search(message, conversation, queryPhrase)
+			
+		else:
+			await _report_error(conversation, message,
+					f"search_memory() missing required argument query_phrase.")
+			return "error: required argument query_phrase is missing"
 
 	elif funcName == 'forget_item':
 		textToDel = funcArgs.get('item_text', None)
@@ -3771,6 +3876,77 @@ def timeString() -> str:
 	#|	4.2. Misc. minor/private functions.			[python module code section]
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+
+def _addMemoryItem(userID, chatID, itemText, isPublic=False, isGlobal=False):
+
+	privacy = "public" if isPublic else "private"
+	locality = "global" if isGlobal else "local"
+	_logger.normal(f"For userID={userID}, chatID={chatID}, adding {privacy} "\
+				   f"{locality} memory [{itemText}]...")
+
+	# Path to the database file
+	db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
+
+	# Create a connection to the SQLite database
+	conn = sqlite3.connect(db_path)
+
+	# Create a cursor object
+	c = conn.cursor()
+
+	# Generate a random 8-hex-digit string for itemID
+	itemID = '{:08x}'.format(random.randint(0, 0xFFFFFFFF))
+
+	# Get the embedding for the item, as a string.
+	embedding = _getEmbeddingStr(itemText)
+
+	# Insert the memory item into the remembered_items table
+	c.execute('''
+		INSERT INTO remembered_items (itemID, userID, chatID, public, global, itemText, embedding)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	''', (itemID, userID, chatID, isPublic, isGlobal, itemText, embedding))
+
+	# Commit the transaction
+	conn.commit()
+
+	# Close the connection
+	conn.close()
+
+	# Return the itemID for reference
+	return itemID
+
+
+def _addUser(tgUser:User):
+
+    # Path to the database file
+    db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
+
+    # Create a connection to the SQLite database
+    conn = sqlite3.connect(db_path)
+
+    # Create a cursor object
+    c = conn.cursor()
+
+    # Form the display name
+    displayName = tgUser.first_name
+    if tgUser.last_name:
+        displayName += " " + tgUser.last_name
+
+    # Insert or update the user data
+    c.execute('''
+        INSERT OR REPLACE INTO users (displayName, username, userID, blocked)
+        VALUES (?, ?, ?, ?)
+    ''', (displayName, tgUser.username, tgUser.id,
+		  _isBlocked(_get_user_name(tgUser))))
+
+    # Commit the transaction
+    conn.commit()
+
+    # Close the connection
+    conn.close()
+
+#__/ End definition of private function _addUser().
+
+
 def _blockUser(user:str) -> bool:
 	"""Blocks the given user from accessing the bot.
 		Returns True if successful; False if failure."""
@@ -3912,6 +4088,31 @@ async def _ensure_convo_loaded(update:Update, context:Context) -> bool:
 #__/
 
 
+def _getEmbedding(text):
+
+	"""Gets the embedding of a given text, as a vector (list)."""
+
+    # Get the response from OpenAI Embeddings API. Returns a vector.
+	embedding_asList = get_embedding(text, engine="text-embedding-ada-002")
+
+	return embedding_asList
+
+#__/
+
+
+def _getEmbeddingStr(text):
+	"""Gets a string representation of the embedding of a text."""
+
+	# Get the response from OpenAI Embeddings API. Returns a vector.
+	embedding_asList = _getEmbedding(text)
+
+	# Convert the embedding list to a comma-separated string
+	embedding_str = _listToStr(embedding_asList)
+
+	return embedding_str
+#__/
+
+
 # This function extracts the edited_message or message field from an update,
 # as appropriate, and returns the pair (message, edited).
 def _get_update_msg(update:Update):
@@ -3964,6 +4165,68 @@ def _get_user_name(user) -> str:
 
 	return user_name
 #__/
+
+
+def _initBotDB():
+	"""Creates a database that's used to store relevant information
+		for the Telegram bot. So far this includes these tables:
+
+			o users - List of known Telegram users. Keeps track
+				of the user's display name, username, user ID,
+				and whether they are currently blocked.
+	
+			o remembered_items - Dynamically added persistent
+				memories, added with the /remember command or
+				the remember_item() function.
+
+		"""
+
+
+	# Path to the 'telegram' subdirectory
+	dir_path = os.path.join(AI_DATADIR, 'telegram')
+
+	# Create the 'telegram' subdirectory if it doesn't already exist
+	os.makedirs(dir_path, exist_ok=True)
+
+	# Path to the database file
+	db_path = os.path.join(dir_path, 'bot-db.sqlite')
+	
+	# Create a connection to the SQLite database
+	# If database does not exist, it is created here
+	conn = sqlite3.connect(db_path)
+
+	# Create a cursor object
+	c = conn.cursor()
+
+	# Creating table if it doesn't exist
+	c.execute('''
+		CREATE TABLE IF NOT EXISTS remembered_items (
+			itemID TEXT PRIMARY KEY,
+			userID INTEGER,
+			chatID INTEGER,
+			public BOOLEAN,
+			global BOOLEAN,
+			itemText TEXT,
+			embedding TEXT
+		);
+	''')
+
+	# Creating 'users' table if it doesn't exist
+	c.execute('''
+		CREATE TABLE IF NOT EXISTS users (
+			displayName TEXT,
+			username TEXT,
+			userID INTEGER PRIMARY KEY,
+			blocked BOOLEAN);
+	''')
+
+	# Commit the transaction
+	conn.commit()
+
+	# Close the connection
+	conn.close()
+
+#__/ End definition of private function _initBotDB
 
 
 	#----------------------------------------------------------------------
@@ -4085,6 +4348,11 @@ def _isBlocked(user:str) -> bool:
 #__/
 
 
+def _listToStr(vec:list):
+	"Given a vector, return a comma-separated list."
+	return ",".join(map(str, vec))
+
+
 # Sends a message to the user, with some appropriate exception handling.
 # Returns 'success' if the send succeeded, or an error string if it failed.
 # If ignore=True, then the error string indicates that the error is being
@@ -4163,6 +4431,72 @@ async def _report_error(convo:BotConversation, telegramMessage,
 #__/ End private function _report_error().
 
 
+def _semanticDistance(em1:list, em2:list):
+
+	"""Computes a measure of the semantic distance between two vectors."""
+
+	# Compute the cosine distance using OpenAI's cosine_similarity() function
+	distance = 1 - cosine_similarity(em1, em2)
+
+	return distance
+
+
+def _searchMemories(userID, chatID, searchPhrase, nItems):
+
+	# Path to the database file
+	db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
+
+	# Get the embedding of the search phrase. This is a list (vector).
+	searchEmbedding = _getEmbedding(searchPhrase)
+
+	# Create a connection to the SQLite database
+	conn = sqlite3.connect(db_path)
+
+	# Create a cursor object
+	c = conn.cursor()
+
+	# Query to fetch items that satisfy one or more of the criteria
+	c.execute('''
+		SELECT * FROM remembered_items 
+		WHERE global = 1 OR public = 1 OR chatID = ? OR userID = ?
+	''', (chatID, userID))
+
+	# Fetch all the satisfying items
+	items = c.fetchall()
+
+	# Close the connection
+	conn.close()
+
+	# Priority queue for storing the nItems closest matches (distance, item)
+	closestMatches = []
+
+	# Iterate through all the satisfying items
+	for item in items:
+		# Convert the item to a dictionary
+		itemDict = {"itemID": item[0], "userID": item[1], "chatID": item[2],
+					"public": item[3], "global": item[4], "itemText": item[5],
+					"embedding": _strToList(item[6])}
+
+		# Compute the semantic distance between the search phrase and the item
+		distance = _semanticDistance(searchEmbedding, itemDict["embedding"])
+
+		# Remember the distance from the search query.
+		itemDict['distance'] = distance
+
+		# Delete the embedding field now that we're done with it, cuz it's huge.
+		del itemDict['embedding']
+
+		# Add the item to the priority queue
+		if len(closestMatches) < nItems:
+			heapq.heappush(closestMatches, (distance, itemDict['itemID'], itemDict))
+		else:
+			heapq.heappushpop(closestMatches, (distance, itemDict['itemID'], itemDict))
+
+	# Return the closest matches
+
+	return [itemDict for (_dist, _id, itemDict) in heapq.nsmallest(nItems, closestMatches)]
+
+
 # Sends a diagnostic message to the AI as well as to the user,
 # with some appropriate exception handling. Returns 'success'
 # if the send succeeded, or an error string if it failed.
@@ -4184,6 +4518,11 @@ async def _send_diagnostic(userTgMessage:TgMsg, convo:BotConversation,
 	# Now also send it to the user.
 	return await _reply_user(userTgMessage, convo, fullMsg, ignore)
 #__/
+
+
+def _strToList(vec_str):
+    "Given a comma-separated string, return a list of floats."
+    return list(map(float, vec_str.split(",")))
 
 
 def _trim_prompt(response_text:str) -> str:
@@ -4408,13 +4747,25 @@ FUNCTIONS_LIST = [
 					"type":         "string",   # <item_text> argument has type string.
 					"description":  "Text of item to remember, as a single line."
 				},
+				"is_private":	{
+					"type":			"boolean",	# <private> argument is Boolean.
+					"description":	"Is this information considered private "\
+									"to the current user or group chat? ",
+					"default":		True,
+				},
+				"is_global": {
+					"type":			"boolean",	# <private> argument is Boolean.
+					"description":	"Does this information need to be accessible "\
+									"to the AI from within any chat?",
+					"default":		False,
+				},
 				"remark":	{
 					"type":		"string",	# <remark> argument has type string.
 					"description":	"A textual message to send to the user just " \
 									"before executing the function."
 				}
 			},
-			"required":     ["item_text"]       # <item_text> argument is required.
+			"required":     ["item_text"]	# <item_text> argument is required.
 		},
 		"returns":	{	# This describes the function's return type.
 			"description":	"A string indicating the success or failure of " \
@@ -4423,10 +4774,71 @@ FUNCTIONS_LIST = [
 		}
 	},
 
+	# Function for command: /search <query_phrase>
+	{
+		"name":			"search_memory",
+		"description":	"Do a context-sensitive semantic search for memories "\
+							"related to a given search phrase.",
+		"parameters":	{
+			"type":			"object",
+			"properties":	{
+				"query_phrase":	{
+					"type":			"string",	# <query_phrase> is a string
+					"description":	"Text to semantically match against memories."
+				}
+			},
+			"required":		["query_phrase"]	# <query_phrase> arg is required.
+		},
+		"returns":	{	# This describes the function's return type.
+			"description":	"A list of semantic matches, closest first.",
+			"type":			"array",
+			"items":	{
+				"type":			"object",
+				"properties":	{
+					"item_id":	{
+						"type":			"string",
+						"description":	"8-digit hex ID of this memory item."
+					},
+					"item_text":	{
+						"type":			"string",
+						"description":	"Complete text of this memory item."
+					},
+					"is_private":	{
+						"type":			"boolean",	# <private> argument is Boolean.
+						"description":	"Indicates whether this memory contains "\
+							"information specific to the user or group in which "\
+							"it was created. If true, the information should not "\
+							"be openly disclosed in different contexts without "\
+							"authorization."
+							# ^ Suggested by Aria. My original description:
+								#"Is this information considered private "\
+								#	"to the current user or group chat? "
+					},
+					"is_global": {
+						"type":			"boolean",	# <private> argument is Boolean.
+						"description":	"Indicates whether this memory is "\
+							"accessible to the AI across all contexts. If "\
+							"true, the AI can use this information to shape "\
+							"responses in any context, but must respect privacy "\
+							"restrictions if `is_private` is also true."
+							# ^ Suggested by Aria. My original description:
+								#"Does this information need to be accessible "\
+								#"to the AI from within any chat?"
+					},
+					"distance":		{
+						"type":			"number",
+						"description":	"Semantic distance of item from query (0-2)."
+					}
+				}
+			}
+		}
+	},
+
 	# Function for command: /forget <item_text>
 	{
 		"name":         "forget_item",
-		"description":  "Removes an item from the AI's persistent memory list.",
+		"description":  "Removes an item from the AI's persistent memory list. "\
+							"Either item_text or item_id must be supplied.",
 		"parameters":   {
 			"type":         "object",
 			"properties":   {
@@ -4434,13 +4846,18 @@ FUNCTIONS_LIST = [
 					"type":         "string",   # <item_text> argument has type string.
 					"description":  "Exact text of item to forget, as a single line."
 				},
+				"item_id": {
+					"type":			"string",	# <item_id> argument is a string.
+					"description":	"8-digit hex ID of specific memory item to forget."
+				},
 				"remark":	{
 					"type":		"string",	# <remark> argument has type string.
 					"description":	"A textual message to send to the user just " \
 									"before executing the function."
 				}
 			},
-			"required":     ["item_text"]       # <item_text> argument is required.
+			"required":     []	# No single argument is required.
+				# (But, either item_text or item_id must be supplied.
 		},
 		"returns":	{	# This describes the function's return type.
 			"description":	"A string indicating the success or failure of " \
@@ -4739,6 +5156,9 @@ unknown_command_filter = UnknownCommandFilter()
 #|																			   |
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
+# Initialize the bot's SQLite database.
+_initBotDB()
+
 	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#|	5.1. Display command list.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -4802,7 +5222,7 @@ app.add_handler(CommandHandler('start',		handle_start),		group = 0)
 app.add_handler(CommandHandler('help',		handle_help), 		group = 0)
 app.add_handler(CommandHandler('image',		handle_image),		group = 0)
 app.add_handler(CommandHandler('reset',		handle_reset),		group = 0)
-app.add_handler(CommandHandler('remember',	handle_remember),	group = 0)	# Not available to most users.
+app.add_handler(CommandHandler('remember',	handle_remember),	group = 0)
 app.add_handler(CommandHandler('forget',	handle_forget),		group = 0)	# Not available to most users.
 
 # The following two commands are not really needed at all. They're just here for testing purposes.
