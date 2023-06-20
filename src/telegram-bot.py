@@ -1646,6 +1646,12 @@ async def handle_help(update:Update, context:Context) -> None:
 async def handle_image(update:Update, context:Context) -> None:
 	"""Generate an image with a given description."""
 
+	# We now just let the AI handle these requests, so it
+	# can warn the user if the requested content is inappropriate.
+	return await handle_message(update, context)
+
+	### CODE BELOW IS OBSOLETE
+
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 
@@ -1769,6 +1775,164 @@ async def handle_echo(update:Update, context:Context) -> None:
 	await _reply_user(message, conversation, responseText)
 
 #__/ End '/echo' user command handler.
+
+
+async def handle_showmem(update:Update, context:Context) -> None:
+
+	"""Dump contents of memory to system console."""
+
+	# Get the message, or edited message from the update.
+	(message, edited) = _get_update_msg(update)
+
+	if message is None:
+		_logger.warning("In handle_showmem() with no message? Aborting.")
+		return
+
+	# Get the chat ID.
+	chat_id = message.chat.id
+
+	# Make sure the thread component is set to this application (for logging).
+	logmaster.setComponent(_appName)
+
+	# Assume we're in a thread associated with a conversation.
+	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
+	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
+
+	# Get user name to use in message records.
+	user_name = _get_user_name(message.from_user)
+
+	# Block /showmem command for users other than Mike.
+	if user_name != 'Michael':
+	
+		_logger.warn("User {user_name} is not authorized to execute /showmem.")
+	
+		# Send a diagnostic message to the AI and to the user.
+		diagMsg = f"This command requires authorization."
+		sendRes = await _send_diagnostic(message, conversation, diagMsg)
+		if sendRes != 'success': return sendRes
+
+	# Attempt to ensure the conversation is loaded; if we failed, bail.
+	if not await _ensure_convo_loaded(update, context):
+		_logger.error("Couldn't load conversation in handle_showmem(); aborting.")
+		return
+
+	# Error handling.
+	if 'conversation' not in context.chat_data:
+		_logger.error(f"Can't add /showmem command line to conversation {chat_id} because it's not loaded.")
+		return
+
+	# Fetch the conversation object.
+	conversation = context.chat_data['conversation']
+
+	# Add the /showmem command itself to the conversation archive.
+	conversation.add_message(Message(user_name, message.text))
+
+	_logger.normal(f"\nUser {user_name} entered a /showmem command for chat {chat_id}.")
+
+	# Log diagnostic information.
+	_logger.normal(f"\tDumping memory items to console for  conversation {chat_id}.")
+
+	# Print memory to console.
+	_printMemories()
+
+	CONFIRMATION_TEXT = "The contents of the remembered_items table have been printed to the system console."
+
+	# Also record the echo text in our conversation data structure.
+	conversation.add_message(Message(SYS_NAME, CONFIRMATION_TEXT))
+
+	# Send it to user.
+	await _reply_user(message, conversation, f"[SYSTEM: {CONFIRMATION_TEXT}]")
+
+#__/ End '/showmem' user command handler.
+
+
+async def handle_delmem(update:Update, context:Context) -> None:
+
+	"""Delete an item from memory database."""
+
+	# Get the message, or edited message from the update.
+	(message, edited) = _get_update_msg(update)
+
+	if message is None:
+		_logger.warning("In handle_delmem() with no message? Aborting.")
+		return
+
+	# Get the chat ID.
+	chat_id = message.chat.id
+
+	# Make sure the thread component is set to this application (for logging).
+	logmaster.setComponent(_appName)
+
+	# Assume we're in a thread associated with a conversation.
+	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
+	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
+
+	# Get user name to use in message records.
+	user_name = _get_user_name(message.from_user)
+
+	# Block /showmem command for users other than Mike.
+	if user_name != 'Michael':
+	
+		_logger.warn("User {user_name} is not authorized to execute /showmem.")
+	
+		# Send a diagnostic message to the AI and to the user.
+		diagMsg = f"This command requires authorization."
+		sendRes = await _send_diagnostic(message, conversation, diagMsg)
+		if sendRes != 'success': return sendRes
+
+	# Attempt to ensure the conversation is loaded; if we failed, bail.
+	if not await _ensure_convo_loaded(update, context):
+		_logger.error("Couldn't load conversation in handle_delmem(); aborting.")
+		return
+
+	# Error handling.
+	if 'conversation' not in context.chat_data:
+		_logger.error(f"Can't add /showmem command line to conversation {chat_id} because it's not loaded.")
+		return
+
+	# Fetch the conversation object.
+	conversation = context.chat_data['conversation']
+
+	# Add the /showmem command itself to the conversation archive.
+	conversation.add_message(Message(user_name, message.text))
+
+	_logger.normal(f"\nUser {user_name} entered a /delmem command for chat {chat_id}.")
+
+	##### The real work begins here.
+
+	# Split command line on space.
+	cmdWords = message.text.split(' ')		
+
+	# Get 2nd word, which is subcommand 'text' or 'id'
+	subcmd = cmdWords[1]
+
+	# Validate subcommand.
+	if subcmd not in ('id', 'text'):
+		await _report_error(conversation, message,
+							f"Unknown subcommand [{subcmd}].\n"
+							"\tUSAGE: /delmem (id <itemID>|text <itemText>)")
+		return
+
+	# Wrap up the rest of the words.
+	rest = ' '.join(cmdWords[2:])
+	
+	if subcmd=='id':
+		_logger.normal(f"\tDeleting memory item with ID#{rest}...")
+		_deleteMemoryItem(item_id=rest)
+		CONF_TEXT = f"The memory item with item_id='{rest}' has been deleted."
+		
+	elif subcmd=='text':
+		_logger.normal(f"\tDeleting memory item with text=[rest]...")
+		_deleteMemoryItem(item_text=rest)
+		CONF_TEXT = f"The memory item with item_text='{rest}' has been deleted."
+
+	# Also record the echo text in our conversation data structure.
+	conversation.add_message(Message(SYS_NAME, CONF_TEXT))
+
+	# Send it to user.
+	await _reply_user(message, conversation, f"[SYSTEM: {CONF_TEXT}]")
+
+#__/ End '/delmem' user command handler.
 
 
 # Now, let's define a function to handle the /greet command.
@@ -1991,6 +2155,12 @@ async def handle_forget(update:Update, context:Context) -> None:
 	
 	"""Remove the given message from the AI's persistent memory."""
 	
+	# We now just let the AI handle these requests, so that it can
+	# set the 'private' and 'global' fields as appropriate.
+	return await handle_message(update, context)
+
+	### CODE BELOW IS OBSOLETE
+
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 
@@ -2970,12 +3140,29 @@ async def process_chat_message(update:Update, context:Context) -> None:
 							break
 						except PromptTooLargeException:
 							# Just trim off the oldest message after the first two (time & system instructions).
-							_logger.info(f"NOTE: Expunging oldest chat message:\n" + pformat(temp_chat_messages[2]))
+							_logger.debug(f"NOTE: Expunging oldest chat message:\n" + pformat(temp_chat_messages[2]))
 							temp_chat_messages = temp_chat_messages[0:2] + chat_messages[3:]
 							continue
 
 					# Just for diagnostic purposes.
 					_logger.info(f"GPT response to function return: [{pformat(second_chatCompl.message)}]")
+
+					# If the response to the function return was another function call, complain.
+					second_response_oaiMessage = second_chatCompl.message
+					if 'function_call' in second_response_oaiMessage:
+
+						fcall2 = second_response_oaiMessage['function_call']
+
+						fcall_str = _call_desc(fcall2.name, json.loads(fcall2.arguments))
+
+						conversation.add_message(Message(SYS_NAME, f"[Error: You tried to respond to a function return with another function call; this is unsupported. The 2nd call was: {fcall_str}.]"))
+
+						errmsg = "AI tried to respond to function return with another function call; this is not yet supported."
+						await _report_error(conversation, message, errmsg, showAI=False)
+						
+						# If there was no text (likely the case), set the text to the funcall desc.
+						if second_chatCompl.text is None:
+							second_chatCompl.text = f"I tried and failed to call {fcall_str}."
 
 					# Go ahead and add the danged thing. It better not be another function call though,
 					# or empty, or trigger a content filter, or be a '/pass' command, because we just
@@ -3172,7 +3359,10 @@ async def ai_remember(updateMsg:TgMsg, conversation:Conversation, textToAdd:str,
 
 	# Put the message from the Telegram update in a convenient variable.
 	message = updateMsg
+
+	# Get user info.
 	user = message.from_user
+	user_name = _get_user_name(user)
 
 	# Retrieve the conversation's chat ID.
 	chat_id = conversation.chatID	# Public property. Type: int.
@@ -3192,6 +3382,12 @@ async def ai_remember(updateMsg:TgMsg, conversation:Conversation, textToAdd:str,
 		
 		return "error: missing required argument"
 	#__/
+
+	# Diagnostic.
+	_logger.normal("\nFor user {user_name} in chat {chat_id}, adding "
+					f"{'public' if isPublic else 'private'} "
+					f"{'global' if isGlobal else 'local'} memory ["
+					f"{textToAdd}].")
 
 	newItemID = _addMemoryItem(user.id, chat_id, textToAdd, isPublic, isGlobal)
 	return f"success: created new memory item {newItemID}"
@@ -3229,11 +3425,12 @@ async def ai_remember(updateMsg:TgMsg, conversation:Conversation, textToAdd:str,
 #__/ End of ai_remember() function definition.
 				
 
-async def ai_search(updateMsg:TgMsg, conversation:Conversation, queryPhrase:str, nItems:int=5) -> list:
+async def ai_search(updateMsg:TgMsg, conversation:Conversation,
+					queryPhrase:str, nItems:int=3) -> list:
 
 	"""Do a context-sensitive semantic search for memory items that
 		are related to the query phrase. Returns the closest few
-		matching items (by default 5)."""
+		matching items (by default 3)."""
 
 	userID = updateMsg.from_user.id
 	chatID = conversation.chat_id
@@ -3248,7 +3445,7 @@ async def ai_search(updateMsg:TgMsg, conversation:Conversation, queryPhrase:str,
 
 
 # Define a function to handle the /forget command, when issued by the AI.
-async def ai_forget(updateMsg:TgMsg, conversation:Conversation, textToDel:str) -> None:
+async def ai_forget(updateMsg:TgMsg, conversation:Conversation, textToDel:str=None, itemToDel:str=None) -> None:
 	"""The AI calls this function to remove the given text from its persistent memory."""
 
 	# Put the message from the Telegram update in a convenient variable.
@@ -3262,7 +3459,7 @@ async def ai_forget(updateMsg:TgMsg, conversation:Conversation, textToDel:str) -
 	# code to handle function-call responses from the AI.
 
 	# Check for missing <textToDel> argument.
-	if textToDel == None:
+	if textToDel == None and itemToDel == None:
 		_logger.error(f"The AI sent a /forget command with no " \
 					  f"argument in conversation {chat_id}.")
 
@@ -3273,6 +3470,18 @@ async def ai_forget(updateMsg:TgMsg, conversation:Conversation, textToDel:str) -
 		return "error: missing required argument"
 	#__/
 
+	_deleteMemoryItem(item_id=itemToDel, item_text=textToDel)
+	# For now we assume it always succeeds.
+
+	if itemToDel is not None:
+		return f"success: item with ID [{itemToDel}] was deleted from memory."
+	elif textToDel is not None:
+		return f"success: item with text [{textToDel}] was deleted from memory."
+
+	# We should never get here, but just in case.
+	return "unexpected error"
+
+	## Obsolete code below here.
 
 	# Tell the conversation object to remove the given message
 	# from the AI's persistent memory.  The return value from
@@ -3499,14 +3708,17 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 			return "error: required argument query_phrase is missing"
 
 	elif funcName == 'forget_item':
+		itemToDel = funcArgs.get('item_id', None)
 		textToDel = funcArgs.get('item_text', None)
 
-		if textToDel:
-			return await ai_forget(message, conversation, textToDel)
+		if itemToDel:
+			return await ai_forget(message, conversation, itemToDel=itemToDel)
+		elif textToDel:
+			return await ai_forget(message, conversation, textToDel=textToDel)
 		else:
 			await _report_error(conversation, message,
-					f"forget_item() missing required argument item_text.")
-			return "error: required argument item_text is missing"
+					f"forget_item() missing required argument item_id or item_text.")
+			return "error: required argument (item_id or item_text) is missing"
 
 	elif funcName == 'create_image':
 		imageDesc = funcArgs.get('image_desc', None)
@@ -3622,7 +3834,7 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 
 		# This does all the work of handling the '/forget' command
 		# when issued by the AI.
-		await ai_forget(message, conversation, command_args)
+		await ai_forget(message, conversation, textToDel=command_args)
 
 	elif command_name == 'block':
 		# Adds the current user (or a specified user) to the block list.
@@ -3873,7 +4085,7 @@ def _addMemoryItem(userID, chatID, itemText, isPublic=False, isGlobal=False):
 
 	privacy = "public" if isPublic else "private"
 	locality = "global" if isGlobal else "local"
-	_logger.normal(f"For userID={userID}, chatID={chatID}, adding {privacy} "\
+	_logger.normal(f"\tFor userID={userID}, chatID={chatID}, adding {privacy} "\
 				   f"{locality} memory [{itemText}]...")
 
 	# Path to the database file
@@ -4040,6 +4252,38 @@ def _check_access(user_name, prioritize_bcl=True) -> bool:
 	return True	
 
 #__/ End definition of private function _check_access().
+
+
+def _deleteMemoryItem(item_id=None, item_text=None):
+
+    # Path to the database file
+    db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
+
+    # Create a connection to the SQLite database
+    conn = sqlite3.connect(db_path)
+
+    try:
+        # Create a cursor object
+        c = conn.cursor()
+
+        if item_id is not None:
+            # Delete the item with the specified item ID
+            c.execute("DELETE FROM remembered_items WHERE itemID = ?", (item_id,))
+
+        elif item_text is not None:
+            # Delete the item with the specified item text
+            c.execute("DELETE FROM remembered_items WHERE itemText = ?", (item_text,))
+
+        # Commit the changes
+        conn.commit()
+
+    except sqlite3.Error as e:
+		# Really should do better error handling here.
+        print(f"An error occurred: {e.args[0]}")
+
+    finally:
+        # Close the connection
+        conn.close()
 
 
 async def _ensure_convo_loaded(update:Update, context:Context) -> bool:
@@ -4232,13 +4476,14 @@ def _initPersistentContext() -> None:
 	global PERSISTENT_DATA, PERSISTENT_CONTEXT	# So we can modify these.
 
 	# Initialize the AI's persistent context information.
-	if hasFunctions(ENGINE_NAME) and False:
+	if hasFunctions(ENGINE_NAME) and False:		# This version is now obsolete.
 		PERSISTENT_CONTEXT = \
 			MESSAGE_DELIMITER + PERMANENT_CONTEXT_HEADER + \
 			PERSISTENT_DATA + \
 			MESSAGE_DELIMITER + RECENT_MESSAGES_HEADER
 		#__/
-	else:
+	else:		# We now use this version always.
+
 		# Initialize the AI's persistent context information.
 		PERSISTENT_CONTEXT = \
 			MESSAGE_DELIMITER + PERMANENT_CONTEXT_HEADER + \
@@ -4251,6 +4496,7 @@ def _initPersistentContext() -> None:
 				"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
 				"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n" + \
 			MESSAGE_DELIMITER + RECENT_MESSAGES_HEADER
+
 		#__/
 	#__/
 #__/
@@ -4340,6 +4586,45 @@ def _isBlocked(user:str) -> bool:
 def _listToStr(vec:list):
 	"Given a vector, return a comma-separated list."
 	return ",".join(map(str, vec))
+
+
+def _printMemories():
+
+	# Path to the database file
+	db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
+
+	# Create a connection to the SQLite database
+	conn = sqlite3.connect(db_path)
+
+	# Create a cursor object
+	c = conn.cursor()
+
+	try:
+		# Create a cursor object
+		c = conn.cursor()
+
+		# Select all the columns except for embedding.
+		c.execute("SELECT itemID, userID, chatID, public, global, "
+				  "itemText FROM remembered_items")
+
+		_logger.normal("\n"
+					   "CONTENTS OF remembered_items TABLE in bot-db.sqlite:\n"
+					   "('ItemID', userID, chatID, public, global, 'itemText')")
+
+		# Fetch all rows from the table
+		rows = c.fetchall()
+		for row in rows:
+			_logger.normal(row)
+
+	except sqlite3.Error as e:
+		print(f"An error occurred: {e.args[0]}")
+
+	finally:
+		# Close the connection
+		conn.close()
+	#__/
+
+#__/
 
 
 # Sends a message to the user, with some appropriate exception handling.
@@ -4993,7 +5278,8 @@ ENGINE_NAME = aiConf.modelVersion
 
 # These are the section headers of the AI's persistent context.
 PERMANENT_CONTEXT_HEADER = " ~~~ Permanent context data: ~~~\n"
-PERSISTENT_MEMORY_HEADER = " ~~~ Dynamically added persistent memories: ~~~\n"
+#PERSISTENT_MEMORY_HEADER = " ~~~ Dynamically added persistent memories: ~~~\n"
+PERSISTENT_MEMORY_HEADER = " ~~~ Important persistent memories: ~~~\n"
 RECENT_MESSAGES_HEADER	 = " ~~~ Recent Telegram messages: ~~~\n"
 COMMAND_LIST_HEADER		 = f" ~~~ Commands available for {BOT_NAME} to use: ~~~\n"
 
@@ -5209,6 +5495,10 @@ app.add_handler(CommandHandler('image',		handle_image),		group = 0)
 app.add_handler(CommandHandler('reset',		handle_reset),		group = 0)
 app.add_handler(CommandHandler('remember',	handle_remember),	group = 0)
 app.add_handler(CommandHandler('forget',	handle_forget),		group = 0)	# Not available to most users.
+
+# These commands are not for general users; they are undocumented.
+app.add_handler(CommandHandler('delmem',	handle_delmem),		group = 0)	# Used for table cleanup.
+app.add_handler(CommandHandler('showmem',	handle_showmem),	group = 0)	# Used for debugging.
 
 # The following two commands are not really needed at all. They're just here for testing purposes.
 app.add_handler(CommandHandler('echo',	handle_echo),	group = 0)
