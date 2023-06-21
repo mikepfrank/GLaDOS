@@ -3138,16 +3138,6 @@ async def process_chat_message(update:Update, context:Context) -> None:
 					await send_response(update, context, response_text)
 				#__/
 
-				# Before calling the function, we'll send the response_text
-				# (which is probably contents of a remark argument, if anything)'
-				if response_text != "":
-
-					conversation.add_message(Message(BOT_NAME, response_text))
-					
-					# Try sending the response text to the user. (But ignore send errors.)
-					await send_response(update, context, response_text)
-				#__/
-
 				# Actually do the call here, and assemble appropriate result text.
 				result = await ai_call_function(update, context, function_name, function_args)
 
@@ -5751,15 +5741,13 @@ Available commands:
 /start - Starts the bot, if not already started; also reloads conversation history, if any.
 /help - Shows this help message.
 /image <desc> - Generate and return an image for the given description.
+/remember <text> - Adds the given statement to the bot's persistent context data.
+/forget <item> - Removes the given statement from the bot's persistent context data.
 /reset - Clears the bot's memory of the conversation. Useful for breaking output loops.
 /echo <text> - Echoes back the given text. (I/O test.)
 /greet - Causes the server to send a greeting. (Server responsiveness test.)
 
 NOTE: Please be polite and ethical, or you may be blocked."""
-
-# No longer supported for random users:
-#  remember - Adds the given statement to the bot's persistent context data.
-#  forget - Removes the given statement from the bot's persistent context data.
 
 # Override above help string if it's set in ai-config.hjson.
 if aiConf.helpString:
@@ -5805,13 +5793,12 @@ COMMAND_LIST = f"""
 start - Starts bot; reloads conversation history.
 help - Displays general help and command help.
 image - Generates an image from a description.
+remember - Adds an item to the bot's persistent memory.
+forget - Removes an item from the bot's persistent memory.
 reset - Clears the bot's conversation memory.
 echo - Echoes back the given text.
 greet - Make server send a greeting.
 """
-# No longer supported for random users:
-#  remember - Adds the given statement to the bot's persistent context data.
-#  forget - Removes the given statement from the bot's persistent context data.
 
 print("NOTE: You should enter the following command list into BotFather at bot creation time:")
 print(COMMAND_LIST)
