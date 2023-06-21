@@ -3088,7 +3088,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 # They are: remember, forget, block, and image.
 #	* /remember <text> - Adds <text> to persistent memory.
 #	* /forget <text> - Removes <text> from persistent memory.
-#	* /block - Blocks the current user.
+#	* /block [<user>] - Blocks the current user.
 #	* /image <desc> - Generates an image with a given text description and sends it to the user.
 
 # Define a function to handle the /remember command, when issued by the AI.
