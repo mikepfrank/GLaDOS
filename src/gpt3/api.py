@@ -3472,7 +3472,7 @@ def transcribeAudio(filename:str):
 	_logger.info(f"Passing {filename} to the OpenAI transcription endpoint...")
 	audio_file = open(filename, 'rb')
 	transcript = openai.Audio.transcribe("whisper-1", audio_file)
-	_logger.info(f"Got back this transcript: {transcript}")
+	_logger.info(f"\tGot back this transcript: {transcript}")
 	text = transcript['text']
 
 	return text

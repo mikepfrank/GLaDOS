@@ -706,7 +706,7 @@ class Conversation:
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# New instance initializer.
-	def __init__(newConv:Conversation, chat_id:int):
+	def __init__(newConv:Conversation, chat_id:int, creator=None):
 
 		"""Instance initializer for a new conversation object for a given
 			Telegram chat (identified by an integer ID)."""
@@ -717,6 +717,8 @@ class Conversation:
 		newConv.bot_name = BOT_NAME	# The name of the bot. ('Gladys', 'Aria', etc.)
 		newConv.chat_id = chat_id		# Remember the chat ID associated with this convo.
 		newConv.messages = []			# No messages initially (until added or loaded).
+
+		newConv.last_user = creator		# The user who caused this convo to be created.
 
 		# The following is a string which we'll use to accumulate the conversation text.
 		newConv.context_string = PERSISTENT_CONTEXT	# Start with just the global persistent context data.
@@ -790,6 +792,16 @@ class Conversation:
 	#/==========================================================================
 	#| Public instance methods for class Conversation. 		[class code section]
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
+	def lastMessageBy(thisConv:Conversation, userTag) -> Message:
+		"""Returns the last message in the conversation
+			sent by the user canonically tagged <userTag>."""
+
+		msg = next(msg for msg in reversed(thisConv.messages)
+				   if msg.sender == userTag)
+		return msg
+	#__/
 
 
 	def lastMessage(thisConv:Conversation) -> Message:
@@ -1079,7 +1091,7 @@ class Conversation:
 
 		# If we get here, we can safely pop the oldest message.
 
-		_logger.info(f"Expunging oldest message from {len(thisConv.messages)}-message conversation #{thisConv.chat_id}.")
+		_logger.debug(f"Expunging oldest message from {len(thisConv.messages)}-message conversation #{thisConv.chat_id}.")
 		#print("Oldest message was:", thisConv.messages[0])
 		thisConv.messages.pop(0)
 		thisConv.expand_context()	# Update the context string.
@@ -1125,6 +1137,10 @@ class Conversation:
 		# append the message to the conversation archive file.
 		if finalize:
 			thisConv.finalize_message(message)
+
+		# Update our idea of the current dynamic memories.
+		thisConv.dynamicMem = _getDynamicMemory(thisConv)
+			# NOTE: This is relatively slow. Get rid of it?
 
 	#__/ End add_message() instance method for class Conversation.
 
@@ -1228,9 +1244,27 @@ class Conversation:
 		chat_messages = []		# Initialize the list of chat messages.
 
 		botName = thisConv.bot_name
+		lastUser = thisConv.last_user	# Telegram object for last user that messaged us.
 
-		# The first message will be a system message showing the current time.
+		#/======================================================================
+		#|	Message list format:
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#|
+		#|	#0:			system:		[[Current time]]
+		#|	#1:			system:		Pre-prompt.
+		#|	#2:			system:		Persistent context (includes persistent data from TelegramBot.memories.txt)
+		#|	#3:			system:		[[DYNAMIC MEMORY]]
+		#|	#4:			system:		Command list.
+		#|	#5:			system:		Recent messages header.
+		#|	#6-(N-2):	(various):	...[RECENT TELEGRAM MESSAGES]...
+		#|	#N-1:		system:		Response prompt.
+		#|
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+		# The first message will always be a system message showing the current time.
+
+		# MESSAGE #0.
+		# This message needs to be updated before *every* new completion attempt.
 		chat_messages.append({
 			'role': CHAT_ROLE_SYSTEM,
 			#'name': SYS_NAME,
@@ -1239,16 +1273,63 @@ class Conversation:
 		
 		# The next message will show the persistent context header block.
 		# Note this header includes several subsections, delimited by
-		# record separators (ASCII code 30) and section headings.
+		# message delimiters [these used to be record separators, (ASCII
+		# code 30), but now are just nothing] and section headings.
 
+		# MESSAGE #1.
+		# This message is fixed for the lifetime of the application.
+		# We can just set it once each time a conversation is started.
 		chat_messages.append({
 			'role': CHAT_ROLE_SYSTEM,
 			#'name': SYS_NAME,
 			'content': "Attention, assistant: You are taking the role of a very " \
 				f"humanlike AI persona named {botName} in a Telegram chat. Here " \
 				"are the context headers for the persona, followed by recent " \
-				"messages in the chat:\n" + \
-					PERSISTENT_CONTEXT
+				"messages in the chat:\n"
+		})
+
+		# MESSAGE #2.
+		# With the new memory system, this is initialized once at the
+		# start of the application, and does not change further. We
+		# can set it when the conversation is started.
+		chat_messages.append({
+			'role': CHAT_ROLE_SYSTEM,
+			'content': PERMANENT_CONTEXT_HEADER + \
+				PERSISTENT_DATA
+		})
+
+		# MESSAGE #3.
+		# OK, for a given conversation, this one only needs to change
+		# whenever a new user message is added to the conversation, since
+		# it only depends on the last user memory. It could also change if a
+		# new memory is added by a different user, but that shouldn't happen
+		# very often
+		chat_messages.append({
+			'role': CHAT_ROLE_SYSTEM,
+			'content': DYNAMIC_MEMORY_HEADER + \
+				thisConv.dynamicMem
+					# ^ Note this only changes when a new user message is added to the convo.
+		})
+
+		# MESSAGE #4.
+		# This one is fixed forever, we could just initialize it when the
+		# conversation is started.
+		chat_messages.append({
+			'role': CHAT_ROLE_SYSTEM,
+			'content': COMMAND_LIST_HEADER + \
+				"  /pass - Refrain from responding to the last user message.\n" + \
+				"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
+				"  /remember <text> - Adds <text> to my persistent context data.\n" + \
+				"  /forget <text> - Removes <text> from my persistent context data.\n" + \
+				"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
+				"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n"
+		})
+
+		# MESSAGE #5.
+		# Ditto.
+		chat_messages.append({
+			'role': CHAT_ROLE_SYSTEM,
+			'content': RECENT_MESSAGES_HEADER
 		})
 
 		# Next, add the messages from the recent part of the conversation.
@@ -1504,7 +1585,7 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 	# will be specific to this chat_id. This will also allow updates from different
 	# users in the same chat to all appear in the same conversation.
 
-	conversation = Conversation(chat_id)
+	conversation = Conversation(chat_id, creator=user)
 		# Note this constructor call will also reload the conversation data, if it exists.
 
 	context.chat_data['conversation'] = conversation
@@ -2462,6 +2543,10 @@ async def handle_message(update:Update, context:Context, new_msg=True) -> None:
 	if new_msg:
 		conversation.add_message(Message(user_name, text))
 
+	# Get the current user object, stash it in convo temporarily., 
+	cur_user = message.from_user
+	conversation.last_user = cur_user
+
 	# Check whether the user is in our access list.
 	if not _check_access(user_name):
 		_logger.normal(f"User {user_name} tried to access chat {chat_id}, "
@@ -3106,7 +3191,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 					resultStr = result if isinstance(result, str) else json.dumps(result)
 
 					# Have the bot server make a note to help the AI remember that it got a function result.
-					fret_note = f'[NOTE: {function_name}() call returned value: """{resultStr}"""]'
+					fret_note = f'[NOTE: {function_name}() call returned value: [{resultStr}]]'
 					conversation.add_message(Message(SYS_NAME, fret_note))
 
 					# This message represents the actual return value of the function.
@@ -3147,7 +3232,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 						except PromptTooLargeException:
 							# Just trim off the oldest message after the first two (time & system instructions).
 							_logger.debug(f"NOTE: Expunging oldest chat message:\n" + pformat(temp_chat_messages[2]))
-							temp_chat_messages = temp_chat_messages[0:2] + chat_messages[3:]
+							temp_chat_messages = temp_chat_messages[0:4] + chat_messages[6:]
 							continue
 
 					# Just for diagnostic purposes.
@@ -3390,7 +3475,7 @@ async def ai_remember(updateMsg:TgMsg, conversation:Conversation, textToAdd:str,
 	#__/
 
 	# Diagnostic.
-	_logger.normal("\nFor user {user_name} in chat {chat_id}, adding "
+	_logger.normal(f"\nFor user {user_name} in chat {chat_id}, adding "
 					f"{'public' if isPublic else 'private'} "
 					f"{'global' if isGlobal else 'local'} memory ["
 					f"{textToAdd}].")
@@ -3441,9 +3526,9 @@ async def ai_search(updateMsg:TgMsg, conversation:Conversation,
 	userID = updateMsg.from_user.id
 	chatID = conversation.chat_id
 
-	_logger.normal(f"AI is searching for memories matching the search query: [{queryPhrase}].")
+	_logger.normal(f"AI is searching for the top {nItems} memories matching the search query: [{queryPhrase}].")
 
-	matchList = _searchMemories(userID, chatID, queryPhrase, nItems)
+	matchList = _searchMemories(userID, chatID, queryPhrase, nItems=nItems)
 
 	_logger.normal(f"Found the following matches: [\n{matchList}\n].")
 
@@ -4127,32 +4212,34 @@ def _addMemoryItem(userID, chatID, itemText, isPublic=False, isGlobal=False):
 
 def _addUser(tgUser:User):
 
-    # Path to the database file
-    db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
+	# Path to the database file
+	db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
 
-    # Create a connection to the SQLite database
-    conn = sqlite3.connect(db_path)
+	# Create a connection to the SQLite database
+	conn = sqlite3.connect(db_path)
 
-    # Create a cursor object
-    c = conn.cursor()
+	# Create a cursor object
+	c = conn.cursor()
 
-    # Form the display name
-    displayName = tgUser.first_name
-    if tgUser.last_name:
-        displayName += " " + tgUser.last_name
+	# Form the display name
+	displayName = tgUser.first_name
+	if tgUser.last_name:
+		displayName += " " + tgUser.last_name
 
-    # Insert or update the user data
-    c.execute('''
-        INSERT OR REPLACE INTO users (displayName, username, userID, blocked)
-        VALUES (?, ?, ?, ?)
-    ''', (displayName, tgUser.username, tgUser.id,
-		  _isBlocked(_get_user_name(tgUser))))
+	# Get our "tag" (preferred name) for the user.
+	userTag = _get_user_name(tgUser)
 
-    # Commit the transaction
-    conn.commit()
+	# Insert or update the user data
+	c.execute('''
+		INSERT OR REPLACE INTO users (displayName, username, userID, blocked, userTag)
+		VALUES (?, ?, ?, ?, ?)
+	''', (displayName, tgUser.username, tgUser.id, _isBlocked(userTag), userTag))
 
-    # Close the connection
-    conn.close()
+	# Commit the transaction
+	conn.commit()
+
+	# Close the connection
+	conn.close()
 
 #__/ End definition of private function _addUser().
 
@@ -4459,8 +4546,15 @@ def _initBotDB():
 			displayName TEXT,
 			username TEXT,
 			userID INTEGER PRIMARY KEY,
-			blocked BOOLEAN);
+			blocked BOOLEAN,
+			userTag TEXT);
 	''')
+
+	# If the 'userTag' column doesn't exist yet, add it.
+	c.execute("PRAGMA table_info(users)")
+	cols = c.fetchall()
+	if "usertag" not in (col[1].lower() for col in cols):
+		c.execute("ALTER TABLE users ADD COLUMN userTag TEXT")
 
 	# Commit the transaction
 	conn.commit()
@@ -4654,8 +4748,8 @@ def _printUsers():
 
 		_logger.normal("\n"
 					   "CONTENTS OF users TABLE in bot-db.sqlite:\n"
-					   "('displayName', 'username', userID, blocked)\n"
-					   "============================================")
+					   "('displayName', 'username', userID, blocked, userTag)\n"
+					   "=====================================================")
 
 		# Fetch all rows from the table
 		rows = c.fetchall()
@@ -4761,7 +4855,53 @@ def _semanticDistance(em1:list, em2:list):
 	return distance
 
 
-def _searchMemories(userID, chatID, searchPhrase, nItems):
+# This could be a method of class Conversation.
+def _getDynamicMemory(convo:Conversation):
+
+	# Get current context (user & chat IDs).
+	user = convo.last_user
+	userID = user.id
+	chatID = convo.chat_id
+
+	# Our generic search phrase will be simply, the text of
+	# the last message sent in the chat by the user..
+
+	searchPhrase = convo.lastMessageBy(_get_user_name(user)).text
+
+	# We'll get the best-matching 5 items.
+	memList = _searchMemories(userID, chatID, searchPhrase, nItems=5)
+
+	# We'll accumulate lines with the following format:
+	#
+	#	id=<itemID> (user:<userTag> private/public local/global) <text>
+
+	memString = ""
+	for mem in memList:
+
+		itemID = mem['itemID']
+		userID = mem['userID']
+		isPublic = mem['public']
+		isGlobal = mem['global']
+		itemText = mem['itemText']
+		
+		# Look up detailed user data. This is a dict with keys:
+		#	'dispName', 'userName', 'userID', 'userTag', 'blocked'.
+		userData = _lookup_user(userID)
+		userTag = userData['userTag']		# Could sometimes be "(unknown)"
+
+		privacy = "public" if isPublic else "private"
+		locality = "global" if isGlobal else "local"
+
+		memString += f"itemID={itemID} (user:{userTag} {privacy} {locality}) {itemText}\n"
+
+	return memString
+
+
+def _searchMemories(userID, chatID, searchPhrase, nItems=3):
+
+	_logger.info(f"\n_searchMemories(): Searching for userID={userID}, "
+				 f"chatID={chatID} to find the top {nItems} closest "
+				 f"memories to [{searchPhrase}]...")
 
 	# Path to the database file
 	db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
@@ -4814,7 +4954,49 @@ def _searchMemories(userID, chatID, searchPhrase, nItems):
 
 	# Return the closest matches
 
-	return [itemDict for (_dist, _id, itemDict) in heapq.nsmallest(nItems, closestMatches)]
+	results = [itemDict for (_dist, _id, itemDict) in heapq.nsmallest(nItems, closestMatches)]
+	#for itemDict in results:
+	#	itemDict['distance'] = round(itemDict['distance'], 6)
+
+	return results
+
+
+def _lookup_user(user_id):
+
+	# Path to the database file
+	db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
+
+	# Create a connection to the SQLite database
+	conn = sqlite3.connect(db_path)
+
+	# Create a cursor object
+	c = conn.cursor()
+
+	# Execute a SQL command to select the row with the given user ID
+	c.execute("SELECT * FROM users WHERE userID = ?", (user_id,))
+
+	# Fetch the row
+	row = c.fetchone()
+
+	# If a row was found, print it
+	if row is not None:
+		result = {
+			'dispName': row[0],
+			'userName': row[1],
+			'userID':	row[2],
+			'blocked':	row[3],
+			'userTag':	row[4] or 'unknown'
+				# NOTE: col. 3 could be None if this user hasn't
+				# been loaded yet since we added this new field.
+		}
+			
+	else:
+		result = None
+
+	# Close the connection
+	conn.close()
+
+	return result
 
 
 # Sends a diagnostic message to the AI as well as to the user,
@@ -5097,8 +5279,8 @@ FUNCTIONS_LIST = [
 	# Function for command: /search <query_phrase>
 	{
 		"name":			"search_memory",
-		"description":	"Do a context-sensitive semantic search for memories "\
-							"related to a given search phrase.",
+		"description":	"Do a context-sensitive semantic search for the top 3 "\
+							"memories related to a given search phrase.",
 		"parameters":	{
 			"type":			"object",
 			"properties":	{
@@ -5324,10 +5506,13 @@ ENGINE_NAME = aiConf.modelVersion
 
 # These are the section headers of the AI's persistent context.
 PERMANENT_CONTEXT_HEADER = " ~~~ Permanent context data: ~~~\n"
-#PERSISTENT_MEMORY_HEADER = " ~~~ Dynamically added persistent memories: ~~~\n"
 PERSISTENT_MEMORY_HEADER = " ~~~ Important persistent memories: ~~~\n"
+DYNAMIC_MEMORY_HEADER	 = " ~~~ Contextually relevant memories: ~~~\n"
 RECENT_MESSAGES_HEADER	 = " ~~~ Recent Telegram messages: ~~~\n"
 COMMAND_LIST_HEADER		 = f" ~~~ Commands available for {BOT_NAME} to use: ~~~\n"
+
+# Old obsolete versions of headers.
+#PERSISTENT_MEMORY_HEADER = " ~~~ Dynamically added persistent memories: ~~~\n"
 
 maxRetToks		 = aiConf.maxReturnedTokens
 	# This gets the AI's persona's configured preference for the *maximum*
