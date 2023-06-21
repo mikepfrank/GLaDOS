@@ -3210,8 +3210,9 @@ async def process_chat_message(update:Update, context:Context) -> None:
 					temp_chat_messages += [funcret_msg]
 					temp_chat_messages += [{
 							'role':		'system',
-							'content':	f"{BOT_NAME}, you may now provide your response, "\
-										"if any, to the function's return value above:",
+							'content':	f"Instructions from bot server: {BOT_NAME}, you " \
+										"may now provide your response, if any, to the " \
+										"function's return value above.",
 						}]
 					
 					# Display the most recent 10 chat messages from temp list.
