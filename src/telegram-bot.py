@@ -1830,12 +1830,18 @@ async def handle_showmem(update:Update, context:Context) -> None:
 	_logger.normal(f"\nUser {user_name} entered a /showmem command for chat {chat_id}.")
 
 	# Log diagnostic information.
-	_logger.normal(f"\tDumping memory items to console for  conversation {chat_id}.")
+	_logger.normal(f"\tDumping user list to console for  conversation {chat_id}.")
+
+	# Print user list to console.
+	_printUsers()
+
+	# Log diagnostic information.
+	_logger.normal(f"\n\tDumping memory items to console for  conversation {chat_id}.")
 
 	# Print memory to console.
 	_printMemories()
 
-	CONFIRMATION_TEXT = "The contents of the remembered_items table have been printed to the system console."
+	CONFIRMATION_TEXT = "The contents of the users and remembered_items tables have been printed to the system console."
 
 	# Also record the echo text in our conversation data structure.
 	conversation.add_message(Message(SYS_NAME, CONFIRMATION_TEXT))
@@ -4609,7 +4615,47 @@ def _printMemories():
 
 		_logger.normal("\n"
 					   "CONTENTS OF remembered_items TABLE in bot-db.sqlite:\n"
-					   "('ItemID', userID, chatID, public, global, 'itemText')")
+					   "('ItemID', userID, chatID, public, global, 'itemText')\n"
+					   "======================================================")
+
+		# Fetch all rows from the table
+		rows = c.fetchall()
+		for row in rows:
+			_logger.normal(row)
+
+	except sqlite3.Error as e:
+		print(f"An error occurred: {e.args[0]}")
+
+	finally:
+		# Close the connection
+		conn.close()
+	#__/
+
+#__/
+
+
+def _printUsers():
+
+	# Path to the database file
+	db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
+
+	# Create a connection to the SQLite database
+	conn = sqlite3.connect(db_path)
+
+	# Create a cursor object
+	c = conn.cursor()
+
+	try:
+		# Create a cursor object
+		c = conn.cursor()
+
+		# Select all the columns except for embedding.
+		c.execute("SELECT * FROM users")
+
+		_logger.normal("\n"
+					   "CONTENTS OF users TABLE in bot-db.sqlite:\n"
+					   "('displayName', 'username', userID, blocked)\n"
+					   "============================================")
 
 		# Fetch all rows from the table
 		rows = c.fetchall()
