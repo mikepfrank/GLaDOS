@@ -705,7 +705,7 @@ class BotConversation:
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# New instance initializer.
-	def __init__(newConv:Conversation, chat_id:int, creator=None):
+	def __init__(newConv:BotConversation, chat_id:int, creator=None):
 
 		"""Instance initializer for a new conversation object for a given
 			Telegram chat (identified by an integer ID)."""
@@ -793,7 +793,7 @@ class BotConversation:
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
-	def lastMessageBy(thisConv:BotConversation, userTag) -> Message:
+	def lastMessageBy(thisConv:BotConversation, userTag) -> BotMessage:
 		"""Returns the last message in the conversation
 			sent by the user canonically tagged <userTag>."""
 
@@ -803,7 +803,7 @@ class BotConversation:
 	#__/
 
 
-	def lastMessage(thisConv:BotConversation) -> Message:
+	def lastMessage(thisConv:BotConversation) -> BotMessage:
 		"""Returns the last message in the conversation, if any."""
 		if thisConv.context_length > 0:
 			return thisConv.messages[-1]
@@ -1300,7 +1300,7 @@ class BotConversation:
 		chat_messages.append({
 			'role': CHAT_ROLE_SYSTEM,
 			'content': PERMANENT_CONTEXT_HEADER + \
-				PERSISTENT_DATA
+				globalPersistentData
 		})
 
 		# MESSAGE #3.
@@ -1914,7 +1914,7 @@ async def handle_showmem(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# Add the /showmem command itself to the conversation archive.
-	conversation.add_message(Message(user_name, message.text))
+	conversation.add_message(BotMessage(user_name, message.text))
 
 	_logger.normal(f"\nUser {user_name} entered a /showmem command for chat {chat_id}.")
 
@@ -1932,10 +1932,11 @@ async def handle_showmem(update:Update, context:Context) -> None:
 
 	_logger.normal("\n\tDump of users and memory items to console is complete.")
 
-	CONFIRMATION_TEXT = "The contents of the users and remembered_items tables have been printed to the system console."
+	CONFIRMATION_TEXT = "The contents of the users and remembered_items "\
+						"tables have been printed to the system console."
 
 	# Also record the echo text in our conversation data structure.
-	conversation.add_message(Message(SYS_NAME, CONFIRMATION_TEXT))
+	conversation.add_message(BotMessage(SYS_NAME, CONFIRMATION_TEXT))
 
 	# Send it to user.
 	await _reply_user(message, conversation, f"[SYSTEM: {CONFIRMATION_TEXT}]")
@@ -1991,7 +1992,7 @@ async def handle_delmem(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# Add the /showmem command itself to the conversation archive.
-	conversation.add_message(Message(user_name, message.text))
+	conversation.add_message(BotMessage(user_name, message.text))
 
 	_logger.normal(f"\nUser {user_name} entered a /delmem command for chat {chat_id}.")
 
@@ -2024,7 +2025,7 @@ async def handle_delmem(update:Update, context:Context) -> None:
 		CONF_TEXT = f"The memory item with item_text='{rest}' has been deleted."
 
 	# Also record the echo text in our conversation data structure.
-	conversation.add_message(Message(SYS_NAME, CONF_TEXT))
+	conversation.add_message(BotMessage(SYS_NAME, CONF_TEXT))
 
 	# Send it to user.
 	await _reply_user(message, conversation, f"[SYSTEM: {CONF_TEXT}]")
@@ -2552,7 +2553,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		conversation.add_message(BotMessage(user_name, text))
 
 	# Get the current user object, stash it in convo temporarily., 
-	cur_user = message.from_user
+	cur_user = tgMsg.from_user
 	conversation.last_user = cur_user
 
 	# Check whether the user is in our access list.
@@ -2861,7 +2862,8 @@ async def handle_unknown_command(update:Update, context:Context) -> None:
 # Define an error handler for exceptions caught by the dispatcher.
 async def handle_error(update:Update, context:Context) -> None:
 	"""Log errors caused by updates."""
-	_logger.error('Update [\n%s\n] caused error "%s"', pformat(update), context.error, exc_info=logmaster.doDebug)
+	_logger.error('Update [\n%s\n] caused error "%s"', pformat(update), context.error, exc_info=True)
+#	_logger.error('Update [\n%s\n] caused error "%s"', pformat(update), context.error, exc_info=logmaster.doDebug)
 		# This will log the full traceback of the exception if debug logging is turned on.
 	#_logger.error(traceback.format_exc())  
 #__/
@@ -3202,7 +3204,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 				# Have the bot server make a note to help the AI remember that it got a function result.
 				fret_note = f'[NOTE: {function_name}() call returned value: [{resultStr}]]'
-				conversation.add_message(Message(SYS_NAME, fret_note))
+				conversation.add_message(BotMessage(SYS_NAME, fret_note))
 
 				# This message represents the actual return value of the function.
 				funcret_oaiMsg = {
@@ -3269,7 +3271,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 					fcall_str = _call_desc(fcall2.name, json.loads(fcall2.arguments))
 
-					conversation.add_message(Message(SYS_NAME, f"[Error: You tried to respond to a function return with another function call; this is unsupported. The 2nd call was: {fcall_str}.]"))
+					conversation.add_message(BotMessage(SYS_NAME, f"[Error: You tried to respond to a function return with another function call; this is unsupported. The 2nd call was: {fcall_str}.]"))
 
 					errmsg = "AI tried to respond to function return with another function call; this is not yet supported."
 					await _report_error(conversation, message, errmsg, showAI=False)
@@ -3461,7 +3463,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 #	* /image <desc> - Generates an image with a given text description and sends it to the user.
 
 # Define a function to handle the /remember command, when issued by the AI.
-async def ai_remember(updateMsg:TgMsg, conversation:Conversation, textToAdd:str,
+async def ai_remember(updateMsg:TgMsg, conversation:BotConversation, textToAdd:str,
 					  isPublic:bool=False, isGlobal:bool=False) -> None:
 
 	"""The AI calls this function to add the given text to its persistent
@@ -3536,7 +3538,7 @@ async def ai_remember(updateMsg:TgMsg, conversation:Conversation, textToAdd:str,
 #__/ End of ai_remember() function definition.
 				
 
-async def ai_search(updateMsg:TgMsg, conversation:Conversation,
+async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
 					queryPhrase:str, nItems:int=3) -> list:
 
 	"""Do a context-sensitive semantic search for memory items that
@@ -3555,7 +3557,8 @@ async def ai_search(updateMsg:TgMsg, conversation:Conversation,
 
 
 # Define a function to handle the /forget command, when issued by the AI.
-async def ai_forget(updateMsg:TgMsg, conversation:Conversation, textToDel:str=None, itemToDel:str=None) -> None:
+async def ai_forget(updateMsg:TgMsg, conversation:BotConversation,
+					textToDel:str=None, itemToDel:str=None) -> None:
 	"""The AI calls this function to remove the given text from its persistent memory."""
 
 	# Put the message from the Telegram update in a convenient variable.
@@ -3631,7 +3634,8 @@ async def ai_forget(updateMsg:TgMsg, conversation:Conversation, textToDel:str=No
 
 
 # Define a function to handle the /block command, when issued by the AI.
-async def ai_block(updateMsg:TgMsg, conversation:Conversation, userToBlock:str=None, userIDToBlock:int=None) -> str:
+async def ai_block(updateMsg:TgMsg, conversation:BotConversation,
+				   userToBlock:str=None, userIDToBlock:int=None) -> str:
 
 	"""The AI calls this function to block the given user, who may be specified
 		by tag (if unique) or by ID. If no user is specified, it blocks the
@@ -3732,7 +3736,8 @@ async def ai_block(updateMsg:TgMsg, conversation:Conversation, userToBlock:str=N
 				
 
 # Define a function to handle the /unblock command, when issued by the AI.
-async def ai_unblock(updateMsg:TgMsg, conversation:Conversation, userToUnblock:str=None, userIDToUnblock:int=None) -> str:
+async def ai_unblock(updateMsg:TgMsg, conversation:BotConversation,
+					 userToUnblock:str=None, userIDToUnblock:int=None) -> str:
 
 	"""The AI calls this function to unblock the given user. If no user is specified,
 		it unblocks the current user (the one who sent the current update).
@@ -5235,7 +5240,7 @@ def _semanticDistance(em1:list, em2:list):
 
 
 # This could be a method of class Conversation.
-def _getDynamicMemory(convo:Conversation):
+def _getDynamicMemory(convo:BotConversation):
 
 	# Get current context (user & chat IDs).
 	user = convo.last_user
