@@ -556,6 +556,79 @@ class BotMessage:
 	#__/
 
 
+	# This creates and returns an OpenAI-style chat message
+	# dictionary based on this BotMessage.
+
+	def oaiMsgDict(thisMsg:BotMessage) -> dict:
+		"""Returns an OpenAI-style chat message dictionary"""
+
+		sender = thisMsg.sender
+			# Note this is a string; it may be SYS_NAME,
+			# BOT_NAME, or the userTag of a Telegram user
+			# (as returned by the _get_user_name() function.
+
+		# The following is to support old conversation archive
+		# files in which SYS_NAME used to be rendered as 'SYSTEM'
+		# (whereas now it is 'BotServer').
+		if sender == 'SYSTEM':	# Backwards-compatible to legacy SYS_NAME value.
+			sender = SYS_NAME	# Map to new name.
+
+		# Calculate the 'role' property of the message based on
+		# the sender. Note this MUST be one of OpenAI's supported
+		# roles, or it will produce an API error.
+		
+		if sender == SYS_NAME:
+			role = CHAT_ROLE_SYSTEM
+
+		elif sender == BOT_NAME:
+			role = CHAT_ROLE_AI
+
+		else:
+			role = CHAT_ROLE_USER
+
+		#__/
+
+		# TODO: Add another case above, to check a new boolean property
+		# .isFunCall of the BotMessage object (not yet defined), and if
+		# it's True, then set the role to CHAT_ROLE_FUNCALL, and we'll
+		# also need to set 'name' and 'arguments' properties as well.
+		# And similarly for .isFuncRet, CHAT_ROLE_FUNCRET, and alternate
+		# use of the 'name' and 'content' properties.
+
+		# Now contruct the message dict.
+		_oaiMsgDict = {
+			'role':		role,			# Note: The role field is always required.
+			'content':	str(message)	# The content field is also expected.
+				#       ^^^^^^^^^^^^
+				# This deserves some discussion. Note that this is now using
+				# the BotMessage.__str__() method defined above, which includes
+				# not just the text of the message but also the sender, in the
+				# form "sender> text". This is to help the AI keep track of who
+				# is speaking. We used to put the sender in the 'name' property
+				# of the message object, because the API used to not complain
+				# about this as long as there weren't multiple different names
+				# for role 'assistant'. But over time, the API has become more
+				# finicky, and so it is no longer safe to do that. Note that
+				# presenting Telegram messages in this way means that the AI
+				# will likely give its response in the same format, so we have
+				# to be prepared for that. See the _trim_prompt() function.
+
+			# Previously, we just sent the message text, like this:
+			#'content':	message.text	# The content field is also expected.
+
+		}
+
+		# To reduce API errors, we set the 'name'
+		# property only for the 'user' role.
+		if role == CHAT_ROLE_USER:
+			chatMessage['name'] = sender
+				# Note: When 'name' is present, we believe that the AI sees it
+				# in addition to the role.
+
+		return _oaiMsgDict		# Return the dict we just constructed.
+	#__/
+
+
 		#/======================================================================
 		#|	Methods for serializing and deserializing message objects so that
 		#|	they may be saved to, and retrieved from, a persistent archive file.
@@ -701,7 +774,7 @@ class BotConversation:
 		in an individual Telegram conversation."""
 
 	#/==========================================================================
-	#| Special instance methods for class Conversation. 	[class code section]
+	#| Special instance methods for class BptConversation. 	[class code section]
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# New instance initializer.
@@ -1345,35 +1418,45 @@ class BotConversation:
 		# attribute of the chat message, and we'll use the .text attribute
 		# of the Message object as the 'content' attribute of the chat message.
 
-		for message in thisConv.messages:
+		for botMessage in thisConv.messages:
 
-			sender = message.sender
+			# Ask the bot message to give us its OpenAI dictionary form,
+			# and add it onto the end of the chat message list.
 
-			if sender == 'SYSTEM':	# Backwards-compatible to legacy SYS_NAME value.
-				sender = SYS_NAME	# Map to new name.
+			chat_messages.append(botMessage.oaiMsgDict())
 
-			if sender == SYS_NAME:
-				role = CHAT_ROLE_SYSTEM
-			elif sender == botName:
-				role = CHAT_ROLE_AI
-			else:
-				role = CHAT_ROLE_USER
+			#=================================================================
+			# OBSOLETE CODE TO REMOVE:
+			# We moved the below to the .oaiMsgDict() method for reusability.
+			#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+			# sender = message.sender
+
+			# if sender == 'SYSTEM':	# Backwards-compatible to legacy SYS_NAME value.
+			# 	sender = SYS_NAME	# Map to new name.
+
+			# if sender == SYS_NAME:
+			# 	role = CHAT_ROLE_SYSTEM
+			# elif sender == botName:
+			# 	role = CHAT_ROLE_AI
+			# else:
+			# 	role = CHAT_ROLE_USER
 			
-			chatMessage = {
-				'role':		role,			# Note: The role field is always required.
-				#'content':	message.text	# The content field is also expected.
-				'content':	str(message)	# The content field is also expected.
-			}
+			# chatMessage = {
+			# 	'role':		role,			# Note: The role field is always required.
+			# 	#'content':	message.text	# The content field is also expected.
+			# 	'content':	str(message)	# The content field is also expected.
+			# }
 
-			# Change to try to reduce API errors:
-			# Add name field only for user role.
-			if role == CHAT_ROLE_USER:
-				chatMessage['name'] = sender
-					# Note: When 'name' is present, the API uses it in place of
-					# (or perhaps in addition to!) the role.
+			# # Change to try to reduce API errors:
+			# # Add name field only for user role.
+			# if role == CHAT_ROLE_USER:
+			# 	chatMessage['name'] = sender
+			# 		# Note: When 'name' is present, the API uses it in place of
+			# 		# (or perhaps in addition to!) the role.
 
-			# Add the message we just constructed.
-			chat_messages.append(chatMessage)
+			# # Add the message we just constructed.
+			# chat_messages.append(chatMessage)
 
 		#__/
 
@@ -2571,7 +2654,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 	# If the currently selected engine is a chat engine, we'll dispatch the rest
 	# of the message processing to a different function that's specialized to use 
 	# OpenAI's new chat API.
-	if gptCore.isChat:
+	if global_gptCore.isChat:
 		return await process_chat_message(update, context)
 
 	## Also move the below code to this new function:
@@ -2641,7 +2724,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 
 			try:
 				# Get the response from GPT-3, as a Completion object.
-				completion = gptCore.genCompletion(context_string)
+				completion = global_gptCore.genCompletion(context_string)
 				response_text = completion.text
 				break
 
@@ -2884,13 +2967,344 @@ async def handle_error(update:Update, context:Context) -> None:
 	#|	4.1. Misc. major/public functions.			[python module code section]
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+################################################################################
+# Below is a new function we're adding to generically handle situations where we
+# want to get a response from the AI and process it. This is a little more 
+# general than the original process_chat_message() function, because it is able
+# to also handle cases where the AI is responding to one or more sequences of
+# function calls and returns, which are not maintained formally in the normal
+# BotConversation data structure, since they are not technically part of the
+# conversation but are only "inside the AI's head," so to speak. Also, we don't
+# currently have any support for storing and serializing these alternative 
+# types of messages.
+#
+#	NOTE: We assume the following preconditions have all been ensured to
+#	be true by the time that the get_ai_response() function is called:
+#
+#		1. The bot conversation has already been initialized and stashed
+#			in context.chat_data['conversation'].
+#
+#		2. We've checked to make sure the update includes a user message.
+#
+#		3. The user's text or audio message, if any, has already been
+#			retrieved from the update, transcribed to text (if audio)
+#			and added to the bot conversation object.
+#
+#		4. If the AI has called any functions since the last user message,
+#			their call and return objects are included in the oaiMsgList
+#			argument (which should also include as much of the conversation
+#			as will fit).
+#
+#		5. If oaiMsgList is provided, it should end in an appropriate
+#			system prompt.
+#
+#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> None:
+
+	# NOTE: oaiMsgList should be supplied ONLY if there is a pre-existing
+	# message list which includes messages with role 'function_call' or
+	# 'function' (meaning function return) that we need to expand upon,
+	# since, in such cases, we need to avoid blowing away that existing
+	# list by regenerating it from the BotConversation object. This
+	# introduces some subtleties regarding exactly how to keep track of
+	# the oaiMsgList and keep it consistent with the BotConversation obj.
+
+	"""Unified function to get a response from the AI. Supports
+		various situations, including responding to a function
+		call-and-return sequence, or multiple of these. This
+		allows the AI to handle more complex situations that may
+		require making multiple function calls in sequence to
+		figure out how to respond appropriately."""
+
+	# Get the message, or edited message from the update.
+	(tgMsg, edited) = _get_update_msg(update)
+		# NOTE: We only do this to get the user data.
+		
+	if tgMsg is None:
+		_logger.error("In get_ai_response() with no message! Aborting.")
+		return
+
+	# Get user data.
+	user_obj	= tgMsg.from_user
+	user_tag	= _get_user_tag(user_obj.from_user)
+	user_id		= user_obj.id
+
+	#----------------------------------------------------
+	# Retrieve some basic things in case we'll need them.
+
+	botConvo	= context.chat_data['conversation']
+	chat_id		= botConvo.chat_id
+	
+	# If a message list wasn't specifically supplied, then
+	# derive it from the convo.
+	if oaiMsgList is None:
+		oaiMsgList = botConvo.get_chat_messages()
+	
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	# Here's our main loop, which calls the API with exception handling as
+	# needed to recover from situations where our prompt data is too long.
+	# (However, we try to do our best to trim it down before the call.)
+	#
+	# Exceptions handled:
+	#	If we get a PromptTooLongException, we'll try again with a shorter prompt.
+	#	If we get a RateLimitError, we'll emit a diagnostic reponse message.
+	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	while True:		# Loop until we get a response from the API.
+
+		# We assume that here, we already have a candidate <oaiMsgList>
+		# that is all ready to try to pass it to the API.
+
+		# If we're in debug mode, we'll log the current message list in
+		# .txt and .json format, in case there are errors in processing.
+		# Otherwise, we'll only log it once, *after* the loop is done.
+		if logmaster.doDebug:
+			_logOaiMsgs(oaiMsgList)
+
+		#-------------------------------------------------------------
+		# Here we calculate what value of the maxTokens parameter to
+		# use; this controls the size of the response window, i.e.,
+		# the maximum length of the reponse returned by the core, in
+		# tokens. This is set to the available space in the context
+		# window, but is capped by the aiConf.maxReturnedTokens
+		# parameter (from the api-conf/max-returned-tokens element in
+		# glados-config.hjson or ai-config.hjson) and set to be no
+		# less than the aiConf.minReplyWinToks parameter (from the
+		# mind-conf/min-replywin-toks element in ai-config.hjson).
+
+			# First, let's figure out how much space is left in the
+			# context window currently.  We'll do this by subtracting
+			# the length of the chat messages from the context window
+			# size.
+
+		# Get the context window size from the global_gptCore object.
+		contextWinSizeToks = global_gptCore.fieldSize
+
+		# The +1 below seems true in practice, except for GPT-4. Not
+		# sure why.
+		if ENGINE_NAME != 'gpt-4':
+			contextWinSizeToks += 1		# One more token than spec'd.
+
+		## Detailed diagnostic; comment out until needed.
+		#_logger.debug("In process_chat_message(), "
+		#	f"contextWinSizeToks={contextWinSizeToks}.")
+
+		# Get the length of the current OAI message list in tokens.
+		msgsSizeToks = ChatMessages(oaiMsgList).\
+			totalTokens(model=ENGINE_NAME)
+
+		# If this engine supports functions, add in the estimated size
+		# in tokens of the functions structure. (Note that this is
+		# just a guesstimate since we don't know how it's formatted at
+		# the back end exactly.)
+		if hasFunctions(ENGINE_NAME):
+			funcsSize = tiktokenCount(json.dumps(FUNCTIONS_LIST),
+									  model=ENGINE_NAME)
+			#_logger.info(f"Estimating size of FUNCTIONS_LIST is {funcsSize}.)")
+			msgsSizeToks += funcsSize
+
+		## Detailed diagnostic; comment out until needed.
+		#_logger.debug("In process_chat_message(), "
+		#	f"msgsSizeToks={msgsSizeToks}.")
+
+		# Calculate the available space in the context window.
+		availSpaceToks = contextWinSizeToks - msgsSizeToks
+			# Note that this is just an estimate of the available
+			# space, because the actual space available may be less
+			# than this if the chat messages at the back end contain
+			# any additional formatting tokens or extra undocumented
+			# fields.
+
+		## Detailed diagnostic; comment out until needed.
+		#_logger.debug("In process_chat_message(), "
+		#	f"availSpaceToks={availSpaceToks}.")
+
+		# Remember: globalMaxRetToks, globalMinReplWinToks were
+		# already retrieved from the aiConf object and stored in
+		# these globals early in this module, so we are good.
+
+		# Here, we're setting a local variable from the global.  This
+		# is needed to get the correct "unlimited" representation to
+		# pass to the API.
+		if globalMaxRetToks is None:	# In the chat API, this becomes inf.
+			localMaxRetToks = float('inf')	# So in other words, no limit.
+		else:
+			localMaxRetToks = globalMaxRetToks
+
+		## Detailed diagnostic; comment out until needed.
+		#_logger.debug("In process_chat_message(), "
+		#	f"localMaxRetToks={localMaxRetToks}.")
+		
+		# If the available space is in between globalMinReplWinToks
+		# and localMaxRetToks, then just set maxTokens=inf (i.e., tell
+		# the API that it can use all the available space). Otherwise,
+		# calculate the value of maxTokens in the same way we used to
+		# do it.
+
+		if globalMinReplWinToks <= availSpaceToks and \
+		   availSpaceToks <= localMaxRetToks:
+
+			maxTokens = None	# No maximum; i.e., infinity; i.e.,
+				# use up to all of the available space.
+
+		else:
+			# Calculate the actual maximum length of the returned
+			# reponse in tokens, given all of our constraints above.
+			maxTokens = max(globalMinReplWinToks,
+							min(localMaxRetToks,
+								availSpaceToks))
+				# Explanation: maxTokens is the amount of space that
+				# will be made available to the AI core for its
+				# response. This should not be less than the AI's
+				# requested minimum reply window size, and it should
+				# be as large as possible, but not more than either
+				# the maximum number of tokens that the AI is allowed
+				# to return, or the amount of space that is actually
+				# available right now in the AI's context window.
+
+		## Detailed diagnostic; comment out until needed.
+		#_logger.debug("In process_chat_message(), "
+		#	f"maxTokens={maxTokens}.")
+
+		## Detailed diagnostic; comment out until needed.
+		#_logger.debug("process_chat_message(): "
+		#	f"maxTokens = {maxTokens}, "
+		#	f"globalMinReplWinToks = {globalMinReplWinToks}, "
+		#	f"globalMaxRetToks = {globalMaxRetToks}, "
+		#	f"localMaxRetToks = {localMaxRetToks}, "
+		#	f"availSpaceToks = {availSpaceToks}")
+
+		# Does this engine support the functions interface? If so,
+		# then we'll pass it our list of function descriptions.
+		if hasFunctions(ENGINE_NAME):
+			functions = FUNCTIONS_LIST
+		else:
+			functions = None
+
+		# Get the response from GPT-3, as a gpt3.api.ChatCompletion object.
+		chatCompletion = global_gptCore.genChatCompletion(	# Call the API.
+				
+			maxTokens=maxTokens,	# Max. number of tokens to return.
+				# We went to a lot of trouble to set this up properly above!
+
+			messages=oaiMsgList,		# Current message list for chat API.
+				# Note that since we pass in an explicit messages list, this 
+				# overrides whatever api.Messages object is being maintained 
+				# in the GPT3ChatCore object.
+
+			user = str(user_id),		# Send the user's unique ID for
+				# traceability in the event of severe content violations.
+
+			minRepWin = globalMinReplWinToks,	# Min. reply window size in tokens.
+				# This parameter gets passed through to the ChatCompletion()
+				# initializer and thence to ChatCompletion._createComplStruct(),
+				# which does the actual work of retrieving the raw completion
+				# structure from the OpenAI API. Note that this parameter is 
+				# necessary because our computed maxTokens value may be greater
+				# than the actual available space in the context window (either
+				# because our estimate was wrong, or because we simply 
+				# requested a minimum space larger than is available). In the 
+				# latter case, getChatCompletion() should notice this & throw a 
+				# PromptTooLargeException, which we'll catch below. If our 
+				# estimate was wrong, then the actual reply window size could be
+				# less than the minimum requested size, but as long as our 
+				# estimates were pretty close, the difference will be small, and 
+				# the AI should still be able to generate a reasonable response.
+
+			# The following are only relevant in 0613 (June 13, 2023) or later
+			# releases of chat models, which support the functions interface.
+			functionList = functions,	# Available function list, if supported.
+			functionCall = 'auto'		# Let AI decide whether/which functions to call.
+
+		) # End of gptCore.genChatCompletion() call.
+
+		# At this point, we have obtained a chat completion object in
+		# <chatCompletion>, and we can break out of the loop and
+		# proceed to process this completion as appropriate.
+
+		break
+
+	#__/
+
+	# If not in debug mode, we do this just once, after the above loop.
+	if not logmaster.doDebug:
+		_logOaiMsgs(oaiMsgList)
+
+	# Get the full response message object.
+	response_oaiMsg = chatCompletion.message
+
+	# Call this coroutine to process that raw response.
+	await _process_raw_response(oaiMsgList, response_oaiMsg)
+		# NOTE: This does several important things, including:
+		#
+		#	* Trims any sender prompt off the front of the text.
+		#
+		#	* If the response is a function call, dispatch to
+		#		function call handling. Note that this may in
+		#		general recursively calling the present function
+		#		get_ai_response() to get the AI's response to
+		#		the function's return value (and this response
+		#		could be another function call, and so on).
+		#
+		#	* Check for finish_reason that indicates a content
+		#		filter was triggered, and log/send a warning.
+		#
+		#	* Check for null response text.
+		#
+		#	* Add the response text to the conversation.
+		#
+		#	* Check for '/pass' commands.
+		#
+		#	* Finally, process the text response by callng
+		#		process_response().
+
+	# When we get here, we're done, and we just return.
+
+#__/ End definition of function get_ai_response().
+
+
+# Another new function, to process a raw response from the AI, which
+# (for chat engines) takes the form of an OpenAI message object (a
+# dictionary-like object). We separate this from get_ai_response()
+# above just to keep our functions from getting too long!
+
+async def _process_raw_response(oaiMsgs:list, respOaiMsg:dict) -> None:
+	# NOTE:
+	#
+	#	<oaiMsgs> is the list of *previous* messages in the	chat,
+	#			prior to this new one just created by the AI.
+	#
+	#	<oaiMsg> is the *new* message just created by the AI
+	#			which we are processing now.
+	#
+	"""Process a raw response from the AI."""
+
+	## CONTINUE FILLING IN CODE FROM process_chat_message() HERE!
+
+#__/
+
+
+def _logOaiMsgs(oaiMsgList:list) -> None:
+
+	# Open the file for writing.
+	with open(f"{LOG_DIR}/latest-messages.txt", "w") as f:
+		for oaiMessage in oaiMessages:
+			f.write(messageRepr(oaiMessage))
+				# Our text representation of OpenAI messages.
+	
+	# Also do a json dump
+	with open(f"{LOG_DIR}/latest-messages.json", "w") as outfile:
+		json.dump(oaiMessages, outfile)
+
+#__/
+
+
 async def process_chat_message(update:Update, context:Context) -> None:
 
 	"""We dispatch to this function to process messages from the user
 		if our selected engine is for OpenAI's chat endpoint."""
 	
-	global maxRetToks
-
 	# Get the message, or edited message from the update.
 	(tgMsg, edited) = _get_update_msg(update)
 		
@@ -2901,7 +3315,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 	chat_id = tgMsg.chat.id
 
 	# Get user_name & unique ID (for content violation logging).
-	user_name = _get_user_name(tgMsg.from_user)
+	user_name = _get_user_tag(tgMsg.from_user)
 	user_id = tgMsg.from_user.id
 
 	# Get our Conversation object.
@@ -2924,17 +3338,8 @@ async def process_chat_message(update:Update, context:Context) -> None:
 		# Open the file for writing.
 		with open(f"{LOG_DIR}/latest-messages.txt", "w") as f:
 			for oaiMessage in oaiMessages:
-
 				f.write(messageRepr(oaiMessage))
 				
-				#if 'role' in chat_message:
-				#	roleOrName = chat_message['role']
-				## Note 'name' overrides 'role' if both are present.
-				#if 'name' in chat_message:
-				#	roleOrName = chat_message['name']
-				#
-				#f.write(f"{roleOrName}: {chat_message['content']}\n")  # Write the message to the file.
-
 		# Also do a json dump
 		with open(f"{LOG_DIR}/latest-messages.json", "w") as outfile:
 			json.dump(oaiMessages, outfile)
@@ -2956,10 +3361,10 @@ async def process_chat_message(update:Update, context:Context) -> None:
 			# We'll do this by subtracting the length of the chat messages from 
 			# the context window size.
 
-			# Get the context window size from the gptCore object.
-			contextWinSizeToks = gptCore.fieldSize
+			# Get the context window size from the global_gptCore object.
+			contextWinSizeToks = global_gptCore.fieldSize
 
-			# The +1 seems true in practice, except for GPT-4. Not sure why.
+			# The +1 here seems true in practice, except for GPT-4. Not sure why.
 			if ENGINE_NAME != 'gpt-4':
 				contextWinSizeToks += 1
 
@@ -2987,30 +3392,30 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 			#_logger.debug(f"In process_chat_message(), availSpaceToks={availSpaceToks}.")
 
-			# Remember: maxRetToks, minReplyWinToks were already
+			# Remember: globalMaxRetToks, globalMinReplWinToks were already
 			# retrieved from the aiConf object and stored in globals
 			# early in this module.
 
 			# Here we're setting a local variable from the global.
-			if maxRetToks is None:	# In the chat API, this becomes inf.
-				lMaxRetToks = float('inf')	# So in other words, no limit.
+			if globalMaxRetToks is None:	# In the chat API, this becomes inf.
+				localMaxRetToks = float('inf')	# So in other words, no limit.
 			else:
-				lMaxRetToks = maxRetToks
+				localMaxRetToks = globalMaxRetToks
 
-			#_logger.debug(f"In process_chat_message(), lMaxRetToks={lMaxRetToks}.")
+			#_logger.debug(f"In process_chat_message(), localMaxRetToks={localMaxRetToks}.")
 
-			# If the available space is in between minReplyWinToks and
-			# lMaxRetToks, then just set maxTokens=inf (i.e., tell the API
-			# to use all the available space). Otherwise, calculate the
+			# If the available space is in between globalMinReplWinToks and
+			# localMaxRetToks, then just set maxTokens=inf (i.e., tell the API
+			# that it can use all the available space). Otherwise, calculate the
 			# value of maxTokens in the same way we used to do it.
 
-			if minReplyWinToks <= availSpaceToks and availSpaceToks <= lMaxRetToks:
+			if globalMinReplWinToks <= availSpaceToks and availSpaceToks <= localMaxRetToks:
 				maxTokens = None	# No maximum; i.e., infinity; i.e., use all
 					# of the available space.
 			else:
 				# Calculate the actual maximum length of the returned reponse
 				# in tokens, given all of our constraints above.
-				maxTokens = max(minReplyWinToks, min(lMaxRetToks, availSpaceToks))
+				maxTokens = max(globalMinReplWinToks, min(localMaxRetToks, availSpaceToks))
 					# Explanation: maxTokens is the amount of space that will
 					# be made available to the AI core for its response. This
 					# should not be less than the AI's requested minimum reply
@@ -3025,8 +3430,8 @@ async def process_chat_message(update:Update, context:Context) -> None:
 			#maxTokens = None	# Equivalent to float('inf')?
 
 			#_logger.debug(f"process_chat_message(): maxTokens = {maxTokens}, "
-			#	f"minReplyWinToks = {minReplyWinToks}, maxRetToks = {maxRetToks}, "
-			#	f"lMaxRetToks = {lMaxRetToks}, availSpaceToks = {availSpaceToks}")
+			#	f"globalMinReplWinToks = {globalMinReplWinToks}, globalMaxRetToks = {globalMaxRetToks}, "
+			#	f"localMaxRetToks = {localMaxRetToks}, availSpaceToks = {availSpaceToks}")
 
 			# Does this engine support the functions interface? If so,
 			# then pass it our list of function descriptions.
@@ -3035,8 +3440,8 @@ async def process_chat_message(update:Update, context:Context) -> None:
 			else:
 				functions = None
 
-			# Get the response from GPT-3, as a ChatCompletion object.
-			chatCompletion = gptCore.genChatCompletion(	# Call the API.
+			# Get the response from GPT-3, as a gpt3.api.ChatCompletion object.
+			chatCompletion = global_gptCore.genChatCompletion(	# Call the API.
 				
 				maxTokens=maxTokens,	# Max. number of tokens to return.
 					# We went to a lot of trouble to set this up properly above!
@@ -3049,7 +3454,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				user = str(user_id),		# Send the user's unique ID for
 					# traceability in the event of severe content violations.
 
-				minRepWin = minReplyWinToks,	# Min. reply window size in tokens.
+				minRepWin = globalMinReplWinToks,	# Min. reply window size in tokens.
 					# This parameter gets passed through to the ChatCompletion()
 					# initializer and thence to ChatCompletion._createComplStruct(),
 					# which does the actual work of retrieving the raw completion
@@ -3070,6 +3475,8 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				functionList = functions,	# Available function list, if supported.
 				functionCall = 'auto'		# Let AI decide whether/which functions to call.
 			)
+
+			## MIGRATE BELOW CODE TO _process_raw_response() and _process_function_call().
 
 			# Get the full response message object.
 			response_oaiMsg = chatCompletion.message
@@ -3216,7 +3623,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				# If the function call was a successful "pass_turn" call, then
 				# we don't need to do anything else here.
 				if resultStr == PASS_TURN_RESULT:
-					_loger.normal(f"\t{BOT_NAME} is refraining from responding in chat #{chat_id}.")
+					_logger.normal(f"\t{BOT_NAME} is refraining from responding in chat #{chat_id}.")
 					return
 
 				# Finish building the message list. So, the sequence here is:
@@ -3243,7 +3650,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				while True:
 					try:
 						# Do a dummy 2nd API call with the result.
-						second_chatCompl = gptCore.genChatCompletion(
+						second_chatCompl = global_gptCore.genChatCompletion(
 							messages 		= temp_chat_oaiMsgs,
 							functionList	= functions
 						)
@@ -3388,7 +3795,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 		#__/
 	#__/
 
-	# If we get here, we've successfully gotten a response from the API.
+	# If we get here, we've successfully gotten a normal response from the API.
 
 	# If the response is empty, then return early. (Can't even send an empty message anyway.)
 	if response_text == "":
@@ -3475,7 +3882,7 @@ async def ai_remember(updateMsg:TgMsg, conversation:BotConversation, textToAdd:s
 
 	# Get user info.
 	user = message.from_user
-	user_name = _get_user_name(user)
+	user_name = _get_user_tag(user)
 
 	# Retrieve the conversation's chat ID.
 	chat_id = conversation.chatID	# Public property. Type: int.
@@ -3645,7 +4052,7 @@ async def ai_block(updateMsg:TgMsg, conversation:BotConversation,
 	message = updateMsg
 
 	# Retrieve the current user's name & ID, in case we need it.
-	user_name = _get_user_name(message.from_user)
+	user_name = _get_user_tag(message.from_user)
 	cur_user_id = message.from_user.id
 
 	# Retrieve the conversation's chat ID.
@@ -3748,7 +4155,7 @@ async def ai_unblock(updateMsg:TgMsg, conversation:BotConversation,
 	message = updateMsg
 
 	# Retrieve the current user's name, in case we need it.
-	user_name = _get_user_name(message.from_user)
+	user_name = _get_user_tag(message.from_user)
 	cur_user_id = message.from_user.id
 
 	# Retrieve the conversation's chat ID.
@@ -3845,7 +4252,7 @@ async def ai_image(update:Update, context:Context, imageDesc:str, caption:str=No
 
 	# Get the chat_id, user_name, and conversation object.
 	chat_id = message.chat.id
-	user_name = _get_user_name(message.from_user)
+	user_name = _get_user_tag(message.from_user)
 	conversation = context.chat_data['conversation']
 
 	# Error-checking for null argument.
@@ -3889,7 +4296,7 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 	
 	# Get the chat_id, user_name, and conversation object.
 	chat_id = message.chat.id
-	user_name = _get_user_name(message.from_user)
+	user_name = _get_user_tag(message.from_user)
 	user_id = message.from_user.id
 	conversation = context.chat_data['conversation']
 	
@@ -3994,7 +4401,7 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 	
 	# Get the chat_id, user_name, and conversation object.
 	chat_id = message.chat.id
-	user_name = _get_user_name(message.from_user)
+	user_name = _get_user_tag(message.from_user)
 	conversation = context.chat_data['conversation']
 
 	# Extract the command name from the message.  We'll do this
@@ -4135,7 +4542,7 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 	
 	# Get the chat_id, user_name, and conversation object.
 	chat_id = message.chat.id
-	user_name = _get_user_name(message.from_user)
+	user_name = _get_user_tag(message.from_user)
 	conversation = context.chat_data['conversation']
 
 	# Extract the command name from the message.  We'll do this
@@ -4263,7 +4670,7 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 	
 	# Get the chat_id, user_name, and conversation object.
 	chat_id = tgMsg.chat.id
-	#user_name = _get_user_name(tgMsg.from_user)
+	#user_name = _get_user_tag(tgMsg.from_user)
 	#conversation = context.chat_data['conversation']
 	response_text = response_botMsg.text
 
@@ -4321,7 +4728,7 @@ async def send_image(update:Update, context:Context, desc:str, caption=None, sav
 	chat_id = tgMsg.chat.id
 
 	# Get our preferred name for the user.
-	username = _get_user_name(tgMsg.from_user)
+	username = _get_user_tag(tgMsg.from_user)
 
 	# Get our Conversation object.
 	conversation = context.chat_data['conversation']
@@ -4494,7 +4901,7 @@ def _addUser(tgUser:User):
 		displayName += " " + tgUser.last_name
 
 	# Get our "tag" (preferred name) for the user.
-	userTag = _get_user_name(tgUser)
+	userTag = _get_user_tag(tgUser)
 
 	# Insert or update the user data
 	c.execute('''
@@ -4764,7 +5171,7 @@ async def _ensure_convo_loaded(update:Update, context:Context) -> bool:
 	chat_id = message.chat.id
 
 	# Get the user's name.
-	user_name = _get_user_name(message.from_user)
+	user_name = _get_user_tag(message.from_user)
 
 	if not 'conversation' in context.chat_data:
 
@@ -4825,7 +5232,7 @@ def _get_update_msg(update:Update):
 
 
 # This function, given a Telegram user object, returns a string that identifies the user.
-def _get_user_name(user) -> str:
+def _get_user_tag(user) -> str:
 
 	"""Return a string that identifies the given Telegram user."""
 
@@ -4845,7 +5252,7 @@ def _get_user_name(user) -> str:
 
 	# If we're using the GPT-3 Chat API, we'll also need to make sure that the user's name
 	# is a valid identifier that's accepted by that API as a user name.
-	if user_name is not None and gptCore.isChat:
+	if user_name is not None and global_gptCore.isChat:
 		# If the user's first name contains characters the GPT-3 Chat API won't accept 
 		# (or is too long or an empty string), we'll invalidate it by setting it to None.
 		if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", user_name):
@@ -5161,7 +5568,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 	message = userTgMessage		# Shorter name.
 
 	# Get the user name.
-	user_name = _get_user_name(message.from_user)
+	user_name = _get_user_tag(message.from_user)
 
 	# Get the chat ID from the conversation (if supplied) or the message.
 	if convo is None:
@@ -5250,7 +5657,7 @@ def _getDynamicMemory(convo:BotConversation):
 	# Our generic search phrase will be simply, the text of
 	# the last message sent in the chat by the user..
 
-	searchPhrase = convo.lastMessageBy(_get_user_name(user)).text
+	searchPhrase = convo.lastMessageBy(_get_user_tag(user)).text
 
 	# We'll get the best-matching 5 items.
 	memList = _searchMemories(userID, chatID, searchPhrase, nItems=5)
@@ -5680,7 +6087,7 @@ _TIME_FORMAT = "%A, %B %d, %Y, %I:%M %p"
 #Please remember to be polite and ethical while interacting with me. If you need assistance or have any questions, feel free to ask. I'm here to help! 😊"""
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-## NOTE: Setting help string is now done later, after gptCore is created.
+## NOTE: Setting help string is now done later, after global_gptCore is created.
 
 
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -5970,11 +6377,11 @@ COMMAND_LIST_HEADER		 = f" ~~~ Commands available for {BOT_NAME} to use: ~~~\n"
 # Old obsolete versions of headers.
 #PERSISTENT_MEMORY_HEADER = " ~~~ Dynamically added persistent memories: ~~~\n"
 
-maxRetToks		 = aiConf.maxReturnedTokens
+globalMaxRetToks		 = aiConf.maxReturnedTokens
 	# This gets the AI's persona's configured preference for the *maximum*
 	# number of tokens the back-end language model may return in a response.
 
-minReplyWinToks	 = aiConf.minReplyWinToks
+globalMinReplWinToks	 = aiConf.minReplyWinToks
 	# This gets the AI's persona's configured preference for the *minimum*
 	# number of tokens worth of space it should be given for its reply.
 
@@ -5994,7 +6401,7 @@ _anyMemories = False
 global _lastError
 _lastError = ""
 
-	# This global just keeps track of whether _get_user_name() retrieved the user's "first name" 
+	# This global just keeps track of whether _get_user_tag() retrieved the user's "first name" 
 	# or their "username" or their "user ID". (Its value is one of those literal strings.)
 global _which_name
 _which_name = None		# Not yet assigned.
@@ -6045,7 +6452,7 @@ _initPersistentContext()	# Call the function for this defined earlier.
 		#|	GPT3Core subclass to instantiate based on the selected engine name.
 		#|	We also go ahead and configure some important API parameters here.
 
-gptCore = createCoreConnection(ENGINE_NAME, maxTokens=maxRetToks, 
+global_gptCore = createCoreConnection(ENGINE_NAME, maxTokens=globalMaxRetToks, 
 	temperature=temperature, presPen=presPen, freqPen=freqPen)
 	#stop=stop_seq)
 
@@ -6057,12 +6464,12 @@ gptCore = createCoreConnection(ENGINE_NAME, maxTokens=maxRetToks,
 
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#  Sets the help string (returned when the user types /help).
-	#	(This uses gptCore, so we can't do it until after that's 
+	#	(This uses global_gptCore, so we can't do it until after that's 
 	#	been created.)
 
 # First calculate the model family, which is mentioned in the help string. 
 # We'll get it from the core object's .modelFamily property.
-MODEL_FAMILY = gptCore.modelFamily
+MODEL_FAMILY = global_gptCore.modelFamily
 
 	# This is the default help string if a custom one is not set.
 HELP_STRING=f"""

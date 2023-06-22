@@ -83,6 +83,17 @@
 			CHAT_ROLE_SYSTEM	- Role of the system in a chat.
 			CHAT_ROLE_USER		- Role of the user in a chat.
 			CHAT_ROLE_AI		- Role of the AI in a chat.
+			
+		New in the functions interface:
+
+			CHAT_ROLE_FUNCALL	- Role for a "function call"
+									message (normally issued
+									by the AI itself).
+
+			CHAT_ROLE_FUNCRET		- Role for a "function return"
+									message (usually created
+									by an application in response
+									to a function call by the AI.
 
 
 	PUBLIC FUNCTIONS:
@@ -299,6 +310,9 @@ __all__ = [
 		'CHAT_ROLE_USER',	# Constant: Role name for the user in a chat session.
 		'CHAT_ROLE_AI',		# Constant: Role name for the AI in a chat session.
 		
+		'CHAT_ROLE_FUNCALL',	# Constant: Role name for function calls issues by the AI.
+		'CHAT_ROLE_FUNCRET',	# Constant: Role name for function results returned to the AI.
+
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~
 		#| Module public classes.
@@ -594,6 +608,14 @@ CHAT_ROLE_USER		= 'user'
 
 global				CHAT_ROLE_AI
 CHAT_ROLE_AI		= 'assistant'
+
+global				CHAT_ROLE_FUNCALL
+CHAT_ROLE_FUNCALL	= 'function_call'
+
+global				CHAT_ROLE_FRET
+CHAT_ROLE_FUNCRET	= 'function'
+
+	# TODO: Implement explicit support for function calling in this interface.
 
 
 #|==============================================================================
