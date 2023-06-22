@@ -120,6 +120,12 @@
 
 		#model-version:					'text-davinci-002'	# Upgraded davinci with 4K tokens (GPT-3.5). ("Gladys 2.0") Used for Dante.
 		#model-version:					'code-davinci-002'	# Starting model for GPT-3.5 RLHF series. Used for David. (Also Codex.)
+<<<<<<< HEAD
+		#model-version:					'text-davinci-003'	# GPT-3.5 RLHF-aligned model. Used for DaVinci.
+		#model-version:					'gpt-3.5-turbo'		# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
+		#model-version:					'gpt-3.5-turbo-0314'	# Original release of 3/14/'23.
+		#model-version:					'gpt-3.5-turbo-0613'	# Updated release of 6/13/'23. Supports functions.
+=======
 		#model-version:					'text-davinci-003'		# GPT-3.5 RLHF-aligned model. Used for DaVinci.
 		#model-version:					'gpt-3.5-turbo'			# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
 		#model-version:					'gpt-3.5-turbo-0301'	# Original release of 3/01/'23.
@@ -128,13 +134,18 @@
 		model-version:					'gpt-3.5-turbo-0613'	# Updated release of 6/13/'23. Supports functions.
 		#model-version:					'gpt-3.5-turbo-16k'			# 16k context window version. Used by Max. Supports functions
 		#model-version:					'gpt-3.5-turbo-16k-0613'	# Used by Max.
+>>>>>>> max
 
 			# The models below are from the GPT-4 series; the context window is expanded to 8K or 32K tokens.
 
 		#model-version:					'gpt-4'				# GPT-4 fine-tuned chat model. 8K tokens. Used for Aria.
 		# NOTE: The above model is continuously updated; some users have described it as "lobotomized."
 		#model-version:					'gpt-4-0314'		# Original release of GPT-4.
+<<<<<<< HEAD
+		model-version:					'gpt-4-0613'		# Updated release of GPT-4. Supports functions
+=======
 		#model-version:					'gpt-4-0613'		# Updated release of GPT-4. Supports functions
+>>>>>>> max
 
 
 			#-----------------------------------------------------------------------

@@ -11,14 +11,14 @@
 	MASTER REPO:	https://github.com/mikepfrank/GLaDOS.git
 	SYSTEM NAME:	GladOS (Gladys' Lovely and Dynamic Operating System)
 	APP NAME:		GLaDOS.server (GladOS server application)
-	SW COMPONENT:	GLaDOS.gpt3 (GladOS GPT-3 interface component)
+	SW COMPONENT:	GLaDOS.gpt3 (GladOS GPT interface component)
 
 
 	MODULE DESCRIPTION:
 	===================
 
 		This module implements a convenience wrapper around OpenAI's API
-		for accessing their GPT-3 language models.	The main feature that
+		for accessing their GPT language models.  The main feature that
 		this wrapper provides at the moment is keeping track of the current
 		values of various API parameters.  It also provides handy functions
 		for things like measuring string lengths in tokens.
@@ -32,7 +32,7 @@
 		GPT3APIConfig - Keeps track of a set of API parameter settings.
 			These can also be modified dynamically.
 		
-		GPT3Core - A connection to the core GPT-3 system that maintains
+		GPT3Core - A connection to the core GPT system that maintains
 			its own persistent API parameters.
 
 		Completion - For objects representing results returned by the 
@@ -44,7 +44,7 @@
 		GPT3ChatAPIConfig - Keeps track of a set of API parameter settings
 			for the chat API.  These can also be modified dynamically.
 
-		GPT3ChatCore - A connection to the chat GPT-3 system that maintains
+		GPT3ChatCore - A connection to the chat GPT system that maintains
 			its own persistent API parameters, including a persistent list
 			of in-context chat messages.
 		
@@ -73,7 +73,7 @@
 		existing instances.	 To modify an existing instance, access
 		its .conf property.
 
-			DEF_ENGINE	- GPT-3 engine name (default 'davinci').
+			DEF_ENGINE	- GPT engine name (default 'davinci').
 			DEF_TOKENS	- Max. number of tokens to output (def. 42).
 			DEF_TEMP	- Default temperature (default is 0.5).
 			DEF_STOP	- Stop string or strings (3 newlines).
@@ -106,7 +106,7 @@
 				tokenizer.  This is much faster than the above function, but
 				requires GPT-2 to be installed locally.  It is also not as
 				accurate as the below function in all cases, since it does 
-				not use the correct tokenizer encoding for all GPT-3 models.
+				not use the correct tokenizer encoding for all GPT models.
 				[DEPRECATED]
 			
 			tiktokenCount() - Counts tokens in a string using the local
@@ -254,6 +254,7 @@ _sw_component = sysName + '.' + _component
 		#|	1.3.2. The below modules are specific to the present application.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+# Comment this out eventually.
 from	tokenizer.tokenizer		import	countTokens as local_countTokens
 	# Method to count tokens without a remote API call.
 	# (NOTE: This is now superseded by the tiktokenCount() function
@@ -308,7 +309,7 @@ __all__ = [
 		'GPT3Core',			# Class: Instance of the API that remembers its config.
 		'Completion',		# Class: An object for a result returned by the API.
 
-			# Module public classes for the GPT-3 chat API.
+			# Module public classes for the GPT chat API.
 
 		'GPT3ChatAPIConfig',	# Class: A collection of chat API parameter settings.
 		'ChatMessages',			# Class: Maintains a list of chat messages.
@@ -340,7 +341,7 @@ __all__ = [
 		'loadStatsIfNeeded',	# Function: Loads the GPT-3 usage statistics file 
 			# if not already loaded.
 
-		'local_countTokens',	# Function: Counts tokens in a string. (No cost.)
+#		'local_countTokens',	# Function: Counts tokens in a string. (No cost.)
 			# NOTE: This function is deprecated since it creates a dependency on
 			# GPT-2 having been installed; use the tiktokenCount() function instead.
 
@@ -1632,7 +1633,7 @@ class Completion:
 
 			# This function counts the number of tokens in the prompt
 			# without having to do an API call (since calls cost $$).
-		nToks = local_countTokens(prompt)
+		nToks = tiktokenCount(prompt, model=engine)
 
 		_inputLength = nToks
 
@@ -1665,7 +1666,7 @@ class Completion:
 
 			# This function counts the number of tokens in the response
 			# without having to do an API call (since calls cost $$).
-		nToks = local_countTokens(text)
+		nToks = tiktokenCount(text, model=engine)
 
 		_logger.debug(f"Counted {nToks} tokens in output text [{text}].")
 
@@ -1839,7 +1840,7 @@ class ChatMessages:
 #|	gpt3.api.ChatCompletion								[module public class]
 #|
 #|		This class is a wrapper for the completion data structure 
-#|		returned by the underlying GPT-3 chat API.  The constructor 
+#|		returned by the underlying GPT chat API.  The constructor 
 #|		calls the API to create this structure.  Various properties 
 #|		allow easy access to information contained in the structure.
 #|
@@ -1915,7 +1916,7 @@ class ChatCompletion(Completion):
 	#
 
 	"""An instance of this class represents a completion object returned
-		by the GPT-3 chat API.  It wraps the underlying completion structure
+		by the GPT chat API.  It wraps the underlying completion structure
 		provided by the API."""
 	
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2280,8 +2281,8 @@ class ChatCompletion(Completion):
 			chat API, with automatic exponential backoff and retry."""
 		
 		if 'messages' in apiArgs:
-			_logger.info(f"In _createChatComplStruct(), apiArgs['messages']="
-						 f"[list of {len(apiArgs['messages'])} messages]")
+			_logger.debug(f"In _createChatComplStruct(), apiArgs['messages']="
+						  f"[list of {len(apiArgs['messages'])} messages]")
 
 		chatCompl = thisChatCompletion	# For convenience.
 
@@ -2382,7 +2383,7 @@ class ChatCompletion(Completion):
 
 			#_logger.debug(f"In ._createChatComplStruct(), maxToks={maxToks}.")
 
-			_logger.warn(f"[GPT-3 chat API] Trimmed max_tokens window from {origMax} to {maxToks}.")
+			_logger.warn(f"[GPT chat API] Trimmed max_tokens window from {origMax} to {maxToks}.")
 
 		#__/ End if result window too big.
 
@@ -2395,7 +2396,7 @@ class ChatCompletion(Completion):
 			if apiArgs['max_tokens'] is None:
 				apiArgs['max_tokens'] = float('inf')
 
-			_logger.debug(f"[GPT-3 chat API] Requesting up to {apiArgs['max_tokens']} tokens.")
+			_logger.debug(f"[GPT chat API] Requesting up to {apiArgs['max_tokens']} tokens.")
 
 			if apiArgs['max_tokens'] == float('inf'):
 				del apiArgs['max_tokens']	# Equivalent to float('inf')?
@@ -2503,8 +2504,8 @@ class ChatCompletion(Completion):
 			API, since it does not use the completion result."""
 
 		if 'messages' in apiArgs:
-			_logger.info(f"In _estimateInputLen(), apiArgs['messages']="
-						 f"[list of {len(apiArgs['messages'])} messages]")
+			_logger.debug(f"In _estimateInputLen(), apiArgs['messages']="
+						  f"[list of {len(apiArgs['messages'])} messages]")
 		else:
 			_logger.error("Missing 'messages' API argument in _estimateInputLen()!")
 
@@ -3058,7 +3059,7 @@ class GPT3ChatCore(GPT3Core):
 		#|	.adjustConf(params)						[instance public method]
 		#|
 		#|		Adjusts the API parameter values of this connection to 
-		#|		the core GPT-3 chat system as specified by the argument 
+		#|		the core GPT chat system as specified by the argument 
 		#|		list.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -3472,7 +3473,7 @@ def transcribeAudio(filename:str):
 	_logger.info(f"Passing {filename} to the OpenAI transcription endpoint...")
 	audio_file = open(filename, 'rb')
 	transcript = openai.Audio.transcribe("whisper-1", audio_file)
-	_logger.info(f"Got back this transcript: {transcript}")
+	_logger.info(f"\tGot back this transcript: {transcript}")
 	text = transcript['text']
 
 	return text
