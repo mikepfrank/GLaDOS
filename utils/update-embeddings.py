@@ -17,15 +17,21 @@ def _getEmbedding(text: str, engine=EMBEDDING_MODEL, **kwargs) -> list:
 		["data"][0]["embedding"]
 
 
+global global_nItems
+global_nItems = 0
+
 # Function to get new embeddings from the text
 def _getNewEmbedding(text):
 	"""Gets a new embedding of a text."""
 
+	global global_nItems
+
 	# Get the response from OpenAI Embeddings API. Returns a vector.
 	embedding_asList = _getEmbedding(text)
 
-	# 
-	print(f"\nGot a {len(embedding_asList)}-element embedding vector for text: [{text}].")
+	# Diagnostic
+	global_nItems += 1
+	print(f"\n{global_nItems}. Got a {len(embedding_asList)}-element embedding vector for text:\n\t[{text}].")
 
 	# Convert the embedding list to a numpy array and pickle it
 	embedding_np = np.array(embedding_asList)
