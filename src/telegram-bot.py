@@ -250,6 +250,9 @@ import re
 
 from pprint import pformat
 
+# We use this to compactly store embedding vectors as SQLite BLOBs.
+import pickle
+
 import asyncio	# We need this for python-telegram-bot v20.
 
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -5480,14 +5483,27 @@ def _addMemoryItem(userID, chatID, itemText, isPublic=False, isGlobal=False):
 	# Generate a random 8-hex-digit string for itemID
 	itemID = '{:08x}'.format(random.randint(0, 0xFFFFFFFF))
 
-	# Get the embedding for the item, as a string.
-	embedding = _getEmbeddingStr(itemText)
+	## OLD VERSION:
+	## Get the embedding for the item, as a string.
+	#embedding = _getEmbeddingStr(itemText)
 
+	# NEW VERSION:
+	# Get the embedding for the item, as a pickled numpy array.
+	embedding_pickle = _getEmbeddingPickle(itemText)
+
+	## OLD VERSION:
+	## Insert the memory item into the remembered_items table
+	#c.execute('''
+	#	INSERT INTO remembered_items (itemID, userID, chatID, public, global, itemText, embedding)
+	#	VALUES (?, ?, ?, ?, ?, ?, ?)
+	#''', (itemID, userID, chatID, isPublic, isGlobal, itemText, embedding))
+
+	# NEW VERSION:
 	# Insert the memory item into the remembered_items table
 	c.execute('''
-		INSERT INTO remembered_items (itemID, userID, chatID, public, global, itemText, embedding)
+		INSERT INTO remembered_items (itemID, userID, chatID, public, global, itemText, embedding_blob)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
-	''', (itemID, userID, chatID, isPublic, isGlobal, itemText, embedding))
+	''', (itemID, userID, chatID, isPublic, isGlobal, itemText, embedding_pickle))
 
 	# Commit the transaction
 	conn.commit()
@@ -5833,6 +5849,19 @@ def _getEmbeddingStr(text):
 #__/
 
 
+def _getEmbeddingPickle(text):
+    """Gets a pickled numpy array representation of the embedding of a text."""
+
+    # Get the response from OpenAI Embeddings API. Returns a vector.
+    embedding_asList = _getEmbedding(text)
+
+    # Convert the embedding list to a numpy array and pickle it
+    embedding_np = np.array(embedding_asList)
+    embedding_pickle = pickle.dumps(embedding_np, protocol=pickle.HIGHEST_PROTOCOL)
+
+    return embedding_pickle
+
+
 # This function extracts the edited_message or message field from an update,
 # as appropriate, and returns the pair (message, edited).
 def _get_update_msg(update:Update):
@@ -5918,6 +5947,21 @@ def _initBotDB():
 	# Create a cursor object
 	c = conn.cursor()
 
+	## OLD VERSION:
+	## Creating table if it doesn't exist
+	#c.execute('''
+	#	CREATE TABLE IF NOT EXISTS remembered_items (
+	#		itemID TEXT PRIMARY KEY,
+	#		userID INTEGER,
+	#		chatID INTEGER,
+	#		public BOOLEAN,
+	#		global BOOLEAN,
+	#		itemText TEXT,
+	#		embedding TEXT
+	#	);
+	#''')
+
+	# NEW VERSION:
 	# Creating table if it doesn't exist
 	c.execute('''
 		CREATE TABLE IF NOT EXISTS remembered_items (
@@ -5927,7 +5971,7 @@ def _initBotDB():
 			public BOOLEAN,
 			global BOOLEAN,
 			itemText TEXT,
-			embedding TEXT
+			embedding_blob BLOB
 		);
 	''')
 
@@ -6146,7 +6190,7 @@ def _printUsers():
 		# Create a cursor object
 		c = conn.cursor()
 
-		# Select all the columns except for embedding.
+		# Select all the columns.
 		c.execute("SELECT * FROM users")
 
 		_logger.normal("\n"
@@ -6340,10 +6384,17 @@ def _searchMemories(userID, chatID, searchPhrase,
 
 	# Iterate through all the satisfying items
 	for item in items:
+		## OLD VERSION:
+		## Convert the item to a dictionary
+		#itemDict = {"itemID": item[0], "userID": item[1], "chatID": item[2],
+		#			"public": item[3], "global": item[4], "itemText": item[5],
+		#			"embedding": _strToList(item[6])}
+
+		# NEW VERSION:
 		# Convert the item to a dictionary
 		itemDict = {"itemID": item[0], "userID": item[1], "chatID": item[2],
 					"public": item[3], "global": item[4], "itemText": item[5],
-					"embedding": _strToList(item[6])}
+					"embedding": pickle.loads(item[6])}
 
 		# Compute the semantic distance between the search phrase and the item
 		distance = _semanticDistance(searchEmbedding, itemDict["embedding"])
