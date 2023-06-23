@@ -19,16 +19,19 @@ def _getEmbedding(text: str, engine=EMBEDDING_MODEL, **kwargs) -> list:
 
 # Function to get new embeddings from the text
 def _getNewEmbedding(text):
-    """Gets a new embedding of a text."""
+	"""Gets a new embedding of a text."""
 
-    # Get the response from OpenAI Embeddings API. Returns a vector.
-    embedding_asList = _getEmbedding(text)
+	# Get the response from OpenAI Embeddings API. Returns a vector.
+	embedding_asList = _getEmbedding(text)
 
-    # Convert the embedding list to a numpy array and pickle it
-    embedding_np = np.array(embedding_asList)
-    embedding_pickle = pickle.dumps(embedding_np, protocol=pickle.HIGHEST_PROTOCOL)
+	# 
+	print(f"\nGot a {len(embedding_asList)}-element embedding vector for text: [{text}].")
 
-    return embedding_pickle
+	# Convert the embedding list to a numpy array and pickle it
+	embedding_np = np.array(embedding_asList)
+	embedding_pickle = pickle.dumps(embedding_np, protocol=pickle.HIGHEST_PROTOCOL)
+
+	return embedding_pickle
 
 # Function to update the embeddings in the database
 def updateEmbeddings():
