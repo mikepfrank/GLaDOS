@@ -4531,7 +4531,8 @@ async def ai_remember(updateMsg:TgMsg, conversation:BotConversation, textToAdd:s
 				
 
 async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
-					queryPhrase:str, nItems:int=3) -> list:
+					queryPhrase:str, nItems:int=DEFAULT_SEARCHMEM_NITEMS
+			) -> list:
 
 	"""Do a context-sensitive semantic search for memory items that
 		are related to the query phrase. Returns the closest few
@@ -4539,6 +4540,27 @@ async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
 
 	userID = updateMsg.from_user.id
 	chatID = conversation.chat_id
+
+	# Cap nItems at 10.
+	maxn = MAXIMUM_SEARCHMEM_NITEMS
+	if nItems > maxn:
+
+		_logger.warn(f"{nItems} search results requested; capping to {maxn}.")
+
+		warning_msgStr = f"WARNING: {nItems} search results were requested, "\
+			"but returning more than {maxn} items from a memory search is "\
+			"not supported. Limiting search to top {maxn} results."
+
+		nItems = maxn
+
+			# Make sure the AI sees that message, even if we fail in sending it to the user.
+		conversation.add_message(BotMessage(SYS_NAME, warning_msgStr))
+		
+            # Also send the warning message to the user. (Making it clear that 
+            # it's a system message, not from the AI persona itself.)
+		reply_msgStr = f"[SYSTEM {warning_msgStr}]"
+		await _reply_user(tgMessage, conversation, reply_msgStr, ignore=True)
+	}
 
 	_logger.normal(f"In chat {chatID}, for user #{userID}, AI is searching for the top {nItems} memories matching the search query: [{queryPhrase}].")
 	matchList = _searchMemories(userID, chatID, queryPhrase, nItems=nItems)
@@ -4913,8 +4935,11 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 			# Get the arguments.
 
 		queryPhrase = funcArgs.get('query_phrase', None)
+		maxResults = funcArgs.get('max_items', DEFAULT_SEARCHMEM_NITEMS)
+
 		if queryPhrase:
-			return await ai_search(message, conversation, queryPhrase)
+			return await ai_search(message, conversation, queryPhrase,
+								   nItems=maxResults)
 			
 		else:
 			await _report_error(conversation, message,
@@ -6244,8 +6269,9 @@ def _getDynamicMemory(convo:BotConversation):
 
 	searchPhrase = convo.lastMessageBy(_get_user_tag(user)).text
 
-	# We'll get the best-matching 5 items.
-	memList = _searchMemories(userID, chatID, searchPhrase, nItems=5)
+	# We'll get the best-matching N items (currently set to 5).
+	memList = _searchMemories(userID, chatID, searchPhrase,
+							  nItems=DYNAMIC_CONTEXT_NITEMS)
 
 	# We'll accumulate lines with the following format:
 	#
@@ -6273,7 +6299,8 @@ def _getDynamicMemory(convo:BotConversation):
 	return memString
 
 
-def _searchMemories(userID, chatID, searchPhrase, nItems=3):
+def _searchMemories(userID, chatID, searchPhrase,
+					nItems=DEFAULT_SEARCHMEM_NITEMS):
 
 	_logger.info(f"\n_searchMemories(): Searching for userID={userID}, "
 				 f"chatID={chatID} to find the top {nItems} closest "
@@ -6598,6 +6625,15 @@ SYS_NAME = 'BotServer'	  # This refers to the present system, i.e., the Telegram
 _TIME_FORMAT = "%A, %B %d, %Y, %I:%M %p"
 	# Format like "Saturday, June 10, 2023, 5:03 pm".
 
+# Number of items that the search_memory function returns by default.
+DEFAULT_SEARCHMEM_NITEMS	= 3
+	# Reasonable default. Do not recommend setting this higher than 10.
+MAXIMUM_SEARCHMEM_NITEMS	= 10
+	# Cap the number of itself to return at this level.
+
+# We'll include in each prompt the top this many relevant items.
+DYNAMIC_CONTEXT_NITEMS		= 5
+
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#  Sets the stop sequence (terminates response when encountered).
 
@@ -6723,7 +6759,7 @@ FUNCTIONS_LIST = [
 	# Function for command: /search <query_phrase>
 	{
 		"name":			"search_memory",
-		"description":	"Do a context-sensitive semantic search for the top 3 "\
+		"description":	"Do a context-sensitive semantic search for the top N "\
 							"memories related to a given search phrase.",
 		"parameters":	{
 			"type":			"object",
@@ -6731,7 +6767,13 @@ FUNCTIONS_LIST = [
 				"query_phrase":	{
 					"type":			"string",	# <query_phrase> is a string
 					"description":	"Text to semantically match against memories."
-				}
+				},
+				"max_results": {
+					"type":			"integer",	# <max_results> is an integer
+					"description":	"The maximum number of items to return "
+									"(up to {MAXIMUM_SEARCHMEM_NITEMS})."
+					"default":		DEFAULT_SEARCHMEM_NITEMS,
+				},
 			},
 			"required":		["query_phrase"]	# <query_phrase> arg is required.
 		},
@@ -6930,6 +6972,16 @@ aiConf = TheAIPersonaConfig()
 #BOT_NAME = 'Gladys'	# The AI persona that we created this bot for originally.
 BOT_NAME = aiConf.botName		# This is the name of the bot.
 
+# These are the section headers of the AI's persistent context.
+PERMANENT_CONTEXT_HEADER = " ~~~ Permanent context data: ~~~\n"
+PERSISTENT_MEMORY_HEADER = " ~~~ Important persistent memories: ~~~\n"
+DYNAMIC_MEMORY_HEADER	 = " ~~~ Contextually relevant memories: ~~~\n"
+RECENT_MESSAGES_HEADER	 = " ~~~ Recent Telegram messages: ~~~\n"
+COMMAND_LIST_HEADER		 = f" ~~~ Commands available for {BOT_NAME} to use: ~~~\n"
+
+# Old obsolete versions of headers.
+#PERSISTENT_MEMORY_HEADER = " ~~~ Dynamically added persistent memories: ~~~\n"
+
 # Retrieve the bot's startup message from the AI persona's configuration.
 START_MESSAGE = aiConf.startMsg
 
@@ -6951,16 +7003,6 @@ freqPen = aiConf.frequencyPenalty
 ENGINE_NAME = aiConf.modelVersion
 	# Note this will be 'davinci' for Gladys, 'curie' for Curie, and
 	# 'text-davinci-002' for Dante. And so on.
-
-# These are the section headers of the AI's persistent context.
-PERMANENT_CONTEXT_HEADER = " ~~~ Permanent context data: ~~~\n"
-PERSISTENT_MEMORY_HEADER = " ~~~ Important persistent memories: ~~~\n"
-DYNAMIC_MEMORY_HEADER	 = " ~~~ Contextually relevant memories: ~~~\n"
-RECENT_MESSAGES_HEADER	 = " ~~~ Recent Telegram messages: ~~~\n"
-COMMAND_LIST_HEADER		 = f" ~~~ Commands available for {BOT_NAME} to use: ~~~\n"
-
-# Old obsolete versions of headers.
-#PERSISTENT_MEMORY_HEADER = " ~~~ Dynamically added persistent memories: ~~~\n"
 
 globalMaxRetToks		 = aiConf.maxReturnedTokens
 	# This gets the AI's persona's configured preference for the *maximum*
