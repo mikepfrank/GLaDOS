@@ -3604,7 +3604,7 @@ async def _process_raw_response(
 		_logger.info(f"Suppressing response [{response_text}]; it's a repeat.")
 
 		# Delete the last message from the conversation.
-		conversation.delete_last_message()
+		botConvo.delete_last_message()
 
 		## Send the user a diagnostic message (doing this temporarily during development).
 		#diagMsg = f"Suppressing response [{response_text}]; it's a repeat."
