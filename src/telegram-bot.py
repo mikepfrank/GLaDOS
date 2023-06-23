@@ -311,20 +311,23 @@ import numpy as np
 from openai						import Embedding
 from openai.error				import RateLimitError			# Detects quota exceeded.
 
-## NOTE: embeddings_utils wants to import too much stuff, so instead
-## we'll just copy the two functions we need from it inline into our code.
-#
 #from openai.embeddings_utils	import (
 #		get_embedding,		# Gets the embedding vector of a string.
 #		cosine_similarity	# Computes cosine of angle between vectors.
 #	)
-
-import backoff	# Use instead of retry since we've already installed it?
+#
+## NOTE: openai.embeddings_utils wants to import too much stuff, so
+## instead we'll just copy the above two functions that we actually
+## need from it inline into our code below.
 
 #@retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(6))
+import backoff	# Use instead of retry since we've already installed it
+
+#EMBEDDING_MODEL = "text-similarity-davinci-001"
+EMBEDDING_MODEL = "text-embedding-ada-002"
 
 @backoff.on_exception(backoff.expo, Exception, max_tries=6)
-def get_embedding(text: str, engine="text-similarity-davinci-001", **kwargs) -> list:
+def get_embedding(text: str, engine=EMBEDDING_MODEL, **kwargs) -> list:
 
     # replace newlines, which can negatively affect performance.
     text = text.replace("\n", " ")
