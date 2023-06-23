@@ -10,7 +10,7 @@
 #
 #		1.	<update code to commit 1d6147db or later>
 #		2.	<stop the bot server>
-#		3.	$ cd $AI_DATADIR
+#		3.	$ cd $AI_DATADIR/telegram
 #		4.	$ python3 ~/GLaDOS/utils/convert-db-2.py
 #		5.	<restart the bot server)
 
