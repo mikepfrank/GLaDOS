@@ -4530,6 +4530,10 @@ async def ai_remember(updateMsg:TgMsg, conversation:BotConversation, textToAdd:s
 #__/ End of ai_remember() function definition.
 				
 
+# Number of items that the search_memory function returns by default.
+DEFAULT_SEARCHMEM_NITEMS	= 3
+	# Reasonable default. Do not recommend setting this higher than 10.
+
 async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
 					queryPhrase:str, nItems:int=DEFAULT_SEARCHMEM_NITEMS
 			) -> list:
@@ -4560,7 +4564,8 @@ async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
             # it's a system message, not from the AI persona itself.)
 		reply_msgStr = f"[SYSTEM {warning_msgStr}]"
 		await _reply_user(tgMessage, conversation, reply_msgStr, ignore=True)
-	}
+
+	#__/
 
 	_logger.normal(f"In chat {chatID}, for user #{userID}, AI is searching for the top {nItems} memories matching the search query: [{queryPhrase}].")
 	matchList = _searchMemories(userID, chatID, queryPhrase, nItems=nItems)
@@ -4935,7 +4940,7 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 			# Get the arguments.
 
 		queryPhrase = funcArgs.get('query_phrase', None)
-		maxResults = funcArgs.get('max_items', DEFAULT_SEARCHMEM_NITEMS)
+		maxResults = funcArgs.get('max_results', DEFAULT_SEARCHMEM_NITEMS)
 
 		if queryPhrase:
 			return await ai_search(message, conversation, queryPhrase,
@@ -6625,9 +6630,6 @@ SYS_NAME = 'BotServer'	  # This refers to the present system, i.e., the Telegram
 _TIME_FORMAT = "%A, %B %d, %Y, %I:%M %p"
 	# Format like "Saturday, June 10, 2023, 5:03 pm".
 
-# Number of items that the search_memory function returns by default.
-DEFAULT_SEARCHMEM_NITEMS	= 3
-	# Reasonable default. Do not recommend setting this higher than 10.
 MAXIMUM_SEARCHMEM_NITEMS	= 10
 	# Cap the number of itself to return at this level.
 
@@ -6771,7 +6773,7 @@ FUNCTIONS_LIST = [
 				"max_results": {
 					"type":			"integer",	# <max_results> is an integer
 					"description":	"The maximum number of items to return "
-									"(up to {MAXIMUM_SEARCHMEM_NITEMS})."
+									"(up to {MAXIMUM_SEARCHMEM_NITEMS}).",
 					"default":		DEFAULT_SEARCHMEM_NITEMS,
 				},
 			},
