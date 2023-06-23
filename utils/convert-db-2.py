@@ -5,6 +5,14 @@
 #	-> The new format stores embeddings as blobs of pickled numpy arrays.
 #
 # The new format takes up <40% as much space as the old one.
+#
+#	USAGE:
+#
+#		1.	<update code to commit 1d6147db or later>
+#		2.	<stop the bot server>
+#		3.	$ cd $AI_DATADIR
+#		4.	$ python3 ~/GLaDOS/utils/convert-db-2.py
+#		5.	<restart the bot server)
 
 import sqlite3
 import numpy as np
