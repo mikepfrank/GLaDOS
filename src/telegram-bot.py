@@ -61,20 +61,22 @@
 #|			3.4. Define update handler group 3 -- unknown command handler.
 #|			3.5. Define error handlers.
 #|
-#|		4. Define misc. functions.
-#|			4.1. Define public functions.
-#|			4.2. Define private functions.
+#|		4. Define AI command handler functions.
 #|
-#|		5. Define globals.
-#|			5.1. Define global constants.
-#|			5.2. Define global variables.
-#|			5.3. Define global structures & objects.
+#|		5. Define misc. functions.
+#|			5.1. Define public functions.
+#|			5.2. Define private functions.
 #|
-#|		6. Main body -- bot startup.
-#|			6.1. Display command list.
-#|			6.2. Create Updater object.
-#|			6.3. Configure dispatcher.
-#|			6.4. Start main loop.
+#|		6. Define globals.
+#|			6.1. Define global constants.
+#|			6.2. Define global variables.
+#|			6.3. Define global structures & objects.
+#|
+#|		7. Main body -- bot startup.
+#|			7.1. Display command list.
+#|			7.2. Create Updater object.
+#|			7.3. Configure dispatcher.
+#|			7.4. Start main loop.
 #|
 #|
 #|  Classes:
@@ -113,10 +115,30 @@
 #|		handle_unknown_command() - Handle a user command of unrecognized type.
 #|
 #|
+#|	AI command handler functions:
+#|	=============================
+#|
+#|		ai_block() - Handles AI's '/block' command and block_user() function.
+#|
+#|		ai_forget() - Handles AI's '/forget' command and forget_item() function.
+#|
+#|		ai_image() - Handles AI's '/image' command and create_image() function.
+#|
+#|		ai_remember() - Handles AI's '/remember' command and remember_item() function.
+#|
+#|		ai_search() - Handles AI's search_memory() function.
+#|
+#|		ai_unblock() - Handles AI's '/unblock' command and unblock_user() function.
+#|
+#|
 #|	Misc. public (major) functions:
 #|	===============================
 #|
+#|		ai_call_function() - Calls an AI-callable function by name and arguments.
+#|
 #|		get_ai_response() - Gets a response from the AI and processes it.
+#|
+#|		process_ai_command() - Processes a command line issued by the AI.
 #|
 #|		process_chat_message() - Main message processing algorithm for GPT chat API.
 #|
@@ -132,23 +154,83 @@
 #|	Misc. private (minor) functions:
 #|  --------------------------------
 #|
-#|		_blockUser() - Blocks a given user from accessing the bot.
+#|		_addMemoryItem() - Adds a new item to the context-sensitive semantic memory.
+#|
+#|		_addUser() - Adds a new user to the users table.
+#|
+#|		_blockUser() - Blocks a given user (by tag) from accessing the bot.
+#|
+#|		_blockUserByID() - Blocks a user (by user ID) from accessing the bot.
+#|
+#|		_call_desc() - Converts a functin name and arg dict to a simple string form.
 #|
 #|		_check_access() - Checks whether user may access the bot according to a given policy.
 #|
+#|		_deleteMemoryItem() - Deletes an item from semantic memory by item ID or text.
+#|
 #|		_ensure_convo_loaded() - Make sure the conversation is loaded, start/resume it if not.
 #|
+#|		_getDynamicMemory() - Retrieve related memories to the last conversation message.
+#|
+#|		_getEmbedding() - Gets the embedding of a string as a vector (list).
+#|
+#|		_getEmbeddingStr() - Gets the embedding of a string as ASCII comma-separated floats.
+#|
+#|		_getEmbeddingPickle() - Get the embedding of a string as a pickled numpy array.
+#|
+#|		_get_update_msg() - Get the message or edited_message field from a Telegram update.
+#|
 #|		_get_user_tag() - Retrieve our preferred name for a user from their Telegram user object.
+#|
+#|		_initBotDB() - Initializes the database that we use to store user and memory data.
 #|
 #|		_initPersistentContext() - Initialize the context headers at the top of the AI's field.
 #|
 #|		_initPersistentData() - Initialize the persistent-data headers (from fixed & dynamic memories).
 #|
 #|		_isBlocked() - Return True if the user is blocked, or is not on whitelist (if it exists).
+#|						NOTE: This function consults only the legacy whitelist/blacklist flat files,
+#|						not the new user database.
+#|
+#|		_isBlockedByID() - Look up in the database whether a given user is blocked (by their ID).
+#|
+#|		_listToStr() - Given a list, return it as a comma-separated string.
+#|
+#|		_logOaiMsgs() - Log an OpenAI message list in text and JSON formats.
+#|
+#|		_lookup_user() - Look up a user object by the user's user ID.
+#|
+#|		_lookup_user_by_dispname() - Look up a user object by the user's display name.
+#|
+#|		_lookup_user_by_tag() - Look up a user object by the user's name tag.
+#|
+#|		_printMemories() - Print the database table of memory items to the console.
+#|
+#|		_printUsers() - Print the database table of users to the console.
+#|
+#|		_process_function_call() - Handles function call requests from the AI.
+#|
+#|		_process_raw_response() - Process a raw chat completion result returned by the AI.
+#|
+#|		_reply_user() - Sends a reply to a user Telegram message, with exception handling.
 #|
 #|		_report_error() - Report a given error response from a Telegram send.
 #|
-#|		_unblockUser() - Removes a given user from the block list.
+#|		_searchMemories() - Do a semantic search for memories related to a string.
+#|
+#|		_semanticDistance() - Returns the semantic distance between two vectors.
+#|
+#|		_send_diagnostic() - Sends a diagnostic message to the AI and the user.
+#|
+#|		_set_user_blocked() - Sets the user's 'blocked' status in the database.
+#|
+#|		_strToList() - Converts a comma-separated string to a list of floats.
+#|
+#|		_trim_prompt() - Trims the bot prompt "{BOT_NAME}> " off the response.
+#|
+#|		_unblockUser() - Removes a given user (by tag) from the block list.
+#|
+#|		_unblockUserByID() - Removes a given user (by ID) from the block list.
 #|
 #|
 #|	TO DO:
@@ -2984,7 +3066,487 @@ async def handle_error(update:Update, context:Context) -> None:
 
 
 #/=============================================================================|
-#|	4. Define misc. functions.					 [python module code section]  |
+#|	4. Define AI command/function				 [python module code section]  |
+#|		call handler functions. 											   |
+#|																			   |
+#|		In this section, we define functions that will handle commands		   |
+#|		and function calls invoked by the AI. These include:				   |
+#|																			   |
+#|			ai_block() - Handles /block AI command and block_user()			   |
+#|								AI function call.							   |
+#|																			   |
+#|			ai_forget() - Handles /forget AI command and forget_item()		   |
+#|								AI function call.							   |
+#|																			   |
+#|			ai_image() - Handles /image AI command and create_image()		   |
+#|								AI function call.							   |
+#|																			   |
+#|			ai_remember() - Handles /remember AI command and				   |
+#|								remember_item() AI function call.			   |
+#|																			   |
+#|			ai_search() - Handles search_memory() AI function call.			   |
+#|																			   |
+#|			ai_unblock() - Handles /unblock command and unblock_user()		   |
+#|								AI function call.							   |
+#|																			   |
+#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
+
+
+# Below are functions to implement commands that may performed by the AI.
+# They are: remember, forget, block, and image.
+#	* /remember <text> - Adds <text> to persistent memory.
+#	* /forget <text> - Removes <text> from persistent memory.
+#	* /block [<user>] - Blocks the current user.
+#	* /image <desc> - Generates an image with a given text description and sends it to the user.
+
+
+# Define a function to handle the /block command, when issued by the AI.
+async def ai_block(updateMsg:TgMsg, conversation:BotConversation,
+				   userToBlock:str=None, userIDToBlock:int=None) -> str:
+
+	"""The AI calls this function to block the given user, who may be specified
+		by tag (if unique) or by ID. If no user is specified, it blocks the
+		current user (the one who sent the current update)."""
+	
+	# Put the message from the Telegram update in a convenient variable.
+	message = updateMsg
+
+	# Retrieve the current user's name & ID, in case we need it.
+	user_name = _get_user_tag(message.from_user)
+	cur_user_id = message.from_user.id
+
+	# Retrieve the conversation's chat ID.
+	chat_id = conversation.chatID	# Public property. Type: int.
+
+	# The following code used to appear directly inside handle_response(), but I've
+	# moved it here to make it easier to call it from other places, such as the
+	# code to handle function-call responses from the AI.
+
+	# If no user was specified, then we'll block the current user.
+	if userToBlock == None and userIDToBlock == None:
+		userToBlock = user_name
+		userIDToBlock = cur_user_id
+
+	## If we don't have a user ID, complain and die.
+	#if userIDToBlock is None:
+	#	await _report_error(conversation, message,
+	#						"Blocking users by tag is no longer supported."))
+	#	return "internal error in ai_block()"
+
+	# If we're given a user ID, we'll use that; if we only have a user tag,
+	# we'll check whether the tag is unique, and if so we'll use it.
+
+	if userIDToBlock is None:
+
+		matchingUsers = _lookup_user_by_tag(userToBlock)
+
+		if len(matchingUsers) > 1:
+			diagMsg = f"Can't block user by name tag '{userToBlock}' because it isn't unique."
+			return_msg = f"Error: User name tag {userToBlock} is not unique!"
+
+			# Send diagnostic message to AI and to user.
+			sendRes = await _send_diagnostic(message, conversation, diagMsg)
+			if sendRes != 'success': return sendRes
+
+			return return_msg
+
+		if len(matchingUsers) == 0:
+
+			# We could also try searching by display name here, but we don't bother.
+
+			diagMsg = f"Can't block user with name tag '{userToBlock}' because a user with that "\
+					  "tag wasn't found. Try blocking by the user's first name, username, or user "\
+					  "ID instead."
+			return_msg = f"Error: User name tag {userToBlock} was not found!"
+
+			# Send diagnostic message to AI and to user.
+			sendRes = await _send_diagnostic(message, conversation, diagMsg)
+			if sendRes != 'success': return sendRes
+
+			return return_msg
+			
+
+		# Retrieve the user's ID.
+		userIDToBlock = matchingUsers[0]['userID']
+
+	# Generate a warning-level log message to indicate that we're blocking the user.
+	_logger.warn(f"***ALERT*** The AI is blocking user '{userToBlock}' in conversation {chat_id}.")
+
+	# Retrieve the user tag if we don't have it yet.
+	if userToBlock is None:
+
+		userData = _lookup_user(userIDToBlock)
+		userToBlock = userData['userTag']
+
+	# Check if they're already blocked; else block them.
+	if _isBlockedByID(userIDToBlock):
+		_logger.warn(f"User '{userToBlock}' is already blocked.")
+		diagMsg = f'User {userToBlock} has already been blocked by {BOT_NAME}.'
+		return_msg = f"Note: User {userToBlock} is already blocked!"
+	else:
+		success = _blockUserByID(userIDToBlock)
+		if success:
+			diagMsg = f'{BOT_NAME} has blocked user {userToBlock}.'
+			return_msg = f"Success: blocked user {userToBlock}."
+		else:
+			error = _lastError	# Fetch the error message.
+			await _report_error(conversation, message, error)
+			return 'blocking the app developer is not allowed'
+	
+	# Send diagnostic message to AI and to user.
+	sendRes = await _send_diagnostic(message, conversation, diagMsg)
+	if sendRes != 'success': return sendRes
+
+	return return_msg
+
+#__/ End of ai_block() function definition.
+				
+
+# Define a function to handle the /forget command, when issued by the AI.
+async def ai_forget(updateMsg:TgMsg, conversation:BotConversation,
+					textToDel:str=None, itemToDel:str=None) -> None:
+	"""The AI calls this function to remove the given text from its persistent memory."""
+
+	# Put the message from the Telegram update in a convenient variable.
+	message = updateMsg
+
+	# Retrieve the conversation's chat ID.
+	chat_id = conversation.chatID	# Public property. Type: int.
+
+	# The following code used to appear directly inside handle_response(), but I've
+	# moved it here to make it easier to call it from other places, such as the
+	# code to handle function-call responses from the AI.
+
+	# Check for missing <textToDel> argument.
+	if textToDel == None and itemToDel == None:
+		_logger.error(f"The AI sent a /forget command with no " \
+					  f"argument in conversation {chat_id}.")
+
+		diagMsg = "/forget command needs an argument."
+		sendRes = await _send_diagnostic(message, conversation, diagMsg)
+		if sendRes != 'success': return sendRes
+
+		return "error: missing required argument"
+	#__/
+
+	_deleteMemoryItem(item_id=itemToDel, item_text=textToDel)
+	# For now we assume it always succeeds.
+
+	if itemToDel is not None:
+		return f"Success: item with ID [{itemToDel}] was deleted from memory."
+	elif textToDel is not None:
+		return f"Success: item with text [{textToDel}] was deleted from memory."
+
+	# We should never get here, but just in case.
+	return "unexpected error"
+
+	## Obsolete code below here.
+
+	# Tell the conversation object to remove the given message
+	# from the AI's persistent memory.  The return value from
+	# this call is True if the message was found and removed,
+	# and False if it wasn't.
+
+	if conversation.remove_memory(textToDel):
+
+		# Log this at normal level.
+		_logger.normal(f"\tThe AI removed [{textToDel}] from persistent memory in conversation {chat_id}.")
+
+		# Also notify the AI & user that we're forgetting the given statement.
+		diagMsg = f"Removed [{textToDel}] from persistent memory."
+		sendRes = await _send_diagnostic(message, conversation, diagMsg)
+		if sendRes != 'success': return sendRes
+		
+		return "success"	# Processed AI's /forget command successfully.
+
+	else:
+
+		errmsg = _lastError
+		
+		# Log this at ERROR level.
+		_logger.error("The AI tried & failed to remove "
+						f"[{textToDel}] from persistent memory in "
+						f"conversation {chat_id}; error: {errmsg}.")
+
+		# Also notify the user that we couldn't forget the given statement.
+		diagMsg = f"Could not remove [{textToDel}] from persistent " \
+					f'memory. Error message was: "{_lastError}"'
+		sendRes = await _send_diagnostic(message, conversation, diagMsg)
+		if sendRes != 'success': return sendRes
+		
+		return f"error: {errmsg}"
+
+#__/ End of ai_forget() function definition.
+
+
+# Define a function to handle the /image command, when issued by the AI.
+async def ai_image(update:Update, context:Context, imageDesc:str, caption:str=None	#, remaining_text:str=None
+	) -> None:
+
+	# Get the message, or edited message from the update.
+	(message, edited) = _get_update_msg(update)
+
+	# Get the chat_id, user_name, and conversation object.
+	chat_id = message.chat.id
+	user_name = _get_user_tag(message.from_user)
+	conversation = context.chat_data['conversation']
+
+	# Error-checking for null argument.
+	if imageDesc == None or imageDesc=="":
+		_logger.error(f"The AI sent an /image command with no argument in conversation {chat_id}.")
+
+		diagMsg = "/image command needs an argument."
+		sendRes = await _send_diagnostic(message, conversation, diagMsg)
+		if sendRes != 'success': return sendRes
+
+		return "error: null image description"
+
+	# Generate and send an image described by the /image command argument string.
+	_logger.normal("\nGenerating an image with description "
+					f"[{imageDesc}] for user '{user_name}' in "
+					f"conversation {chat_id}.")
+	if caption:
+		_logger.normal(f"\tAn image caption [{caption}] was also specified.")
+
+	await send_image(update, context, imageDesc, caption=caption)
+
+	# Make a note in conversation archive to indicate that the image was sent.
+	conversation.add_message(BotMessage(SYS_NAME, f'[Generated and sent image "{imageDesc}"]'))
+
+	## NOTE: This is now done in process_command() more generically.
+	# Send the remaining text after the command line, if any, as a normal message.
+	#if remaining_text != None and remaining_text != '':
+	#	await send_response(update, context, remaining_text)
+
+	return "Success: image has been generated and sent to user"
+
+#__/ End of ai_image() function definition.
+
+
+# Define a function to handle the /remember command, when issued by the AI.
+async def ai_remember(updateMsg:TgMsg, conversation:BotConversation, textToAdd:str,
+					  isPublic:bool=False, isGlobal:bool=False) -> None:
+
+	"""The AI calls this function to add the given text to its persistent
+		memory."""
+
+	# Put the message from the Telegram update in a convenient variable.
+	message = updateMsg
+	user = message.from_user
+
+	# Get user info.
+	user = message.from_user
+	user_name = _get_user_tag(user)
+
+	# Retrieve the conversation's chat ID.
+	chat_id = conversation.chatID	# Public property. Type: int.
+
+	# All the following code used to appear directly inside handle_response(),
+	# but I've moved it here to make it easier to call it from other places,
+	# such as the new code to handle function-call responses from the AI.
+
+	# Check for missing <textToAdd> argument.
+	if textToAdd == None:
+		_logger.error(f"The AI sent a /remember command with no "
+						f"argument in conversation {chat_id}.")
+
+		diagMsg = "/remember command needs an argument."
+		sendRes = await _send_diagnostic(message, conversation, diagMsg)
+		if sendRes != 'success': return sendRes
+		
+		return "error: missing required argument"
+	#__/
+
+	# Diagnostic.
+	_logger.normal(f"\nFor user {user_name} in chat {chat_id}, adding "
+					f"{'public' if isPublic else 'private'} "
+					f"{'global' if isGlobal else 'local'} memory ["
+					f"{textToAdd}].")
+
+	newItemID = _addMemoryItem(user.id, chat_id, textToAdd, isPublic, isGlobal)
+	return f"Success: created new memory item {newItemID}"
+
+	# Obsolete code below.
+
+	# Tell the conversation object to add the given message to the AI's persistent memory.
+	if not conversation.add_memory(textToAdd):
+		
+		errmsg = _lastError
+
+		# Generate an error-level report to include in the application log.
+		_logger.error(f"The AI tried & failed to add memory: [{textToAdd}]")
+
+		diagMsg = f"Could not add [{textToAdd}] to persistent memory. " \
+					f'Error message was: "{errmsg}"'
+
+		# Send the diagnostic message to the user.
+		sendRes = await _send_diagnostic(message, conversation, diagMsg)
+		if sendRes != 'success': return sendRes
+
+		return "error: unable to add memory item"
+	#__/
+
+
+	_logger.normal(f"\tThe AI added [{textToAdd}] to persistent memory in conversation {chat_id}.")
+
+	# Also notify the user that we're remembering the given statement.
+	diagMsg = f"Added [{textToAdd}] to persistent memory."
+
+	# Send the diagnostic message to the user.
+	sendRes = await _send_diagnostic(message, conversation, diagMsg)
+	return sendRes
+
+#__/ End of ai_remember() function definition.
+				
+
+# Number of items that the search_memory function returns by default.
+DEFAULT_SEARCHMEM_NITEMS	= 3
+	# Reasonable default. Do not recommend setting this higher than 10.
+
+async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
+					queryPhrase:str, nItems:int=DEFAULT_SEARCHMEM_NITEMS
+			) -> list:
+
+	"""Do a context-sensitive semantic search for memory items that
+		are related to the query phrase. Returns the closest few
+		matching items (by default 3)."""
+
+	userID = updateMsg.from_user.id
+	chatID = conversation.chat_id
+
+	# Cap nItems at 10.
+	maxn = MAXIMUM_SEARCHMEM_NITEMS
+	if nItems > maxn:
+
+		_logger.warn(f"{nItems} search results requested; capping to {maxn}.")
+
+		warning_msgStr = f"WARNING: {nItems} search results were requested, "\
+			"but returning more than {maxn} items from a memory search is "\
+			"not supported. Limiting search to top {maxn} results."
+
+		nItems = maxn
+
+			# Make sure the AI sees that message, even if we fail in sending it to the user.
+		conversation.add_message(BotMessage(SYS_NAME, warning_msgStr))
+		
+            # Also send the warning message to the user. (Making it clear that 
+            # it's a system message, not from the AI persona itself.)
+		reply_msgStr = f"[SYSTEM {warning_msgStr}]"
+		await _reply_user(tgMessage, conversation, reply_msgStr, ignore=True)
+
+	#__/
+
+	_logger.normal(f"In chat {chatID}, for user #{userID}, AI is searching for the top {nItems} memories matching the search query: [{queryPhrase}].")
+	matchList = _searchMemories(userID, chatID, queryPhrase, nItems=nItems)
+
+	_logger.normal(f"Found the following matches: [\n{matchList}\n].")
+
+	return matchList
+
+
+# Define a function to handle the /unblock command, when issued by the AI.
+async def ai_unblock(updateMsg:TgMsg, conversation:BotConversation,
+					 userToUnblock:str=None, userIDToUnblock:int=None) -> str:
+
+	"""The AI calls this function to unblock the given user. If no user is specified,
+		it unblocks the current user (the one who sent the current update).
+		(Note this case will normally never occur.)
+	"""
+	
+	# Put the message from the Telegram update in a convenient variable.
+	message = updateMsg
+
+	# Retrieve the current user's name, in case we need it.
+	user_name = _get_user_tag(message.from_user)
+	cur_user_id = message.from_user.id
+
+	# Retrieve the conversation's chat ID.
+	chat_id = conversation.chatID	# Public property. Type: int.
+
+	# The following code used to appear directly inside handle_response(), but I've
+	# moved it here to make it easier to call it from other places, such as the
+	# code to handle function-call responses from the AI.
+
+	# If no user was specified, then we'll unblock the current user.
+	if userToUnblock == None:
+		userToUnblock = user_name
+		userIDToBlock = cur_user_id
+
+	## If we don't have a user ID, complain and die.
+	#if userIDToUnblock is None:
+	#	await _report_error(conversation, message,
+	#						"Unblocking users by tag is no longer supported."))
+	#	return "internal error in ai_unblock()"
+
+	if userIDToUnblock is None:
+
+		matchingUsers = _lookup_user_by_tag(userToUnblock)
+
+		if len(matchingUsers) > 1:
+			diagMsg = f"Can't unblock user by name tag '{userToUnblock}' because it isn't unique."
+			return_msg = f"Error: User name tag {userToUnblock} is not unique!"
+
+			# Send diagnostic message to AI and to user.
+			sendRes = await _send_diagnostic(message, conversation, diagMsg)
+			if sendRes != 'success': return sendRes
+
+			return return_msg
+
+		# If there are no matches, try searching by display name instead.
+		if len(matchingUsers) == 0:
+
+			matchingUsers = _lookup_user_by_dispname(userToUnblock)
+
+			if len(matchingUsers) != 1:
+				diagMsg = f"Can't unblock user named '{userToUnblock}' because "\
+						  f"{len(matchingUsers)} with that name were found. "\
+						  "Try unblocking by first name, username, or user ID "\
+						  "instead."
+				return_msg = f"Error: User name {userToUnblock} was not found "\
+							 "or is not unique."
+
+				# Send diagnostic message to AI and to user.
+				sendRes = await _send_diagnostic(message, conversation, diagMsg)
+				if sendRes != 'success': return sendRes
+
+				return return_msg
+
+			#__/
+		#__/
+
+		# Retrieve the user's ID.
+		userIDToUnblock = matchingUsers[0]['userID']
+
+	# Generate a warning-level log message to indicate that we're blocking the user.
+	_logger.warn(f"***ALERT*** The AI is unblocking user '{userToUnblock}' in conversation {chat_id}.")
+
+	# Retrieve the user tag if we don't have it yet.
+	if userToUnblock is None:
+		userData = _lookup_user(userIDToUnblock)
+		userToUnblock = userData['userTag']
+
+	# Check if they're already unblocked; else block them.
+	if not _isBlockedByID(userIDToUnblock):
+		_logger.error(f"User '{userToUnblock}' is not blocked.")
+		diagMsg = f'User {userToUnblock} is not currently blocked by {BOT_NAME}.'
+		return_msg = f"User {userToUnblock} is not blocked!"
+	else:
+		# This always succeeds.
+		_unblockUserByID(userIDToUnblock)
+		diagMsg = f'{BOT_NAME} has unblocked user {userToUnblock}.'
+		return_msg = f"Success: unblocked user {userToUnblock}."
+	
+	# Send diagnostic message to AI and to user.
+	sendRes = await _send_diagnostic(message, conversation, diagMsg)
+	if sendRes != 'success': return sendRes
+
+	return return_msg
+
+#__/ End of ai_unblock() function definition.
+				
+
+#/=============================================================================|
+#|	5. Define misc. functions.					 [python module code section]  |
 #|																			   |
 #|		In this section, we define miscellaneous functions that will		   |
 #|		be called from various points later in the program. We do this		   |
@@ -2995,8 +3557,113 @@ async def handle_error(update:Update, context:Context) -> None:
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 	#|==========================================================================
-	#|	4.1. Misc. major/public functions.			[python module code section]
+	#|	5.1. Misc. major/public functions.			[python module code section]
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+async def ai_call_function(update:Update, context:Context, funcName:str, funcArgs:dict) -> str:
+
+	"""Call the named AI-available function with the given argument dict. Returns a result string."""
+
+	# Get the user message, or edited message from the update.
+	(message, edited) = _get_update_msg(update)
+	
+	# Get the chat_id, user_name, and conversation object.
+	chat_id = message.chat.id
+	user_name = _get_user_tag(message.from_user)
+	user_id = message.from_user.id
+	conversation = context.chat_data['conversation']
+	
+	# Dispatch on the function name. See FUNCTIONS_LIST.
+	if funcName == 'remember_item':
+
+		# Get the arguments.
+
+		textToAdd = funcArgs.get('item_text', None)
+
+		isPrivate = funcArgs.get('is_private', True)
+			# Is this information considered private
+			# to the specific user or group chat?
+
+		isGlobal = funcArgs.get('is_global', False)
+			# Is this information available for the
+			# AI to see in any context?
+
+		if textToAdd:
+			return await ai_remember(message, conversation, textToAdd,
+									 isPublic=not isPrivate, isGlobal=isGlobal)
+		else:
+			await _report_error(conversation, message,
+					f"remember_item() missing required argument item_text.")
+			return "error: required argument item_text is missing"
+
+	elif funcName == 'search_memory':
+
+			# Get the arguments.
+
+		queryPhrase = funcArgs.get('query_phrase', None)
+		maxResults = funcArgs.get('max_results', DEFAULT_SEARCHMEM_NITEMS)
+
+		if queryPhrase:
+			return await ai_search(message, conversation, queryPhrase,
+								   nItems=maxResults)
+			
+		else:
+			await _report_error(conversation, message,
+					f"search_memory() missing required argument query_phrase.")
+			return "error: required argument query_phrase is missing"
+
+	elif funcName == 'forget_item':
+		itemToDel = funcArgs.get('item_id', None)
+		textToDel = funcArgs.get('item_text', None)
+
+		if itemToDel:
+			return await ai_forget(message, conversation, itemToDel=itemToDel)
+		elif textToDel:
+			return await ai_forget(message, conversation, textToDel=textToDel)
+		else:
+			await _report_error(conversation, message,
+					f"forget_item() missing required argument item_id or item_text.")
+			return "error: required argument (item_id or item_text) is missing"
+
+	elif funcName == 'create_image':
+		imageDesc = funcArgs.get('image_desc', None)
+		caption = funcArgs.get('caption', None)
+
+		if imageDesc:
+			return await ai_image(update, context, imageDesc, caption)
+		else:
+			await _report_error(conversation, message,
+					f"create_image() missing required argument image_desc.")
+			return "error: required argument image_desc is missing"
+
+	elif funcName == 'block_user':
+
+		# NOTE: Blocking users by tag may not always work, since tags are not unique.
+		userToBlock = funcArgs.get('user_name', user_name)		# Default to current user.
+
+		# We can't uncomment this yet because AI can't retrieve ID yet.
+		#userIDToBlock = funcArgs.get('user_id', user_id)		# Specified by ID.
+
+		return await ai_block(message, conversation, userToBlock)
+
+	elif funcName == 'unblock_user':
+
+		# NOTE: Unblocking users by tag may not always work, since tags are not unique.
+		userToUnblock = funcArgs.get('user_name', user_name)		# Default to current user.
+
+		return await ai_unblock(message, conversation, userToUnblock)
+
+	elif funcName == 'pass_turn':
+		_logger.normal(f"\nNOTE: The AI is passing its turn in conversation {chat_id}.")
+		return PASS_TURN_RESULT
+
+	else:
+		await _report_error(conversation, message,
+							f"AI tried to call an undefined function '{funcName}()'.")
+		return f"error: {funcName} is not an available function"
+
+#__/ End definition of private function ai_call_function().
+
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	get_ai_response()							[public async function]
@@ -3429,459 +4096,146 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 #__/ End definition of function get_ai_response().
 
 
-# Another new function, to process a raw response from the AI, which (for chat
-# engines) takes the form of an OpenAI message object (a dictionary-like
-# object). We separate this from get_ai_response() above just to keep our
-# functions from getting too long!
+# Process a command (message starting with '/') from the AI.
+async def process_ai_command(update:Update, context:Context, response_text:str) -> None:
+	"""Given the text of a message returned by the AI, where that text starts
+		with a '/' character, this function interprets it as an attempt by the
+		AI to issue a command, and handles this appropriately."""
 
-async def _process_raw_response(
-			chatCompletion:ChatCompletion, 
-			#oaiMsgs:list,
-			tgUpdate:Update,
-			tgContext:Context
-		) -> None:
-	#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^|
-	# NOTE RE: THE ABOVE ARGUMENTS:
-	#
-	#	<chatCompletion> is the "raw response" received from the AI, in the form
-	#			of a gpt3.api.ChatCompletion object.  (our wrapper around the
-	#			raw completion dictionary).
-	#
-	#	<tgUpdate> the original update from the Telegram server that prompted
-	#			this response.
-	#
-	#	<tgContext> the Telegram context corresponding to the current chat.
-	#
-	# ALSO NOTE RE: THE BELOW CODE:
-	#
-	#	<botConvo> (which we'll retrieve from the tgContext) is the
-	#			BotConversation object that's tracking this conversation from
-	#			the bot server's point of view.  Note this includes tracking
-	#			botConvo.raw_oaiMsgs.  ALSO NOTE: The botConvo.raw_oaiMsgs here
-	#			should NOT include a final system prompt!
-	#
-	#	<oaiMsgs> (which we'll retrieve from the botConvo) is the list of
-	#			*previous* messages in the chat, prior to this new one just
-	#			created by the AI.
-	#
-	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
-
-	"""Process a raw response from the AI."""
-
-	# Get the bot's conversation object.
-	botConvo = tgContext.chat_data['conversation']
-
-	# Get the current *raw* OpenAI message list from the bot convo object.
-	oaiMsgs = botConvo.raw_oaiMsgs
-
-	# Get the full dict-like response message object.
-	response_oaiMsg = chatCompletion.message
-
-	# In case there's a function call in the response, display it.
-	_logger.debug(f"RETURNED MESSAGE = [{pformat(response_oaiMsg)}]")
-
-	# Get the text field of the response. (Could be None, if function call.)
-	response_text = chatCompletion.text
-
-	# Diagnostic for debugging.
-	_logger.debug(f"Got response text: [{response_text}]")
-
-	# Here, we make sure that the response does not begin with a message
-	# prompt like "{BOT_NAME}> ". If it does, we trim it off the front.
-	if response_text is not None:
-
-		# Trim prompt off start of response.
-		new_response_text = _trim_prompt(response_text)
-
-		if new_response_text != response_text:
-			response_text = new_response_text
-
-			# Do surgery on the chat message object to fix it there also.
-			# (This is handled by our gpt3.api.ChatCompletion class.)
-			chatCompletion.text = response_text
-				# NOTE: Setting the '.text' property ('content' field) here
-				# could invalidate the chat message if it contains a function
-				# object too. But we made sure .text wasn't None already.
-
-			_logger.debug(f"Modified response message text is: [{chatCompletion.text}]")
-
-	## Another diagnostic; this one post-surgery.
-	# In case there's a function call in the response, display it.
-	#_logger.normal(f"RETURNED MESSAGE = \n" + pformat(response_message))
-
-	# Now, we check to see if the OpenAI message object returned by the AI has a
-	# 'function_call' property, in which case it means the AI is trying to call
-	# a function.  If it is, we'll dispatch out to the _process_function_call()
-	# function to handle this case.
-
-	funCall = response_oaiMsg.get('function_call')
-	if funCall:
-		
-		await _process_function_call(response_oaiMsg, tgUpdate, tgContext)
-			# This handles the function recall, the function return, and any
-			# responses by the AI to the function return (including any
-			# recursive function call-return sequences).
-		
-		# At this point, the whole recursive sequence of actions taken by the AI
-		# in response to that function call is complete, so we just
-		# return. There shouldn't have been any response text in a function call
-		# anyway, but if there is, we warn that we're ignoring it.
-
-		if response_text is not None:
-			_logger.warn(f"NOTE: Done with original response text: [{response_text}].")
-
-		return	# End process_chat_message() when done function processing.
-
-	#__/ End if funCall is truthy.
+	# Get the user message, or edited message from the update.
+	(message, edited) = _get_update_msg(update)
 	
-	# If we get here, it isn't a function-call response, it's a normal response.
+	# Get the chat_id, user_name, and conversation object.
+	chat_id = message.chat.id
+	user_name = _get_user_tag(message.from_user)
+	conversation = context.chat_data['conversation']
 
-	# Get the message, or edited message from the update.
-	(tgMsg, edited) = _get_update_msg(tgUpdate)
-		# NOTE: We only do this to get the user data.
+	# Extract the command name from the message.  We'll do this
+	# with a regex that captures the command name, and then the
+	# rest of the command line.  But first, we'll capture just the
+	# first line of the message, followed by the rest.
+
+	# Split the text into lines
+	lines = response_text.splitlines()
+
+	# Get the first line
+	first_line = lines[0]
+
+	# Output the command line to the console.
+	_logger.normal("The AI sent a command line: " + first_line)
+
+	# Get the remaining text by joining the rest of the lines
+	remaining_text = '\n'.join(lines[1:])
+
+	# Now, we'll use a regex to parse the command line to
+	# extract the command name and optional arguments.
+	match = re.match(r"^/(\S+)(?:\s+(.*))?$", first_line)
+
+	# Extract the command name and arguments from the match.
+	command_name = command_args = None
+	if match is not None:
+		groups = match.groups()
+		command_name = groups[0]
+		if len(groups) > 1:
+			command_args = groups[1]
+
+	## Now, we'll process the command.
+
+	# First, let's go ahead and show the command line to the user... (Ignoring send errors.)
+	await _reply_user(message, conversation, first_line, ignore=True)
+
+	# NOTE: We can't just call the normal command handlers
+	# directly, because they are designed for commands issued by
+	# the user, not by the AI. So, we'll have to process the
+	# commands ourselves to handle them correctly.
+
+	# Check to see if the AI typed the '/remember' command.
+	if command_name == 'remember':
+		# This is a command to remember something.
+
+		_logger.normal(f"\nAI {BOT_NAME} entered a /remember command in chat {chat_id}.")
+
+		# Should we issue a warning here if there is remaining text
+		# after the command line that we're ignoring?  Or should we 
+		# include the remaining text as part of the memory to be 
+		# remembered?
+
+		# This does all the work of handling the '/remember' command
+		# when issued by the AI.
+		await ai_remember(message, conversation, command_args)
+
+	# Check to see if the AI typed the '/forget' command.
+	elif command_name == 'forget':
+		# This is a command to forget something.
+
+		_logger.normal(f"\nAI {BOT_NAME} entered a /forget command in chat {chat_id}.")
+
+		# Should we issue a warning here if there is remaining text
+		# after the command line that we're ignoring?  Or should we 
+		# include the remaining text as part of the memory to be 
+		# forgotten?
+
+		# This does all the work of handling the '/forget' command
+		# when issued by the AI.
+		await ai_forget(message, conversation, command_args)
+
+	elif command_name == 'block':
+		# Adds the current user (or a specified user) to the block list.
+
+		_logger.normal(f"\nAI {BOT_NAME} entered a /block command in chat {chat_id}.")
+
+		# Should we issue a warning here if there is remaining text
+		# after the command line that we're ignoring?  Or should we
+		# send the remaining text as a normal message?
+
+		# This does all the work of handling the '/block' command
+		# when issued by the AI.
+		await ai_block(message, conversation, command_args)
+
+	elif command_name == 'unblock':
+		# Removes the current user (or a specified user) from the block list.
+
+		_logger.normal(f"\nAI {BOT_NAME} entered an /unblock command in chat {chat_id}.")
+
+		# Should we issue a warning here if there is remaining text
+		# after the command line that we're ignoring?  Or should we
+		# send the remaining text as a normal message?
+
+		# This does all the work of handling the '/unblock' command
+		# when issued by the AI.
+		await ai_unblock(message, conversation, command_args)
+
+	elif command_name == 'image':
+		# This is a command to generate an image and send it to the user.
 		
-	if tgMsg is None:
-		_logger.error("In get_ai_response() with no message! Aborting.")
-		return
+		_logger.normal(f"\nAI {BOT_NAME} entered an /image command in chat {chat_id}.")
+			
+		# This does all the work of handling the '/image' command
+		# when issued by the AI.
+		await ai_image(update, context, command_args)
+			# NOTE: We're passing the entire update object here, as well
+			# as the context, because we need to be able to send a message
+			# to the user, and we can't do that with just the message object.
 
-	# Get user data.
-	user_obj	= tgMsg.from_user
-	user_tag	= _get_user_tag(user_obj)
-	user_id		= user_obj.id
-	chat_id		= botConvo.chat_id
+		# NOTE: We could have passed remaining_text as the 4th argument (caption),
+		# but it's perhaps better to just send it as an ordinary text message.
 
-	# Also check for finish_reason == 'content_filter' and log/send a warning.
-	finish_reason = chatCompletion.finishReason
-	if finish_reason == 'content_filter':
-				
-		_logger.warn(f"OpenAI content filter triggered by user {user_name} " \
-					 "(ID {user_id}) in chat {chat_id}. Response was:\n" + \
-					 pformat(chatCompletion.chatComplStruct))
-
-		WARNING_MSG = "WARNING: User {user_name} triggered OpenAI's content " + \
-					  "filter. Repeated violations could result in a ban."
-
-		# This allows the AI to see this warning message too.
-		botConvo.add_message(BotMessage(SYS_NAME, WARNING_MSG))
-
-		repRes = await _reply_user(tgMsg, botConvo, "[SYSTEM {WARNING_MSG}]")
-		if repRes != 'success': return
-
-	#__/ End if content filter triggered.
-
-	# Strip off any leading or trailing whitespace (Telegram won't display it
-	# anyway.).
-	response_text = response_text.strip()
-	
-	# Now we check for the case of an empty response text.
-
-	# If the response is empty, then return early. (Because, like, we can't even
-	# send an empty message anyway.)
-	if response_text == "":
-
-		_logger.warn("AI's text response was null. Ignoring...")
-
-		## No longer needed because we don't add an empty message.
-		# Delete the last message from the conversation.
-		#conversation.delete_last_message()
-
-		## Commenting this out for production.
-		# # Send the user a diagnostic message indicating that the response was empty.
-		# # (Doing this temporarily during development.)
-		#diagMsg = "Response was empty."
-		#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
-		
-		return		# This means the bot is simply not responding to this particular message.
-	
-	# Generate a debug-level log message to indicate that we're starting a new response.
-	_logger.debug("Creating new ordinary (non-function-call) response from "
-				  f"{botConvo.bot_name} with text: [{response_text}].")
-
-	# Create a new Message object and add it to the conversation.
-	response_botMsg = BotMessage(botConvo.bot_name, response_text)
-	botConvo.add_message(response_botMsg)
-
-	# Update the message object, and the context.
-	response_botMsg.text = response_text
-	botConvo.expand_context()	 
-
-	# If this message is already in the conversation, then we'll suppress it, so
-	# as not to exacerbate the AI's tendency to repeat itself.  (So, as a user,
-	# if you see that the AI isn't responding to a message, this may mean that
-	# it has the urge to just repeat something that it already said earlier, but
-	# is holding its tongue.)
-
-	if response_text.lower() != '/pass' and \
-	   botConvo.is_repeated_message(response_botMsg):
-
-		# Generate an info-level log message to indicate that we're suppressing
-		# the response.
-		_logger.info(f"Suppressing response [{response_text}]; it's a repeat.")
-
-		# Delete the last message from the conversation.
-		botConvo.delete_last_message()
-
-		## Send the user a diagnostic message (doing this temporarily during development).
-		#diagMsg = f"Suppressing response [{response_text}]; it's a repeat."
-		#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
-		
-		return		# This means the bot is simply not responding to the message
-
-	#__/ End check for repeated messages.
-
-	# If we get here, then we have a non-empty message that's also not a repeat.
-	# It's finally OK at this point to archive the message and send it to the user.
-
-	# Make sure the response message has been finalized (this also archives it).
-	botConvo.finalize_message(response_botMsg)
-
-	# If we get here, we have finally obtained a non-empty, non-repeat,
-	# already-archived message that we can go ahead and send to the user. This
-	# function will also check to see if the message is a textual command line,
-	# and will process the command if so.
-
-	await process_response(tgUpdate, tgContext, response_botMsg)	   # Defined below.
-
-	# If we get here, then we have finished processing the AI's text response,
-	# and we can just return.
-
-#__/ End definition of private function _process_raw_response().
-
-
-# Another new function, to handle function call requests from the AI.
-# Again, we separate this from _process_raw_response() just to keep
-# our functions from getting too long.
-
-async def _process_function_call(
-		funcall_oaiMsg:dict,		# Raw OpenAI message that represents the function call.
-		tgUpdate:Update,			# The original Telegram update that prompted this call.
-		tgContext:Context,			# The Telegram context for this chat.
-	) -> None:
-
-	"""Process a function call request received from the AI."""
-
-	# Get the text of the response, if any (should be None).
-	response_text = funcall_oaiMsg.get('content', None)
-
-	# Get the bot's conversation object.
-	botConvo = tgContext.chat_data['conversation']
-
-	# Retrieve the function call object from the OpenAI message containing it.
-	funCall = funcall_oaiMsg.get('function_call')
-
-	# Retrieve the function name and arguments from the function call object.
-	function_name = funCall['name']
-	function_args = json.loads(funCall['arguments'])
-	
-	_logger.info(f"AI wants to call function {function_name} with " \
-				 "arguments: \n" + pformat(function_args))
-
-	# Generate a description of the function call, for diagnostic purposes.
-	call_desc = _call_desc(function_name, function_args)
-
-	# Have the bot server make a note in the conversation to help the AI
-	# remember that it did the function call.
-	fcall_note = f"[NOTE: {BOT_NAME} is doing function call {call_desc}.]"
-	botConvo.add_message(BotMessage(SYS_NAME, fcall_note))
-
-	# Extract the optional remark argument from the argument list.
-	if 'remark' in function_args:
-		remark = function_args['remark']
-		del function_args['remark']
 	else:
-		remark = ""		# If no remark, take it as empty string.
+		# This is a command type that we don't recognize.
+		_logger.warn(f"\nAI {BOT_NAME} entered an unknown command [/{command_name}] in chat {chat_id}.")
 
-	# The response_text is probably None, but force it to a string
-	# so that just in case it's a non-empty string, we can handle
-	# this without checking its type all the time.
-	if response_text is None:
-		response_text = ""
+		# Send the user a diagnostic message.
+		diagMsg = f"Unknown command [/{command_name}]."
+		await _send_diagnostic(message, conversation, diagMsg, ignore=True)
 
-	# Generate a description of the function call, for diagnostic purposes.
-	call_desc = _call_desc(function_name, function_args)
+	# If there was any additional text remaining after the command line,
+	# just send it as a normal message.
+	if remaining_text != "":
+		await send_response(update, context, remaining_text)
 
-	## Just did this temporarily while debugging.
-	# # Prepend a diagnostic with the call description and remark to the
-	# # response_text (which is probably null).
-	# response_text = f"[SYSTEM DIAGNOSTIC: Called {call_desc}]\n\n" \
-	#					+ remark + '\n' + response_text
+	# At this point we are done processing the command.
 
-	# The original response text, followed by the remark. This probably is just
-	# the remark, since the original response text should have been null. But in
-	# any case, we'll use it as our response text below.
-	response_text = (response_text + '\n' + remark).strip()
-
-	# Before calling the function, we'll send the response_text, if non-empty.
-	# (which at this point probably just contents of a remark argument, if
-	# anything)'
-	if response_text != "":
-
-		# Append the response text to the conversation.
-		botConvo.add_message(BotMessage(BOT_NAME, response_text))
-					
-		# Try sending the response text to the user. (But ignore send errors here.)
-		await send_response(tgUpdate, tgContext, response_text)
-			# (We ignore them because presumably it's more important to
-			# still go ahead and try calling the function if we can.)
-	#__/
-
-	# Actually do the call here, and assemble appropriate result text.
-	func_result = await ai_call_function(tgUpdate, tgContext, function_name, function_args)
-
-	# This is mainly for diagnostic purposes.
-	if func_result is None or func_result == "":
-		func_result = "null result"
-
-	# Diagnostic.
-	_logger.info(f"The AI's function call returned the result: [{pformat(func_result)}]")
-
-	# Get the function result in the form of a string, even if it isn't.
-	resultStr = func_result if isinstance(func_result, str) \
-				else json.dumps(func_result)
-
-	# Now, we retrieve the current raw OpenAI message object list from the bot
-	# convo object; please note that this should *already* have the final system
-	# message trimmed off, and it should include any previous function call/
-	# return sequences in the present function-call stack, and any side messages
-	# output by these.
-
-	temp_chat_oaiMsgs = list(botConvo.raw_oaiMsgs)
-		# We call list() here to force a *copy* of the list to be
-		# constructed.  Because we don't really want anyone else
-		# besides us modifying it until we've finished operating on it
-		# and have given the AI a chance to respond to it.
-
-	# Have the bot server make a note in the conversation to help the
-	# AI remember longer-term that it got a function result. NOTE: We
-	# do NOT want to also put this note into temp_chat_oaiMsgs at this
-	# point, because we don't want to distract the AI with these kinds
-	# of longer-term notes while it is still processing the *present*
-	# function call and return.
-
-	fret_note = f'[NOTE: {function_name}() call returned value: [{resultStr}]]'
-	botConvo.add_message(BotMessage(SYS_NAME, fret_note))
-
-	# Back when our functions just never returned a result, we would just skip
-	# everything below here. But they do return results now.
-
-	# Diagnostic.
-	_logger.info("Assembling temporary message list for function call & return...")
-
-	# Next, we temporarily trim off all trailing messages back to the last
-	# function call note, since these would be remarks and various system
-	# notifications and errors generated during function execution; we'll add
-	# these back onto the raw message list after we've inserted messages
-	# representing the raw function call and return operations, which the AI
-	# will recognize. The trimmed messages will be temporarily stored in
-	# <trailing_oaiMsgs>.
-
-	trailing_oaiMsgs = []
-	# Scan back until we get to the "system: [NOTE: " message...
-	while not (temp_chat_oaiMsgs[-1]['role'] == 'system'
-			   and temp_chat_oaiMsgs[-1]['content'].startswith(f'{SYS_NAME}> [NOTE: ')):
-		# NOTE: The above will break if MESSAGE_DELIMITER is not empty string.
-		_logger.info(f"Flipping back through message: [{pformat(temp_chat_oaiMsgs[-1])}]")
-		sys_oaiMsg = temp_chat_oaiMsgs.pop()
-		trailing_oaiMsgs = [sys_oaiMsg] + trailing_oaiMsgs
-	#__/
-
-	# Construct some messages to represent the function call and return value.
-	# Actually, we already have a message that represents the function call; it
-	# came from the AI originally, and was supplied to us in our funcall_oaiMsg
-	# argument. But, we need to make sure that we didn't add a 'content' field
-	# to this message at some point, because if we did and we try sending it
-	# back to the API, the API will choke on it.
-
-	if 'content' in funcall_oaiMsg and funcall_oaiMsg['content'] is not None:
-		_logger.info("Oops, our funcall message has text content?? "
-					 f"[\n{pformat(funcall_oaiMsg)}\n]")
-		funcall_oaiMsg['content'] = None
-	
-	# This new raw-format message represents the actual return value of the
-	# function.
-
-	funcret_oaiMsg = {
-		'role':		'function',
-		'name':		function_name,
-		'content':	resultStr
-	}
-
-	# If the function call was a successful "pass_turn" call, then
-	# we don't need to do anything else here, and we just return.
-
-	if resultStr == PASS_TURN_RESULT:
-		_logger.normal(f"\t{BOT_NAME} is refraining from responding to a "
-					   "returned function result in chat #{chat_id}.")
-		return
-
-	#--------------------------------------------------------------------------|
-	# Finish building up the temporary message list to pass into the next API
-	# call to see how the AI wants to respond to the returned function
-	# result. So, the sequence here is:
-	#
-	#	system:		[NOTE: ... is doing function call ...]
-	#	assistant:	(function call description)
-	#	assistant:	{remark emitted by bot during function call, if any}
-	#	(any other incidental outputs produced from within the function call)
-	#   function:	(function return description)
-	#	system:		(prompt AI to respond)
-
-	temp_chat_oaiMsgs += [funcall_oaiMsg]
-	temp_chat_oaiMsgs += trailing_oaiMsgs
-	temp_chat_oaiMsgs += [funcret_oaiMsg]
-	temp_chat_oaiMsgs += [{
-		'role':		'system',
-		'content':	f"Instructions from bot server: {BOT_NAME}, you " \
-					"may now provide your response, if any, to the " \
-					"function's return value above.",
-	}]
-
-	# Diagnostic: Display the most recent 10 chat messages from temp list.
-	_logger.info(f"Last few chat messages are [\n{pformat(temp_chat_oaiMsgs[-10:])}\n].")
-
-	# At this point, we want to get a response from the AI to our temporary list
-	# of raw OpenAI chat messages, which (note) includes raw descriptions of the
-	# most recent function call and return, as well as (possibly) results of
-	# previous function calls and returns in the present "call stack". Mean-
-	# while, the main 'messages' list in the bot conversation object is tracking
-	# just the more human-readable messages including the bot-server notes
-	# describing the current sequence of calls and returns which are being
-	# archived and preserved long-term as part of the conversation. This helps
-	# us to keep the conversation history more concise, while not distracting
-	# the AI with the details of earlier call-return sequences before the
-	# present stack. The next time get_ai_response() is called at the start of
-	# normal message processing, the two views will be brought back in sync.
-
-	await get_ai_response(tgUpdate, tgContext, temp_chat_oaiMsgs)
-		# Recursive call to get and process the AI's response to this
-		# *temporary* view of the message list.
-
-	# By the time we get back to here, the entire "stack" of successive function
-	# calls and returns triggered by our input function-call message from the AI
-	# has been completed.
-	#
-	# The present temporary raw message list in temp_chat_oaiMsgs is now no
-	# longer needed, and can be thrown away.
-	#
-	# So at this point, we are done processing the original function call, and
-	# so we just return.
-
-#__/ End definition of private function _process_function_call().
-
-
-def _logOaiMsgs(oaiMsgList:list) -> None:
-
-	# Open the file for writing.
-	with open(f"{LOG_DIR}/latest-messages.txt", "w") as f:
-		for oaiMessage in oaiMsgList:
-			f.write(messageRepr(oaiMessage))
-				# Our text representation of OpenAI messages.
-	
-	# Also do a json dump
-	with open(f"{LOG_DIR}/latest-messages.json", "w") as outfile:
-		json.dump(oaiMsgList, outfile)
-
-#__/
+#__/ End function process_ai_command().
 
 
 async def process_chat_message(update:Update, context:Context) -> None:
@@ -3895,8 +4249,13 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 	return await get_ai_response(update, context)
 
-	########### BELOW CODE IS OBSOLETE #################
+#__/ End definition of async function process_chat_message().
 
+
+	########### BELOW VERSION OF THIS FUNCTION BODY IS OBSOLETE #################
+
+# Quoting out all the old code in this function from before refactoring:
+"""
 	# Get the message, or edited message from the update.
 	(tgMsg, edited) = _get_update_msg(update)
 		
@@ -4258,13 +4617,14 @@ async def process_chat_message(update:Update, context:Context) -> None:
 						temp_chat_oaiMsgs = temp_chat_oaiMsgs[0:N_HEADER_MSGS].\
 											extend(oaiMessages[N_HEADER_MSGS+1:])
 						continue
-
+					#__/
+				#__/
 
 				# Just for diagnostic purposes.
 				_logger.info(f"GPT response to function return: [{pformat(second_chatCompl.message)}]")
 
-
-				# If the response to the function return was another function call, complain.
+				# If the response to the function return was another function
+				# call, complain.
 				second_response_oaiMessage = second_chatCompl.message
 
 				if 'function_call' in second_response_oaiMessage:
@@ -4273,18 +4633,23 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 					fcall_str = _call_desc(fcall2.name, json.loads(fcall2.arguments))
 
-					conversation.add_message(BotMessage(SYS_NAME, f"[Error: You tried to respond to a function return with another function call; this is unsupported. The 2nd call was: {fcall_str}.]"))
+					conversation.add_message(BotMessage(SYS_NAME,
+						"[Error: You tried to respond to a function return "
+						"with another function call; this is unsupported. The "
+						f"2nd call was: {fcall_str}.]"))
 
-					errmsg = "AI tried to respond to function return with another function call; this is not yet supported."
+					errmsg = "AI tried to respond to function return with "\
+							 "another function call; this is not yet supported."
 					await _report_error(conversation, message, errmsg, showAI=False)
 						
 					# If there was no text (likely the case), set the text to the funcall desc.
 					if second_chatCompl.text is None:
 						second_chatCompl.text = f"I tried and failed to call {fcall_str}."
 
-				# Go ahead and add the danged thing. It better not be another function call though,
-				# or empty, or trigger a content filter, or be a '/pass' command, because we just
-				# aren't handling any of that here. Really need to rethink whole code structure.
+				# Go ahead and add the danged thing. It better not be another
+				# function call though, or empty, or trigger a content filter,
+				# or be a '/pass' command, because we just aren't handling any
+				# of that here. Really need to rethink whole code structure.
 
 				second_response_text = second_chatCompl.text
 				_logger.info(f"Text of function return response: [{second_response_text}].")
@@ -4424,10 +4789,6 @@ async def process_chat_message(update:Update, context:Context) -> None:
 	response_botMsg.text = response_text
 	conversation.expand_context()	 
 
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## MIGRATE BELOW CODE TO _process_raw_response().
-##vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
 	# If this message is already in the conversation, then we'll suppress it, so
 	# as not to exacerbate the AI's tendency to repeat itself.  (So, as a user,
 	# if you see that the AI isn't responding to a message, this may mean that
@@ -4460,833 +4821,8 @@ async def process_chat_message(update:Update, context:Context) -> None:
 	await process_response(update, context, response_botMsg)	   # Defined below.
 
 #__/ End of process_chat_message() function definition.
-
-
-# Below are functions to implement commands that may performed by the AI.
-# They are: remember, forget, block, and image.
-#	* /remember <text> - Adds <text> to persistent memory.
-#	* /forget <text> - Removes <text> from persistent memory.
-#	* /block [<user>] - Blocks the current user.
-#	* /image <desc> - Generates an image with a given text description and sends it to the user.
-
-# Define a function to handle the /remember command, when issued by the AI.
-async def ai_remember(updateMsg:TgMsg, conversation:BotConversation, textToAdd:str,
-					  isPublic:bool=False, isGlobal:bool=False) -> None:
-
-	"""The AI calls this function to add the given text to its persistent
-		memory."""
-
-	# Put the message from the Telegram update in a convenient variable.
-	message = updateMsg
-	user = message.from_user
-
-	# Get user info.
-	user = message.from_user
-	user_name = _get_user_tag(user)
-
-	# Retrieve the conversation's chat ID.
-	chat_id = conversation.chatID	# Public property. Type: int.
-
-	# All the following code used to appear directly inside handle_response(),
-	# but I've moved it here to make it easier to call it from other places,
-	# such as the new code to handle function-call responses from the AI.
-
-	# Check for missing <textToAdd> argument.
-	if textToAdd == None:
-		_logger.error(f"The AI sent a /remember command with no "
-						f"argument in conversation {chat_id}.")
-
-		diagMsg = "/remember command needs an argument."
-		sendRes = await _send_diagnostic(message, conversation, diagMsg)
-		if sendRes != 'success': return sendRes
-		
-		return "error: missing required argument"
-	#__/
-
-	# Diagnostic.
-	_logger.normal(f"\nFor user {user_name} in chat {chat_id}, adding "
-					f"{'public' if isPublic else 'private'} "
-					f"{'global' if isGlobal else 'local'} memory ["
-					f"{textToAdd}].")
-
-	newItemID = _addMemoryItem(user.id, chat_id, textToAdd, isPublic, isGlobal)
-	return f"Success: created new memory item {newItemID}"
-
-	# Obsolete code below.
-
-	# Tell the conversation object to add the given message to the AI's persistent memory.
-	if not conversation.add_memory(textToAdd):
-		
-		errmsg = _lastError
-
-		# Generate an error-level report to include in the application log.
-		_logger.error(f"The AI tried & failed to add memory: [{textToAdd}]")
-
-		diagMsg = f"Could not add [{textToAdd}] to persistent memory. " \
-					f'Error message was: "{errmsg}"'
-
-		# Send the diagnostic message to the user.
-		sendRes = await _send_diagnostic(message, conversation, diagMsg)
-		if sendRes != 'success': return sendRes
-
-		return "error: unable to add memory item"
-	#__/
-
-
-	_logger.normal(f"\tThe AI added [{textToAdd}] to persistent memory in conversation {chat_id}.")
-
-	# Also notify the user that we're remembering the given statement.
-	diagMsg = f"Added [{textToAdd}] to persistent memory."
-
-	# Send the diagnostic message to the user.
-	sendRes = await _send_diagnostic(message, conversation, diagMsg)
-	return sendRes
-
-#__/ End of ai_remember() function definition.
-				
-
-# Number of items that the search_memory function returns by default.
-DEFAULT_SEARCHMEM_NITEMS	= 3
-	# Reasonable default. Do not recommend setting this higher than 10.
-
-async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
-					queryPhrase:str, nItems:int=DEFAULT_SEARCHMEM_NITEMS
-			) -> list:
-
-	"""Do a context-sensitive semantic search for memory items that
-		are related to the query phrase. Returns the closest few
-		matching items (by default 3)."""
-
-	userID = updateMsg.from_user.id
-	chatID = conversation.chat_id
-
-	# Cap nItems at 10.
-	maxn = MAXIMUM_SEARCHMEM_NITEMS
-	if nItems > maxn:
-
-		_logger.warn(f"{nItems} search results requested; capping to {maxn}.")
-
-		warning_msgStr = f"WARNING: {nItems} search results were requested, "\
-			"but returning more than {maxn} items from a memory search is "\
-			"not supported. Limiting search to top {maxn} results."
-
-		nItems = maxn
-
-			# Make sure the AI sees that message, even if we fail in sending it to the user.
-		conversation.add_message(BotMessage(SYS_NAME, warning_msgStr))
-		
-            # Also send the warning message to the user. (Making it clear that 
-            # it's a system message, not from the AI persona itself.)
-		reply_msgStr = f"[SYSTEM {warning_msgStr}]"
-		await _reply_user(tgMessage, conversation, reply_msgStr, ignore=True)
-
-	#__/
-
-	_logger.normal(f"In chat {chatID}, for user #{userID}, AI is searching for the top {nItems} memories matching the search query: [{queryPhrase}].")
-	matchList = _searchMemories(userID, chatID, queryPhrase, nItems=nItems)
-
-	_logger.normal(f"Found the following matches: [\n{matchList}\n].")
-
-	return matchList
-
-
-# Define a function to handle the /forget command, when issued by the AI.
-async def ai_forget(updateMsg:TgMsg, conversation:BotConversation,
-					textToDel:str=None, itemToDel:str=None) -> None:
-	"""The AI calls this function to remove the given text from its persistent memory."""
-
-	# Put the message from the Telegram update in a convenient variable.
-	message = updateMsg
-
-	# Retrieve the conversation's chat ID.
-	chat_id = conversation.chatID	# Public property. Type: int.
-
-	# The following code used to appear directly inside handle_response(), but I've
-	# moved it here to make it easier to call it from other places, such as the
-	# code to handle function-call responses from the AI.
-
-	# Check for missing <textToDel> argument.
-	if textToDel == None and itemToDel == None:
-		_logger.error(f"The AI sent a /forget command with no " \
-					  f"argument in conversation {chat_id}.")
-
-		diagMsg = "/forget command needs an argument."
-		sendRes = await _send_diagnostic(message, conversation, diagMsg)
-		if sendRes != 'success': return sendRes
-
-		return "error: missing required argument"
-	#__/
-
-	_deleteMemoryItem(item_id=itemToDel, item_text=textToDel)
-	# For now we assume it always succeeds.
-
-	if itemToDel is not None:
-		return f"Success: item with ID [{itemToDel}] was deleted from memory."
-	elif textToDel is not None:
-		return f"Success: item with text [{textToDel}] was deleted from memory."
-
-	# We should never get here, but just in case.
-	return "unexpected error"
-
-	## Obsolete code below here.
-
-	# Tell the conversation object to remove the given message
-	# from the AI's persistent memory.  The return value from
-	# this call is True if the message was found and removed,
-	# and False if it wasn't.
-
-	if conversation.remove_memory(textToDel):
-
-		# Log this at normal level.
-		_logger.normal(f"\tThe AI removed [{textToDel}] from persistent memory in conversation {chat_id}.")
-
-		# Also notify the AI & user that we're forgetting the given statement.
-		diagMsg = f"Removed [{textToDel}] from persistent memory."
-		sendRes = await _send_diagnostic(message, conversation, diagMsg)
-		if sendRes != 'success': return sendRes
-		
-		return "success"	# Processed AI's /forget command successfully.
-
-	else:
-
-		errmsg = _lastError
-		
-		# Log this at ERROR level.
-		_logger.error("The AI tried & failed to remove "
-						f"[{textToDel}] from persistent memory in "
-						f"conversation {chat_id}; error: {errmsg}.")
-
-		# Also notify the user that we couldn't forget the given statement.
-		diagMsg = f"Could not remove [{textToDel}] from persistent " \
-					f'memory. Error message was: "{_lastError}"'
-		sendRes = await _send_diagnostic(message, conversation, diagMsg)
-		if sendRes != 'success': return sendRes
-		
-		return f"error: {errmsg}"
-
-#__/ End of ai_forget() function definition.
-
-
-# Define a function to handle the /block command, when issued by the AI.
-async def ai_block(updateMsg:TgMsg, conversation:BotConversation,
-				   userToBlock:str=None, userIDToBlock:int=None) -> str:
-
-	"""The AI calls this function to block the given user, who may be specified
-		by tag (if unique) or by ID. If no user is specified, it blocks the
-		current user (the one who sent the current update)."""
-	
-	# Put the message from the Telegram update in a convenient variable.
-	message = updateMsg
-
-	# Retrieve the current user's name & ID, in case we need it.
-	user_name = _get_user_tag(message.from_user)
-	cur_user_id = message.from_user.id
-
-	# Retrieve the conversation's chat ID.
-	chat_id = conversation.chatID	# Public property. Type: int.
-
-	# The following code used to appear directly inside handle_response(), but I've
-	# moved it here to make it easier to call it from other places, such as the
-	# code to handle function-call responses from the AI.
-
-	# If no user was specified, then we'll block the current user.
-	if userToBlock == None and userIDToBlock == None:
-		userToBlock = user_name
-		userIDToBlock = cur_user_id
-
-	## If we don't have a user ID, complain and die.
-	#if userIDToBlock is None:
-	#	await _report_error(conversation, message,
-	#						"Blocking users by tag is no longer supported."))
-	#	return "internal error in ai_block()"
-
-	# If we're given a user ID, we'll use that; if we only have a user tag,
-	# we'll check whether the tag is unique, and if so we'll use it.
-
-	if userIDToBlock is None:
-
-		matchingUsers = _lookup_user_by_tag(userToBlock)
-
-		if len(matchingUsers) > 1:
-			diagMsg = f"Can't block user by name tag '{userToBlock}' because it isn't unique."
-			return_msg = f"Error: User name tag {userToBlock} is not unique!"
-
-			# Send diagnostic message to AI and to user.
-			sendRes = await _send_diagnostic(message, conversation, diagMsg)
-			if sendRes != 'success': return sendRes
-
-			return return_msg
-
-		if len(matchingUsers) == 0:
-
-			# We could also try searching by display name here, but we don't bother.
-
-			diagMsg = f"Can't block user with name tag '{userToBlock}' because a user with that "\
-					  "tag wasn't found. Try blocking by the user's first name, username, or user "\
-					  "ID instead."
-			return_msg = f"Error: User name tag {userToBlock} was not found!"
-
-			# Send diagnostic message to AI and to user.
-			sendRes = await _send_diagnostic(message, conversation, diagMsg)
-			if sendRes != 'success': return sendRes
-
-			return return_msg
-			
-
-		# Retrieve the user's ID.
-		userIDToBlock = matchingUsers[0]['userID']
-
-	# Generate a warning-level log message to indicate that we're blocking the user.
-	_logger.warn(f"***ALERT*** The AI is blocking user '{userToBlock}' in conversation {chat_id}.")
-
-	# Retrieve the user tag if we don't have it yet.
-	if userToBlock is None:
-
-		userData = _lookup_user(userIDToBlock)
-		userToBlock = userData['userTag']
-
-	# Check if they're already blocked; else block them.
-	if _isBlockedByID(userIDToBlock):
-		_logger.warn(f"User '{userToBlock}' is already blocked.")
-		diagMsg = f'User {userToBlock} has already been blocked by {BOT_NAME}.'
-		return_msg = f"Note: User {userToBlock} is already blocked!"
-	else:
-		success = _blockUserByID(userIDToBlock)
-		if success:
-			diagMsg = f'{BOT_NAME} has blocked user {userToBlock}.'
-			return_msg = f"Success: blocked user {userToBlock}."
-		else:
-			error = _lastError	# Fetch the error message.
-			await _report_error(conversation, message, error)
-			return 'blocking the app developer is not allowed'
-	
-	# Send diagnostic message to AI and to user.
-	sendRes = await _send_diagnostic(message, conversation, diagMsg)
-	if sendRes != 'success': return sendRes
-
-	return return_msg
-
-#__/ End of ai_block() function definition.
-				
-
-# Define a function to handle the /unblock command, when issued by the AI.
-async def ai_unblock(updateMsg:TgMsg, conversation:BotConversation,
-					 userToUnblock:str=None, userIDToUnblock:int=None) -> str:
-
-	"""The AI calls this function to unblock the given user. If no user is specified,
-		it unblocks the current user (the one who sent the current update).
-		(Note this case will normally never occur.)
-	"""
-	
-	# Put the message from the Telegram update in a convenient variable.
-	message = updateMsg
-
-	# Retrieve the current user's name, in case we need it.
-	user_name = _get_user_tag(message.from_user)
-	cur_user_id = message.from_user.id
-
-	# Retrieve the conversation's chat ID.
-	chat_id = conversation.chatID	# Public property. Type: int.
-
-	# The following code used to appear directly inside handle_response(), but I've
-	# moved it here to make it easier to call it from other places, such as the
-	# code to handle function-call responses from the AI.
-
-	# If no user was specified, then we'll unblock the current user.
-	if userToUnblock == None:
-		userToUnblock = user_name
-		userIDToBlock = cur_user_id
-
-	## If we don't have a user ID, complain and die.
-	#if userIDToUnblock is None:
-	#	await _report_error(conversation, message,
-	#						"Unblocking users by tag is no longer supported."))
-	#	return "internal error in ai_unblock()"
-
-	if userIDToUnblock is None:
-
-		matchingUsers = _lookup_user_by_tag(userToUnblock)
-
-		if len(matchingUsers) > 1:
-			diagMsg = f"Can't unblock user by name tag '{userToUnblock}' because it isn't unique."
-			return_msg = f"Error: User name tag {userToUnblock} is not unique!"
-
-			# Send diagnostic message to AI and to user.
-			sendRes = await _send_diagnostic(message, conversation, diagMsg)
-			if sendRes != 'success': return sendRes
-
-			return return_msg
-
-		# If there are no matches, try searching by display name instead.
-		if len(matchingUsers) == 0:
-
-			matchingUsers = _lookup_user_by_dispname(userToUnblock)
-
-			if len(matchingUsers) != 1:
-				diagMsg = f"Can't unblock user named '{userToUnblock}' because "\
-						  f"{len(matchingUsers)} with that name were found. "\
-						  "Try unblocking by first name, username, or user ID "\
-						  "instead."
-				return_msg = f"Error: User name {userToUnblock} was not found "\
-							 "or is not unique."
-
-				# Send diagnostic message to AI and to user.
-				sendRes = await _send_diagnostic(message, conversation, diagMsg)
-				if sendRes != 'success': return sendRes
-
-				return return_msg
-
-			#__/
-		#__/
-
-		# Retrieve the user's ID.
-		userIDToUnblock = matchingUsers[0]['userID']
-
-	# Generate a warning-level log message to indicate that we're blocking the user.
-	_logger.warn(f"***ALERT*** The AI is unblocking user '{userToUnblock}' in conversation {chat_id}.")
-
-	# Retrieve the user tag if we don't have it yet.
-	if userToUnblock is None:
-		userData = _lookup_user(userIDToUnblock)
-		userToUnblock = userData['userTag']
-
-	# Check if they're already unblocked; else block them.
-	if not _isBlockedByID(userIDToUnblock):
-		_logger.error(f"User '{userToUnblock}' is not blocked.")
-		diagMsg = f'User {userToUnblock} is not currently blocked by {BOT_NAME}.'
-		return_msg = f"User {userToUnblock} is not blocked!"
-	else:
-		# This always succeeds.
-		_unblockUserByID(userIDToUnblock)
-		diagMsg = f'{BOT_NAME} has unblocked user {userToUnblock}.'
-		return_msg = f"Success: unblocked user {userToUnblock}."
-	
-	# Send diagnostic message to AI and to user.
-	sendRes = await _send_diagnostic(message, conversation, diagMsg)
-	if sendRes != 'success': return sendRes
-
-	return return_msg
-
-#__/ End of ai_unblock() function definition.
-				
-
-# Define a function to handle the /image command, when issued by the AI.
-async def ai_image(update:Update, context:Context, imageDesc:str, caption:str=None	#, remaining_text:str=None
-	) -> None:
-
-	# Get the message, or edited message from the update.
-	(message, edited) = _get_update_msg(update)
-
-	# Get the chat_id, user_name, and conversation object.
-	chat_id = message.chat.id
-	user_name = _get_user_tag(message.from_user)
-	conversation = context.chat_data['conversation']
-
-	# Error-checking for null argument.
-	if imageDesc == None or imageDesc=="":
-		_logger.error(f"The AI sent an /image command with no argument in conversation {chat_id}.")
-
-		diagMsg = "/image command needs an argument."
-		sendRes = await _send_diagnostic(message, conversation, diagMsg)
-		if sendRes != 'success': return sendRes
-
-		return "error: null image description"
-
-	# Generate and send an image described by the /image command argument string.
-	_logger.normal("\nGenerating an image with description "
-					f"[{imageDesc}] for user '{user_name}' in "
-					f"conversation {chat_id}.")
-	if caption:
-		_logger.normal(f"\tAn image caption [{caption}] was also specified.")
-
-	await send_image(update, context, imageDesc, caption=caption)
-
-	# Make a note in conversation archive to indicate that the image was sent.
-	conversation.add_message(BotMessage(SYS_NAME, f'[Generated and sent image "{imageDesc}"]'))
-
-	## NOTE: This is now done in process_command() more generically.
-	# Send the remaining text after the command line, if any, as a normal message.
-	#if remaining_text != None and remaining_text != '':
-	#	await send_response(update, context, remaining_text)
-
-	return "Success: image has been generated and sent to user"
-
-#__/ End of ai_image() function definition.
-
-
-async def ai_call_function(update:Update, context:Context, funcName:str, funcArgs:dict) -> str:
-
-	"""Call the named AI-available function with the given argument dict. Returns a result string."""
-
-	# Get the user message, or edited message from the update.
-	(message, edited) = _get_update_msg(update)
-	
-	# Get the chat_id, user_name, and conversation object.
-	chat_id = message.chat.id
-	user_name = _get_user_tag(message.from_user)
-	user_id = message.from_user.id
-	conversation = context.chat_data['conversation']
-	
-	# Dispatch on the function name. See FUNCTIONS_LIST.
-	if funcName == 'remember_item':
-
-		# Get the arguments.
-
-		textToAdd = funcArgs.get('item_text', None)
-
-		isPrivate = funcArgs.get('is_private', True)
-			# Is this information considered private
-			# to the specific user or group chat?
-
-		isGlobal = funcArgs.get('is_global', False)
-			# Is this information available for the
-			# AI to see in any context?
-
-		if textToAdd:
-			return await ai_remember(message, conversation, textToAdd,
-									 isPublic=not isPrivate, isGlobal=isGlobal)
-		else:
-			await _report_error(conversation, message,
-					f"remember_item() missing required argument item_text.")
-			return "error: required argument item_text is missing"
-
-	elif funcName == 'search_memory':
-
-			# Get the arguments.
-
-		queryPhrase = funcArgs.get('query_phrase', None)
-		maxResults = funcArgs.get('max_results', DEFAULT_SEARCHMEM_NITEMS)
-
-		if queryPhrase:
-			return await ai_search(message, conversation, queryPhrase,
-								   nItems=maxResults)
-			
-		else:
-			await _report_error(conversation, message,
-					f"search_memory() missing required argument query_phrase.")
-			return "error: required argument query_phrase is missing"
-
-	elif funcName == 'forget_item':
-		itemToDel = funcArgs.get('item_id', None)
-		textToDel = funcArgs.get('item_text', None)
-
-		if itemToDel:
-			return await ai_forget(message, conversation, itemToDel=itemToDel)
-		elif textToDel:
-			return await ai_forget(message, conversation, textToDel=textToDel)
-		else:
-			await _report_error(conversation, message,
-					f"forget_item() missing required argument item_id or item_text.")
-			return "error: required argument (item_id or item_text) is missing"
-
-	elif funcName == 'create_image':
-		imageDesc = funcArgs.get('image_desc', None)
-		caption = funcArgs.get('caption', None)
-
-		if imageDesc:
-			return await ai_image(update, context, imageDesc, caption)
-		else:
-			await _report_error(conversation, message,
-					f"create_image() missing required argument image_desc.")
-			return "error: required argument image_desc is missing"
-
-	elif funcName == 'block_user':
-
-		# NOTE: Blocking users by tag may not always work, since tags are not unique.
-		userToBlock = funcArgs.get('user_name', user_name)		# Default to current user.
-
-		# We can't uncomment this yet because AI can't retrieve ID yet.
-		#userIDToBlock = funcArgs.get('user_id', user_id)		# Specified by ID.
-
-		return await ai_block(message, conversation, userToBlock)
-
-	elif funcName == 'unblock_user':
-
-		# NOTE: Unblocking users by tag may not always work, since tags are not unique.
-		userToUnblock = funcArgs.get('user_name', user_name)		# Default to current user.
-
-		return await ai_unblock(message, conversation, userToUnblock)
-
-	elif funcName == 'pass_turn':
-		_logger.normal(f"\nNOTE: The AI is passing its turn in conversation {chat_id}.")
-		return PASS_TURN_RESULT
-
-	else:
-		await _report_error(conversation, message,
-							f"AI tried to call an undefined function '{funcName}()'.")
-		return f"error: {funcName} is not an available function"
-
-#__/ End definition of private function ai_call_function().
-
-PASS_TURN_RESULT = "Success: I will refrain from responding to the last user message"
-
-# Process a command (message starting with '/') from the AI.
-async def process_ai_command(update:Update, context:Context, response_text:str) -> None:
-	"""Given the text of a message returned by the AI, where that text starts
-		with a '/' character, this function interprets it as an attempt by the
-		AI to issue a command, and handles this appropriately."""
-
-	# Get the user message, or edited message from the update.
-	(message, edited) = _get_update_msg(update)
-	
-	# Get the chat_id, user_name, and conversation object.
-	chat_id = message.chat.id
-	user_name = _get_user_tag(message.from_user)
-	conversation = context.chat_data['conversation']
-
-	# Extract the command name from the message.  We'll do this
-	# with a regex that captures the command name, and then the
-	# rest of the command line.  But first, we'll capture just the
-	# first line of the message, followed by the rest.
-
-	# Split the text into lines
-	lines = response_text.splitlines()
-
-	# Get the first line
-	first_line = lines[0]
-
-	# Output the command line to the console.
-	_logger.normal("The AI sent a command line: " + first_line)
-
-	# Get the remaining text by joining the rest of the lines
-	remaining_text = '\n'.join(lines[1:])
-
-	# Now, we'll use a regex to parse the command line to
-	# extract the command name and optional arguments.
-	match = re.match(r"^/(\S+)(?:\s+(.*))?$", first_line)
-
-	# Extract the command name and arguments from the match.
-	command_name = command_args = None
-	if match is not None:
-		groups = match.groups()
-		command_name = groups[0]
-		if len(groups) > 1:
-			command_args = groups[1]
-
-	## Now, we'll process the command.
-
-	# First, let's go ahead and show the command line to the user... (Ignoring send errors.)
-	await _reply_user(message, conversation, first_line, ignore=True)
-
-	# NOTE: We can't just call the normal command handlers
-	# directly, because they are designed for commands issued by
-	# the user, not by the AI. So, we'll have to process the
-	# commands ourselves to handle them correctly.
-
-	# Check to see if the AI typed the '/remember' command.
-	if command_name == 'remember':
-		# This is a command to remember something.
-
-		_logger.normal(f"\nAI {BOT_NAME} entered a /remember command in chat {chat_id}.")
-
-		# Should we issue a warning here if there is remaining text
-		# after the command line that we're ignoring?  Or should we 
-		# include the remaining text as part of the memory to be 
-		# remembered?
-
-		# This does all the work of handling the '/remember' command
-		# when issued by the AI.
-		await ai_remember(message, conversation, command_args)
-
-	# Check to see if the AI typed the '/forget' command.
-	elif command_name == 'forget':
-		# This is a command to forget something.
-
-		_logger.normal(f"\nAI {BOT_NAME} entered a /forget command in chat {chat_id}.")
-
-		# Should we issue a warning here if there is remaining text
-		# after the command line that we're ignoring?  Or should we 
-		# include the remaining text as part of the memory to be 
-		# forgotten?
-
-		# This does all the work of handling the '/forget' command
-		# when issued by the AI.
-		await ai_forget(message, conversation, textToDel=command_args)
-
-	elif command_name == 'block':
-		# Adds the current user (or a specified user) to the block list.
-
-		_logger.normal(f"\nAI {BOT_NAME} entered a /block command in chat {chat_id}.")
-
-		# Should we issue a warning here if there is remaining text
-		# after the command line that we're ignoring?  Or should we
-		# send the remaining text as a normal message?
-
-		# This does all the work of handling the '/block' command
-		# when issued by the AI.
-		await ai_block(message, conversation, command_args)
-
-	elif command_name == 'unblock':
-		# Removes the current user (or a specified user) from the block list.
-
-		_logger.normal(f"\nAI {BOT_NAME} entered an /unblock command in chat {chat_id}.")
-
-		# Should we issue a warning here if there is remaining text
-		# after the command line that we're ignoring?  Or should we
-		# send the remaining text as a normal message?
-
-		# This does all the work of handling the '/unblock' command
-		# when issued by the AI.
-		await ai_unblock(message, conversation, command_args)
-
-	elif command_name == 'image':
-		# This is a command to generate an image and send it to the user.
-		
-		_logger.normal(f"\nAI {BOT_NAME} entered an /image command in chat {chat_id}.")
-			
-		# This does all the work of handling the '/image' command
-		# when issued by the AI.
-		await ai_image(update, context, command_args)
-			# NOTE: We're passing the entire update object here, as well
-			# as the context, because we need to be able to send a message
-			# to the user, and we can't do that with just the message object.
-
-		# NOTE: We could have passed remaining_text as the 4th argument (caption),
-		# but it's perhaps better to just send it as an ordinary text message.
-
-	else:
-		# This is a command type that we don't recognize.
-		_logger.warn(f"\nAI {BOT_NAME} entered an unknown command [/{command_name}] in chat {chat_id}.")
-
-		# Send the user a diagnostic message.
-		diagMsg = f"Unknown command [/{command_name}]."
-		await _send_diagnostic(message, conversation, diagMsg, ignore=True)
-
-	# If there was any additional text remaining after the command line,
-	# just send it as a normal message.
-	if remaining_text != "":
-		await send_response(update, context, remaining_text)
-
-	# At this point we are done processing the command.
-#__/
-
-
-# Process a command (message starting with '/') from the AI.
-async def process_ai_command(update:Update, context:Context, response_text:str) -> None:
-	"""Given the text of a message returned by the AI, where that text starts
-		with a '/' character, this function interprets it as an attempt by the
-		AI to issue a command, and handles this appropriately."""
-
-	# Get the user message, or edited message from the update.
-	(message, edited) = _get_update_msg(update)
-	
-	# Get the chat_id, user_name, and conversation object.
-	chat_id = message.chat.id
-	user_name = _get_user_tag(message.from_user)
-	conversation = context.chat_data['conversation']
-
-	# Extract the command name from the message.  We'll do this
-	# with a regex that captures the command name, and then the
-	# rest of the command line.  But first, we'll capture just the
-	# first line of the message, followed by the rest.
-
-	# Split the text into lines
-	lines = response_text.splitlines()
-
-	# Get the first line
-	first_line = lines[0]
-
-	# Output the command line to the console.
-	_logger.normal("The AI sent a command line: " + first_line)
-
-	# Get the remaining text by joining the rest of the lines
-	remaining_text = '\n'.join(lines[1:])
-
-	# Now, we'll use a regex to parse the command line to
-	# extract the command name and optional arguments.
-	match = re.match(r"^/(\S+)(?:\s+(.*))?$", first_line)
-
-	# Extract the command name and arguments from the match.
-	command_name = command_args = None
-	if match is not None:
-		groups = match.groups()
-		command_name = groups[0]
-		if len(groups) > 1:
-			command_args = groups[1]
-
-	## Now, we'll process the command.
-
-	# First, let's go ahead and show the command line to the user... (Ignoring send errors.)
-	await _reply_user(message, conversation, first_line, ignore=True)
-
-	# NOTE: We can't just call the normal command handlers
-	# directly, because they are designed for commands issued by
-	# the user, not by the AI. So, we'll have to process the
-	# commands ourselves to handle them correctly.
-
-	# Check to see if the AI typed the '/remember' command.
-	if command_name == 'remember':
-		# This is a command to remember something.
-
-		_logger.normal(f"\nAI {BOT_NAME} entered a /remember command in chat {chat_id}.")
-
-		# Should we issue a warning here if there is remaining text
-		# after the command line that we're ignoring?  Or should we 
-		# include the remaining text as part of the memory to be 
-		# remembered?
-
-		# This does all the work of handling the '/remember' command
-		# when issued by the AI.
-		await ai_remember(message, conversation, command_args)
-
-	# Check to see if the AI typed the '/forget' command.
-	elif command_name == 'forget':
-		# This is a command to forget something.
-
-		_logger.normal(f"\nAI {BOT_NAME} entered a /forget command in chat {chat_id}.")
-
-		# Should we issue a warning here if there is remaining text
-		# after the command line that we're ignoring?  Or should we 
-		# include the remaining text as part of the memory to be 
-		# forgotten?
-
-		# This does all the work of handling the '/forget' command
-		# when issued by the AI.
-		await ai_forget(message, conversation, command_args)
-
-	elif command_name == 'block':
-		# Adds the current user (or a specified user) to the block list.
-
-		_logger.normal(f"\nAI {BOT_NAME} entered a /block command in chat {chat_id}.")
-
-		# Should we issue a warning here if there is remaining text
-		# after the command line that we're ignoring?  Or should we
-		# send the remaining text as a normal message?
-
-		# This does all the work of handling the '/block' command
-		# when issued by the AI.
-		await ai_block(message, conversation, command_args)
-
-	elif command_name == 'image':
-		# This is a command to generate an image and send it to the user.
-		
-		_logger.normal(f"\nAI {BOT_NAME} entered an /image command in chat {chat_id}.")
-			
-		# This does all the work of handling the '/image' command
-		# when issued by the AI.
-		await ai_image(update, context, command_args)
-			# NOTE: We're passing the entire update object here, as well
-			# as the context, because we need to be able to send a message
-			# to the user, and we can't do that with just the message object.
-
-		# NOTE: We could have passed remaining_text as the 4th argument (caption),
-		# but it's perhaps better to just send it as an ordinary text message.
-
-	else:
-		# This is a command type that we don't recognize.
-		_logger.warn(f"\nAI {BOT_NAME} entered an unknown command [/{command_name}] in chat {chat_id}.")
-
-		# Send the user a diagnostic message.
-		diagMsg = f"Unknown command [/{command_name}]."
-		await _send_diagnostic(message, conversation, diagMsg, ignore=True)
-
-	# If there was any additional text remaining after the command line,
-	# just send it as a normal message.
-	if remaining_text != "":
-		await send_response(update, context, remaining_text)
-
-	# At this point we are done processing the command.
-#__/
+""" # Quoted out the bulk of the process_chat_message() function
+	# material that was in the (old version before refactoring). 
 
 
 async def process_response(update:Update, context:Context, response_botMsg:BotMessage) -> None:
@@ -5526,6 +5062,8 @@ def _addMemoryItem(userID, chatID, itemText, isPublic=False, isGlobal=False):
 	# Return the itemID for reference
 	return itemID
 
+#__/ End function _addMemoryItem().
+
 
 def _addUser(tgUser:User):
 
@@ -5559,104 +5097,6 @@ def _addUser(tgUser:User):
 	conn.close()
 
 #__/ End definition of private function _addUser().
-
-
-def _blockUserByID(userID:int) -> bool:
-	"""Blocks the given user, identified by their user ID,
-		from accessing the bot.  Returns True if successful;
-		False if failure."""
-
-	global _lastError
-
-	# If the AI is trying to block the Creator, don't let him.
-	if userID == 1774316494:	# Mike's user ID on Telegram.
-		_logger.error("The AI tried to block the app developer! Disallowed.")
-		_lastError = "Blocking the bot's creator, Michael, is not allowed."
-		return False
-
-	# Look up the complete user data.
-	userData = _lookup_user(userID)
-	isBlocked = userData['blocked']
-	userTag = userData['userTag']
-
-	# Check to see if they're already blocked.
-	# If so, we don't need to do anything.
-	if isBlocked:
-		_logger.warn(f"_blockUserByID(): User {userTag} is already blocked. Ignoring.")
-		_lastError = f"User {userTag} is already blocked; ignoring."
-		return True
-
-	# Do the block.
-	_logger.normal(f"\tBlocking user {userTag} (by new method).")
-	_set_user_blocked(userID, True)		# This actually updates the database.
-
-	# Indicate that the user is blocked in the legacy system as well,
-	# just because that file is more easily readable than the database.
-	_blockUser(userTag)
-
-	return True
-
-
-def _unblockUserByID(userID:int) -> bool:
-	"""Unblocks the given user, identified by their user ID.
-		Returns True if successful; False if failure."""
-
-	global _lastError
-
-	# Look up the complete user data.
-	userData = _lookup_user(userID)
-	isBlocked = userData['blocked']
-	userTag = userData['userTag']
-
-	# Check to see if they're already unblocked.
-	# If so, we don't need to do anything.
-	if not isBlocked:
-		_logger.warn(f"_blockUserByID(): User {userTag} is not blocked. Ignoring.")
-		_lastError = f"User {userTag} is not blocked; ignoring."
-		return True
-
-	# Do the unblock.
-	_logger.normal(f"\tUnblocking user {userTag} (by new method).")
-	_set_user_blocked(userID, False)		# This actually updates the database.
-
-	# Indicate that the user is blocked in the legacy system as well,
-	# just because that file is more easily readable than the database.
-	_unblockUser(userTag)
-
-	return True
-
-
-def _set_user_blocked(userID: int, blocked: bool):
-
-    # Path to the database file
-    db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
-
-    # Create a connection to the SQLite database
-    conn = sqlite3.connect(db_path)
-
-    # Create a cursor object
-    c = conn.cursor()
-
-    # Form the display name
-    displayName = tgUser.first_name
-    if tgUser.last_name:
-        displayName += " " + tgUser.last_name
-
-    # Convert Python bool to SQLite integer BOOL (1 or 0)
-    blocked_value = 1 if blocked else 0
-
-    # Update the blocked field for the user with the given userID
-    c.execute('''
-        UPDATE users
-        SET blocked = ?
-        WHERE userID = ?
-    ''', (blocked_value, userID))
-
-    # Commit the transaction
-    conn.commit()
-
-    # Close the connection
-    conn.close()
 
 
 # NOTE: This function is being deprecated because user tags
@@ -5694,6 +5134,45 @@ def _blockUser(user:str) -> bool:
 	return True
 #__/
 	
+
+def _blockUserByID(userID:int) -> bool:
+
+	"""Blocks the given user, identified by their user ID,
+		from accessing the bot.  Returns True if successful;
+		False if failure."""
+
+	global _lastError
+
+	# If the AI is trying to block the Creator, don't let him.
+	if userID == 1774316494:	# Mike's user ID on Telegram.
+		_logger.error("The AI tried to block the app developer! Disallowed.")
+		_lastError = "Blocking the bot's creator, Michael, is not allowed."
+		return False
+
+	# Look up the complete user data.
+	userData = _lookup_user(userID)
+	isBlocked = userData['blocked']
+	userTag = userData['userTag']
+
+	# Check to see if they're already blocked.
+	# If so, we don't need to do anything.
+	if isBlocked:
+		_logger.warn(f"_blockUserByID(): User {userTag} is already blocked. Ignoring.")
+		_lastError = f"User {userTag} is already blocked; ignoring."
+		return True
+
+	# Do the block.
+	_logger.normal(f"\tBlocking user {userTag} (by new method).")
+	_set_user_blocked(userID, True)		# This actually updates the database.
+
+	# Indicate that the user is blocked in the legacy system as well,
+	# just because that file is more easily readable than the database.
+	_blockUser(userTag)
+
+	return True
+
+#__/ End function blockUserByID().
+
 
 def _call_desc(func_name:str, func_args:dict):
 	"""Convert a function name and argument dictionary to a string
@@ -5836,6 +5315,51 @@ async def _ensure_convo_loaded(update:Update, context:Context) -> bool:
 #__/
 
 
+# This could be a method of class Conversation.
+def _getDynamicMemory(convo:BotConversation):
+
+	# Get current context (user & chat IDs).
+	user = convo.last_user
+	userID = user.id
+	chatID = convo.chat_id
+
+	# Our generic search phrase will be simply, the text of
+	# the last message sent in the chat by the user..
+
+	searchPhrase = convo.lastMessageBy(_get_user_tag(user)).text
+
+	# We'll get the best-matching N items (currently set to 5).
+	memList = _searchMemories(userID, chatID, searchPhrase,
+							  nItems=DYNAMIC_CONTEXT_NITEMS)
+
+	# We'll accumulate lines with the following format:
+	#
+	#	id=<itemID> (user:<userTag> private/public local/global) <text>
+
+	memString = ""
+	for mem in memList:
+
+		itemID = mem['itemID']
+		userID = mem['userID']
+		isPublic = mem['public']
+		isGlobal = mem['global']
+		itemText = mem['itemText']
+		
+		# Look up detailed user data. This is a dict with keys:
+		#	'dispName', 'userName', 'userID', 'userTag', 'blocked'.
+		userData = _lookup_user(userID)
+		userTag = userData['userTag']		# Could sometimes be "(unknown)"
+
+		privacy = "public" if isPublic else "private"
+		locality = "global" if isGlobal else "local"
+
+		memString += f"itemID={itemID} (user:{userTag} {privacy} {locality}) {itemText}\n"
+
+	return memString
+
+#__/ End private function _searchMemories().
+
+
 def _getEmbedding(text):
 
 	"""Gets the embedding of a given text, as a vector (list)."""
@@ -5925,7 +5449,8 @@ def _get_user_tag(user) -> str:
 			_which_name = 'user ID'
 
 	return user_name
-#__/
+
+#__/ End private function _get_user_tag().
 
 
 def _initBotDB():
@@ -6086,15 +5611,6 @@ def _initPersistentData() -> None:
 #__/ End definition of _initPersistentData() function.
 
 	
-def _isBlockedByID(userID:int) -> bool:
-
-	# Look up the complete user data.
-	userData = _lookup_user(userID)
-	isBlocked = userData['blocked']
-
-	return isBlocked
-
-
 def _isBlocked(user:str) -> bool:
 	"""Return True if user is on blacklist, or if there
 		is a whitelist and the user is not on it."""
@@ -6139,12 +5655,142 @@ def _isBlocked(user:str) -> bool:
 				return True		# There's a whitelist but user isn't in it. Effectively blocked.
 
 	return False
-#__/
+
+#__/ End private function _isBlocked().
+
+
+def _isBlockedByID(userID:int) -> bool:
+
+	# Look up the complete user data.
+	userData = _lookup_user(userID)
+	isBlocked = userData['blocked']
+
+	return isBlocked
 
 
 def _listToStr(vec:list):
 	"Given a vector, return a comma-separated list."
 	return ",".join(map(str, vec))
+
+
+def _logOaiMsgs(oaiMsgList:list) -> None:
+
+	# Open the file for writing.
+	with open(f"{LOG_DIR}/latest-messages.txt", "w") as f:
+		for oaiMessage in oaiMsgList:
+			f.write(messageRepr(oaiMessage))
+				# Our text representation of OpenAI messages.
+	
+	# Also do a json dump
+	with open(f"{LOG_DIR}/latest-messages.json", "w") as outfile:
+		json.dump(oaiMsgList, outfile)
+
+#__/
+
+
+def _lookup_user(user_id):
+
+	# Path to the database file
+	db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
+
+	# Create a connection to the SQLite database
+	conn = sqlite3.connect(db_path)
+
+	# Create a cursor object
+	c = conn.cursor()
+
+	# Execute a SQL command to select the row with the given user ID
+	c.execute("SELECT * FROM users WHERE userID = ?", (user_id,))
+
+	# Fetch the row
+	row = c.fetchone()
+
+	# If a row was found, print it
+	if row is not None:
+		result = {
+			'dispName': row[0],
+			'userName': row[1],
+			'userID':	row[2],
+			'blocked':	row[3],
+			'userTag':	row[4] or 'unknown'
+				# NOTE: col. 3 could be None if this user hasn't
+				# been loaded yet since we added this new field.
+		}
+			
+	else:
+		result = None
+
+	# Close the connection
+	conn.close()
+
+	return result
+#__/
+
+
+def _lookup_user_by_dispname(user_tag):
+
+    # Path to the database file
+    db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
+
+    # Create a connection to the SQLite database
+    conn = sqlite3.connect(db_path)
+
+    # Create a cursor object
+    c = conn.cursor()
+
+    # Execute a SQL command to select rows with the given user display name (first+last name).
+    c.execute("SELECT * FROM users WHERE displayName = ?", (user_tag,))
+
+    # Fetch all rows
+    rows = c.fetchall()
+
+    results = []
+    for row in rows:
+        results.append({
+            'dispName': row[0],
+            'userName': row[1],
+            'userID':   row[2],
+            'blocked':  row[3],
+            'userTag':  row[4] or 'unknown'
+        })
+
+    # Close the connection
+    conn.close()
+
+    return results
+
+
+def _lookup_user_by_tag(user_tag):
+
+    # Path to the database file
+    db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
+
+    # Create a connection to the SQLite database
+    conn = sqlite3.connect(db_path)
+
+    # Create a cursor object
+    c = conn.cursor()
+
+    # Execute a SQL command to select rows with the given user tag.
+    c.execute("SELECT * FROM users WHERE userTag = ?", (user_tag,))
+
+    # Fetch all rows
+    rows = c.fetchall()
+
+    results = []
+    for row in rows:
+        results.append({
+            'dispName': row[0],
+            'userName': row[1],
+            'userID':   row[2],
+            'blocked':  row[3],
+            'userTag':  row[4] or 'unknown'
+        })
+
+    # Close the connection
+    conn.close()
+
+    return results
 
 
 def _printMemories():
@@ -6184,7 +5830,7 @@ def _printMemories():
 		conn.close()
 	#__/
 
-#__/
+#__/ 
 
 
 def _printUsers():
@@ -6224,6 +5870,447 @@ def _printUsers():
 	#__/
 
 #__/
+
+
+# Another new function, to handle function call requests from the AI.
+# Again, we separate this from _process_raw_response() just to keep
+# our functions from getting too long.
+
+async def _process_function_call(
+		funcall_oaiMsg:dict,		# Raw OpenAI message that represents the function call.
+		tgUpdate:Update,			# The original Telegram update that prompted this call.
+		tgContext:Context,			# The Telegram context for this chat.
+	) -> None:
+
+	"""Processes a function call request received from the AI. Also returns the
+		function result to the AI, and gets the AI's response to that."""
+
+	# Get the text of the response, if any (should be None).
+	response_text = funcall_oaiMsg.get('content', None)
+
+	# Get the bot's conversation object.
+	botConvo = tgContext.chat_data['conversation']
+
+	# Retrieve the function call object from the OpenAI message containing it.
+	funCall = funcall_oaiMsg.get('function_call')
+
+	# Retrieve the function name and arguments from the function call object.
+	function_name = funCall['name']
+	function_args = json.loads(funCall['arguments'])
+	
+	_logger.info(f"AI wants to call function {function_name} with " \
+				 "arguments: \n" + pformat(function_args))
+
+	# Generate a description of the function call, for diagnostic purposes.
+	call_desc = _call_desc(function_name, function_args)
+
+	# Have the bot server make a note in the conversation to help the AI
+	# remember that it did the function call.
+	fcall_note = f"[NOTE: {BOT_NAME} is doing function call {call_desc}.]"
+	botConvo.add_message(BotMessage(SYS_NAME, fcall_note))
+
+	# Extract the optional remark argument from the argument list.
+	if 'remark' in function_args:
+		remark = function_args['remark']
+		del function_args['remark']
+	else:
+		remark = ""		# If no remark, take it as empty string.
+
+	# The response_text is probably None, but force it to a string
+	# so that just in case it's a non-empty string, we can handle
+	# this without checking its type all the time.
+	if response_text is None:
+		response_text = ""
+
+	# Generate a description of the function call, for diagnostic purposes.
+	call_desc = _call_desc(function_name, function_args)
+
+	## Just did this temporarily while debugging.
+	# # Prepend a diagnostic with the call description and remark to the
+	# # response_text (which is probably null).
+	# response_text = f"[SYSTEM DIAGNOSTIC: Called {call_desc}]\n\n" \
+	#					+ remark + '\n' + response_text
+
+	# The original response text, followed by the remark. This probably is just
+	# the remark, since the original response text should have been null. But in
+	# any case, we'll use it as our response text below.
+	response_text = (response_text + '\n' + remark).strip()
+
+	# Before calling the function, we'll send the response_text, if non-empty.
+	# (which at this point probably just contents of a remark argument, if
+	# anything)'
+	if response_text != "":
+
+		# Append the response text to the conversation.
+		botConvo.add_message(BotMessage(BOT_NAME, response_text))
+					
+		# Try sending the response text to the user. (But ignore send errors here.)
+		await send_response(tgUpdate, tgContext, response_text)
+			# (We ignore them because presumably it's more important to
+			# still go ahead and try calling the function if we can.)
+	#__/
+
+	# Actually do the call here, and assemble appropriate result text.
+	func_result = await ai_call_function(tgUpdate, tgContext, function_name, function_args)
+
+	# This is mainly for diagnostic purposes.
+	if func_result is None or func_result == "":
+		func_result = "null result"
+
+	# Diagnostic.
+	_logger.info(f"The AI's function call returned the result: [{pformat(func_result)}]")
+
+	# Get the function result in the form of a string, even if it isn't.
+	resultStr = func_result if isinstance(func_result, str) \
+				else json.dumps(func_result)
+
+	# Now, we retrieve the current raw OpenAI message object list from the bot
+	# convo object; please note that this should *already* have the final system
+	# message trimmed off, and it should include any previous function call/
+	# return sequences in the present function-call stack, and any side messages
+	# output by these.
+
+	temp_chat_oaiMsgs = list(botConvo.raw_oaiMsgs)
+		# We call list() here to force a *copy* of the list to be
+		# constructed.  Because we don't really want anyone else
+		# besides us modifying it until we've finished operating on it
+		# and have given the AI a chance to respond to it.
+
+	# Have the bot server make a note in the conversation to help the
+	# AI remember longer-term that it got a function result. NOTE: We
+	# do NOT want to also put this note into temp_chat_oaiMsgs at this
+	# point, because we don't want to distract the AI with these kinds
+	# of longer-term notes while it is still processing the *present*
+	# function call and return.
+
+	fret_note = f'[NOTE: {function_name}() call returned value: [{resultStr}]]'
+	botConvo.add_message(BotMessage(SYS_NAME, fret_note))
+
+	# Back when our functions just never returned a result, we would just skip
+	# everything below here. But they do return results now.
+
+	# Diagnostic.
+	_logger.info("Assembling temporary message list for function call & return...")
+
+	# Next, we temporarily trim off all trailing messages back to the last
+	# function call note, since these would be remarks and various system
+	# notifications and errors generated during function execution; we'll add
+	# these back onto the raw message list after we've inserted messages
+	# representing the raw function call and return operations, which the AI
+	# will recognize. The trimmed messages will be temporarily stored in
+	# <trailing_oaiMsgs>.
+
+	trailing_oaiMsgs = []
+	# Scan back until we get to the "system: [NOTE: " message...
+	while not (temp_chat_oaiMsgs[-1]['role'] == 'system'
+			   and temp_chat_oaiMsgs[-1]['content'].startswith(f'{SYS_NAME}> [NOTE: ')):
+		# NOTE: The above will break if MESSAGE_DELIMITER is not empty string.
+		_logger.info(f"Flipping back through message: [{pformat(temp_chat_oaiMsgs[-1])}]")
+		sys_oaiMsg = temp_chat_oaiMsgs.pop()
+		trailing_oaiMsgs = [sys_oaiMsg] + trailing_oaiMsgs
+	#__/
+
+	# Construct some messages to represent the function call and return value.
+	# Actually, we already have a message that represents the function call; it
+	# came from the AI originally, and was supplied to us in our funcall_oaiMsg
+	# argument. But, we need to make sure that we didn't add a 'content' field
+	# to this message at some point, because if we did and we try sending it
+	# back to the API, the API will choke on it.
+
+	if 'content' in funcall_oaiMsg and funcall_oaiMsg['content'] is not None:
+		_logger.info("Oops, our funcall message has text content?? "
+					 f"[\n{pformat(funcall_oaiMsg)}\n]")
+		funcall_oaiMsg['content'] = None
+	
+	# This new raw-format message represents the actual return value of the
+	# function.
+
+	funcret_oaiMsg = {
+		'role':		'function',
+		'name':		function_name,
+		'content':	resultStr
+	}
+
+	# If the function call was a successful "pass_turn" call, then
+	# we don't need to do anything else here, and we just return.
+
+	if resultStr == PASS_TURN_RESULT:
+		_logger.normal(f"\t{BOT_NAME} is refraining from responding to a "
+					   "returned function result in chat #{chat_id}.")
+		return
+
+	#--------------------------------------------------------------------------|
+	# Finish building up the temporary message list to pass into the next API
+	# call to see how the AI wants to respond to the returned function
+	# result. So, the sequence here is:
+	#
+	#	system:		[NOTE: ... is doing function call ...]
+	#	assistant:	(function call description)
+	#	assistant:	{remark emitted by bot during function call, if any}
+	#	(any other incidental outputs produced from within the function call)
+	#   function:	(function return description)
+	#	system:		(prompt AI to respond)
+
+	temp_chat_oaiMsgs += [funcall_oaiMsg]
+	temp_chat_oaiMsgs += trailing_oaiMsgs
+	temp_chat_oaiMsgs += [funcret_oaiMsg]
+	temp_chat_oaiMsgs += [{
+		'role':		'system',
+		'content':	f"Instructions from bot server: {BOT_NAME}, you " \
+					"may now provide your response, if any, to the " \
+					"function's return value above.",
+	}]
+
+	# Diagnostic: Display the most recent 10 chat messages from temp list.
+	_logger.info(f"Last few chat messages are [\n{pformat(temp_chat_oaiMsgs[-10:])}\n].")
+
+	# At this point, we want to get a response from the AI to our temporary list
+	# of raw OpenAI chat messages, which (note) includes raw descriptions of the
+	# most recent function call and return, as well as (possibly) results of
+	# previous function calls and returns in the present "call stack". Mean-
+	# while, the main 'messages' list in the bot conversation object is tracking
+	# just the more human-readable messages including the bot-server notes
+	# describing the current sequence of calls and returns which are being
+	# archived and preserved long-term as part of the conversation. This helps
+	# us to keep the conversation history more concise, while not distracting
+	# the AI with the details of earlier call-return sequences before the
+	# present stack. The next time get_ai_response() is called at the start of
+	# normal message processing, the two views will be brought back in sync.
+
+	await get_ai_response(tgUpdate, tgContext, temp_chat_oaiMsgs)
+		# Recursive call to get and process the AI's response to this
+		# *temporary* view of the message list.
+
+	# By the time we get back to here, the entire "stack" of successive function
+	# calls and returns triggered by our input function-call message from the AI
+	# has been completed.
+	#
+	# The present temporary raw message list in temp_chat_oaiMsgs is now no
+	# longer needed, and can be thrown away.
+	#
+	# So at this point, we are done processing the original function call, and
+	# so we just return.
+
+#__/ End definition of private function _process_function_call().
+
+
+# Another new function, to process a raw response from the AI, which (for chat
+# engines) takes the form of an OpenAI message object (a dictionary-like
+# object). We separate this from get_ai_response() above just to keep our
+# functions from getting too long!
+
+async def _process_raw_response(
+			chatCompletion:ChatCompletion, 
+			#oaiMsgs:list,
+			tgUpdate:Update,
+			tgContext:Context
+		) -> None:
+	#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^|
+	# NOTE RE: THE ABOVE ARGUMENTS:
+	#
+	#	<chatCompletion> is the "raw response" received from the AI, in the form
+	#			of a gpt3.api.ChatCompletion object.  (our wrapper around the
+	#			raw completion dictionary).
+	#
+	#	<tgUpdate> the original update from the Telegram server that prompted
+	#			this response.
+	#
+	#	<tgContext> the Telegram context corresponding to the current chat.
+	#
+	# ALSO NOTE RE: THE BELOW CODE:
+	#
+	#	<botConvo> (which we'll retrieve from the tgContext) is the
+	#			BotConversation object that's tracking this conversation from
+	#			the bot server's point of view.  Note this includes tracking
+	#			botConvo.raw_oaiMsgs.  ALSO NOTE: The botConvo.raw_oaiMsgs here
+	#			should NOT include a final system prompt!
+	#
+	#	<oaiMsgs> (which we'll retrieve from the botConvo) is the list of
+	#			*previous* messages in the chat, prior to this new one just
+	#			created by the AI.
+	#
+	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
+
+	"""Process a raw response from the AI."""
+
+	# Get the bot's conversation object.
+	botConvo = tgContext.chat_data['conversation']
+
+	# Get the current *raw* OpenAI message list from the bot convo object.
+	oaiMsgs = botConvo.raw_oaiMsgs
+
+	# Get the full dict-like response message object.
+	response_oaiMsg = chatCompletion.message
+
+	# In case there's a function call in the response, display it.
+	_logger.debug(f"RETURNED MESSAGE = [{pformat(response_oaiMsg)}]")
+
+	# Get the text field of the response. (Could be None, if function call.)
+	response_text = chatCompletion.text
+
+	# Diagnostic for debugging.
+	_logger.debug(f"Got response text: [{response_text}]")
+
+	# Here, we make sure that the response does not begin with a message
+	# prompt like "{BOT_NAME}> ". If it does, we trim it off the front.
+	if response_text is not None:
+
+		# Trim prompt off start of response.
+		new_response_text = _trim_prompt(response_text)
+
+		if new_response_text != response_text:
+			response_text = new_response_text
+
+			# Do surgery on the chat message object to fix it there also.
+			# (This is handled by our gpt3.api.ChatCompletion class.)
+			chatCompletion.text = response_text
+				# NOTE: Setting the '.text' property ('content' field) here
+				# could invalidate the chat message if it contains a function
+				# object too. But we made sure .text wasn't None already.
+
+			_logger.debug(f"Modified response message text is: [{chatCompletion.text}]")
+
+	## Another diagnostic; this one post-surgery.
+	# In case there's a function call in the response, display it.
+	#_logger.normal(f"RETURNED MESSAGE = \n" + pformat(response_message))
+
+	# Now, we check to see if the OpenAI message object returned by the AI has a
+	# 'function_call' property, in which case it means the AI is trying to call
+	# a function.  If it is, we'll dispatch out to the _process_function_call()
+	# function to handle this case.
+
+	funCall = response_oaiMsg.get('function_call')
+	if funCall:
+		
+		await _process_function_call(response_oaiMsg, tgUpdate, tgContext)
+			# This handles the function recall, the function return, and any
+			# responses by the AI to the function return (including any
+			# recursive function call-return sequences).
+		
+		# At this point, the whole recursive sequence of actions taken by the AI
+		# in response to that function call is complete, so we just
+		# return. There shouldn't have been any response text in a function call
+		# anyway, but if there is, we warn that we're ignoring it.
+
+		if response_text is not None:
+			_logger.warn(f"NOTE: Done with original response text: [{response_text}].")
+
+		return	# End process_chat_message() when done function processing.
+
+	#__/ End if funCall is truthy.
+	
+	# If we get here, it isn't a function-call response, it's a normal response.
+
+	# Get the message, or edited message from the update.
+	(tgMsg, edited) = _get_update_msg(tgUpdate)
+		# NOTE: We only do this to get the user data.
+		
+	if tgMsg is None:
+		_logger.error("In get_ai_response() with no message! Aborting.")
+		return
+
+	# Get user data.
+	user_obj	= tgMsg.from_user
+	user_tag	= _get_user_tag(user_obj)
+	user_id		= user_obj.id
+	chat_id		= botConvo.chat_id
+
+	# Also check for finish_reason == 'content_filter' and log/send a warning.
+	finish_reason = chatCompletion.finishReason
+	if finish_reason == 'content_filter':
+				
+		_logger.warn(f"OpenAI content filter triggered by user {user_name} " \
+					 "(ID {user_id}) in chat {chat_id}. Response was:\n" + \
+					 pformat(chatCompletion.chatComplStruct))
+
+		WARNING_MSG = "WARNING: User {user_name} triggered OpenAI's content " + \
+					  "filter. Repeated violations could result in a ban."
+
+		# This allows the AI to see this warning message too.
+		botConvo.add_message(BotMessage(SYS_NAME, WARNING_MSG))
+
+		repRes = await _reply_user(tgMsg, botConvo, "[SYSTEM {WARNING_MSG}]")
+		if repRes != 'success': return
+
+	#__/ End if content filter triggered.
+
+	# Strip off any leading or trailing whitespace (Telegram won't display it
+	# anyway.).
+	response_text = response_text.strip()
+	
+	# Now we check for the case of an empty response text.
+
+	# If the response is empty, then return early. (Because, like, we can't even
+	# send an empty message anyway.)
+	if response_text == "":
+
+		_logger.warn("AI's text response was null. Ignoring...")
+
+		## No longer needed because we don't add an empty message.
+		# Delete the last message from the conversation.
+		#conversation.delete_last_message()
+
+		## Commenting this out for production.
+		# # Send the user a diagnostic message indicating that the response was empty.
+		# # (Doing this temporarily during development.)
+		#diagMsg = "Response was empty."
+		#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
+		
+		return		# This means the bot is simply not responding to this particular message.
+	
+	# Generate a debug-level log message to indicate that we're starting a new response.
+	_logger.debug("Creating new ordinary (non-function-call) response from "
+				  f"{botConvo.bot_name} with text: [{response_text}].")
+
+	# Create a new Message object and add it to the conversation.
+	response_botMsg = BotMessage(botConvo.bot_name, response_text)
+	botConvo.add_message(response_botMsg)
+
+	# Update the message object, and the context.
+	response_botMsg.text = response_text
+	botConvo.expand_context()	 
+
+	# If this message is already in the conversation, then we'll suppress it, so
+	# as not to exacerbate the AI's tendency to repeat itself.  (So, as a user,
+	# if you see that the AI isn't responding to a message, this may mean that
+	# it has the urge to just repeat something that it already said earlier, but
+	# is holding its tongue.)
+
+	if response_text.lower() != '/pass' and \
+	   botConvo.is_repeated_message(response_botMsg):
+
+		# Generate an info-level log message to indicate that we're suppressing
+		# the response.
+		_logger.info(f"Suppressing response [{response_text}]; it's a repeat.")
+
+		# Delete the last message from the conversation.
+		botConvo.delete_last_message()
+
+		## Send the user a diagnostic message (doing this temporarily during development).
+		#diagMsg = f"Suppressing response [{response_text}]; it's a repeat."
+		#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
+		
+		return		# This means the bot is simply not responding to the message
+
+	#__/ End check for repeated messages.
+
+	# If we get here, then we have a non-empty message that's also not a repeat.
+	# It's finally OK at this point to archive the message and send it to the user.
+
+	# Make sure the response message has been finalized (this also archives it).
+	botConvo.finalize_message(response_botMsg)
+
+	# If we get here, we have finally obtained a non-empty, non-repeat,
+	# already-archived message that we can go ahead and send to the user. This
+	# function will also check to see if the message is a textual command line,
+	# and will process the command if so.
+
+	await process_response(tgUpdate, tgContext, response_botMsg)	   # Defined below.
+
+	# If we get here, then we have finished processing the AI's text response,
+	# and we can just return.
+
+#__/ End definition of private function _process_raw_response().
 
 
 # Sends a message to the user, with some appropriate exception handling.
@@ -6272,7 +6359,8 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 	#__/
 
 	return 'success'
-#__/
+
+#__/ End definition of private function _reply_user().
 
 
 async def _report_error(convo:BotConversation, telegramMessage,
@@ -6302,62 +6390,6 @@ async def _report_error(convo:BotConversation, telegramMessage,
 		await _reply_user(telegramMessage, convo, f"[SYSTEM {msg}]")
 
 #__/ End private function _report_error().
-
-
-def _semanticDistance(em1:list, em2:list):
-
-	"""Computes a measure of the semantic distance between two vectors."""
-
-	# Compute the cosine distance using OpenAI's cosine_similarity() function
-	distance = (1 - cosine_similarity(em1, em2))/2.0
-		# cosine_similarity is +1 for same, -1 for opposite.
-		# (1-cosine_similarity) is 0 for same, +2 for opposite.
-		# Then we divide by 2 to map to the range 0-1.
-
-	return distance
-
-
-# This could be a method of class Conversation.
-def _getDynamicMemory(convo:BotConversation):
-
-	# Get current context (user & chat IDs).
-	user = convo.last_user
-	userID = user.id
-	chatID = convo.chat_id
-
-	# Our generic search phrase will be simply, the text of
-	# the last message sent in the chat by the user..
-
-	searchPhrase = convo.lastMessageBy(_get_user_tag(user)).text
-
-	# We'll get the best-matching N items (currently set to 5).
-	memList = _searchMemories(userID, chatID, searchPhrase,
-							  nItems=DYNAMIC_CONTEXT_NITEMS)
-
-	# We'll accumulate lines with the following format:
-	#
-	#	id=<itemID> (user:<userTag> private/public local/global) <text>
-
-	memString = ""
-	for mem in memList:
-
-		itemID = mem['itemID']
-		userID = mem['userID']
-		isPublic = mem['public']
-		isGlobal = mem['global']
-		itemText = mem['itemText']
-		
-		# Look up detailed user data. This is a dict with keys:
-		#	'dispName', 'userName', 'userID', 'userTag', 'blocked'.
-		userData = _lookup_user(userID)
-		userTag = userData['userTag']		# Could sometimes be "(unknown)"
-
-		privacy = "public" if isPublic else "private"
-		locality = "global" if isGlobal else "local"
-
-		memString += f"itemID={itemID} (user:{userTag} {privacy} {locality}) {itemText}\n"
-
-	return memString
 
 
 def _searchMemories(userID, chatID, searchPhrase,
@@ -6433,108 +6465,17 @@ def _searchMemories(userID, chatID, searchPhrase,
 	return results
 
 
-def _lookup_user_by_dispname(user_tag):
+def _semanticDistance(em1:list, em2:list):
 
-    # Path to the database file
-    db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
+	"""Computes a measure of the semantic distance between two vectors."""
 
-    # Create a connection to the SQLite database
-    conn = sqlite3.connect(db_path)
+	# Compute the cosine distance using OpenAI's cosine_similarity() function
+	distance = (1 - cosine_similarity(em1, em2))/2.0
+		# cosine_similarity is +1 for same, -1 for opposite.
+		# (1-cosine_similarity) is 0 for same, +2 for opposite.
+		# Then we divide by 2 to map to the range 0-1.
 
-    # Create a cursor object
-    c = conn.cursor()
-
-    # Execute a SQL command to select rows with the given user display name (first+last name).
-    c.execute("SELECT * FROM users WHERE displayName = ?", (user_tag,))
-
-    # Fetch all rows
-    rows = c.fetchall()
-
-    results = []
-    for row in rows:
-        results.append({
-            'dispName': row[0],
-            'userName': row[1],
-            'userID':   row[2],
-            'blocked':  row[3],
-            'userTag':  row[4] or 'unknown'
-        })
-
-    # Close the connection
-    conn.close()
-
-    return results
-
-
-def _lookup_user_by_tag(user_tag):
-
-    # Path to the database file
-    db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
-
-    # Create a connection to the SQLite database
-    conn = sqlite3.connect(db_path)
-
-    # Create a cursor object
-    c = conn.cursor()
-
-    # Execute a SQL command to select rows with the given user tag.
-    c.execute("SELECT * FROM users WHERE userTag = ?", (user_tag,))
-
-    # Fetch all rows
-    rows = c.fetchall()
-
-    results = []
-    for row in rows:
-        results.append({
-            'dispName': row[0],
-            'userName': row[1],
-            'userID':   row[2],
-            'blocked':  row[3],
-            'userTag':  row[4] or 'unknown'
-        })
-
-    # Close the connection
-    conn.close()
-
-    return results
-
-
-def _lookup_user(user_id):
-
-	# Path to the database file
-	db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
-
-	# Create a connection to the SQLite database
-	conn = sqlite3.connect(db_path)
-
-	# Create a cursor object
-	c = conn.cursor()
-
-	# Execute a SQL command to select the row with the given user ID
-	c.execute("SELECT * FROM users WHERE userID = ?", (user_id,))
-
-	# Fetch the row
-	row = c.fetchone()
-
-	# If a row was found, print it
-	if row is not None:
-		result = {
-			'dispName': row[0],
-			'userName': row[1],
-			'userID':	row[2],
-			'blocked':	row[3],
-			'userTag':	row[4] or 'unknown'
-				# NOTE: col. 3 could be None if this user hasn't
-				# been loaded yet since we added this new field.
-		}
-			
-	else:
-		result = None
-
-	# Close the connection
-	conn.close()
-
-	return result
+	return distance
 
 
 # Sends a diagnostic message to the AI as well as to the user,
@@ -6560,9 +6501,45 @@ async def _send_diagnostic(userTgMessage:TgMsg, convo:BotConversation,
 #__/
 
 
+def _set_user_blocked(userID: int, blocked: bool):
+
+    # Path to the database file
+    db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
+
+    # Create a connection to the SQLite database
+    conn = sqlite3.connect(db_path)
+
+    # Create a cursor object
+    c = conn.cursor()
+
+    # Form the display name
+    displayName = tgUser.first_name
+    if tgUser.last_name:
+        displayName += " " + tgUser.last_name
+
+    # Convert Python bool to SQLite integer BOOL (1 or 0)
+    blocked_value = 1 if blocked else 0
+
+    # Update the blocked field for the user with the given userID
+    c.execute('''
+        UPDATE users
+        SET blocked = ?
+        WHERE userID = ?
+    ''', (blocked_value, userID))
+
+    # Commit the transaction
+    conn.commit()
+
+    # Close the connection
+    conn.close()
+
+#__/ End function _set_user_blocked().
+
+
 def _strToList(vec_str):
     "Given a comma-separated string, return a list of floats."
     return list(map(float, vec_str.split(",")))
+#__/
 
 
 def _trim_prompt(response_text:str) -> str:
@@ -6644,8 +6621,39 @@ def _unblockUser(user:str) -> bool:
 #__/
 	
 
+def _unblockUserByID(userID:int) -> bool:
+	"""Unblocks the given user, identified by their user ID.
+		Returns True if successful; False if failure."""
+
+	global _lastError
+
+	# Look up the complete user data.
+	userData = _lookup_user(userID)
+	isBlocked = userData['blocked']
+	userTag = userData['userTag']
+
+	# Check to see if they're already unblocked.
+	# If so, we don't need to do anything.
+	if not isBlocked:
+		_logger.warn(f"_blockUserByID(): User {userTag} is not blocked. Ignoring.")
+		_lastError = f"User {userTag} is not blocked; ignoring."
+		return True
+
+	# Do the unblock.
+	_logger.normal(f"\tUnblocking user {userTag} (by new method).")
+	_set_user_blocked(userID, False)		# This actually updates the database.
+
+	# Indicate that the user is blocked in the legacy system as well,
+	# just because that file is more easily readable than the database.
+	_unblockUser(userTag)
+
+	return True
+
+#__/ End function _unblockUserByID().
+
+
 #/=============================================================================|
-#|	5. Define globals.														   |
+#|	6. Define globals.														   |
 #|																			   |
 #|		In this section, we define important global variable and con-		   |
 #|		stant values and objects.									   		   |
@@ -6656,7 +6664,7 @@ def _unblockUser(user:str) -> bool:
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 	#/======================================================================
-	#|	5.1. Define global constants.		[python module code subsection]
+	#|	6.1. Define global constants.		[python module code subsection]
 	#|
 	#|		By convention, we define global constants in all-caps.
 	#|		(However, some of them may still end up being variable.)
@@ -6698,6 +6706,9 @@ MAXIMUM_SEARCHMEM_NITEMS	= 10
 
 # We'll include in each prompt the top this many relevant items.
 DYNAMIC_CONTEXT_NITEMS		= 5
+
+# Result string to return when pass_turn() is successful.
+PASS_TURN_RESULT = "Success: I will refrain from responding to the last user message"
 
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#  Sets the stop sequence (terminates response when encountered).
@@ -7079,7 +7090,7 @@ globalMinReplWinToks	 = aiConf.minReplyWinToks
 
 
 	#/======================================================================
-	#|	5.2. Define global variables.		[python module code subsection]
+	#|	6.2. Define global variables.		[python module code subsection]
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# We use this global Boolean to keep track of whether
@@ -7100,7 +7111,7 @@ _which_name = None		# Not yet assigned.
 
 
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	#|	5.3. Define global structures.		[python module code subsection]
+	#|	6.3. Define global structures.		[python module code subsection]
 	#|
 	#|		In this section, we define larger global objects, such as
 	#|		long strings and objects of various types. These are more
@@ -7204,7 +7215,7 @@ unknown_command_filter = UnknownCommandFilter()
 
 
 #/=============================================================================|
-#|	5. Main body - BOT STARTUP.					 [python module code section]  |
+#|	7. Main body - BOT STARTUP.					 [python module code section]  |
 #|																			   |
 #|		Finally, here is the main body of the program, where we actually	   |
 #|		set up and run the bot server application.							   |
@@ -7215,7 +7226,7 @@ unknown_command_filter = UnknownCommandFilter()
 _initBotDB()
 
 	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	#|	5.1. Display command list.
+	#|	7.1. Display command list.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 # Command list to enter into BotFather.
@@ -7235,7 +7246,8 @@ print(COMMAND_LIST)
 
 
 	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	#| 5.2. Create the Updater object. It runs the main loop of the bot server.
+	#|  7.2. Create the ApplicationBuilder object. It runs the main loop of the
+	#|			bot server.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 app = ApplicationBuilder().token(BOT_TOKEN).build()
@@ -7249,7 +7261,7 @@ app = ApplicationBuilder().token(BOT_TOKEN).build()
 #updater = Updater(BOT_TOKEN, use_context=True)
 
 	#|==========================================================================
-	#| 5.3. Configure dispatcher -- Register update handlers.
+	#|  7.3. Configure application's dispatcher -- Register update handlers.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 # Add an error handler to catch the Unauthorized/Forbidden exception & other errors that may occur.
@@ -7320,7 +7332,7 @@ app.add_handler(MessageHandler(unknown_command_filter,
 				group = 3)
 
 	#|==========================================================================
-	#| 5.3. Start main loop.
+	#|  7.4. Start main loop.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 # Now, let's run the bot. This will start polling the Telegram servers for new updates.
