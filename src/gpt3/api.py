@@ -3921,7 +3921,7 @@ def _msg_repr(msg:dict) -> str:
 	# Make sure there's a non-empty 'role' field in the message; if so, start with it.
 
 	if 'role' in msg and msg['role'] != None:
-		role = msg['role'] + ':'
+		role = msg['role'] + ':'	# Append a colon.
 
 	else:	# Role is missing or None.
 		# This should never happen, but just in case...
@@ -3941,20 +3941,24 @@ def _msg_repr(msg:dict) -> str:
 
 	# Make sure role isn't still None at this point
 	if role is None:
-		_logger.error("gpt3.api._msg_repr(): Somehow role is None at this line, and it shouldn't be.")
+		_logger.error("gpt3.api._msg_repr(): Somehow role is None at this "
+					  "line, and it shouldn't be.")
 		role = ""
 
 	# Ditto with content
 	if content is None and fcall is None:
-		_logger.error("gpt3.api._msg_repr(): Message content and function call are both None; this is unexpected.")
+		_logger.error("gpt3.api._msg_repr(): Message content and function call "
+					  "are both None; this is unexpected.")
 
 	if content is not None:
 		rep = role + '\n' + \
 			  content + chr(RS) + '\n'
 
-	elif fcall is not None:		# This is a damn guess as to how function calls *might* be formatted. It's probably wrong.
+	elif fcall is not None:		# This is just a damn guess as to how function
+		#calls *might* be formatted at the back end. It's probably wrong.
 		rep = role + '\n' + \
-			  '@' + fcall['name'] + '(' + fcall['arguments'] + ')' + chr(RS) + '\n'
+			  '@' + fcall['name'] + '(' + fcall['arguments'] + ')' \
+			  + chr(RS) + '\n'
 
 	return rep
 
