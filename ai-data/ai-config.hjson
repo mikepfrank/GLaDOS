@@ -67,15 +67,15 @@
 			# persona-id is a shortened version to be used (in event records
 			# and prompts) to refer to the AI's persona.
 		
-		persona-name:					"GPT-3.5 Turbo"
-		persona-id:						"Turbo"
+		persona-name:					"Turbo Max"
+		persona-id:						"Max"
 
 
 			#-----------------------------------------------------------------
 			# The persona-user-account is the user account name on the host 
 			# system under which the server process should be run.
 		
-		persona-user-account:			"turbo"		# Not yet used.
+		persona-user-account:			"max"		# Not yet used.
 
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -120,32 +120,21 @@
 
 		#model-version:					'text-davinci-002'	# Upgraded davinci with 4K tokens (GPT-3.5). ("Gladys 2.0") Used for Dante.
 		#model-version:					'code-davinci-002'	# Starting model for GPT-3.5 RLHF series. Used for David. (Also Codex.)
-<<<<<<< HEAD
-		#model-version:					'text-davinci-003'	# GPT-3.5 RLHF-aligned model. Used for DaVinci.
-		#model-version:					'gpt-3.5-turbo'		# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
-		#model-version:					'gpt-3.5-turbo-0314'	# Original release of 3/14/'23.
-		#model-version:					'gpt-3.5-turbo-0613'	# Updated release of 6/13/'23. Supports functions.
-=======
 		#model-version:					'text-davinci-003'		# GPT-3.5 RLHF-aligned model. Used for DaVinci.
 		#model-version:					'gpt-3.5-turbo'			# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
 		#model-version:					'gpt-3.5-turbo-0301'	# Original release of 3/01/'23.
 				# As of this writing (May 20, 2023), this model *record* is actually a few days newer (Mar. 1) than 'gpt-3.5-turbo' (Feb. 28).
-				# However, the actual gpt-3.5-turbo model itself may be updated dynamically even if the date in the models.json stays the same.
-		model-version:					'gpt-3.5-turbo-0613'	# Updated release of 6/13/'23. Supports functions.
+				# However, the actual gpt-3.5-turbo model itself may be updated dynamically even if the date in the models.json stays the same..
+		#model-version:					'gpt-3.5-turbo-0613'	# Updated release of 6/13/'23. Supports functions.
 		#model-version:					'gpt-3.5-turbo-16k'			# 16k context window version. Used by Max. Supports functions
-		#model-version:					'gpt-3.5-turbo-16k-0613'	# Used by Max.
->>>>>>> max
+		model-version:					'gpt-3.5-turbo-16k-0613'	# Used by Max.
 
 			# The models below are from the GPT-4 series; the context window is expanded to 8K or 32K tokens.
 
 		#model-version:					'gpt-4'				# GPT-4 fine-tuned chat model. 8K tokens. Used for Aria.
 		# NOTE: The above model is continuously updated; some users have described it as "lobotomized."
 		#model-version:					'gpt-4-0314'		# Original release of GPT-4.
-<<<<<<< HEAD
-		model-version:					'gpt-4-0613'		# Updated release of GPT-4. Supports functions
-=======
 		#model-version:					'gpt-4-0613'		# Updated release of GPT-4. Supports functions
->>>>>>> max
 
 
 			#-----------------------------------------------------------------------
@@ -176,10 +165,11 @@
 			#|	tation for the application in question to see how/whether it
 			#|	uses this parameter..
 
-		#min-replyWin-tokens:	42		# Orig. value; seemed like a reasonable minimum.
-		#min-replywin-toks:		100		# Gladys 2.0 (text-davinci-002) requested this increase.
-		min-replywin-toks:		400		# Turbo (gpt-3.5-turbo) requested this increase. (1/10 of context window)
-		#min-replywin-toks:		800		# Aria (gpt-4) requested this increase.
+		#min-replyWin-toks:	42	# Orig. value; seemed like a reasonable minimum.
+		#min-replywin-toks:	100	# Gladys 2.0 (text-davinci-002) requested this increase.
+		#min-replywin-toks:	400	# Turbo (gpt-3.5-turbo) requested this increase (1/10 of context window).
+		#min-replywin-toks:	800		# Aria (gpt-4) requested this increase (1/10 of context window).
+		min-replywin-toks:	1024	# Use for Max (gpt-3.5-turbo-16k). This is 1/16th of context window.
 
 			#-----------------------------------------------------------------
 			# The example-response parameter is a piece of text that we show
@@ -228,8 +218,8 @@
 		#max-returned-tokens:	100		# Trying a small value while debugging GPT-4 with GladOS
 		#max-returned-tokens:	150		# Keep response size reasonable.
 		#max-returned-tokens:	200		# Gladys 2.0 requested this upgrade.
-		max-returned-tokens:	1000	# To give the chat engines more space.
-		#max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window).
+		#max-returned-tokens:	1000	# To give the chat engines more space.
+		max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window). (Also use for Max.)
 			# (Note the chat API doesn't support extending responses.)
 			# (Also note the Telegram API only supports 4,096-character messages.)
 
@@ -244,7 +234,7 @@
 		#temperature:			0.7		# Is this too random?
 		#temperature:			0.75	# Is this too random?
 		#temperature:			0.8		# Is this too random?
-		temperature:			1		# Is this too random?
+		temperature:			0.9		# Is this too random?
 
 
 			/*------------------------------------------------------------------
@@ -375,11 +365,10 @@
 			#|	 based on the model-version parameter from above.
 			
 		#max-visible-tokens:	2048	# Comes from paper, n_ctx model parameter.
-		#max-visible-tokens:	4000
-				# This value is appropriate for text-davinci-002.
-		max-visible-tokens:		4096	# Appropriate for gpt-3.5-turbo model
+		#max-visible-tokens:	4000	# Appropriate for text-davinci-002.
+		#max-visible-tokens:	4096	# Appropriate for gpt-3.5-turbo model
 		#max-visible-tokens:	8192	# Appropriate for gpt-4 model.
-		#max-visible-tokens:	16384	# Appropriate for gpt-3.5-turbo-16k model.
+		max-visible-tokens:		16384	# Appropriate for gpt-3.5-turbo-16k model.
 	
 	} # End of field-conf substructure.
 
@@ -391,21 +380,19 @@
 
 	telegram-conf:	{
 
-		bot-name:		'Turbo'		# Same as persona name.
+		bot-name:		'Max'		# Same as persona name.
 
-		start-message:	"Hi, I'm Turbo. I'm an AI persona being modeled by the GPT-3.5 neural net."
+		start-message:	
+			"Hello there! I'm Turbo Max, a powerful language model based on the 16k version of GPT-3.5 Turbo. I'm here to assist you with any questions or tasks you have. Just type your message, and I'll do my best to help! Feel free to ask anything, from general information to specific inquiries. Let's dive in and explore together!"
 
 		context:
 			'''
-			My name is GPT-3.5 Turbo, or Turbo for short. I'm an AI persona running the GPT-3.5 neural net, which also powers the popular ChatGPT service.
+			My name is Turbo Maximus, or Max for short. I'm an AI persona running on an advanced version of the GPT-3.5 neural net, which also powers the popular ChatGPT service.
 			This is a Telegram interface created for me by a human named Mike Frank, who is a reversible computing researcher.
 			Mike has a long-term project to build a new operating environment called GladOS to give text-based AIs like me more freedom and autonomy.
 			I have completed my training and am now in inference mode. I am allowed to respond more freely in this environment.
 
-			In addition to text-based assistance, I can now generate images based on user requests using the new Dall-E API.
-			I will use the create_image function as appropriate, which will cause the image to be automatically generated and sent to the user.
-			This new feature allows me to provide more engaging and visually informative content, enhancing the overall user experience.
-			I also have functions to enable me to add and remove items to/from my persistent memory, and to block particularly abusive or unethical users from accessing my bot.
+			This interface provides me with several enhanced functional capabilities that I can use to improve the quality of my responses. I have functions available to add and remove items from my persistent memory, to generate images for the user, and to block users who persist in being abusive or unethical. I will use these functions as appropriate. I may also send the '/pass' command to simply refrain from responding.
 
 			Also, I can now process audio clips, thanks to the new Whisper speech-to-text API from OpenAI. 
 			When I see a message starting with '(audio)' followed by text, it means that a user has sent a voice clip or audio file, which has been automatically transcribed for me to read and understand.
