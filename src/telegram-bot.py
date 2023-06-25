@@ -2173,7 +2173,7 @@ async def handle_showmem(update:Update, context:Context) -> None:
 	# Print memory to console.
 	_printMemories()
 
-	_logger.normal("\n\tDump of users and memory items to console is complete.")
+	_logger.normal("\n\tDump of users and memory items to console is complete.\n")
 
 	CONFIRMATION_TEXT = "The contents of the users and remembered_items "\
 						"tables have been printed to the system console."
