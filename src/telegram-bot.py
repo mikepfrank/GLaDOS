@@ -393,7 +393,7 @@ from	telegram.ext 	import (
 Context = ContextTypes.context
 #Context = ContextTypes.DEFAULT_TYPE	# In older versions of python-telegram-bot.
 
-from	telegram.error	import	BadRequest, Forbidden, ChatMigrated
+from	telegram.error	import	BadRequest, Forbidden, ChatMigrated, TimedOut
 	# We use these in our exception handlers when sending things via Telegram.
 
 
@@ -652,6 +652,38 @@ class BotMessage:
 		else:
 			return f"{thisBotMsg.sender}> {thisBotMsg.text}"
 
+	#__/
+
+
+	def trimFront(thisBotMsg:BotMessage) -> bool:
+		# Trims some content off the front of a message.
+
+		text = thisBotMsg.text
+
+		TRUNCATION_NOTICE = "[system: the initial part of this message was removed due to length] "
+
+		# If text was already shortened, remove TRUNCATION_NOTICE from the front before shortening again.
+		if text.startswith(TRUNCATION_NOTICE):
+			text = text[len(TRUNCATION_NOTICE):]
+
+		# Remove TRUNCATION_LEN characters from start of text.
+
+		TRUNCATION_LEN = 200
+		if len(text)>TRUNCATION_LEN:
+
+			_logger.warn(f"Trimming this text off of front of oldest message: [{text[0:TRUNCATION_LEN]}]...")
+
+			text = text[TRUNCATION_LEN:]
+		else:
+			return False	#Unable to truncate further.
+
+		# Add TRUNCATION_NOTICE to start of text.
+		text = TRUNCATION_NOTICE + text
+
+		# Actually update the message text.
+		thisBotMsg.text = text
+
+		return True		# Successfully truncated.
 	#__/
 
 
@@ -1267,6 +1299,8 @@ class BotConversation:
 	def expunge_oldest_message(thisConv:BotConversation):
 		"""This method is called to expunge the oldest message from the conversation."""
 
+		chat_id = thisConv.chatID
+
 		# There's an important error case that we need to consider:
 		# If the conversation only contains one message, this means that the
 		# AI has extended that message to be so large that it fills the
@@ -1275,7 +1309,7 @@ class BotConversation:
 		# the very message that the AI is in the middle of constructing.
 		# So, we can't do anything here except throw an exception.
 		if len(thisConv.messages) <= 1:
-			raise ConversationError("Can't expunge oldest message from conversation with only one message.")
+			raise ConversationError("Can't expunge oldest message from conversation {chat_id} with only one message.")
 
 		# If we get here, we can safely pop the oldest message.
 
@@ -1285,6 +1319,12 @@ class BotConversation:
 		thisConv.expand_context()	# Update the context string.
 
 	#__/ End instance method conversation.expunge_oldest_message().
+
+
+	def trim_oldest_message(thisConv:BotConversation) -> bool:
+
+		return thisConv.messages[0].trimFront()
+			# Trims some text off the front of the first message.
 
 
 	# NOTE: This method does *not* show the error to user. This is intentional
@@ -2372,6 +2412,7 @@ async def handle_remember(update:Update, context:Context) -> None:
 		return
 
 	chat_id = tgMsg.chat.id
+	user_id = tgMsg.from_user.id
 
 	# Make sure the thread component is set to this application (for logging).
 	logmaster.setComponent(_appName)
@@ -2409,8 +2450,8 @@ async def handle_remember(update:Update, context:Context) -> None:
 	conversation.add_message(BotMessage(user_name, tgMsg.text))
 
 	# Check whether the user is in our access list.
-	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, "
+	if not _check_access(user_name, user_id=user_id):
+		_logger.normal(f"\nUser {user_name} tried to access chat {chat_id}, "
 			"but is not in the access list. Denying access.")
 
 		errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
@@ -2468,6 +2509,7 @@ async def handle_forget(update:Update, context:Context) -> None:
 		return
 
 	chat_id = tgMsg.chat.id
+	user_id = tgMsg.from_user.id
 
 	# Make sure the thread component is set to this application (for logging).
 	logmaster.setComponent(_appName)
@@ -2496,11 +2538,12 @@ async def handle_forget(update:Update, context:Context) -> None:
 	conversation.add_message(BotMessage(user_name, tgMsg.text))
 
 	# Check whether the user is in our access list.
-	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, but is not in the access list. Denying access.")
+	if not _check_access(user_name, user_id):
+		_logger.normal(f"\nUser {user_name} tried to access chat {chat_id}, "
+					   "but is not in the access list. Denying access.")
 
-		#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
-		errMsgStr = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+		errMsgStr = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+		#errMsgStr = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
 
 		await _report_error(conversation, tgMsg, errMsgStr, logIt=False)
 			# Note we already did a log entry above.
@@ -2696,6 +2739,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 	text = tgMsg.text
 
 	user_name = _get_user_tag(tgMsg.from_user)
+	user_id = tgMsg.from_user.id
 
 	# Get the chat ID.
 	chat_id = tgMsg.chat.id
@@ -2760,12 +2804,12 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 	conversation.last_user = cur_user
 
 	# Check whether the user is in our access list.
-	if not _check_access(user_name):
-		_logger.normal(f"User {user_name} tried to access chat {chat_id}, "
+	if not _check_access(user_name, user_id=user_id):
+		_logger.normal(f"\nUser {user_name} tried to access chat {chat_id}, "
 					   "but is not in the access list. Denying access.")
 
-		#errMsg = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
-		errMsgStr = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+		errMsgStr = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+		#errMsgStr = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
 
 		await _report_error(conversation, tgMsg, errMsgStr, logIt=False)
 
@@ -3115,6 +3159,8 @@ async def ai_block(updateMsg:TgMsg, conversation:BotConversation,
 		by tag (if unique) or by ID. If no user is specified, it blocks the
 		current user (the one who sent the current update)."""
 	
+	_logger.normal(f"In ai_block() with userToBlock={userToBlock}, userIDToBlock={userIDToBlock}...")
+
 	# Put the message from the Telegram update in a convenient variable.
 	message = updateMsg
 
@@ -3133,6 +3179,7 @@ async def ai_block(updateMsg:TgMsg, conversation:BotConversation,
 	if userToBlock == None and userIDToBlock == None:
 		userToBlock = user_name
 		userIDToBlock = cur_user_id
+		_logger.normal(f"\tDefaulting to current user {userToBlock}, ID={userIDToBlock}.")
 
 	## If we don't have a user ID, complain and die.
 	#if userIDToBlock is None:
@@ -3176,14 +3223,14 @@ async def ai_block(updateMsg:TgMsg, conversation:BotConversation,
 		# Retrieve the user's ID.
 		userIDToBlock = matchingUsers[0]['userID']
 
-	# Generate a warning-level log message to indicate that we're blocking the user.
-	_logger.warn(f"***ALERT*** The AI is blocking user '{userToBlock}' in conversation {chat_id}.")
-
 	# Retrieve the user tag if we don't have it yet.
 	if userToBlock is None:
 
 		userData = _lookup_user(userIDToBlock)
 		userToBlock = userData['userTag']
+
+	# Generate a warning-level log message to indicate that we're blocking the user.
+	_logger.warn(f"***ALERT*** The AI is blocking user '{userToBlock}' (ID={userIDToBlock}) in conversation {chat_id}.")
 
 	# Check if they're already blocked; else block them.
 	if _isBlockedByID(userIDToBlock):
@@ -4012,10 +4059,24 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 				# back-end) is too long.  Thus, we need to expunge the oldest
 				# message from the conversation.
 
-				botConvo.expunge_oldest_message()
-					# NOTE: If it succeeds, this modifies conversation.context_string.
+				try:
+					botConvo.expunge_oldest_message()
+						# NOTE: If it succeeds, this modifies conversation.context_string.
+				except ConversationError:
+					# We can't expunge the oldest message, presumably
+					# because it's the only message left in the
+					# conversation. All that we can do here is trim
+					# off part of the content from the oldest
+					# message end try agagin...
+					_logger.warn("Can't expunge only message in conversation; I'll try trimming it instead...")
+					if botConvo.trim_oldest_message():
+						continue
+					else:
+						# Not much we can do except re-raise the error.
+						raise
 
 				# Update our (and the convo's) idea of the current raw message list.
+
 				botConvo.raw_oaiMsgs = oaiMsgList = botConvo.get_chat_messages()
 
 				# At this point, we've successfully expunged the oldest message.
@@ -5390,7 +5451,7 @@ async def send_image(update:Update, context:Context, desc:str, caption=None, sav
 	# Send the image as a reply in Telegram
 	try:
 		await tgMsg.reply_photo(photo=image_data, caption=caption)
-	except BadRequest or Forbidden or ChatMigrated as e:
+	except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
 		_logger.error(f"Got a {type(e).__name__} exception from Telegram "
 					  "({e}) for conversation {chat_id}; aborting.")
 		conversation.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram " \
@@ -5560,11 +5621,14 @@ def _blockUser(user:str) -> bool:
 	
 	ai_datadir = AI_DATADIR
 
+	## Commented out this code because main block code is now
+	## elsewhere anyway.
+	#
 	# If the AI is trying to block the Creator, don't let him.
-	if user == 'Michael':
-		_logger.error("The AI tried to block the app developer! Disallowed.")
-		_lastError = "Blocking the bot's creator, Michael, is not allowed."
-		return False
+	#if user == 'Michael':
+	#	_logger.error("The AI tried to block the app developer! Disallowed.")
+	#	_lastError = "Blocking the bot's creator, Michael, is not allowed."
+	#	return False
 
 	block_list = []
 
@@ -5573,6 +5637,8 @@ def _blockUser(user:str) -> bool:
 		with open(bcl_file, 'r') as f:
 			block_list = json.load(f)
 	
+	_logger.normal(f"\tBlocking user {user} (by legacy method)...")
+
 	if user in block_list:
 		_logger.warn(f"_blockUser(): User {user} is already blocked. Ignoring.")
 		_lastError = f"User {user} is already blocked; ignoring."
@@ -5594,7 +5660,9 @@ def _blockUserByID(userID:int) -> bool:
 
 	global _lastError
 
-	# If the AI is trying to block the Creator, don't let him.
+	_logger.normal("\tIn _blockUserByID() with userID={userID}...")
+
+	# If the AI is trying to block the Creator, don't let it do that.
 	if userID == 1774316494:	# Mike's user ID on Telegram.
 		_logger.error("The AI tried to block the app developer! Disallowed.")
 		_lastError = "Blocking the bot's creator, Michael, is not allowed."
@@ -5613,7 +5681,7 @@ def _blockUserByID(userID:int) -> bool:
 		return True
 
 	# Do the block.
-	_logger.normal(f"\tBlocking user {userTag} (by new method).")
+	_logger.normal(f"\tBlocking user {userTag} (ID={userID} (by new method).")
 	_set_user_blocked(userID, True)		# This actually updates the database.
 
 	# Indicate that the user is blocked in the legacy system as well,
@@ -5639,12 +5707,17 @@ def _call_desc(func_name:str, func_args:dict):
 # This function checks whether the given user name is in our access list.
 # If it is, it returns True; otherwise, it returns False.
 
-def _check_access(user_name, prioritize_bcl=True) -> bool:
+def _check_access(user_name, prioritize_bcl=True, user_id:int=None) -> bool:
 
 	"""Returns True if the given user may access the bot.
 		Blacklist (bcl.[h]json) overrides whitelist (acl.hjson)
 		unless prioritize_bcl=False is specified."""
 
+	# If user_id argument is provided, just use the new user database.
+	if user_id:
+		return not _isBlockedByID(user_id)
+
+	# Otherwise, use the legacy system.
 	if prioritize_bcl:
 		# Temporary override to have blacklist override whitelist.
 		return not _isBlocked(user_name)
@@ -6062,6 +6135,7 @@ def _initPersistentData() -> None:
 #__/ End definition of _initPersistentData() function.
 
 	
+# NOTE: THIS FUNCTION ONLY CONSULTS THE LEGACY FILES.
 def _isBlocked(user:str) -> bool:
 	"""Return True if user is on blacklist, or if there
 		is a whitelist and the user is not on it."""
@@ -6348,7 +6422,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 	try:
 		await message.reply_text(msgToSend)
 
-	except BadRequest or Forbidden or ChatMigrated as e:
+	except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
 
 		exType = type(e).__name__
 
@@ -6366,6 +6440,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 
 		return "error: Telegram threw a {exType} exception while sending " \
 			"diagnostic output to the user"
+	
 	#__/
 
 	return 'success'
@@ -6385,9 +6460,11 @@ async def _report_error(convo:BotConversation, telegramMessage,
 
 	if logIt:
 		# Record the error in the log file.
+		_logger.error(errMsg)
+
 		#_logger.error(errMsg, exc_info=logmaster.doDebug)
 			# The exc_info option includes a stack trace if we're in debug mode.
-		_logger.error(errMsg, exc_info=True)
+		#_logger.error(errMsg, exc_info=True)
 
 	# Compose formatted error message.
 	msg = f"ERROR: {errMsg}"
@@ -6513,35 +6590,37 @@ async def _send_diagnostic(userTgMessage:TgMsg, convo:BotConversation,
 
 def _set_user_blocked(userID: int, blocked: bool):
 
-    # Path to the database file
-    db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
+	_logger.normal(f"\tSetting userID {userID} to blocked={blocked}...")
 
-    # Create a connection to the SQLite database
-    conn = sqlite3.connect(db_path)
+	# Path to the database file
+	db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
 
-    # Create a cursor object
-    c = conn.cursor()
+	# Create a connection to the SQLite database
+	conn = sqlite3.connect(db_path)
 
-    # Form the display name
-    displayName = tgUser.first_name
-    if tgUser.last_name:
-        displayName += " " + tgUser.last_name
+	# Create a cursor object
+	c = conn.cursor()
 
-    # Convert Python bool to SQLite integer BOOL (1 or 0)
-    blocked_value = 1 if blocked else 0
+	# Form the display name
+	#displayName = tgUser.first_name
+	#if tgUser.last_name:
+	#	 displayName += " " + tgUser.last_name
 
-    # Update the blocked field for the user with the given userID
-    c.execute('''
-        UPDATE users
-        SET blocked = ?
-        WHERE userID = ?
-    ''', (blocked_value, userID))
+	# Convert Python bool to SQLite integer BOOL (1 or 0)
+	blocked_value = 1 if blocked else 0
 
-    # Commit the transaction
-    conn.commit()
+	# Update the blocked field for the user with the given userID
+	c.execute('''
+		UPDATE users
+		SET blocked = ?
+		WHERE userID = ?
+	''', (blocked_value, userID))
 
-    # Close the connection
-    conn.close()
+	# Commit the transaction
+	conn.commit()
+
+	# Close the connection
+	conn.close()
 
 #__/ End function _set_user_blocked().
 
@@ -6645,7 +6724,7 @@ def _unblockUserByID(userID:int) -> bool:
 	# Check to see if they're already unblocked.
 	# If so, we don't need to do anything.
 	if not isBlocked:
-		_logger.warn(f"_blockUserByID(): User {userTag} is not blocked. Ignoring.")
+		_logger.warn(f"_unblockUserByID(): User {userTag} is not blocked. Ignoring.")
 		_lastError = f"User {userTag} is not blocked; ignoring."
 		return True
 
