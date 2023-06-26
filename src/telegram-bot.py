@@ -51,8 +51,9 @@
 #|			1.3. Imports of custom (programmer-defined) Python libraries.
 #|
 #|		2. Define classes.
-#|			2.1. Define Message class.
-#|			2.2. Define Conversation class.
+#|			2.1. Define BotMessage class.
+#|			2.2. Define BotConversation class.
+#|			2.3. Define minor classes.
 #|
 #|		3. Define Telegram handler functions.
 #|			3.1. Define update handler group 0 -- user command handlers.
@@ -64,8 +65,8 @@
 #|		4. Define AI command handler functions.
 #|
 #|		5. Define misc. functions.
-#|			5.1. Define public functions.
-#|			5.2. Define private functions.
+#|			5.1. Define public (major) functions.
+#|			5.2. Define private (minor) functions.
 #|
 #|		6. Define globals.
 #|			6.1. Define global constants.
@@ -246,8 +247,7 @@
 #|			- Generic message strings:						msgStr.
 #|
 #|		o Move more of the data files to AI_DATADIR.
-#|		o Implement user-specific and chat-specific persistent memory.
-#|		o Add commands to adjust parameters of the OpenAI GPT-3 API.
+#|		o Add commands to adjust parameters of the OpenAI GPT API.
 #|		o Add a feature to allow different bots running on the same
 #|			server to communicate with each other.
 #|		o Add more multimedia capabilities. (Audio input & image
@@ -314,9 +314,9 @@ LOG_DEBUG = False	# True shows debug-level messages in the log file.
 #|	1. Imports.									[python module code section]   |
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
-	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#/=========================================================================|
 	#| 1.1. Imports of standard Python libraries.
-	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 import	traceback	# For stack trace debugging.
 
@@ -351,10 +351,10 @@ from	curses		import	ascii
 import	sqlite3
 
 
-	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#/=========================================================================|
 	#| 1.2. Imports of contributed (third-party) Python libraries.
-	#|	 NOTE: Use pip install <library-name> to install the library.
-	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	#|	 NOTE: Use pip3 install <library-name> to install the library.
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 import	hjson	# Human-readable JSON. Used for access control lists.
 
@@ -366,8 +366,11 @@ import	backoff		# Use instead of retry since we've already installed it
 from	pydub import AudioSegment	# Use this to convert audio files to MP3 format.
 	# NOTE: You'll also need the LAME mp3 encoder library and the ffmp3 tool.
 
-		#-----------------------------------------------------------------------
-		# The following packages are from the python-telegram-bot library.
+import	numpy as np		# Used for vector math in cosine_similarity().
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+		#	The following packages are from the python-telegram-bot library.
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 from	telegram		import (
 			Update,				# Class for updates (notifications) from Telegram.
@@ -397,10 +400,9 @@ from	telegram.error	import	BadRequest, Forbidden, ChatMigrated, TimedOut
 	# We use these in our exception handlers when sending things via Telegram.
 
 
-import	numpy as np
-
-		#-----------------------------------------------------------------
-		# The following packages are from the openai API library.
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+		#	The following packages are from the openai API library.
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 from openai						import Embedding
 from openai.error				import RateLimitError			# Detects quota exceeded.
@@ -416,6 +418,8 @@ from openai.error				import RateLimitError			# Detects quota exceeded.
 
 #EMBEDDING_MODEL = "text-similarity-davinci-001"
 EMBEDDING_MODEL = "text-embedding-ada-002"
+
+# Should we move the below into the private functions code section?
 
 #@retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(6))
 @backoff.on_exception(backoff.expo, Exception, max_tries=6)
@@ -434,21 +438,15 @@ def cosine_similarity(a, b):
 	return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 
-		#-------------------------------------------------------------------
-		# NOTE: Copilot also wanted to import the following libraries, but
-		#	we aren't directly using them yet:
-		#		sys, time, logging, pickle, datetime, pytz, subprocess
-		#-------------------------------------------------------------------
-
-
-	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#/=========================================================================|
 	#| 1.3. Imports of custom (programmer-defined) Python libraries.
 	#| 	 These are defined within the same git repository as this file.
-	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
-			#-------------------------------------------------------------------
-			#  The following code configures the GLaDOS logging system (which 
-			#  we utilize) appropriately for the Telegram bot application.
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+		#	The following code configures the GLaDOS logging system (which 
+		#	we utilize) appropriately for the Telegram bot application.
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 	# This custom module is used to configure the logmaster logging
 	# system for our specific application.
@@ -471,93 +469,99 @@ _logger = logmaster.appLogger	# Leading '_' denotes this is a private name.
 	# Get the directory to be used for logging purposes.
 LOG_DIR = logmaster.LOG_DIR
 
-			#-------------------------------------------------------------------
-			# Import some custom time-related functions we'll use.
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+		# Import some custom time-related functions we'll use.
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 from	infrastructure.time		import	(
-				envTZ,		# Pre-fetched value of the time-zone ('TZ') environment
-							#	variable setting.
-				timeZone,	# Returns a TimeZone object expressing the user's
-							#	time-zone preference (from TZ).
-				tznow,		# Returns a current datetime object localized to the
-							#	user's timezone preference (from TZ).
-				tzAbbr		# Returns an abbreviation for the given time zone offset,
-							#	which defaults to the user's time zone preference.
-			)
+
+	envTZ,		# Pre-fetched value of the time-zone ('TZ') environment
+				#	variable setting.
+	timeZone,	# Returns a TimeZone object expressing the user's
+				#	time-zone preference (from TZ).
+	tznow,		# Returns a current datetime object localized to the
+				#	user's timezone preference (from TZ).
+	tzAbbr		# Returns an abbreviation for the given time zone offset,
+				#	which defaults to the user's time zone preference.
+)
 		# Time-zone related functions we use in the AI's date/time display.
 
 
-			#-------------------------------------------------------------------
-			#  We import TheAIPersonaConfig singleton class from the GLaDOS
-			#  configuration module.  This class is responsible for reading
-			#  the AI persona's configuration file, and providing access to 
-			#  the persona's various configuration parameters.	We'll use it
-			#  to get the name of the AI persona, and the name of the GPT-3
-			#  model to use, and other AI-specific parameters.
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+		#  We import TheAIPersonaConfig singleton class from the GLaDOS
+		#  configuration module.  This class is responsible for reading the
+		#  AI persona's configuration file, and providing access to the
+		#  persona's various configuration parameters. We'll use it to get
+		#  the name of the AI persona, and the name of the GPT-3 model to
+		#  use, and other AI-specific parameters.
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 from	config.configuration	import	TheAIPersonaConfig
 	# NOTE: This singleton will initialize itself the first time it's invoked.
 
 
-			#-------------------------------------------------------------------
-			#  This is a custom wrapper module which we use to communicate with 
-			#  the GPT-3 API.  It is a wrapper for the openai library.	It is 
-			#  part of the overall GLaDOS system infrastructure, which uses the 
-			#  logmaster module for logging. (That's why we needed to first 
-			#  import the logmaster module above.)
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+		#  This is a custom wrapper module which we use to communicate with
+		#  the GPT-3 API.  It is a wrapper for the openai library. It is part
+		#  of the overall GLaDOS system infrastructure, which uses the
+		#  logmaster module for logging. (That's why we needed to first
+		#  import the logmaster module above.)
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 	# We'll use this wrapper module to get the response from GPT-3:
 
 from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF.
+		
+		#----------
+		# Globals:	(Note their values are copied into the local namespace.)
 
-			_has_functions as hasFunctions,	# Pretend it's public
+	CHAT_ROLE_SYSTEM,		# The name of the system's chat role.
+	CHAT_ROLE_USER,			# The name of the user's chat role.
+	CHAT_ROLE_AI,			# The name of the AI's chat role.
 
-				#----------
-				# Globals:	(Note their values are copied into the local namespace.)
+		#--------------
+		# Class names:
 
-			CHAT_ROLE_SYSTEM,		# The name of the system's chat role.
-			CHAT_ROLE_USER,			# The name of the user's chat role.
-			CHAT_ROLE_AI,			# The name of the AI's chat role.
+	#GPT3Core,		# This represents a specific "connection" to the core GPT-3 model.
+	#Completion,	# An object of this class represents a response from the GPT text API.
+	ChatCompletion,	# An object of this class represents a response from the GPT chat API.
+	ChatMessages,	
+		# Class for working with lists of chat messages for the chat API.
 
-				#--------------
-				# Class names:
+		#--------------------
+		# Exception classes:
 
-			#GPT3Core,		# This represents a specific "connection" to the core GPT-3 model.
-			#Completion,	# An object of this class represents a response from the GPT text API.
-			ChatCompletion,	# An object of this class represents a response from the GPT chat API.
-			ChatMessages,	
-				# Class for working with lists of chat messages for the chat API.
+	PromptTooLargeException,	 # Indicates the supplied prompt is too long.
 
-				#--------------------
-				# Exception classes:
+		#-----------------
+		# Function names:
 
-			PromptTooLargeException,	 # Indicates the supplied prompt is too long.
+	createCoreConnection,
+		# Returns a GPT3Core-compatible object, which represents a
+		# specific "connection" to the core GPT-3 model that remembers
+		# its API parameters. This factory function selects the
+		# appropriate subclass of GPT3Core to instantiate, based on the
+		# engineId parameter.
 
-				#-----------------
-				# Function names:
+	messageRepr,
+		# Generates a text representation of a chat message dict.
 
-			createCoreConnection,
-				# Returns a GPT3Core-compatible object, which represents a
-				# specific "connection" to the core GPT-3 model that remembers
-				# its API parameters. This factory function selects the
-				# appropriate subclass of GPT3Core to instantiate, based on the
-				# engineId parameter.
+	tiktokenCount,		# Local model-dependent token counter.
+	genImage,			# Generates an image from a description.
+	transcribeAudio,	# Transcribes an audio file to text.
 
-			messageRepr,
-				# Generates a text representation of a chat message dict.
-			tiktokenCount,
+	_has_functions as hasFunctions,		# Pretend it's a public function.
 
-			genImage,			# Generates an image from a description.
-			transcribeAudio,	# Transcribes an audio file to text.
-
-		)	# End of imports from gpt3.api module.
-#______/
+)	# End of imports from gpt3.api module.
 
 
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#| Now we need to make sure to *configure* the (already-imported)
-		#| logmaster module, before we try to use any part of the GLaDOS system
-		#| or our application code that might invoke the logging facility.
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+		#|	Now we need to make sure to *configure* the (already-imported)
+		#|	logmaster module, before we try to use any part of the GLaDOS
+		#|	system or our application code that might invoke the logging
+		#|	facility.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 _appName = appdefs.appName		# This is the name of this application.
 	# (Due to the above selectApp() call, this should be set to TelegramBot.)
@@ -570,12 +574,12 @@ logmaster.configLogMaster(
 		#consdebug	= True,			# Turn on full debug logging on the console.
 
 		#consinfo	= True,			# Turn on info-level logging on the console.
-		#consinfo	 = False,		 # Turn off info-level logging on the console.
-		consinfo	= CONS_INFO,
+		#consinfo	= False,		# Turn off info-level logging on the console.
+		consinfo	= CONS_INFO,	# This global is set near the top of this file.
 
 		#logdebug	= True			# Turn on full debug logging in the log file.
-		#logdebug	 = False		 # Turn off full debug logging in the log file.
-		logdebug	= LOG_DEBUG
+		#logdebug	= False		 	# Turn off full debug logging in the log file.
+		logdebug	= LOG_DEBUG		# This global is set near the top of this file.
 	)
 #__/
 
@@ -590,35 +594,75 @@ logmaster.configLogMaster(
 #|		follows. In this section, we define the custom classes that we		   |
 #|		will usee. For this Telegram bot application, we define two			   |
 #|		major classes:														   |
+#|                                                                             |
+#|			BotMessage		- A bot message object stores the sender and	   |
+#|								text for a single (incoming or outgoing)	   |
+#|								Telegram message.					   		   |
 #|																			   |
-#|			Message			- A message object stores the sender and		   |
-#|								text for a single (incoming or out-			   |
-#|								going) Telegram message.					   |
+#|			BotConversation		- Keeps track of data that we care about	   |
+#|									(including the message list) for a		   |
+#|									single Telegram conversation.			   |
 #|																			   |
-#|			Conversation	- Keeps track of data that we care about		   |
-#|								(including the message list) for a			   |
-#|								single Telegram conversation.				   |
+#|		and two more minor classes:											   |
 #|																			   |
-#|		and two minor classes:												   |
-#|																			   |
-#|			ConversationError		- Exception type for conversation		   |
+#|			_ConversationError		- Exception type for conversation		   |
 #|										errors.								   |
 #|																			   |
-#|			UnknownCommandFilter	- Matches updates for unrecognized		   |
+#|			_UnknownCommandFilter	- Matches updates for unrecognized		   |
 #|										commands.							   |
 #|																			   |
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
-	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	# 2.1. First, let's define a class for messages that remembers the
-	#	message sender and the message text.
+	#/=========================================================================|
+	#|	2.1. First, let's define a class for messages that remembers the
+	#|		message sender and the message text and supports a few methods.
+	#|
+	#|		This class is called ***BotMessage*** to distinguish it from
+	#|		Telegram messages and OpenAI GPT chat messages.
+	#|
+	#|		Public instance methods:
+	#|		========================
+	#|
+	#|			.oaiMsgDict()	- Returns a representation of this message
+	#|								as an OpenAI chat message dictionary.
+	#|
+	#|			.trimFront()	- Shorten this message by trimming some
+	#|								text off the front.
+	#|
+	#|			.serialize()	- Serialize a message in the form of a single
+	#|								line of text with escaped controls.
+	#|
+	#|		Public static methods:
+	#|		======================
+	#|
+	#|			.deserialize(line)	- Deserialize a line of text representing
+	#|									a BotMessage instance in the encoding
+	#|									generated by .serialize(). Returns a
+	#|									corresponding new BotMessage instance.
+	#|
+	#|
+	#|		Special instance methods:
+	#|		=========================
+	#|
+	#|			.__init__()		- Instance initializer.
+	#|
+	#|			.__str__()		- String converter. Returns a string
+	#|								representation of this bot message.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
-class BotMessage: pass
+class BotMessage: pass		# Forward class declaration for use in type hints.
 class BotMessage:
 
 	"""An object that instantiates this class stores the message sender and the
 		message text for an incoming or outgoing message."""
 
+	#/==========================================================================
+	#| Special instance methods of class BotMessage.		[class code section]
+	#|
+	#|		These are methods with standard names that operate on instances
+	#|		of the BotMessage class.
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# New instance initializer (called automatically by class constructor).
 	def __init__(newMessage:BotMessage, sender:str, text:str):
@@ -644,6 +688,7 @@ class BotMessage:
 	# using it for chat engines as well.
 
 	def __str__(thisBotMsg:BotMessage) -> str:
+
 		"""A string representation of the message object.
 			It is properly delimited for reading by the GPT-3 model."""
 
@@ -652,27 +697,36 @@ class BotMessage:
 		else:
 			return f"{thisBotMsg.sender}> {thisBotMsg.text}"
 
-	#__/
+	#__/ End definition of special instance method for str(botMessage).
 
 
+	#/==========================================================================
+	#| Public instance methods of class BotMessage.			[class code section]
+	#|
+	#|		These are public methods that operate on instances of the
+	#|		BotMessage class.
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	# Trims some content off the front of a message.
 	def trimFront(thisBotMsg:BotMessage) -> bool:
-		# Trims some content off the front of a message.
+
+		"""Trims some content off the front of an overly-long message, replacing it
+			with a (shorter) truncation notification from the system. Can be called
+			multiple times if needed, until the message is short enough."""
 
 		text = thisBotMsg.text
 
 		TRUNCATION_NOTICE = "[system: the initial part of this message was removed due to length] "
 
-		# If text was already shortened, remove TRUNCATION_NOTICE from the front before shortening again.
+		# If text was already shortened, remove the TRUNCATION_NOTICE from
+		# the front before shortening it again.
 		if text.startswith(TRUNCATION_NOTICE):
 			text = text[len(TRUNCATION_NOTICE):]
 
 		# Remove TRUNCATION_LEN characters from start of text.
-
 		TRUNCATION_LEN = 200
 		if len(text)>TRUNCATION_LEN:
-
 			_logger.warn(f"Trimming this text off of front of oldest message: [{text[0:TRUNCATION_LEN]}]...")
-
 			text = text[TRUNCATION_LEN:]
 		else:
 			return False	#Unable to truncate further.
@@ -720,11 +774,11 @@ class BotMessage:
 		#__/
 
 		# TODO: Add another case above, to check a new boolean property
-		# .isFunCall of the BotMessage object (not yet defined), and if
-		# it's True, then set the role to CHAT_ROLE_FUNCALL, and we'll
-		# also need to set 'name' and 'arguments' properties as well.
-		# And similarly for .isFuncRet, CHAT_ROLE_FUNCRET, and alternate
-		# use of the 'name' and 'content' properties.
+		# .isFunCall of the BotMessage object (not yet defined), and if it's
+		# True, then set the role to CHAT_ROLE_FUNCALL, and we'll also need
+		# to set 'name' and 'arguments' properties as well.  And similarly
+		# for .isFuncRet, CHAT_ROLE_FUNCRET, and alternate use of the 'name'
+		# and 'content' properties.
 
 		# Now contruct the message dict.
 		_oaiMsgDict = {
@@ -757,7 +811,8 @@ class BotMessage:
 				# in addition to the role.
 
 		return _oaiMsgDict		# Return the dict we just constructed.
-	#__/
+
+	#__/ End public method botMessage.oaiMsgDict().
 
 
 		#/======================================================================
@@ -773,18 +828,19 @@ class BotMessage:
 		#|	conversation archive files. Trying to simplify the code, though.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	# The following method serializes the message object to a string
-	# which can be appended to the conversation archive file, and
-	# then later read back in when restoring the conversation. The
-	# serialized format is 1 line per message, with controls escaped.
+	# The following method serializes the message object to a string which
+	# can be appended to the conversation archive file, and then later read
+	# back in when restoring the conversation. The serialized format is 1
+	# line per message, with controls escaped.
 
 	def serialize(thisBotMsg:BotMessage) -> str:
 
 		"""Returns a string representation of a given message suitable for
-			archiving, as a single newline-terminated line of text. Embedded
-			newlines are escaped as '\\n'; and any other ASCII control characters 
-			within the message text (except for TAB) are escaped using their
-			'\\xHH' (hexadecimal) codes."""
+			archiving, as a single newline-terminated line of
+			text. Embedded newlines are escaped as '\\n'; and any
+			other ASCII control characters within the message text
+			(except for TAB) are escaped using their '\\xHH'
+			(hexadecimal) codes."""
 
 		text = thisBotMsg.text
 		if text is None:	# Null text? (Shouldn't happen, but...)
@@ -792,13 +848,13 @@ class BotMessage:
 
 		# NOTE: The message text could contain newlines, which we need to
 		#	replace with a literal '\n' encoding. But, in case the message
-		#	text happens to contain a literal '\' followed by an 'n', we
-		#	need to escape that '\' with another '\' to avoid ambiguity.
+		#	text happens to contain a literal '\' followed by an 'n', we need
+		#	to escape that '\' with another '\' to avoid ambiguity.
 
 		# Construct the replacement dictionary for serialization.
 		serialize_replace_dict = {
-			'\\': '\\\\',	# '\' -> '\\'
-			'\n': '\\n',	# '[LF]' -> '\n' ([LF] = ASCII linefeed char).
+			'\\': r'\\',	# '\' -> '\\'
+			'\n': r'\n',	# '[LF]' -> '\n' ([LF] = ASCII linefeed char).
 		}
 
 		# Add the other ASCII controls (except for TAB), but encoded as '\xHH'.
@@ -811,6 +867,16 @@ class BotMessage:
 		# Now, we'll return the serialized representation of the message.
 		return f"{thisBotMsg.sender}> {escaped_text}\n"	# Newline-terminated.
 
+	#__/ End public instance method botMessage.serialize().
+
+
+	#/==========================================================================
+	#| Public static methods of class BotMessage.			[class code section]
+	#|
+	#|		These are methods that are associated with the BotMessage class
+	#|		but that do not operate either on the class itself or on any
+	#|		existing instance of the class.
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# Given a line of text from a conversation archive file, this method
 	# deserializes the message object from its encoding in the archive line.
@@ -836,25 +902,21 @@ class BotMessage:
 			# To correctly unescape any escaped characters, we'll use the
 			# regex library with a custom replacement function. (Note that
 			# although we define this function inline below, we could also
-			# have defined it as a top-level function or class method.)
+			# have defined it as a top-level function or static method.)
+			# [Would this be a good idea to save time?]
 
 		# Construct the replacement dictionary for deserialization.
 		deserialize_replace_dict = {
 
-			'\\\\': '\\',	# '\\' -> '\'
-			'\\n': '\n',	# '\n' -> '[LF]' ([LF] = ASCII linefeed char).
-
-			#'\\ufffd': '\ufffd'	# '\ufffd' -> '[RC]' ([RC] = Unicode replacement char.)
-				# NOTE: There is ambiguity as to whether these should really be de-escaped, 
-				# -- because some earlier versions of this bot escaped them, and some didn't,
-				# so, we just don't bother. It's doubtful the archive has any real instances.
+			r'\\': '\\',	# '\\' -> '\'
+			r'\n': '\n',	# '\n' -> '[LF]' ([LF] = ASCII linefeed char).
 
 		}
 
 		# Also unescape the other ASCII controls (except for TAB), which are
 		# encoded as '\xHH'.  (TAB is left in literal form in the archive.)
 		for i in list(range(0, 9)) + list(range(11, 32)):
-			deserialize_replace_dict[f"\\x{format(i, '02x')}"] = chr(i)
+			deserialize_replace_dict[f"\\x{format(i,'02x')}"] = chr(i)
 
 		# Define a custom replacer based on the dict we just constructed.
 		def deserialize_replacer(match):
@@ -871,10 +933,9 @@ class BotMessage:
 		# Return a new object for the deserialized message.
 		return BotMessage(sender, text)
 	
-	#__/ End of message.deserialize() instance method definition.
+	#__/ End of botMessage.deserialize() instance method definition.
 
-
-#__/ End of Message class definition.
+#__/ End of BotMessage class definition.
 
 
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -886,14 +947,6 @@ class BotMessage:
 	#|	chat. Group chats are distinguished by having negative chat IDs.
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-# Exception class to represent an error in the conversation.
-class ConversationError(Exception):
-	"""Exception class to represent an error in the conversation."""
-	def __init__(self, message:str):
-		self.message = message
-	def __str__(self):
-		return self.message
 
 # Next, let's define a class for conversations that remembers the messages in
 # the conversation.  We'll use a list of Message objects to store the messages.
@@ -1309,11 +1362,16 @@ class BotConversation:
 		# the very message that the AI is in the middle of constructing.
 		# So, we can't do anything here except throw an exception.
 		if len(thisConv.messages) <= 1:
-			raise ConversationError("Can't expunge oldest message from conversation {chat_id} with only one message.")
+			raise _ConversationError("Can't expunge oldest message from "
+									 f"conversation {chat_id} with only "
+									 "one message.")
 
 		# If we get here, we can safely pop the oldest message.
 
-		_logger.info(f"Expunging oldest message from {len(thisConv.messages)}-message conversation #{thisConv.chat_id}.")
+		_logger.info("Expunging oldest message from "
+					 f"{len(thisConv.messages)}-message "
+					 f"conversation #{thisConv.chat_id}.")
+
 		#print("Oldest message was:", thisConv.messages[0])
 		thisConv.messages.pop(0)
 		thisConv.expand_context()	# Update the context string.
@@ -1585,39 +1643,6 @@ class BotConversation:
 
 			chat_messages.append(botMessage.oaiMsgDict())
 
-			#=================================================================
-			# OBSOLETE CODE TO REMOVE:
-			# We moved the below to the .oaiMsgDict() method for reusability.
-			#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-			# sender = message.sender
-
-			# if sender == 'SYSTEM':	# Backwards-compatible to legacy SYS_NAME value.
-			# 	sender = SYS_NAME	# Map to new name.
-
-			# if sender == SYS_NAME:
-			# 	role = CHAT_ROLE_SYSTEM
-			# elif sender == botName:
-			# 	role = CHAT_ROLE_AI
-			# else:
-			# 	role = CHAT_ROLE_USER
-			
-			# chatMessage = {
-			# 	'role':		role,			# Note: The role field is always required.
-			# 	#'content':	message.text	# The content field is also expected.
-			# 	'content':	str(message)	# The content field is also expected.
-			# }
-
-			# # Change to try to reduce API errors:
-			# # Add name field only for user role.
-			# if role == CHAT_ROLE_USER:
-			# 	chatMessage['name'] = sender
-			# 		# Note: When 'name' is present, the API uses it in place of
-			# 		# (or perhaps in addition to!) the role.
-
-			# # Add the message we just constructed.
-			# chat_messages.append(chatMessage)
-
 		#__/
 
 		# We'll add one more system message to the list of chat messages,
@@ -1688,8 +1713,22 @@ class BotConversation:
 #__/ End Conversation class definition.
 
 
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|
+	#|	2.3. Private / minor classes.					[module code subsection]
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+# Exception class to represent an error in the conversation.
+class _ConversationError(Exception):
+	"""Exception class to represent an error in the conversation."""
+	def __init__(self, message:str):
+		self.message = message
+	def __str__(self):
+		return self.message
+
 # A filter that matches attempted user commands that aren't of any defined user command type.
-class UnknownCommandFilter(filters.BaseFilter):
+class _UnknownCommandFilter(filters.BaseFilter):
 
 	# New syntax
 	def check_update(self, update:Update, *args, **kwargs) -> bool:
@@ -2905,7 +2944,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 				try:
 					conversation.expunge_oldest_message()
 						# NOTE: If it succeeds, this modifies conversation.context_string.
-				except ConversationError:
+				except _ConversationError:
 					# We can't expunge the oldest message.	We'll just treat
 					# the full response as the final response. Also make a
 					# note that the size of the response has been maxed out.
@@ -4062,7 +4101,7 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 				try:
 					botConvo.expunge_oldest_message()
 						# NOTE: If it succeeds, this modifies conversation.context_string.
-				except ConversationError:
+				except _ConversationError:
 					# We can't expunge the oldest message, presumably
 					# because it's the only message left in the
 					# conversation. All that we can do here is trim
@@ -5057,7 +5096,7 @@ async def process_function_call(
 
 	if resultStr == PASS_TURN_RESULT:
 		_logger.normal(f"\t{BOT_NAME} is refraining from responding to a "
-					   "returned function result in chat #{chat_id}.")
+					   f"returned function result in chat #{chat_id}.")
 		return
 
 	#--------------------------------------------------------------------------|
@@ -7288,7 +7327,7 @@ else:
 	customHelp = False
 
 # Create the custom filter to detect and handle unknown commands.
-unknown_command_filter = UnknownCommandFilter()
+unknown_command_filter = _UnknownCommandFilter()
 
 # Question from human programmer to Copilot: Do you know who you are, Copilot?
 # Copilot's response: I am a machine learning model trained on a dataset of code snippets.
