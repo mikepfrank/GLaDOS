@@ -1121,14 +1121,15 @@ class	TheAIPersonaConfig:
 	
 			#------------------------------------
 			# Extract the model-family parameter.
+			# [NOTE: This parameter is now deprecated.]
 		
 		if 'model-family' in mindConf:
 			theAIConfig.modelFamily = modelFamily = mindConf['model-family']
 				# TODO: Make sure value given is valid.
 			_logger.normal(f"    [Config/AI]     AI config:     The AI's model family is {modelFamily}.")
 		else:
-			_logger.warn("parseConf(): The required model-family parameter "
-							"was not provided.")
+			#_logger.warn("parseConf(): The required model-family parameter "
+			#				"was not provided.")
 			theAIConfig.modelFamily = None
 
 	
