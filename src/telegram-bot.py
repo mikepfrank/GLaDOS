@@ -3706,9 +3706,24 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 
 	_logger.normal(f"In chat {chatID}, for user #{userID}, AI is doing a web search in the {locale} locale for {sections} on: [{queryPhrase}].")
 	
+	# Calculate how many items to return based on GPT's field size.
+	fieldSize = global_gptCore.fieldSize()
+		# Total space in tokens for the AI's receptive field (context window).
+
+	if fieldSize >= 16000:		# 16k models and up
+		howMany = 10
+	elif fieldSize >= 8000:		# GPT-4 and higher
+		howMany = 5
+	elif fieldSize >= 4000:		# GPT-3.5 and higher
+		howMany = 3
+	else:
+		_logger.warn(f"This model has only {fieldSize} tokens. Web search results may overwhelm it.")
+
+		howMany = 2		# This is not very useful!
+
 	try:
 		# This actually does the search.
-		searchResult = _bing_search(queryPhrase, market=locale)
+		searchResult = _bing_search(queryPhrase, market=locale, count=howMany)
 
 		#_logger.debug(f"Raw search result:\n{pformat(searchResult)}")
 
@@ -6278,7 +6293,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 					text = text.replace(char, '\\' + char)
 					continue
 
-				_logger.error(f"Got a markdown error from Telegram in chat {chat_id}: {e}.")
+				_logger.error(f"Got a markdown error from Telegram in chat {chat_id}: {e}. Punting on markdown.")
 
 				parseMode = None
 				continue	# Try again without markdown
