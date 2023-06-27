@@ -3692,6 +3692,7 @@ async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
 # Default list of sections that should be returned by a Bing search.
 #DEFAULT_BINGSEARCH_SECTIONS = ['webPages', 'relatedSearches']
 DEFAULT_BINGSEARCH_SECTIONS = ['webPages']
+	# We made this smaller to increase the chance Turbo can handle it.
 
 # Define a function to handle the AI's search_web() function.
 async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
@@ -3703,11 +3704,13 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 	userID = updateMsg.from_user.id
 	chatID = botConvo.chat_id
 
-	_logger.normal(f"In chat {chatID}, for user #{userID}, AI is doing a web search in the {locale} locale for: [{queryPhrase}].")
+	_logger.normal(f"In chat {chatID}, for user #{userID}, AI is doing a web search in the {locale} locale for {sections} on: [{queryPhrase}].")
 	
 	try:
 		# This actually does the search.
 		searchResult = _bing_search(queryPhrase, market=locale)
+
+		#_logger.debug(f"Raw search result:\n{pformat(searchResult)}")
 
 		# Create a fresh dict for the fields we want to keep.
 		cleanResult = dict()
@@ -3717,9 +3720,42 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 			if key in sections:
 				cleanResult[key] = val
 
+		# If we found nothing, retry with the default section list.
+		if not cleanResult:
+			sections = DEFAULT_BINGSEARCH_SECTIONS
+			for (key, val) in searchResult.items():
+				if key in sections:
+					cleanResult[key] = val
+
+		# Strip out 'deepLinks' out of the webPages value, it's TMI.
+		if 'webPages' in cleanResult:
+			for result in cleanResult['webPages']['value']:
+				if 'deepLinks' in result:
+					del result['deepLinks']
+
+		# Strip a bunch of useless fields out of news values.
+		if 'news' in cleanResult:
+			for result in cleanResult['news']['value']:
+				if 'contractualRules' in result:
+					del result['contractualRules']
+				if 'image' in result:
+					del result['image']
+				if 'about' in result:
+					del result['about']
+				if 'mentions' in result:
+					del result['mentions']
+				if 'provider' in result:
+					del result['provider']
+				if 'video' in result:
+					del result['video']
+				if 'category' in result:
+					del result['category']
+		
+
 		# Return as a string (to go in content field of function message).
 		#return json.dumps(cleanResult)
 
+		# Format the result with tabs to make it easier for Turbo/Max to parse.
 		pp_result = json.dumps(cleanResult, indent=4)
 		tabbed_result = pp_result.replace(' '*8, '\t')
 		return tabbed_result
@@ -3947,6 +3983,11 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 		queryPhrase = funcArgs.get('query', None)
 		searchLocale = funcArgs.get('locale', 'en-US')
 		resultSections = funcArgs.get('sections', DEFAULT_BINGSEARCH_SECTIONS)
+		if isinstance(resultSections, str):
+			try:
+				resultSections = json.loads(resultSections)
+			except json.JSONDecodeError:
+				pass
 		
 		if queryPhrase:
 			return await ai_searchWeb(message, conversation, queryPhrase,
@@ -5373,13 +5414,13 @@ def _bing_search(query_string:str, market:str='en-US', count=3):
 
 		search_results = response.json()
 
-		# Diagnostic output for debugging:
-		i = 0
-		for item in search_results['webPages']['value']:
-			i += 1
-			_logger.normal(f"\nResult #{i}: name=\"{item['name']}\", "
-						   f"\n\turl={item['url']}, "
-						   f"\nsnippet={pformat(item['snippet'])}")
+		## Diagnostic output for debugging:
+		#i = 0
+		#for item in search_results['webPages']['value']:
+		#	i += 1
+		#	_logger.normal(f"\nResult #{i}: name=\"{item['name']}\", "
+		#				   f"\n\turl={item['url']}, "
+		#				   f"\nsnippet={pformat(item['snippet'])}")
 
 		return search_results
 
