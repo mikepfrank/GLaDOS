@@ -7314,6 +7314,7 @@ start - Starts bot; reloads conversation history.
 help - Displays general help and command help.
 image - Generates an image from a description.
 remember - Adds an item to the bot's persistent memory.
+search - Search bot's memory or the web for a phrase.
 forget - Removes an item from the bot's persistent memory.
 reset - Clears the bot's conversation memory.
 echo - Echoes back the given text.
