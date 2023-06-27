@@ -6243,18 +6243,18 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 	else:
 		parseMode = None
 
+	# Escape some commonplace characters for the AI since it usually flubs this.
+	if parseMode:
+		text = msgToSend.replace('\\', '\\\\')	# Escape backslashes
+		text = text.replace('.', '\.')			# Escape periods
+		text = re.sub(r'!(?!\[)', r'\!', text)  # Escape '!' not followed by '['
+		text = text.replace('-', '\-')			# Escape hyphens
+	else:
+		text = msgToSend
+
 	# Try sending the message to the user.
 	while True:
 		try:
-
-			# Escape some reserved characters for the AI since it usually flubs this.
-			if parseMode:
-				text = msgToSend.replace('\\', '\\\\')	# Escape backslashes
-				text = text.replace('.', '\.')			# Escape periods
-				text = re.sub(r'!(?!\[)', r'\!', text)  # Escape '!' not followed by '['
-				text = text.replace('-', '\-')			# Escape hyphens
-			else:
-				text = msgToSend
 
 			await message.reply_text(text, parse_mode=parseMode)
 			break
@@ -6268,9 +6268,11 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 				errmsg = str(e)
 
 				# If it's just asking us to escape a character, then escape it and try again.
-				match = re.match(r"Can't parse entities: character '(.)' is reserved and must be escaped with the preceding '\\'.", errmsg)
+				match = re.match(r"Can't parse entities: character '(.)' is reserved and must be escaped with the preceding '\\'", errmsg)
 				if match:
 					char = match.group(1)
+
+					_logger.normal(f"\tBackslash-escaping '{char}' character in response...")
 
 					# Replace occurrences of the reserved character in text with the escaped version
 					text = text.replace(char, '\\' + char)
