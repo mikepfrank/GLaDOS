@@ -6224,6 +6224,17 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 	
 			if exType == 'BadRequest' and str(e).startswith("Can't parse entities"):
 
+				errmsg = str(e)
+
+				# If it's just asking us to escape a character, then escape it and try again.
+				match = re.match(r"Can't parse entities: character '(.)' is reserved and must be escaped with the preceding '\\'.", errmsg)
+				if match:
+					char = match.group(1)
+
+					# Replace occurrences of the reserved character in text with the escaped version
+					text = text.replace(char, '\\' + char)
+					continue
+
 				_logger.error(f"Got a markdown error from Telegram in chat {chat_id}: {e}.")
 
 				parseMode = None
