@@ -88,7 +88,9 @@
 #|
 #|		Message - Our representation for a single Telegram message.
 #|
-#|		UnknownCommandFilter - Matches updates for unrecognized commands.		
+#|		UnknownCommandFilter - Matches updates for unrecognized commands.
+#|
+#|		WebAssistant - Subordinate AI to handle web information retrieval.
 #|
 #|
 #|  Telegram event handler functions:
@@ -240,6 +242,8 @@
 #|	TO DO:
 #|	~~~~~~
 #|
+#|		o Implement WebAssistant class using Max to help all AIs do web
+#|			searches and read web pages.
 #|		o Clean up naming convention for variables for message objects.
 #|			(Distinguish Telegram messages, chat messages, my messages.)
 #|
@@ -616,6 +620,7 @@ logmaster.configLogMaster(
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# 2.1. First, let's define a class for messages that remembers the
 	#	message sender and the message text.
+	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 class BotMessage: pass
 class BotMessage:
@@ -968,6 +973,10 @@ class BotConversation:
 		## should close them whenever an existing convo is restarted, before reopening.
 		## Currently, we handle this with the __del__() method below, which should get
 		## called eventually whenever a given conversation object is garbage-collected.
+
+		# The initial function list. Typically only the last function used will appear,
+		# along with (always) the activate_function and pass_turn schemas.
+		newConv.cur_funcs = []
 
 	#__/ End of conversation instance initializer.
 
@@ -1719,6 +1728,44 @@ class UnknownCommandFilter(filters.BaseFilter):
 		return False
 	#__/
 #__/
+
+
+class SubordinateAI_: pass
+class SubordinateAI_: 
+	"""Abstract base class for subordinate AI entities."""
+	pass
+
+# Subordinate AI class for web operations.
+class WebAssistant: pass
+class WebAssistant(SubordinateAI_):
+	"""Subordinate AI to handle web search & retrieval operations."""
+
+	# New instance initializer.
+	def __init__(newWebAssistant:WebAssistant, callerName:str, userLocale:str):		
+
+		newWA = newWebAssistant		# Shorter name.
+
+			# Here we initialize the important data members.
+
+		# Create the connection to the core LLM that will handle this function.
+		# It needs to be a model that has at least a 16k token context window.
+		# We will use this space as follows:
+		#	* <= 1K:	Pre-prompt and function descriptions.
+		#	* <= 12K:	Web search results, or view of current webpage.
+		#	* <= 3K:	Conversation history between caller and assistant.
+
+		newWA.core_llm = createCoreConnection('gpt-3.5-turbo-16k', maxTokens=2000)
+		newWA.current_url = None
+		newWA.page_content = None
+		newWA.page_view = None
+		newWA.view_start_pos = None
+		newWA.view_end_pos = None
+		newWA.search_term = None
+		newWA.search_pos = None
+		newWA.conversation_history = []
+
+
+#__/ End public class WebAssistant.
 
 
 #/==============================================================================
@@ -3127,6 +3174,9 @@ async def handle_error(update:Update, context:Context) -> None:
 #|		In this section, we define functions that will handle commands		   |
 #|		and function calls invoked by the AI. These include:				   |
 #|																			   |
+#|			ai_activateFunction() - Handles activate_function() AI			   |
+#|										function call.						   |
+#|																			   |
 #|			ai_block() - Handles /block AI command and block_user()			   |
 #|								AI function call.							   |
 #|																			   |
@@ -3153,6 +3203,50 @@ async def handle_error(update:Update, context:Context) -> None:
 #	* /forget <text> - Removes <text> from persistent memory.
 #	* /block [<user>] - Blocks the current user.
 #	* /image <desc> - Generates an image with a given text description and sends it to the user.
+
+
+async def ai_activateFunction(
+	updateMsg:TgMsg, botConvo:BotConversation, funcName:str) -> str:
+
+	"""The AI calls this function to activate one of its other functions."""
+
+	_logger.normal(f"In ai_activateFunction) with funcName={funcName}...")
+
+	cur_funcs = botConvo.cur_funcs
+
+	if funcName == 'remember_item':
+		cur_funcs += [REMEMBER_ITEM_SCHEMA]
+
+	elif funcName == 'search_memory':
+		cur_funcs += [SEARCH_MEMORY_SCHEMA]
+	
+	elif funcName == 'forget_item':
+		cur_funcs += [FORGET_ITEM_SCHEMA]
+	
+	elif funcName == 'create_image':
+		cur_funcs += [CREATE_IMAGE_SCHEMA]
+	
+	elif funcName == 'block_user':
+		cur_funcs += [BLOCK_USER_SCHEMA]
+	
+	elif funcName == 'unblock_user':
+		cur_funcs += [UNBLOCK_USER_SCHEMA]
+	
+	elif funcName == 'search_web':
+		cur_funcs += [SEARCH_WEB_SCHEMA]
+		
+	else:
+		_logger.error(f"AI tried to activate an unknown function '{funcName}'.")
+		return f"Error: Unknown function name '{funcName}'."
+
+	_logger.normal(f"\tAI activated function '{funcName}'.")
+
+	func_names = [func['name'] for func in cur_funcs if 'name' in func]
+	_logger.normal(f"\tCurrent function list is: {func_names}.")
+
+	return f"Success: Function {funcName} has been activated."
+
+#__/
 
 
 # Define a function to handle the /block command, when issued by the AI.
@@ -3765,6 +3859,16 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 					f"search_web() missing required argument 'query'.")
 			return "Error: Required argument 'query' is missing."
 
+	elif funcName == 'activate_function':
+
+		funcName = funcArgs.get('func_name', None)
+		if funcName:
+			return await ai_activateFunction(message, conversation, funcName)
+		else:
+			await _report_error(conversation, message,
+					f"activate_function() missing required argument 'func_name'.")
+			return "Error: Required argument 'func_name' is missing."
+
 	elif funcName == 'pass_turn':
 		_logger.normal(f"\nNOTE: The AI is passing its turn in conversation {chat_id}.")
 		return PASS_TURN_RESULT
@@ -3938,12 +4042,21 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 		msgsSizeToks = ChatMessages(oaiMsgList).\
 					   totalTokens(model=ENGINE_NAME)
 
+		# Does this engine support the functions interface? If so, then we'll
+		# pass it our list of function descriptions.
+		if hasFunctions(ENGINE_NAME):
+			# Retrieve our current functions list, and add always-functions.
+			functions = botConvo.cur_funcs + \
+						[ACTIVATE_FUNCTION_SCHEMA, PASS_TURN_SCHEMA]
+							# Plus always include these two.
+		else:
+			functions = None
+
 		# If this engine supports functions, add in the estimated size in tokens
 		# of the functions structure. (Note that this is just a guesstimate
 		# since we don't know how it's formatted at the back end exactly.)
-		if hasFunctions(ENGINE_NAME):
-			funcsSize = tiktokenCount(json.dumps(FUNCTIONS_LIST),
-									  model=ENGINE_NAME)
+		if functions is not None:
+			funcsSize = tiktokenCount(json.dumps(functions), model=ENGINE_NAME)
 			#_logger.info(f"Estimating size of FUNCTIONS_LIST is {funcsSize}.)")
 			msgsSizeToks += funcsSize
 
@@ -4033,13 +4146,6 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 		#	f"globalMaxRetToks = {globalMaxRetToks}, "
 		#	f"absMaxRetToks = {absMaxRetToks}, "
 		#	f"availSpaceToks = {availSpaceToks}")
-
-		# Does this engine support the functions interface? If so, then we'll
-		# pass it our list of function descriptions.
-		if hasFunctions(ENGINE_NAME):
-			functions = FUNCTIONS_LIST
-		else:
-			functions = None
 
 		# Now we'll do the actual API call, with exception handling.
 		try:
@@ -4220,7 +4326,7 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 	# When we get here, we're done, and we just return.
 
 #__/ End definition of function get_ai_response().
-
+						 
 
 # Process a command (message starting with '/') from the AI.
 async def process_ai_command(update:Update, context:Context, response_text:str) -> None:
@@ -4363,12 +4469,28 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 
 #__/ End function process_ai_command().
 
-
+						 
 async def process_chat_message(update:Update, context:Context) -> None:
 
 	"""We dispatch to this function to process messages from the user if our
 		selected engine is for OpenAI's chat endpoint."""
 	
+	# To save space, when processing a new user message, we'll just
+	# let the bot remember only the last function schema it previously
+	# activated when starting to process a new message. (Except, the
+	# activate_function and pass_turn schemas are always visible.)
+
+	botConvo	= context.chat_data['conversation']
+	chat_id		= botConvo.chat_id
+	cur_funcs	= botConvo.cur_funcs
+	HOWMANY_FUNCS = 1
+	if len(cur_funcs) > HOWMANY_FUNCS:
+		cur_funcs = cur_funcs[-(HOWMANY_FUNCS):]
+		botConvo.cur_funcs = cur_funcs
+	#__/
+	func_names = [func['name'] for func in cur_funcs if 'name' in func]
+	_logger.info(f"Current function list in chat {chat_id} is {func_names}.")
+
 	# Now everything is handled by this new implementation, which has been
 	# rewritten so that it can also handle cases where the AI is responding from
 	# a result that's been returned from a function that it previously called.
@@ -6251,6 +6373,8 @@ def _unblockUser(user:str) -> bool:
 	
 	if user not in block_list:
 		_logger.warn(f"_unblockUser(): User {user} is not blocked. Ignoring.")
+		_lastError = f"User {user} is already not on the block list."
+		return True
 
 	block_list.remove(user)
 	with open(bcl_file, 'w') as f:
@@ -6430,317 +6554,363 @@ PASS_TURN_RESULT = "Success: I will refrain from responding to the last user mes
 	#  Sets the functions list (describes the functions AI may call).
 	#  Note this is only supported in chat models dated 6/13/'23 or later.
 
-# Functions available to the AI in the Telegram app.
-FUNCTIONS_LIST = [
-	
-	# Function for command: /remember <item_text>
-	{
-		"name":         "remember_item",
-		"description":  "Adds an item to the AI's persistent memory list.",
-		"parameters":   {
-			"type":         "object",
-			"properties":   {
-				"item_text":    {
-					"type":         "string",   # <item_text> argument has type string.
-						"description":  "Text of item to remember, as a single line."
+
+# Function schema for command: /remember <item_text>
+REMEMBER_ITEM_SCHEMA = {
+	"name":         "remember_item",
+	"description":  "Adds an item to the AI's persistent memory list.",
+	"parameters":   {
+		"type":         "object",
+		"properties":   {
+			"item_text":    {
+				"type":         "string",   # <item_text> argument has type string.
+				"description":  "Text of item to remember, as a single line."
+			},
+			"is_private":	{
+				"type":			"boolean",	# <private> argument is Boolean.
+				"description":	"Is this information considered private "\
+									"to the current user or group chat? ",
+				"default":		True,
+			},
+			"is_global": {
+				"type":			"boolean",	# <private> argument is Boolean.
+				"description":	"Does this information need to be accessible "\
+									"to the AI from within any chat?",
+				"default":		False,
+			},
+			"remark":	{
+				"type":			"string",	# <remark> argument has type string.
+				"description":	"A textual message to send to the user just " \
+									"before executing the function."
+			}
+		},
+		"required":     ["item_text"]	# <item_text> argument is required.
+	},
+	"returns":	{	# This describes the function's return type.
+		"type":			"string",
+		"description":	"A string indicating the success or failure of " \
+							"the operation."
+	}
+}
+
+
+# Function schema for command: /search <query_phrase>
+SEARCH_MEMORY_SCHEMA = {
+	"name":			"search_memory",
+	"description":	"Do a context-sensitive semantic search for the top N "\
+						"memories related to a given search phrase.",
+	"parameters":	{
+		"type":			"object",
+		"properties":	{
+			"query_phrase":	{
+				"type":			"string",	# <query_phrase> is a string
+				"description":	"Text to semantically match against memories."
+			},
+			"max_results": {
+				"type":			"integer",	# <max_results> is an integer
+				"description":	"The maximum number of items to return "
+									f"(up to {MAXIMUM_SEARCHMEM_NITEMS}).",
+				"default":		DEFAULT_SEARCHMEM_NITEMS,
+			},
+		},
+		"required":		["query_phrase"]	# <query_phrase> arg is required.
+	},
+	"returns":	{	# This describes the function's return type.
+		"description":	"A list of semantic matches, closest first.",
+		"type":			"array",
+		"items":	{
+			"type":			"object",
+			"properties":	{
+				"item_id":	{
+					"type":			"string",
+					"description":	"8-digit hex ID of this memory item."
+				},
+				"item_text":	{
+					"type":			"string",
+					"description":	"Complete text of this memory item."
 				},
 				"is_private":	{
 					"type":			"boolean",	# <private> argument is Boolean.
-					"description":	"Is this information considered private "\
-						"to the current user or group chat? ",
-					"default":		True,
+					"description":	"Indicates whether this memory contains "\
+										"information specific to the user or group in which "\
+										"it was created. If true, the information should not "\
+										"be openly disclosed in different contexts without "\
+										"authorization."
+					# ^ Suggested by Aria. My original description:
+					#"Is this information considered private "\
+					#	"to the current user or group chat? "
 				},
 				"is_global": {
 					"type":			"boolean",	# <private> argument is Boolean.
-					"description":	"Does this information need to be accessible "\
-						"to the AI from within any chat?",
-					"default":		False,
+					"description":	"Indicates whether this memory is "\
+										"accessible to the AI across all contexts. If "\
+										"true, the AI can use this information to shape "\
+										"responses in any context, but must respect privacy "\
+										"restrictions if `is_private` is also true."
+					# ^ Suggested by Aria. My original description:
+					#"Does this information need to be accessible "\
+					#"to the AI from within any chat?"
 				},
-				"remark":	{
-					"type":		"string",	# <remark> argument has type string.
-					"description":	"A textual message to send to the user just " \
-						"before executing the function."
-				}
-			},
-			"required":     ["item_text"]	# <item_text> argument is required.
-		},
-		"returns":	{	# This describes the function's return type.
-			"description":	"A string indicating the success or failure of " \
-				"the operation.",
-			"type": "string"
-		}
-	},
-	
-	# Function for command: /search <query_phrase>
-	{
-		"name":			"search_memory",
-		"description":	"Do a context-sensitive semantic search for the top N "\
-		"memories related to a given search phrase.",
-		"parameters":	{
-			"type":			"object",
-			"properties":	{
-				"query_phrase":	{
-					"type":			"string",	# <query_phrase> is a string
-					"description":	"Text to semantically match against memories."
-				},
-				"max_results": {
-					"type":			"integer",	# <max_results> is an integer
-					"description":	"The maximum number of items to return "
-						f"(up to {MAXIMUM_SEARCHMEM_NITEMS}).",
-					"default":		DEFAULT_SEARCHMEM_NITEMS,
-				},
-			},
-			"required":		["query_phrase"]	# <query_phrase> arg is required.
-		},
-		"returns":	{	# This describes the function's return type.
-			"description":	"A list of semantic matches, closest first.",
-			"type":			"array",
-			"items":	{
-				"type":			"object",
-				"properties":	{
-					"item_id":	{
-						"type":			"string",
-						"description":	"8-digit hex ID of this memory item."
-					},
-					"item_text":	{
-						"type":			"string",
-						"description":	"Complete text of this memory item."
-					},
-					"is_private":	{
-						"type":			"boolean",	# <private> argument is Boolean.
-						"description":	"Indicates whether this memory contains "\
-							"information specific to the user or group in which "\
-							"it was created. If true, the information should not "\
-							"be openly disclosed in different contexts without "\
-							"authorization."
-						# ^ Suggested by Aria. My original description:
-						#"Is this information considered private "\
-						#	"to the current user or group chat? "
-					},
-					"is_global": {
-						"type":			"boolean",	# <private> argument is Boolean.
-						"description":	"Indicates whether this memory is "\
-							"accessible to the AI across all contexts. If "\
-							"true, the AI can use this information to shape "\
-							"responses in any context, but must respect privacy "\
-							"restrictions if `is_private` is also true."
-						# ^ Suggested by Aria. My original description:
-						#"Does this information need to be accessible "\
-						#"to the AI from within any chat?"
-					},
-					"distance":		{
-						"type":			"number",
-						"description":	"Semantic distance of item from query (in the interval [0,1])."
-					}
+				"distance":		{
+					"type":			"number",
+					"description":	"Semantic distance of item from query (in the interval [0,1])."
 				}
 			}
 		}
-	},
+	}
+}
 	
-	# Function for command: /forget <item_text>
-	{
-		"name":         "forget_item",
-		"description":  "Removes an item from the AI's persistent memory list. "\
-			"Either item_text or item_id must be supplied.",
-		"parameters":   {
-			"type":         "object",
-			"properties":   {
-				"item_text":    {
-					"type":         "string",   # <item_text> argument has type string.
-					"description":  "Exact text of item to forget, as a single line."
-				},
-				"item_id": {
-					"type":			"string",	# <item_id> argument is a string.
-					"description":	"8-digit hex ID of specific memory item to forget."
-				},
-				"remark":	{
-					"type":		"string",	# <remark> argument has type string.
-					"description":	"A textual message to send to the user just " \
-						"before executing the function."
-				}
+
+# Function schema for command: /forget <item_text>
+FORGET_ITEM_SCHEMA = {
+	"name":         "forget_item",
+	"description":  "Removes an item from the AI's persistent memory list. "\
+	"Either item_text or item_id must be supplied.",
+	"parameters":   {
+		"type":         "object",
+		"properties":   {
+			"item_text":    {
+				"type":         "string",   # <item_text> argument has type string.
+				"description":  "Exact text of item to forget, as a single line."
 			},
-			"required":     []	# No single argument is required.
-			# (But, either item_text or item_id must be supplied.
-		},
-		"returns":	{	# This describes the function's return type.
-			"description":	"A string indicating the success or failure of " \
-				"the operation.",
-			"type": "string"
-		}
-	},
-	
-	# Function for command: /image <image_desc>
-	{
-		"name":         "create_image",
-		"description":  "Generates an image using Dall-E and sends it to the user.",
-		"parameters":   {
-			"type":         "object",
-			"properties":   {
-				"image_desc":    {
-					"type":         "string",   # <image_desc> argument has type string.
-					"description":  "Detailed text prompt describing the desired image."
-				},
-				"caption":    {
-					"type":         "string",   # <image_desc> argument has type string.
-					"description":  "Text caption to attach to the generated image."
-				},
-				"remark":	{
-					"type":		"string",	# <remark> argument has type string.
-					"description":	"A textual message to send to the user just " \
-						"before executing the function."
-				}
+			"item_id": {
+				"type":			"string",	# <item_id> argument is a string.
+				"description":	"8-digit hex ID of specific memory item to forget."
 			},
-			"required":     ["image_desc"]      # <image_desc> argument is required.
-		},
-		"returns":	{	# This describes the function's return type.
-			"description":	"A string indicating the success or failure of " \
-								"the operation.",
-			"type": "string"
-		}
-	},
-	
-	# Function for command: /block [<user_tag>|<user_id>]
-	{
-		"name":         "block_user",
-		"description":  "Blocks a given user from accessing this Telegram bot again.",
-		"parameters":   {
-			"type":         "object",
-			"properties":   {
-				"user_name":    {
-					"type":         "string",   # <user_name> argument has type string.
-					"description":  "Name of user to block; defaults to current user."
-				},
-				"remark":	{
-					"type":			"string",	# <remark> argument has type string.
-					"description":	"A textual message to send to the user just " \
+			"remark":	{
+				"type":			"string",	# <remark> argument has type string.
+				"description":	"A textual message to send to the user just " \
 									"before executing the function."
-				},
-			},
-			"required":     []     # <user_name> argument is not required.
+			}
 		},
-		"returns":	{	# This describes the function's return type.
-			"description":	"A string indicating the success or failure of " \
-								"the operation.",
-			"type": "string"
-		}
-	},        
-	
-	# Function for command: /unblock [<user_name>]
-	{
-		"name":         "unblock_user",
-		"description":  "Removes a given user from this Telegram bot's block list.",
-		"parameters":   {
-			"type":         "object",
-			"properties":   {
-				"user_name":    {
-					"type":         "string",   # <user_name> argument has type string.
-					"description":  "Name of user to unblock; defaults to current user."
-				},
-				"remark":	{
-					"type":			"string",	# <remark> argument has type string.
-					"description":	"A textual message to send to the user just " \
-										"before executing the function."
-				},
+		"required":     []	# No single argument is required.
+		# (But, either item_text or item_id must be supplied.
+	},
+	"returns":	{	# This describes the function's return type.
+		"type":			"string",
+		"description":	"A string indicating the success or failure of " \
+							"the operation."
+	}
+}
+
+
+# Function schema for command: /image <image_desc>
+CREATE_IMAGE_SCHEMA = {
+	"name":         "create_image",
+	"description":  "Generates an image using Dall-E and sends it to the user.",
+	"parameters":   {
+		"type":         "object",
+		"properties":   {
+			"image_desc":    {
+				"type":         "string",   # <image_desc> argument has type string.
+				"description":  "Detailed text prompt describing the desired image."
 			},
-			"required":     []       # <user_name> argument is not required.
-		},
-		"returns":	{	# This describes the function's return type.
-			"description":	"A string indicating the success or failure of " \
-							"the operation.",
-			"type": "string"
-		}
-	},        
-	
-	# Function to search the web.
-	{
-		"name":			"search_web",
-		"description":	"Retrieves web search results using the Bing search API.",
-		"parameters":	{
-			"type": "object",
-			"properties": {
-				"query": {
-					"type": "string",
-					"description": "The search query string.",
-					"minLength": 1
-				},
-				"locale": {
-					"type": "string",
-					"enum": ["da-DK", "de-AT", "de-DE", "en-AR", "en-AU",  
-							 "en-CA", "en-GB", "en-ID", "en-IN", "en-MY",  
-							 "en-NZ", "en-PH", "en-US", "en-ZA", "es-CL",  
-							 "es-ES", "es-MX", "es-US", "fi-FI", "fr-CA",  
-							 "fr-FR", "it-IT", "ja-JP", "ko-KR", "nl-BE", 
-							 "nl-NL", "no-NO", "pl-PL", "pt-BR", "ru-RU",  
-							 "sv-SE", "tr-TR", "zh-CN", "zh-HK", "zh-TW"],
-					"description": "The locale for the search results.",
-					"default":	"en-US"
-				},
-				"sections": {
-					"type": "array",
-					"items": {
-						"type": "string",
-						"enum": ["entities", "images", "news", "rankingResponse", "relatedSearches", "webPages"]
-					},
-					"uniqueItems": True,
-					"description": "List of sections to return in the search results. "
-						"(Default is ['webPages', 'relatedSearches'])."
-				},
-				"remark":	{
-					"type":			"string",	# <remark> argument has type string.
-					"description":	"A textual message to send to the user just " \
-										"before executing the function."
-				},
+			"caption":    {
+				"type":         "string",   # <image_desc> argument has type string.
+				"description":  "Text caption to attach to the generated image."
 			},
-			"required": ["query"],
-			"additionalProperties": False
+			"remark":	{
+				"type":			"string",	# <remark> argument has type string.
+				"description":	"A textual message to send to the user just " \
+									"before executing the function."
+			}
 		},
-		"returns":	{	# This describes the function's return type.
-			"type": "object",
-			"properties": {
-				"entities": {
-					"type": "object",
-					"description": "Information about entities related to the search query."
-				},
-				"images": {
-					"type": "object",
-					"description": "Images related to the search query."
-				},
-				"news": {
-					"type": "object",
-					"description": "News articles related to the search query."
-				},
-				"rankingResponse": {
-					"type": "object",
-					"description": "Information about the ranking of the search results."
-				},
-				"relatedSearches": {
-					"type": "object",
-					"description": "Search terms related to the original query."
-				},
-				"webPages": {
-					"type": "object",
-					"description": "Web pages related to the search query."
+		"required":     ["image_desc"]      # <image_desc> argument is required.
+	},
+	"returns":	{	# This describes the function's return type.
+		"type":			"string",
+		"description":	"A string indicating the success or failure of " \
+							"the operation."
+	}
+}
+
+
+# Function schema for command: /block [<user_tag>|<user_id>]
+BLOCK_USER_SCHEMA = {
+	"name":         "block_user",
+	"description":  "Blocks a given user from accessing this Telegram bot again.",
+	"parameters":   {
+		"type":         "object",
+		"properties":   {
+			"user_name":    {
+				"type":         "string",   # <user_name> argument has type string.
+				"description":  "Name of user to block; defaults to current user."
+			},
+			"remark":	{
+				"type":			"string",	# <remark> argument has type string.
+				"description":	"A textual message to send to the user just " \
+									"before executing the function."
+			},
+		},
+		"required":     []     # <user_name> argument is not required.
+	},
+	"returns":	{	# This describes the function's return type.
+		"type":			"string",
+		"description":	"A string indicating the success or failure of " \
+							"the operation."
+	}
+}
+
+
+# Function schema for command: /unblock [<user_name>]
+UNBLOCK_USER_SCHEMA = {
+	"name":         "unblock_user",
+	"description":  "Removes a given user from this Telegram bot's block list.",
+	"parameters":   {
+		"type":         "object",
+		"properties":   {
+			"user_name":    {
+				"type":         "string",   # <user_name> argument has type string.
+				"description":  "Name of user to unblock; defaults to current user."
+			},
+			"remark":	{
+				"type":			"string",	# <remark> argument has type string.
+				"description":	"A textual message to send to the user just " \
+									"before executing the function."
+			},
+		},
+		"required":     []       # <user_name> argument is not required.
+	},
+	"returns":	{	# This describes the function's return type.
+		"type":			"string",
+		"description":	"A string indicating the success or failure of " \
+							"the operation."
+	}
+}
+
+
+# Function schema to search the web.
+SEARCH_WEB_SCHEMA = {
+	"name":			"search_web",
+	"description":	"Retrieves web search results using the Bing search API.",
+	"parameters":	{
+		"type": "object",
+		"properties": {
+			"query": {
+				"type": 		"string",
+				"description":	"The search query string.",
+				"minLength":	1
+			},
+			"locale": {
+				"type": 		"string",
+				"description":	"The locale for the search results.",
+				"default":		"en-US",
+				"enum": ["da-DK", "de-AT", "de-DE", "en-AR", "en-AU",  
+						 "en-CA", "en-GB", "en-ID", "en-IN", "en-MY",  
+						 "en-NZ", "en-PH", "en-US", "en-ZA", "es-CL",  
+						 "es-ES", "es-MX", "es-US", "fi-FI", "fr-CA",  
+						 "fr-FR", "it-IT", "ja-JP", "ko-KR", "nl-BE", 
+						 "nl-NL", "no-NO", "pl-PL", "pt-BR", "ru-RU",  
+						 "sv-SE", "tr-TR", "zh-CN", "zh-HK", "zh-TW"]
+			},
+			"sections": {
+				"type":			"array",
+				"description":	"List of sections to return in the search results. "
+									"(Default is ['webPages', 'relatedSearches']).",
+				"minLength":	1,
+				"uniqueItems":	True,
+				"items": {
+					"type":	"string",
+					"enum": ["entities", "images", "news", "rankingResponse",
+							 "relatedSearches", "webPages"]
 				}
 			},
-			"additionalProperties": False
-		}
-	},
-	
-	# Function for command: /pass
-	{
-		"name":			"pass_turn",
-		"description":	"Refrain from responding to the user's current message.",
-		"parameters":   {
-			"type":         "object",
-			"properties":	{},			# No parameters.
-			"required":     []
+			"remark":	{
+				"type":			"string",	# <remark> argument has type string.
+				"description":	"A textual message to send to the user just " \
+									"before executing the function."
+			}
 		},
-		"returns":	{	# No return value.
-			"type":	"null"
-		}
+		"required": ["query"],
+		"additionalProperties": False
 	},
-	
-]
+	"returns":	{	# This describes the function's return type.
+		"type": "object",
+		"properties": {
+			"entities": {
+				"type":			"object",
+				"description":	"Information about entities related to the search query."
+			},
+			"images": {
+				"type":			"object",
+				"description":	"Images related to the search query."
+			},
+			"news": {
+				"type":			"object",
+				"description":	"News articles related to the search query."
+			},
+			"rankingResponse": {
+				"type":			"object",
+				"description":	"Information about the ranking of the search results."
+			},
+			"relatedSearches": {
+				"type":			"object",
+				"description":	"Search terms related to the original query."
+			},
+			"webPages": {
+				"type":			"object",
+				"description":	"Web pages related to the search query."
+			}
+		},
+		"additionalProperties": False
+	}
+}
+
+
+# Function schema for the 'activate_function' function.
+ACTIVATE_FUNCTION_SCHEMA = {
+	"name":			"activate_function",
+	"description":	"Causes the detailed schema for the named function to "
+						"be visible among the list of available functions, "
+						"effectively enabling the function's use.",
+	"parameters":	{
+		"type":			"object",
+		"properties":	{
+			"func_name":	{
+				"type":		"string",
+				"enum":		["remember_item", "search_memory", "forget_item",
+							 "create_image", "block_user", "unblock_user",
+							 "search_web"]
+			}
+		},
+		"required":				["func_name"],
+		"additionalProperties":	False
+	},
+	"returns":	{	# This describes the function's return type.
+		"type":			"string",
+		"description":	"A string indicating the success or failure of " \
+							"the operation."
+	}
+}
+
+
+# Function schema for command: /pass
+PASS_TURN_SCHEMA = {
+	"name":			"pass_turn",
+	"description":	"Refrain from responding to the user's current message.",
+	"parameters":   {
+		"type":         "object",
+		"properties":	{},			# No parameters.
+		"required":     []
+	},
+	"returns":	{	# No return value.
+		"type":	"null"
+	}
+}
+
+
+# Functions available to the AI in the Telegram app.
+FUNCTIONS_LIST = [
+	REMEMBER_ITEM_SCHEMA,
+	SEARCH_MEMORY_SCHEMA,
+	FORGET_ITEM_SCHEMA,
+	CREATE_IMAGE_SCHEMA,
+	BLOCK_USER_SCHEMA,
+	UNBLOCK_USER_SCHEMA,
+	SEARCH_WEB_SCHEMA,
+	ACTIVATE_FUNCTION_SCHEMA,
+	PASS_TURN_SCHEMA
+]	
 
 		#/============================================================
 		#| Constants retrieved from the environment.
@@ -7051,6 +7221,10 @@ app.add_handler(MessageHandler(unknown_command_filter,
 # Test our web search capability.
 #result = _bing_search("Latest advancements in AI technology")
 #pprint(result)
+
+# Show a diagnostic: How much token space does the function list take?
+FUNC_TOKS = tiktokenCount(json.dumps(FUNCTIONS_LIST), model=ENGINE_NAME)
+_logger.normal(f"\nNOTE: Function specs take {FUNC_TOKS} tokens.")
 
 	#|==========================================================================
 	#|  7.5. Start main loop.
