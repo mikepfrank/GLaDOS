@@ -400,6 +400,8 @@ from	telegram.ext 	import (
 			ContextTypes,		# Used for type hints.
 		)
 	
+from	telegram.constants	import	ParseMode
+
 # Type name for a Telegram type that we'll use often
 Context = ContextTypes.context
 #Context = ContextTypes.DEFAULT_TYPE	# In older versions of python-telegram-bot.
@@ -5183,11 +5185,11 @@ async def send_response(update:Update, context:Context, response_text:str) -> No
 
 	# Send the message in chunks.
 	while len(response_text) > MAX_MESSAGE_LENGTH:
-		await _reply_user(message, None, response_text[:MAX_MESSAGE_LENGTH])
+		await _reply_user(message, None, response_text[:MAX_MESSAGE_LENGTH], markup=True)
 		response_text = response_text[MAX_MESSAGE_LENGTH:]
 
 	# Send the last chunk.
-	await _reply_user(message, None, response_text)
+	await _reply_user(message, None, response_text, markup=True)
 #__/
 
 
@@ -6170,7 +6172,7 @@ def _printUsers():
 # If ignore=True, then the error string indicates that the error is being
 # ignored by the program.
 async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
-					  msgToSend:str, ignore:bool=False) -> str:
+					  msgToSend:str, ignore:bool=False, markup:bool=False) -> str:
 
 	"""Sends text message <msgToSend> in reply to the user's
 		Telegram message <userTgMessage> in conversation <convo>."""
@@ -6186,28 +6188,52 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 	else:
 		chat_id = convo.chat_id
 
+	if markup:
+		parseMode = ParseMode.MARKDOWN_V2
+	else:
+		parseMode = None
+
 	# Try sending the message to the user.
-	try:
-		await message.reply_text(msgToSend)
+	while True:
+		try:
 
-	except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
+			# Escape some reserved characters for the AI since it usually flubs this.
+			if parseMode:
+				text = msgToSend.replace('\\', '\\\\')	# Escape backslashes
+				text = text.replace('.', '\.')			# Escape periods
+				text = re.sub(r'!(?!\[)', r'\!', text)  # Escape '!' not followed by '['
+				text = text.replace('-', '\-')			# Escape hyphens
+			else:
+				text = msgToSend
 
-		exType = type(e).__name__
+			await message.reply_text(text, parse_mode=parseMode)
+			break
+	
+		except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
+	
+			exType = type(e).__name__
+	
+			if exType == 'BadRequest' and str(e).startswith("Can't parse entities"):
 
-		whatDoing = "ignoring" if ignore else "aborting"
+				_logger.error(f"Got a markdown error from Telegram: {e}.")
 
-		_logger.error(f"Got a {exType} exception from Telegram ({e}) "
-					  f"for conversation {chat_id}; {whatDoing}.")
-
-		if convo is not None:
-			convo.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram exception " \
-				f"{exType} ({e}) while sending to user {user_name}.]"))
-
-		# Note: Eventually we need to do something smarter here -- like, if we've
-		# been banned from replying in a group chat or something, then leave it.
-
-		return "error: Telegram threw a {exType} exception while sending " \
-			"diagnostic output to the user"
+				parseMode = None
+				continue	# Try again
+				
+			whatDoing = "ignoring" if ignore else "aborting"
+	
+			_logger.error(f"Got a {exType} exception from Telegram ({e}) "
+						  f"for conversation {chat_id}; {whatDoing}.")
+	
+			if convo is not None:
+				convo.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram exception " \
+					f"{exType} ({e}) while sending to user {user_name}.]"))
+	
+			# Note: Eventually we need to do something smarter here -- like, if we've
+			# been banned from replying in a group chat or something, then leave it.
+	
+			return "error: Telegram threw a {exType} exception while sending " \
+				"diagnostic output to the user"
 	
 	#__/
 
