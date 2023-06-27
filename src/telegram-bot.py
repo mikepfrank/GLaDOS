@@ -1712,8 +1712,8 @@ class BotConversation:
 		#response_prompt = f"Respond as {botName}. (Remember you can use an available " \
 		#	"function if there is one that is appropriate.)"
 
-		response_prompt = f"Respond below. (Remember you can also call an available " \
-			"function if there is one that is appropriate.)"
+		response_prompt = f"Respond below. (Remember you can also activate an available" \
+			"function and then call that function if appropriate.)"
 
 		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
 			# Only give this instruction in group chats:
@@ -3288,10 +3288,14 @@ async def ai_activateFunction(
 
 	"""The AI calls this function to activate one of its other functions."""
 
-	_logger.normal(f"In ai_activateFunction) with funcName={funcName}...")
+	_logger.normal(f"\nIn ai_activateFunction() with funcName='{funcName}'...")
 
 	cur_funcs = botConvo.cur_funcs
 
+	# First, if that function already appears in the list, then delete it,
+	# because we don't need it to appear twice.
+	cur_funcs = [func for func in cur_funcs if func.get('name') != funcName]
+	
 	if funcName == 'remember_item':
 		cur_funcs += [REMEMBER_ITEM_SCHEMA]
 
@@ -3316,6 +3320,8 @@ async def ai_activateFunction(
 	else:
 		_logger.error(f"AI tried to activate an unknown function '{funcName}'.")
 		return f"Error: Unknown function name '{funcName}'."
+
+	botConvo.cur_funcs = cur_funcs
 
 	_logger.normal(f"\tAI activated function '{funcName}'.")
 
@@ -3677,7 +3683,8 @@ async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
 
 
 # Default list of sections that should be returned by a Bing search.
-DEFAULT_BINGSEARCH_SECTIONS = ['webPages', 'relatedSearches']
+#DEFAULT_BINGSEARCH_SECTIONS = ['webPages', 'relatedSearches']
+DEFAULT_BINGSEARCH_SECTIONS = ['webPages']
 
 # Define a function to handle the AI's search_web() function.
 async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
@@ -3704,7 +3711,11 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 				cleanResult[key] = val
 
 		# Return as a string (to go in content field of function message).
-		return json.dumps(cleanResult)
+		#return json.dumps(cleanResult)
+
+		pp_result = json.dumps(cleanResult, indent=4)
+		tabbed_result = pp_result.replace(' '*8, '\t')
+		return tabbed_result
 
 	except SearchError as e:
 		# We'll let the AI know it failed
@@ -4052,6 +4063,20 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 	# around everywhere.
 	botConvo.raw_oaiMsgs = oaiMsgList
 	
+	# Does this engine support the functions interface? If so, then we'll
+	# pass it our list of function descriptions.
+	if hasFunctions(ENGINE_NAME):
+		# Retrieve our current functions list...
+		functions = botConvo.cur_funcs + \
+					[ACTIVATE_FUNCTION_SCHEMA, PASS_TURN_SCHEMA]
+					# Plus always include these two.
+
+		func_names = [func['name'] for func in functions if 'name' in func]
+		_logger.info(f"\tIn chat {chat_id}, current function list is: {func_names}.")
+
+	else:
+		functions = None
+
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#| Here's our main loop, which calls the API with exception handling as
 	#| needed to recover from situations where our prompt data is too long.
@@ -4119,16 +4144,6 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 		# Get the length of the current OAI message list in tokens.
 		msgsSizeToks = ChatMessages(oaiMsgList).\
 					   totalTokens(model=ENGINE_NAME)
-
-		# Does this engine support the functions interface? If so, then we'll
-		# pass it our list of function descriptions.
-		if hasFunctions(ENGINE_NAME):
-			# Retrieve our current functions list, and add always-functions.
-			functions = botConvo.cur_funcs + \
-						[ACTIVATE_FUNCTION_SCHEMA, PASS_TURN_SCHEMA]
-							# Plus always include these two.
-		else:
-			functions = None
 
 		# If this engine supports functions, add in the estimated size in tokens
 		# of the functions structure. (Note that this is just a guesstimate
@@ -4224,6 +4239,8 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 		#	f"globalMaxRetToks = {globalMaxRetToks}, "
 		#	f"absMaxRetToks = {absMaxRetToks}, "
 		#	f"availSpaceToks = {availSpaceToks}")
+
+		#_logger.info(f"CURRENT FUNCTION LIST IS:\n{pformat(functions)}")
 
 		# Now we'll do the actual API call, with exception handling.
 		try:
@@ -4742,7 +4759,7 @@ async def process_function_call(
 
 	if resultStr == PASS_TURN_RESULT:
 		_logger.normal(f"\t{BOT_NAME} is refraining from responding to a "
-					   "returned function result in chat #{chat_id}.")
+					   f"returned function result in chat #{chat_id}.")
 		return
 
 	#--------------------------------------------------------------------------|
@@ -5307,7 +5324,7 @@ class SearchError(Exception): pass
 
 # This function will be used internally by the WebAssistant when
 # doing web searches.
-def _bing_search(query_string:str, market:str='en-US'):
+def _bing_search(query_string:str, market:str='en-US', count=3):
 	# The caller should fill in the market parameter based on the
 	# user's locale (if known), or on an alternate market for this
 	# particular search (if specified by the user).
@@ -5329,8 +5346,9 @@ def _bing_search(query_string:str, market:str='en-US'):
 	subscription_key = os.environ['BING_SEARCH_V7_SUBSCRIPTION_KEY']
 	endpoint = os.environ['BING_SEARCH_V7_ENDPOINT'] + "/v7.0/search"
 	params = {
-		'q':	query_string,
-		'mkt':	market
+		'q':		query_string,
+		'mkt':		market,
+		'count':	count
 	}
 	headers = {
 		'Ocp-Apim-Subscription-Key': subscription_key
