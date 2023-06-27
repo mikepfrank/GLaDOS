@@ -6215,10 +6215,10 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 	
 			if exType == 'BadRequest' and str(e).startswith("Can't parse entities"):
 
-				_logger.error(f"Got a markdown error from Telegram: {e}.")
+				_logger.error(f"Got a markdown error from Telegram in chat {chat_id}: {e}.")
 
 				parseMode = None
-				continue	# Try again
+				continue	# Try again without markdown
 				
 			whatDoing = "ignoring" if ignore else "aborting"
 	
