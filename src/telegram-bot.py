@@ -3290,7 +3290,7 @@ async def ai_activateFunction(
 
 	"""The AI calls this function to activate one of its other functions."""
 
-	_logger.normal(f"\nIn ai_activateFunction() with funcName='{funcName}'...")
+	_logger.normal(f"\nIn ai_activateFunction() for chat {chat_id} with funcName='{funcName}'...")
 
 	cur_funcs = botConvo.cur_funcs
 
