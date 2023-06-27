@@ -3558,7 +3558,10 @@ async def ai_image(update:Update, context:Context, imageDesc:str, caption:str=No
 	#if remaining_text != None and remaining_text != '':
 	#	await send_response(update, context, remaining_text)
 
-	return "Success: image has been generated and sent to user. Temporary URL=({image_url})."
+	# This doesn't work, because the URL is only accessible from this server.
+	#return f"Success: image has been generated and sent to user. Temporary URL=({image_url})."
+
+	return "Success: image has been generated and sent to user."
 
 #__/ End of ai_image() function definition.
 
