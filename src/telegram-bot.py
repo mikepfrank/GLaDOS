@@ -3730,6 +3730,25 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 				if 'deepLinks' in result:
 					del result['deepLinks']
 
+		# Strip a bunch of useless fields out of news values.
+		if 'news' in cleanResult:
+			for result in cleanResult['news']['value']:
+				if 'contractualRules' in result:
+					del result['contractualRules']
+				if 'image' in result:
+					del result['image']
+				if 'about' in result:
+					del result['about']
+				if 'mentions' in result:
+					del result['mentions']
+				if 'provider' in result:
+					del result['provider']
+				if 'video' in result:
+					del result['video']
+				if 'category' in result:
+					del result['category']
+		
+
 		# Return as a string (to go in content field of function message).
 		#return json.dumps(cleanResult)
 
@@ -5392,13 +5411,13 @@ def _bing_search(query_string:str, market:str='en-US', count=3):
 
 		search_results = response.json()
 
-		# Diagnostic output for debugging:
-		i = 0
-		for item in search_results['webPages']['value']:
-			i += 1
-			_logger.normal(f"\nResult #{i}: name=\"{item['name']}\", "
-						   f"\n\turl={item['url']}, "
-						   f"\nsnippet={pformat(item['snippet'])}")
+		## Diagnostic output for debugging:
+		#i = 0
+		#for item in search_results['webPages']['value']:
+		#	i += 1
+		#	_logger.normal(f"\nResult #{i}: name=\"{item['name']}\", "
+		#				   f"\n\turl={item['url']}, "
+		#				   f"\nsnippet={pformat(item['snippet'])}")
 
 		return search_results
 
