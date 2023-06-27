@@ -2158,7 +2158,7 @@ async def handle_image(update:Update, context:Context) -> None:
 					   f"[{imageDesc}] for user '{user_name}' in "
 					   f"conversation {chat_id}.")
 
-		await send_image(update, context, imageDesc)
+		image_url = await send_image(update, context, imageDesc)
 
 		# Make a note in conversation archive to indicate that the image was sent.
 		conversation.add_message(BotMessage(SYS_NAME, f'[Generated image "{imageDesc}" and sent it to the user.]'))
@@ -3290,6 +3290,8 @@ async def ai_activateFunction(
 
 	"""The AI calls this function to activate one of its other functions."""
 
+	chat_id = botConvo.chat_id
+
 	_logger.normal(f"\nIn ai_activateFunction() for chat {chat_id} with funcName='{funcName}'...")
 
 	cur_funcs = botConvo.cur_funcs
@@ -3442,7 +3444,7 @@ async def ai_block(updateMsg:TgMsg, conversation:BotConversation,
 
 # Define a function to handle the /forget command, when issued by the AI.
 async def ai_forget(updateMsg:TgMsg, conversation:BotConversation,
-					textToDel:str=None, itemToDel:str=None) -> None:
+					textToDel:str=None, itemToDel:str=None) -> str:
 	"""The AI calls this function to remove the given text from its persistent memory."""
 
 	# Put the message from the Telegram update in a convenient variable.
@@ -3519,7 +3521,7 @@ async def ai_forget(updateMsg:TgMsg, conversation:BotConversation,
 
 # Define a function to handle the /image command, when issued by the AI.
 async def ai_image(update:Update, context:Context, imageDesc:str, caption:str=None	#, remaining_text:str=None
-	) -> None:
+	) -> str:
 
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
@@ -3546,7 +3548,7 @@ async def ai_image(update:Update, context:Context, imageDesc:str, caption:str=No
 	if caption:
 		_logger.normal(f"\tAn image caption [{caption}] was also specified.")
 
-	await send_image(update, context, imageDesc, caption=caption)
+	image_url = await send_image(update, context, imageDesc, caption=caption)
 
 	# Make a note in conversation archive to indicate that the image was sent.
 	conversation.add_message(BotMessage(SYS_NAME, f'[Generated and sent image "{imageDesc}"]'))
@@ -3556,14 +3558,14 @@ async def ai_image(update:Update, context:Context, imageDesc:str, caption:str=No
 	#if remaining_text != None and remaining_text != '':
 	#	await send_response(update, context, remaining_text)
 
-	return "Success: image has been generated and sent to user"
+	return "Success: image has been generated and sent to user. Temporary URL=({image_url})."
 
 #__/ End of ai_image() function definition.
 
 
 # Define a function to handle the /remember command, when issued by the AI.
 async def ai_remember(updateMsg:TgMsg, conversation:BotConversation, textToAdd:str,
-					  isPublic:bool=False, isGlobal:bool=False) -> None:
+					  isPublic:bool=False, isGlobal:bool=False) -> str:
 
 	"""The AI calls this function to add the given text to its persistent
 		memory."""
@@ -3691,7 +3693,7 @@ DEFAULT_BINGSEARCH_SECTIONS = ['webPages']
 # Define a function to handle the AI's search_web() function.
 async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 					   queryPhrase:str, locale:str="en-US",
-					   sections:list=DEFAULT_BINGSEARCH_SECTIONS):
+					   sections:list=DEFAULT_BINGSEARCH_SECTIONS) -> str:
 
 	"""Do a web search using the Bing API."""
 
@@ -3909,15 +3911,16 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 			return "Error: Required argument (item_id or item_text) is missing."
 
 	elif funcName == 'create_image':
-		imageDesc = funcArgs.get('image_desc', None)
-		caption = funcArgs.get('caption', None)
+		
+		imageDesc = funcArgs.get('description', None)
+		caption	  = funcArgs.get('caption', None)
 
 		if imageDesc:
 			return await ai_image(update, context, imageDesc, caption)
 		else:
 			await _report_error(conversation, message,
-					f"create_image() missing required argument image_desc.")
-			return "Error: Required argument image_desc is missing."
+					f"create_image() missing required argument description.")
+			return "Error: Required argument description is missing."
 
 	elif funcName == 'block_user':
 
@@ -5095,16 +5098,17 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 #__/ End of process_response() function definition.
 
 
-async def send_image(update:Update, context:Context, desc:str, caption=None, save_copy=True) -> None:
+async def send_image(update:Update, context:Context, desc:str, caption=None, save_copy=True) -> str:
 	"""Generates an image from the given description and sends it to the user.
-		Also archives a copy on the server unless save_copy=False is specified."""
+		Also archives a copy on the server unless save_copy=False is specified.
+		Returns a temporary URL for the image, if successful."""
 
 	# Get the message, or edited message from the update.
 	(tgMsg, edited) = _get_update_msg(update)
 		
 	if tgMsg is None:
 		_logger.warning("In send_image() with no message? Aborting.")
-		return
+		return None
 
 	# Get the message's chat ID.
 	chat_id = tgMsg.chat.id
@@ -5161,6 +5165,8 @@ async def send_image(update:Update, context:Context, desc:str, caption=None, sav
 		conversation.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram " \
 			"exception {exType} ({e}) while sending to user {user_name}.]"))
 	#__/
+
+	return image_url
 #__/
 
 
@@ -6816,19 +6822,19 @@ FORGET_ITEM_SCHEMA = {
 }
 
 
-# Function schema for command: /image <image_desc>
+# Function schema for command: /image <description>
 CREATE_IMAGE_SCHEMA = {
 	"name":         "create_image",
 	"description":  "Generates an image using Dall-E and sends it to the user.",
 	"parameters":   {
 		"type":         "object",
 		"properties":   {
-			"image_desc":    {
-				"type":         "string",   # <image_desc> argument has type string.
+			"description":    {
+				"type":         "string",   # <description> argument has type string.
 				"description":  "Detailed text prompt describing the desired image."
 			},
 			"caption":    {
-				"type":         "string",   # <image_desc> argument has type string.
+				"type":         "string",   # <caption> argument has type string.
 				"description":  "Text caption to attach to the generated image."
 			},
 			"remark":	{
@@ -6837,7 +6843,7 @@ CREATE_IMAGE_SCHEMA = {
 									"before executing the function."
 			}
 		},
-		"required":     ["image_desc"]      # <image_desc> argument is required.
+		"required":     ["description"]      # <description> argument is required.
 	},
 	"returns":	{	# This describes the function's return type.
 		"type":			"string",
