@@ -2025,7 +2025,7 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 		
 	       # Log the warning.
 		_logger.warning(f"User {tgMessage.from_user.first_name} has an "
-						"unsupported first name.")
+						f"unsupported first name; using {user_name} instead.")
 
            # Add the warning message to the conversation, so the AI can see it.
 		warning_msgStr = "NOTIFICATION: Welcome, " \
@@ -2619,6 +2619,15 @@ async def handle_remember(update:Update, context:Context) -> None:
 	await _send_diagnostic(tgMsg, conversation, diagMsg, ignore=True)
 
 #__/ End definition of /remember command handler.
+
+
+# Now, let's define a function to handle the /search command.
+async def handle_search(update:Update, context:Context) -> None:
+
+	"""Search the bot's memory or the web for a phrase."""
+
+	# We now just let the AI handle these requests intelligently.
+	return await handle_message(update, context)
 
 
 # Now, let's define a function to handle the /forget command.
@@ -4662,6 +4671,7 @@ async def process_function_call(
 
 	# Get the bot's conversation object.
 	botConvo = tgContext.chat_data['conversation']
+	chat_id = botConvo.chat_id
 
 	# Retrieve the function call object from the OpenAI message containing it.
 	funCall = funcall_oaiMsg.get('function_call')
@@ -6272,7 +6282,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 				if match:
 					char = match.group(1)
 
-					_logger.normal(f"\tBackslash-escaping '{char}' character in response...")
+					_logger.normal(f"\tBackslash-escaping '{char}' character in response to {user_name} in {chat_id}...")
 
 					# Replace occurrences of the reserved character in text with the escaped version
 					text = text.replace(char, '\\' + char)
@@ -7251,6 +7261,7 @@ Available commands:
 /help - Shows this help message.
 /image <desc> - Generate and return an image for the given description.
 /remember <text> - Adds the given statement to the bot's persistent context data.
+/search (memory|web) for <phrase> - Searches bot's memory or the web for <phrase>.
 /forget <item> - Removes the given statement from the bot's persistent context data.
 /reset - Clears the bot's memory of the conversation. Useful for breaking output loops.
 /echo <text> - Echoes back the given text. (I/O test.)
@@ -7357,6 +7368,7 @@ app.add_handler(CommandHandler('help',		handle_help), 		group = 0)
 app.add_handler(CommandHandler('image',		handle_image),		group = 0)
 app.add_handler(CommandHandler('reset',		handle_reset),		group = 0)
 app.add_handler(CommandHandler('remember',	handle_remember),	group = 0)
+app.add_handler(CommandHandler('search',	handle_search),		group = 0)
 app.add_handler(CommandHandler('forget',	handle_forget),		group = 0)	# Not available to most users.
 
 # These commands are not for general users; they are undocumented.
@@ -7409,7 +7421,7 @@ app.add_handler(MessageHandler(unknown_command_filter,
 
 # Show a diagnostic: How much token space does the function list take?
 FUNC_TOKS = tiktokenCount(json.dumps(FUNCTIONS_LIST), model=ENGINE_NAME)
-_logger.normal(f"\nNOTE: Function specs take {FUNC_TOKS} tokens.")
+_logger.normal(f"\nNOTE: Complete specs for all functions together would take up {FUNC_TOKS} tokens.")
 
 	#|==========================================================================
 	#|  7.5. Start main loop.
