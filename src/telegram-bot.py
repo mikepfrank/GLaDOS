@@ -3973,7 +3973,8 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 	elif funcName == 'block_user':
 
 		# NOTE: Blocking users by tag may not always work, since tags are not unique.
-		userToBlock = funcArgs.get('user_name', user_name)		# Default to current user.
+		userToBlock = funcArgs.get('user_name', None)
+			# Defaulting to None will allow ai_block() to figure out the user to block.
 
 		# We can't uncomment this yet because AI can't retrieve ID yet.
 		#userIDToBlock = funcArgs.get('user_id', user_id)		# Specified by ID.
@@ -6253,12 +6254,27 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 	else:
 		parseMode = None
 
-	# Escape some commonplace characters for the AI since it usually flubs this.
+	## Escape some commonplace characters for the AI since it usually flubs this.
+	#test = msgToSend
+	#if parseMode:
+	#	text = text.replace('\\', '\\\\')	# Escape backslashes
+	#	text = text.replace('.', '\.')			# Escape periods
+	#	text = re.sub(r'!(?!\[)', r'\!', text)  # Escape '!' not followed by '['
+	#	text = text.replace('-', '\-')			# Escape hyphens
+	#else:
+	#	text = msgToSend
+
+	def _local_replaceFunc(match):
+		firstGroup = match.group(1)
+		fullMatch = match.group(0)
+		if firstGroup:
+			return firstGroup
+		else:
+			return '\\' + fullMatch
+
 	if parseMode:
-		text = msgToSend.replace('\\', '\\\\')	# Escape backslashes
-		text = text.replace('.', '\.')			# Escape periods
-		text = re.sub(r'!(?!\[)', r'\!', text)  # Escape '!' not followed by '['
-		text = text.replace('-', '\-')			# Escape hyphens
+		escapedMsg = re.sub(r'(\[[^\][]*]\(http[^()]*\))|[_*[\]()~>#+=|{}.!-]', _local_replaceFunc, msgToSend)
+		text = escapedMsg
 	else:
 		text = msgToSend
 
@@ -6281,16 +6297,18 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 				match = re.match(r"Can't parse entities: character '(.)' is reserved and must be escaped with the preceding '\\'", errmsg)
 				if match:
 					char = match.group(1)
-
+				
 					_logger.normal(f"\tBackslash-escaping '{char}' character in response to {user_name} in {chat_id}...")
-
+				
 					# Replace occurrences of the reserved character in text with the escaped version
 					text = text.replace(char, '\\' + char)
 					continue
 
 				_logger.error(f"Got a markdown error from Telegram in chat {chat_id}: {e}.")
 
-				parseMode = None
+				text = msgToSend	# Revert to original text.
+				parseMode = None	# Turn off markdown parsing.
+
 				continue	# Try again without markdown
 				
 			whatDoing = "ignoring" if ignore else "aborting"
