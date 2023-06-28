@@ -51,8 +51,9 @@
 #|			1.3. Imports of custom (programmer-defined) Python libraries.
 #|
 #|		2. Define classes.
-#|			2.1. Define Message class.
-#|			2.2. Define Conversation class.
+#|			2.1. Define BotMessage class.
+#|			2.2. Define BotConversation class.
+#|			2.3. Define minor classes.
 #|
 #|		3. Define Telegram handler functions.
 #|			3.1. Define update handler group 0 -- user command handlers.
@@ -64,8 +65,8 @@
 #|		4. Define AI command handler functions.
 #|
 #|		5. Define misc. functions.
-#|			5.1. Define public functions.
-#|			5.2. Define private functions.
+#|			5.1. Define public (major) functions.
+#|			5.2. Define private (minor) functions.
 #|
 #|		6. Define globals.
 #|			6.1. Define global constants.
@@ -88,7 +89,9 @@
 #|
 #|		Message - Our representation for a single Telegram message.
 #|
-#|		UnknownCommandFilter - Matches updates for unrecognized commands.		
+#|		UnknownCommandFilter - Matches updates for unrecognized commands.
+#|
+#|		WebAssistant - Subordinate AI to handle web information retrieval.
 #|
 #|
 #|  Telegram event handler functions:
@@ -128,6 +131,8 @@
 #|
 #|		ai_search() - Handles AI's search_memory() function.
 #|
+#|		ai_searchWeb() - Handles AI's search_web() function.
+#|
 #|		ai_unblock() - Handles AI's '/unblock' command and unblock_user() function.
 #|
 #|
@@ -161,6 +166,8 @@
 #|		_addMemoryItem() - Adds a new item to the context-sensitive semantic memory.
 #|
 #|		_addUser() - Adds a new user to the users table.
+#|
+#|		_bing_search() - Does a search using the Bing API.
 #|
 #|		_blockUser() - Blocks a given user (by tag) from accessing the bot.
 #|
@@ -236,6 +243,8 @@
 #|	TO DO:
 #|	~~~~~~
 #|
+#|		o Implement WebAssistant class using Max to help all AIs do web
+#|			searches and read web pages.
 #|		o Clean up naming convention for variables for message objects.
 #|			(Distinguish Telegram messages, chat messages, my messages.)
 #|
@@ -246,8 +255,7 @@
 #|			- Generic message strings:						msgStr.
 #|
 #|		o Move more of the data files to AI_DATADIR.
-#|		o Implement user-specific and chat-specific persistent memory.
-#|		o Add commands to adjust parameters of the OpenAI GPT-3 API.
+#|		o Add commands to adjust parameters of the OpenAI GPT API.
 #|		o Add a feature to allow different bots running on the same
 #|			server to communicate with each other.
 #|		o Add more multimedia capabilities. (Audio input & image
@@ -314,19 +322,19 @@ LOG_DEBUG = False	# True shows debug-level messages in the log file.
 #|	1. Imports.									[python module code section]   |
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
-	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#/=========================================================================|
 	#| 1.1. Imports of standard Python libraries.
-	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 import	traceback	# For stack trace debugging.
 
-import	os	
+import	os
 	# We use the os.environ dictionary to get the environment variables.
 
 import	json
 	# JavaScript Object Notation support.
 
-from	pprint		import	pformat
+from	pprint		import	pformat, pprint
 	# Used for formatting structures in diagnostic output.
 
 import	heapq
@@ -366,8 +374,11 @@ import	backoff		# Use instead of retry since we've already installed it
 from	pydub import AudioSegment	# Use this to convert audio files to MP3 format.
 	# NOTE: You'll also need the LAME mp3 encoder library and the ffmp3 tool.
 
-		#-----------------------------------------------------------------------
-		# The following packages are from the python-telegram-bot library.
+import	numpy as np		# Used for vector math in cosine_similarity().
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+		#	The following packages are from the python-telegram-bot library.
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 from	telegram		import (
 			Update,				# Class for updates (notifications) from Telegram.
@@ -389,6 +400,8 @@ from	telegram.ext 	import (
 			ContextTypes,		# Used for type hints.
 		)
 	
+from	telegram.constants	import	ParseMode
+
 # Type name for a Telegram type that we'll use often
 Context = ContextTypes.context
 #Context = ContextTypes.DEFAULT_TYPE	# In older versions of python-telegram-bot.
@@ -397,10 +410,9 @@ from	telegram.error	import	BadRequest, Forbidden, ChatMigrated, TimedOut
 	# We use these in our exception handlers when sending things via Telegram.
 
 
-import	numpy as np
-
-		#-----------------------------------------------------------------
-		# The following packages are from the openai API library.
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+		#	The following packages are from the openai API library.
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 from openai						import Embedding
 from openai.error				import RateLimitError			# Detects quota exceeded.
@@ -416,6 +428,8 @@ from openai.error				import RateLimitError			# Detects quota exceeded.
 
 #EMBEDDING_MODEL = "text-similarity-davinci-001"
 EMBEDDING_MODEL = "text-embedding-ada-002"
+
+# Should we move the below into the private functions code section?
 
 #@retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(6))
 @backoff.on_exception(backoff.expo, Exception, max_tries=6)
@@ -444,11 +458,12 @@ def cosine_similarity(a, b):
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#| 1.3. Imports of custom (programmer-defined) Python libraries.
 	#| 	 These are defined within the same git repository as this file.
-	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
-			#-------------------------------------------------------------------
-			#  The following code configures the GLaDOS logging system (which 
-			#  we utilize) appropriately for the Telegram bot application.
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+		#	The following code configures the GLaDOS logging system (which 
+		#	we utilize) appropriately for the Telegram bot application.
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 	# This custom module is used to configure the logmaster logging
 	# system for our specific application.
@@ -471,93 +486,99 @@ _logger = logmaster.appLogger	# Leading '_' denotes this is a private name.
 	# Get the directory to be used for logging purposes.
 LOG_DIR = logmaster.LOG_DIR
 
-			#-------------------------------------------------------------------
-			# Import some custom time-related functions we'll use.
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+		# Import some custom time-related functions we'll use.
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 from	infrastructure.time		import	(
-				envTZ,		# Pre-fetched value of the time-zone ('TZ') environment
-							#	variable setting.
-				timeZone,	# Returns a TimeZone object expressing the user's
-							#	time-zone preference (from TZ).
-				tznow,		# Returns a current datetime object localized to the
-							#	user's timezone preference (from TZ).
-				tzAbbr		# Returns an abbreviation for the given time zone offset,
-							#	which defaults to the user's time zone preference.
-			)
+
+	envTZ,		# Pre-fetched value of the time-zone ('TZ') environment
+				#	variable setting.
+	timeZone,	# Returns a TimeZone object expressing the user's
+				#	time-zone preference (from TZ).
+	tznow,		# Returns a current datetime object localized to the
+				#	user's timezone preference (from TZ).
+	tzAbbr		# Returns an abbreviation for the given time zone offset,
+				#	which defaults to the user's time zone preference.
+)
 		# Time-zone related functions we use in the AI's date/time display.
 
 
-			#-------------------------------------------------------------------
-			#  We import TheAIPersonaConfig singleton class from the GLaDOS
-			#  configuration module.  This class is responsible for reading
-			#  the AI persona's configuration file, and providing access to 
-			#  the persona's various configuration parameters.	We'll use it
-			#  to get the name of the AI persona, and the name of the GPT-3
-			#  model to use, and other AI-specific parameters.
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+		#  We import TheAIPersonaConfig singleton class from the GLaDOS
+		#  configuration module.  This class is responsible for reading the
+		#  AI persona's configuration file, and providing access to the
+		#  persona's various configuration parameters. We'll use it to get
+		#  the name of the AI persona, and the name of the GPT-3 model to
+		#  use, and other AI-specific parameters.
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 from	config.configuration	import	TheAIPersonaConfig
 	# NOTE: This singleton will initialize itself the first time it's invoked.
 
 
-			#-------------------------------------------------------------------
-			#  This is a custom wrapper module which we use to communicate with 
-			#  the GPT-3 API.  It is a wrapper for the openai library.	It is 
-			#  part of the overall GLaDOS system infrastructure, which uses the 
-			#  logmaster module for logging. (That's why we needed to first 
-			#  import the logmaster module above.)
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+		#  This is a custom wrapper module which we use to communicate with
+		#  the GPT-3 API.  It is a wrapper for the openai library. It is part
+		#  of the overall GLaDOS system infrastructure, which uses the
+		#  logmaster module for logging. (That's why we needed to first
+		#  import the logmaster module above.)
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 	# We'll use this wrapper module to get the response from GPT-3:
 
 from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF.
+		
+		#----------
+		# Globals:	(Note their values are copied into the local namespace.)
 
-			_has_functions as hasFunctions,	# Pretend it's public
+	CHAT_ROLE_SYSTEM,		# The name of the system's chat role.
+	CHAT_ROLE_USER,			# The name of the user's chat role.
+	CHAT_ROLE_AI,			# The name of the AI's chat role.
 
-				#----------
-				# Globals:	(Note their values are copied into the local namespace.)
+		#--------------
+		# Class names:
 
-			CHAT_ROLE_SYSTEM,		# The name of the system's chat role.
-			CHAT_ROLE_USER,			# The name of the user's chat role.
-			CHAT_ROLE_AI,			# The name of the AI's chat role.
+	#GPT3Core,		# This represents a specific "connection" to the core GPT-3 model.
+	#Completion,	# An object of this class represents a response from the GPT text API.
+	ChatCompletion,	# An object of this class represents a response from the GPT chat API.
+	ChatMessages,	
+		# Class for working with lists of chat messages for the chat API.
 
-				#--------------
-				# Class names:
+		#--------------------
+		# Exception classes:
 
-			#GPT3Core,		# This represents a specific "connection" to the core GPT-3 model.
-			#Completion,	# An object of this class represents a response from the GPT text API.
-			ChatCompletion,	# An object of this class represents a response from the GPT chat API.
-			ChatMessages,	
-				# Class for working with lists of chat messages for the chat API.
+	PromptTooLargeException,	 # Indicates the supplied prompt is too long.
 
-				#--------------------
-				# Exception classes:
+		#-----------------
+		# Function names:
 
-			PromptTooLargeException,	 # Indicates the supplied prompt is too long.
+	createCoreConnection,
+		# Returns a GPT3Core-compatible object, which represents a
+		# specific "connection" to the core GPT-3 model that remembers
+		# its API parameters. This factory function selects the
+		# appropriate subclass of GPT3Core to instantiate, based on the
+		# engineId parameter.
 
-				#-----------------
-				# Function names:
+	messageRepr,
+		# Generates a text representation of a chat message dict.
 
-			createCoreConnection,
-				# Returns a GPT3Core-compatible object, which represents a
-				# specific "connection" to the core GPT-3 model that remembers
-				# its API parameters. This factory function selects the
-				# appropriate subclass of GPT3Core to instantiate, based on the
-				# engineId parameter.
+	tiktokenCount,		# Local model-dependent token counter.
+	genImage,			# Generates an image from a description.
+	transcribeAudio,	# Transcribes an audio file to text.
 
-			messageRepr,
-				# Generates a text representation of a chat message dict.
-			tiktokenCount,
+	_has_functions as hasFunctions,		# Pretend it's a public function.
 
-			genImage,			# Generates an image from a description.
-			transcribeAudio,	# Transcribes an audio file to text.
-
-		)	# End of imports from gpt3.api module.
-#______/
+)	# End of imports from gpt3.api module.
 
 
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#| Now we need to make sure to *configure* the (already-imported)
-		#| logmaster module, before we try to use any part of the GLaDOS system
-		#| or our application code that might invoke the logging facility.
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+		#|	Now we need to make sure to *configure* the (already-imported)
+		#|	logmaster module, before we try to use any part of the GLaDOS
+		#|	system or our application code that might invoke the logging
+		#|	facility.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 _appName = appdefs.appName		# This is the name of this application.
 	# (Due to the above selectApp() call, this should be set to TelegramBot.)
@@ -570,12 +591,12 @@ logmaster.configLogMaster(
 		#consdebug	= True,			# Turn on full debug logging on the console.
 
 		#consinfo	= True,			# Turn on info-level logging on the console.
-		#consinfo	 = False,		 # Turn off info-level logging on the console.
-		consinfo	= CONS_INFO,
+		#consinfo	= False,		# Turn off info-level logging on the console.
+		consinfo	= CONS_INFO,	# This global is set near the top of this file.
 
 		#logdebug	= True			# Turn on full debug logging in the log file.
-		#logdebug	 = False		 # Turn off full debug logging in the log file.
-		logdebug	= LOG_DEBUG
+		#logdebug	= False		 	# Turn off full debug logging in the log file.
+		logdebug	= LOG_DEBUG		# This global is set near the top of this file.
 	)
 #__/
 
@@ -590,35 +611,76 @@ logmaster.configLogMaster(
 #|		follows. In this section, we define the custom classes that we		   |
 #|		will usee. For this Telegram bot application, we define two			   |
 #|		major classes:														   |
+#|                                                                             |
+#|			BotMessage		- A bot message object stores the sender and	   |
+#|								text for a single (incoming or outgoing)	   |
+#|								Telegram message.					   		   |
 #|																			   |
-#|			Message			- A message object stores the sender and		   |
-#|								text for a single (incoming or out-			   |
-#|								going) Telegram message.					   |
+#|			BotConversation		- Keeps track of data that we care about	   |
+#|									(including the message list) for a		   |
+#|									single Telegram conversation.			   |
 #|																			   |
-#|			Conversation	- Keeps track of data that we care about		   |
-#|								(including the message list) for a			   |
-#|								single Telegram conversation.				   |
+#|		and two more minor classes:											   |
 #|																			   |
-#|		and two minor classes:												   |
-#|																			   |
-#|			ConversationError		- Exception type for conversation		   |
+#|			_ConversationError		- Exception type for conversation		   |
 #|										errors.								   |
 #|																			   |
-#|			UnknownCommandFilter	- Matches updates for unrecognized		   |
+#|			_UnknownCommandFilter	- Matches updates for unrecognized		   |
 #|										commands.							   |
 #|																			   |
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
-	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	# 2.1. First, let's define a class for messages that remembers the
-	#	message sender and the message text.
+	#/=========================================================================|
+	#|	2.1. First, let's define a class "BotMessage" for messages that
+	#|		remembers the message sender and the message text and supports a
+	#|		few methods.
+	#|
+	#|		Note this class is called ***BotMessage*** to distinguish it from
+	#|		Telegram messages and OpenAI GPT chat messages.
+	#|
+	#|		Public instance methods:
+	#|		========================
+	#|
+	#|			.oaiMsgDict()	- Returns a representation of this message
+	#|								as an OpenAI chat message dictionary.
+	#|
+	#|			.trimFront()	- Shorten this message by trimming some
+	#|								text off the front.
+	#|
+	#|			.serialize()	- Serialize a message in the form of a single
+	#|								line of text with escaped controls.
+	#|
+	#|		Public static methods:
+	#|		======================
+	#|
+	#|			.deserialize(line)	- Deserialize a line of text representing
+	#|									a BotMessage instance in the encoding
+	#|									generated by .serialize(). Returns a
+	#|									corresponding new BotMessage instance.
+	#|
+	#|
+	#|		Special instance methods:
+	#|		=========================
+	#|
+	#|			.__init__()		- Instance initializer.
+	#|
+	#|			.__str__()		- String converter. Returns a string
+	#|								representation of this bot message.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
-class BotMessage: pass
+class BotMessage: pass		# Forward class declaration for use in type hints.
 class BotMessage:
 
 	"""An object that instantiates this class stores the message sender and the
 		message text for an incoming or outgoing message."""
 
+	#/==========================================================================
+	#| Special instance methods of class BotMessage.		[class code section]
+	#|
+	#|		These are methods with standard names that operate on instances
+	#|		of the BotMessage class.
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# New instance initializer (called automatically by class constructor).
 	def __init__(newMessage:BotMessage, sender:str, text:str):
@@ -644,6 +706,7 @@ class BotMessage:
 	# using it for chat engines as well.
 
 	def __str__(thisBotMsg:BotMessage) -> str:
+
 		"""A string representation of the message object.
 			It is properly delimited for reading by the GPT-3 model."""
 
@@ -652,6 +715,47 @@ class BotMessage:
 		else:
 			return f"{thisBotMsg.sender}> {thisBotMsg.text}"
 
+	#__/ End definition of special instance method for str(botMessage).
+
+
+	#/==========================================================================
+	#| Public instance methods of class BotMessage.			[class code section]
+	#|
+	#|		These are public methods that operate on instances of the
+	#|		BotMessage class.
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	# Trims some content off the front of a message.
+	def trimFront(thisBotMsg:BotMessage) -> bool:
+
+		"""Trims some content off the front of an overly-long message, replacing it
+			with a (shorter) truncation notification from the system. Can be called
+			multiple times if needed, until the message is short enough."""
+
+		text = thisBotMsg.text
+
+		TRUNCATION_NOTICE = "[system: the initial part of this message was removed due to length] "
+
+		# If text was already shortened, remove the TRUNCATION_NOTICE from
+		# the front before shortening it again.
+		if text.startswith(TRUNCATION_NOTICE):
+			text = text[len(TRUNCATION_NOTICE):]
+
+		# Remove TRUNCATION_LEN characters from start of text.
+		TRUNCATION_LEN = 200
+		if len(text)>TRUNCATION_LEN:
+			_logger.warn(f"Trimming this text off of front of oldest message: [{text[0:TRUNCATION_LEN]}]...")
+			text = text[TRUNCATION_LEN:]
+		else:
+			return False	#Unable to truncate further.
+
+		# Add TRUNCATION_NOTICE to start of text.
+		text = TRUNCATION_NOTICE + text
+
+		# Actually update the message text.
+		thisBotMsg.text = text
+
+		return True		# Successfully truncated.
 	#__/
 
 
@@ -720,11 +824,11 @@ class BotMessage:
 		#__/
 
 		# TODO: Add another case above, to check a new boolean property
-		# .isFunCall of the BotMessage object (not yet defined), and if
-		# it's True, then set the role to CHAT_ROLE_FUNCALL, and we'll
-		# also need to set 'name' and 'arguments' properties as well.
-		# And similarly for .isFuncRet, CHAT_ROLE_FUNCRET, and alternate
-		# use of the 'name' and 'content' properties.
+		# .isFunCall of the BotMessage object (not yet defined), and if it's
+		# True, then set the role to CHAT_ROLE_FUNCALL, and we'll also need
+		# to set 'name' and 'arguments' properties as well.  And similarly
+		# for .isFuncRet, CHAT_ROLE_FUNCRET, and alternate use of the 'name'
+		# and 'content' properties.
 
 		# Now contruct the message dict.
 		_oaiMsgDict = {
@@ -757,7 +861,8 @@ class BotMessage:
 				# in addition to the role.
 
 		return _oaiMsgDict		# Return the dict we just constructed.
-	#__/
+
+	#__/ End public method botMessage.oaiMsgDict().
 
 
 		#/======================================================================
@@ -773,18 +878,19 @@ class BotMessage:
 		#|	conversation archive files. Trying to simplify the code, though.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	# The following method serializes the message object to a string
-	# which can be appended to the conversation archive file, and
-	# then later read back in when restoring the conversation. The
-	# serialized format is 1 line per message, with controls escaped.
+	# The following method serializes the message object to a string which
+	# can be appended to the conversation archive file, and then later read
+	# back in when restoring the conversation. The serialized format is 1
+	# line per message, with controls escaped.
 
 	def serialize(thisBotMsg:BotMessage) -> str:
 
 		"""Returns a string representation of a given message suitable for
-			archiving, as a single newline-terminated line of text. Embedded
-			newlines are escaped as '\\n'; and any other ASCII control characters 
-			within the message text (except for TAB) are escaped using their
-			'\\xHH' (hexadecimal) codes."""
+			archiving, as a single newline-terminated line of
+			text. Embedded newlines are escaped as '\\n'; and any
+			other ASCII control characters within the message text
+			(except for TAB) are escaped using their '\\xHH'
+			(hexadecimal) codes."""
 
 		text = thisBotMsg.text
 		if text is None:	# Null text? (Shouldn't happen, but...)
@@ -792,13 +898,13 @@ class BotMessage:
 
 		# NOTE: The message text could contain newlines, which we need to
 		#	replace with a literal '\n' encoding. But, in case the message
-		#	text happens to contain a literal '\' followed by an 'n', we
-		#	need to escape that '\' with another '\' to avoid ambiguity.
+		#	text happens to contain a literal '\' followed by an 'n', we need
+		#	to escape that '\' with another '\' to avoid ambiguity.
 
 		# Construct the replacement dictionary for serialization.
 		serialize_replace_dict = {
-			'\\': '\\\\',	# '\' -> '\\'
-			'\n': '\\n',	# '[LF]' -> '\n' ([LF] = ASCII linefeed char).
+			'\\': r'\\',	# '\' -> '\\'
+			'\n': r'\n',	# '[LF]' -> '\n' ([LF] = ASCII linefeed char).
 		}
 
 		# Add the other ASCII controls (except for TAB), but encoded as '\xHH'.
@@ -811,6 +917,16 @@ class BotMessage:
 		# Now, we'll return the serialized representation of the message.
 		return f"{thisBotMsg.sender}> {escaped_text}\n"	# Newline-terminated.
 
+	#__/ End public instance method botMessage.serialize().
+
+
+	#/==========================================================================
+	#| Public static methods of class BotMessage.			[class code section]
+	#|
+	#|		These are methods that are associated with the BotMessage class
+	#|		but that do not operate either on the class itself or on any
+	#|		existing instance of the class.
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# Given a line of text from a conversation archive file, this method
 	# deserializes the message object from its encoding in the archive line.
@@ -836,25 +952,21 @@ class BotMessage:
 			# To correctly unescape any escaped characters, we'll use the
 			# regex library with a custom replacement function. (Note that
 			# although we define this function inline below, we could also
-			# have defined it as a top-level function or class method.)
+			# have defined it as a top-level function or static method.)
+			# [Would this be a good idea to save time?]
 
 		# Construct the replacement dictionary for deserialization.
 		deserialize_replace_dict = {
 
-			'\\\\': '\\',	# '\\' -> '\'
-			'\\n': '\n',	# '\n' -> '[LF]' ([LF] = ASCII linefeed char).
-
-			#'\\ufffd': '\ufffd'	# '\ufffd' -> '[RC]' ([RC] = Unicode replacement char.)
-				# NOTE: There is ambiguity as to whether these should really be de-escaped, 
-				# -- because some earlier versions of this bot escaped them, and some didn't,
-				# so, we just don't bother. It's doubtful the archive has any real instances.
+			r'\\': '\\',	# '\\' -> '\'
+			r'\n': '\n',	# '\n' -> '[LF]' ([LF] = ASCII linefeed char).
 
 		}
 
 		# Also unescape the other ASCII controls (except for TAB), which are
 		# encoded as '\xHH'.  (TAB is left in literal form in the archive.)
 		for i in list(range(0, 9)) + list(range(11, 32)):
-			deserialize_replace_dict[f"\\x{format(i, '02x')}"] = chr(i)
+			deserialize_replace_dict[f"\\x{format(i,'02x')}"] = chr(i)
 
 		# Define a custom replacer based on the dict we just constructed.
 		def deserialize_replacer(match):
@@ -871,10 +983,9 @@ class BotMessage:
 		# Return a new object for the deserialized message.
 		return BotMessage(sender, text)
 	
-	#__/ End of message.deserialize() instance method definition.
+	#__/ End of botMessage.deserialize() instance method definition.
 
-
-#__/ End of Message class definition.
+#__/ End of BotMessage class definition.
 
 
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -886,14 +997,6 @@ class BotMessage:
 	#|	chat. Group chats are distinguished by having negative chat IDs.
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-# Exception class to represent an error in the conversation.
-class ConversationError(Exception):
-	"""Exception class to represent an error in the conversation."""
-	def __init__(self, message:str):
-		self.message = message
-	def __str__(self):
-		return self.message
 
 # Next, let's define a class for conversations that remembers the messages in
 # the conversation.  We'll use a list of Message objects to store the messages.
@@ -964,6 +1067,10 @@ class BotConversation:
 		## should close them whenever an existing convo is restarted, before reopening.
 		## Currently, we handle this with the __del__() method below, which should get
 		## called eventually whenever a given conversation object is garbage-collected.
+
+		# The initial function list. Typically only the last function used will appear,
+		# along with (always) the activate_function and pass_turn schemas.
+		newConv.cur_funcs = []
 
 	#__/ End of conversation instance initializer.
 
@@ -1309,11 +1416,16 @@ class BotConversation:
 		# the very message that the AI is in the middle of constructing.
 		# So, we can't do anything here except throw an exception.
 		if len(thisConv.messages) <= 1:
-			raise ConversationError("Can't expunge oldest message from conversation {chat_id} with only one message.")
+			raise _ConversationError("Can't expunge oldest message from "
+									 f"conversation {chat_id} with only "
+									 "one message.")
 
 		# If we get here, we can safely pop the oldest message.
 
-		_logger.info(f"Expunging oldest message from {len(thisConv.messages)}-message conversation #{thisConv.chat_id}.")
+		_logger.info("Expunging oldest message from "
+					 f"{len(thisConv.messages)}-message "
+					 f"conversation #{thisConv.chat_id}.")
+
 		#print("Oldest message was:", thisConv.messages[0])
 		thisConv.messages.pop(0)
 		thisConv.expand_context()	# Update the context string.
@@ -1585,39 +1697,6 @@ class BotConversation:
 
 			chat_messages.append(botMessage.oaiMsgDict())
 
-			#=================================================================
-			# OBSOLETE CODE TO REMOVE:
-			# We moved the below to the .oaiMsgDict() method for reusability.
-			#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-			# sender = message.sender
-
-			# if sender == 'SYSTEM':	# Backwards-compatible to legacy SYS_NAME value.
-			# 	sender = SYS_NAME	# Map to new name.
-
-			# if sender == SYS_NAME:
-			# 	role = CHAT_ROLE_SYSTEM
-			# elif sender == botName:
-			# 	role = CHAT_ROLE_AI
-			# else:
-			# 	role = CHAT_ROLE_USER
-			
-			# chatMessage = {
-			# 	'role':		role,			# Note: The role field is always required.
-			# 	#'content':	message.text	# The content field is also expected.
-			# 	'content':	str(message)	# The content field is also expected.
-			# }
-
-			# # Change to try to reduce API errors:
-			# # Add name field only for user role.
-			# if role == CHAT_ROLE_USER:
-			# 	chatMessage['name'] = sender
-			# 		# Note: When 'name' is present, the API uses it in place of
-			# 		# (or perhaps in addition to!) the role.
-
-			# # Add the message we just constructed.
-			# chat_messages.append(chatMessage)
-
 		#__/
 
 		# We'll add one more system message to the list of chat messages,
@@ -1635,8 +1714,8 @@ class BotConversation:
 		#response_prompt = f"Respond as {botName}. (Remember you can use an available " \
 		#	"function if there is one that is appropriate.)"
 
-		response_prompt = f"Respond below. (Remember you can also call an available " \
-			"function if there is one that is appropriate.)"
+		response_prompt = f"Respond below. (Remember you can also activate an available" \
+			"function and then call that function if appropriate.)"
 
 		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
 			# Only give this instruction in group chats:
@@ -1688,8 +1767,22 @@ class BotConversation:
 #__/ End Conversation class definition.
 
 
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#|
+	#|	2.3. Private / minor classes.					[module code subsection]
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+# Exception class to represent an error in the conversation.
+class _ConversationError(Exception):
+	"""Exception class to represent an error in the conversation."""
+	def __init__(self, message:str):
+		self.message = message
+	def __str__(self):
+		return self.message
+
 # A filter that matches attempted user commands that aren't of any defined user command type.
-class UnknownCommandFilter(filters.BaseFilter):
+class _UnknownCommandFilter(filters.BaseFilter):
 
 	# New syntax
 	def check_update(self, update:Update, *args, **kwargs) -> bool:
@@ -1715,6 +1808,44 @@ class UnknownCommandFilter(filters.BaseFilter):
 		return False
 	#__/
 #__/
+
+
+class SubordinateAI_: pass
+class SubordinateAI_: 
+	"""Abstract base class for subordinate AI entities."""
+	pass
+
+# Subordinate AI class for web operations.
+class WebAssistant: pass
+class WebAssistant(SubordinateAI_):
+	"""Subordinate AI to handle web search & retrieval operations."""
+
+	# New instance initializer.
+	def __init__(newWebAssistant:WebAssistant, callerName:str, userLocale:str):		
+
+		newWA = newWebAssistant		# Shorter name.
+
+			# Here we initialize the important data members.
+
+		# Create the connection to the core LLM that will handle this function.
+		# It needs to be a model that has at least a 16k token context window.
+		# We will use this space as follows:
+		#	* <= 1K:	Pre-prompt and function descriptions.
+		#	* <= 12K:	Web search results, or view of current webpage.
+		#	* <= 3K:	Conversation history between caller and assistant.
+
+		newWA.core_llm = createCoreConnection('gpt-3.5-turbo-16k', maxTokens=2000)
+		newWA.current_url = None
+		newWA.page_content = None
+		newWA.page_view = None
+		newWA.view_start_pos = None
+		newWA.view_end_pos = None
+		newWA.search_term = None
+		newWA.search_pos = None
+		newWA.conversation_history = []
+
+
+#__/ End public class WebAssistant.
 
 
 #/==============================================================================
@@ -1894,7 +2025,7 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 		
 	       # Log the warning.
 		_logger.warning(f"User {tgMessage.from_user.first_name} has an "
-						"unsupported first name.")
+						f"unsupported first name; using {user_name} instead.")
 
            # Add the warning message to the conversation, so the AI can see it.
 		warning_msgStr = "NOTIFICATION: Welcome, " \
@@ -2027,7 +2158,7 @@ async def handle_image(update:Update, context:Context) -> None:
 					   f"[{imageDesc}] for user '{user_name}' in "
 					   f"conversation {chat_id}.")
 
-		await send_image(update, context, imageDesc)
+		image_url = await send_image(update, context, imageDesc)
 
 		# Make a note in conversation archive to indicate that the image was sent.
 		conversation.add_message(BotMessage(SYS_NAME, f'[Generated image "{imageDesc}" and sent it to the user.]'))
@@ -2490,6 +2621,15 @@ async def handle_remember(update:Update, context:Context) -> None:
 #__/ End definition of /remember command handler.
 
 
+# Now, let's define a function to handle the /search command.
+async def handle_search(update:Update, context:Context) -> None:
+
+	"""Search the bot's memory or the web for a phrase."""
+
+	# We now just let the AI handle these requests intelligently.
+	return await handle_message(update, context)
+
+
 # Now, let's define a function to handle the /forget command.
 async def handle_forget(update:Update, context:Context) -> None:
 	
@@ -2905,7 +3045,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 				try:
 					conversation.expunge_oldest_message()
 						# NOTE: If it succeeds, this modifies conversation.context_string.
-				except ConversationError:
+				except _ConversationError:
 					# We can't expunge the oldest message.	We'll just treat
 					# the full response as the final response. Also make a
 					# note that the size of the response has been maxed out.
@@ -3123,6 +3263,9 @@ async def handle_error(update:Update, context:Context) -> None:
 #|		In this section, we define functions that will handle commands		   |
 #|		and function calls invoked by the AI. These include:				   |
 #|																			   |
+#|			ai_activateFunction() - Handles activate_function() AI			   |
+#|										function call.						   |
+#|																			   |
 #|			ai_block() - Handles /block AI command and block_user()			   |
 #|								AI function call.							   |
 #|																			   |
@@ -3149,6 +3292,58 @@ async def handle_error(update:Update, context:Context) -> None:
 #	* /forget <text> - Removes <text> from persistent memory.
 #	* /block [<user>] - Blocks the current user.
 #	* /image <desc> - Generates an image with a given text description and sends it to the user.
+
+
+async def ai_activateFunction(
+	updateMsg:TgMsg, botConvo:BotConversation, funcName:str) -> str:
+
+	"""The AI calls this function to activate one of its other functions."""
+
+	chat_id = botConvo.chat_id
+
+	_logger.normal(f"\nIn ai_activateFunction() for chat {chat_id} with funcName='{funcName}'...")
+
+	cur_funcs = botConvo.cur_funcs
+
+	# First, if that function already appears in the list, then delete it,
+	# because we don't need it to appear twice.
+	cur_funcs = [func for func in cur_funcs if func.get('name') != funcName]
+	
+	if funcName == 'remember_item':
+		cur_funcs += [REMEMBER_ITEM_SCHEMA]
+
+	elif funcName == 'search_memory':
+		cur_funcs += [SEARCH_MEMORY_SCHEMA]
+	
+	elif funcName == 'forget_item':
+		cur_funcs += [FORGET_ITEM_SCHEMA]
+	
+	elif funcName == 'create_image':
+		cur_funcs += [CREATE_IMAGE_SCHEMA]
+	
+	elif funcName == 'block_user':
+		cur_funcs += [BLOCK_USER_SCHEMA]
+	
+	elif funcName == 'unblock_user':
+		cur_funcs += [UNBLOCK_USER_SCHEMA]
+	
+	elif funcName == 'search_web':
+		cur_funcs += [SEARCH_WEB_SCHEMA]
+		
+	else:
+		_logger.error(f"AI tried to activate an unknown function '{funcName}'.")
+		return f"Error: Unknown function name '{funcName}'."
+
+	botConvo.cur_funcs = cur_funcs
+
+	_logger.normal(f"\tAI activated function '{funcName}'.")
+
+	func_names = [func['name'] for func in cur_funcs if 'name' in func]
+	_logger.normal(f"\tCurrent function list is: {func_names}.")
+
+	return f"Success: Function {funcName} has been activated."
+
+#__/
 
 
 # Define a function to handle the /block command, when issued by the AI.
@@ -3258,7 +3453,7 @@ async def ai_block(updateMsg:TgMsg, conversation:BotConversation,
 
 # Define a function to handle the /forget command, when issued by the AI.
 async def ai_forget(updateMsg:TgMsg, conversation:BotConversation,
-					textToDel:str=None, itemToDel:str=None) -> None:
+					textToDel:str=None, itemToDel:str=None) -> str:
 	"""The AI calls this function to remove the given text from its persistent memory."""
 
 	# Put the message from the Telegram update in a convenient variable.
@@ -3335,7 +3530,7 @@ async def ai_forget(updateMsg:TgMsg, conversation:BotConversation,
 
 # Define a function to handle the /image command, when issued by the AI.
 async def ai_image(update:Update, context:Context, imageDesc:str, caption:str=None	#, remaining_text:str=None
-	) -> None:
+	) -> str:
 
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
@@ -3362,7 +3557,7 @@ async def ai_image(update:Update, context:Context, imageDesc:str, caption:str=No
 	if caption:
 		_logger.normal(f"\tAn image caption [{caption}] was also specified.")
 
-	await send_image(update, context, imageDesc, caption=caption)
+	image_url = await send_image(update, context, imageDesc, caption=caption)
 
 	# Make a note in conversation archive to indicate that the image was sent.
 	conversation.add_message(BotMessage(SYS_NAME, f'[Generated and sent image "{imageDesc}"]'))
@@ -3372,14 +3567,17 @@ async def ai_image(update:Update, context:Context, imageDesc:str, caption:str=No
 	#if remaining_text != None and remaining_text != '':
 	#	await send_response(update, context, remaining_text)
 
-	return "Success: image has been generated and sent to user"
+	# This doesn't work, because the URL is only accessible from this server.
+	#return f"Success: image has been generated and sent to user. Temporary URL=({image_url})."
+
+	return "Success: image has been generated and sent to user."
 
 #__/ End of ai_image() function definition.
 
 
 # Define a function to handle the /remember command, when issued by the AI.
 async def ai_remember(updateMsg:TgMsg, conversation:BotConversation, textToAdd:str,
-					  isPublic:bool=False, isGlobal:bool=False) -> None:
+					  isPublic:bool=False, isGlobal:bool=False) -> str:
 
 	"""The AI calls this function to add the given text to its persistent
 		memory."""
@@ -3496,6 +3694,102 @@ async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
 	_logger.normal(f"Found the following matches: [\n{matchList}\n].")
 
 	return matchList
+
+#__/
+
+
+# Default list of sections that should be returned by a Bing search.
+#DEFAULT_BINGSEARCH_SECTIONS = ['webPages', 'relatedSearches']
+DEFAULT_BINGSEARCH_SECTIONS = ['webPages']
+	# We made this smaller to increase the chance Turbo can handle it.
+
+# Define a function to handle the AI's search_web() function.
+async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
+					   queryPhrase:str, locale:str="en-US",
+					   sections:list=DEFAULT_BINGSEARCH_SECTIONS) -> str:
+
+	"""Do a web search using the Bing API."""
+
+	userID = updateMsg.from_user.id
+	chatID = botConvo.chat_id
+
+	_logger.normal(f"In chat {chatID}, for user #{userID}, AI is doing a web search in the {locale} locale for {sections} on: [{queryPhrase}].")
+	
+	# Calculate how many items to return based on GPT's field size.
+	fieldSize = global_gptCore.fieldSize	# Retrieve property value.
+		# Total space in tokens for the AI's receptive field (context window).
+
+	if fieldSize >= 16000:		# 16k models and up
+		howMany = 10
+	elif fieldSize >= 8000:		# GPT-4 and higher
+		howMany = 5
+	elif fieldSize >= 4000:		# GPT-3.5 and higher
+		howMany = 3
+	else:
+		_logger.warn(f"This model has only {fieldSize} tokens. Web search results may overwhelm it.")
+
+		howMany = 2		# This is not very useful!
+
+	try:
+		# This actually does the search.
+		searchResult = _bing_search(queryPhrase, market=locale, count=howMany)
+
+		#_logger.debug(f"Raw search result:\n{pformat(searchResult)}")
+
+		# Create a fresh dict for the fields we want to keep.
+		cleanResult = dict()
+
+		# Keep only the fields we care about in our "cleaned" result.
+		for (key, val) in searchResult.items():
+			if key in sections:
+				cleanResult[key] = val
+
+		# If we found nothing, retry with the default section list.
+		if not cleanResult:
+			sections = DEFAULT_BINGSEARCH_SECTIONS
+			for (key, val) in searchResult.items():
+				if key in sections:
+					cleanResult[key] = val
+
+		# Strip out 'deepLinks' out of the webPages value, it's TMI.
+		if 'webPages' in cleanResult:
+			for result in cleanResult['webPages']['value']:
+				if 'deepLinks' in result:
+					del result['deepLinks']
+
+		# Strip a bunch of useless fields out of news values.
+		if 'news' in cleanResult:
+			for result in cleanResult['news']['value']:
+				if 'contractualRules' in result:
+					del result['contractualRules']
+				if 'image' in result:
+					del result['image']
+				if 'about' in result:
+					del result['about']
+				if 'mentions' in result:
+					del result['mentions']
+				if 'provider' in result:
+					del result['provider']
+				if 'video' in result:
+					del result['video']
+				if 'category' in result:
+					del result['category']
+		
+
+		# Return as a string (to go in content field of function message).
+		#return json.dumps(cleanResult)
+
+		# Format the result with tabs to make it easier for Turbo/Max to parse.
+		pp_result = json.dumps(cleanResult, indent=4)
+		tabbed_result = pp_result.replace(' '*8, '\t')
+		return tabbed_result
+
+	except SearchError as e:
+		# We'll let the AI know it failed
+		botConvo.add_message(BotMessage(SYS_NAME, "[ERROR: {_lastError}]"))
+		return "Error: Unsupported locale / target market for search."
+
+#__/
 
 
 # Define a function to handle the /unblock command, when issued by the AI.
@@ -3648,7 +3942,7 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 		else:
 			await _report_error(conversation, message,
 					f"remember_item() missing required argument item_text.")
-			return "error: required argument item_text is missing"
+			return "Error: Required argument item_text is missing."
 
 	elif funcName == 'search_memory':
 
@@ -3664,7 +3958,7 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 		else:
 			await _report_error(conversation, message,
 					f"search_memory() missing required argument query_phrase.")
-			return "error: required argument query_phrase is missing"
+			return "Error: Required argument query_phrase is missing."
 
 	elif funcName == 'forget_item':
 		itemToDel = funcArgs.get('item_id', None)
@@ -3677,23 +3971,25 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 		else:
 			await _report_error(conversation, message,
 					f"forget_item() missing required argument item_id or item_text.")
-			return "error: required argument (item_id or item_text) is missing"
+			return "Error: Required argument (item_id or item_text) is missing."
 
 	elif funcName == 'create_image':
-		imageDesc = funcArgs.get('image_desc', None)
-		caption = funcArgs.get('caption', None)
+		
+		imageDesc = funcArgs.get('description', None)
+		caption	  = funcArgs.get('caption', None)
 
 		if imageDesc:
 			return await ai_image(update, context, imageDesc, caption)
 		else:
 			await _report_error(conversation, message,
-					f"create_image() missing required argument image_desc.")
-			return "error: required argument image_desc is missing"
+					f"create_image() missing required argument description.")
+			return "Error: Required argument description is missing."
 
 	elif funcName == 'block_user':
 
 		# NOTE: Blocking users by tag may not always work, since tags are not unique.
-		userToBlock = funcArgs.get('user_name', user_name)		# Default to current user.
+		userToBlock = funcArgs.get('user_name', None)
+			# Defaulting to None will allow ai_block() to figure out the user to block.
 
 		# We can't uncomment this yet because AI can't retrieve ID yet.
 		#userIDToBlock = funcArgs.get('user_id', user_id)		# Specified by ID.
@@ -3706,6 +4002,35 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 		userToUnblock = funcArgs.get('user_name', user_name)		# Default to current user.
 
 		return await ai_unblock(message, conversation, userToUnblock)
+
+	elif funcName == 'search_web':
+
+		queryPhrase = funcArgs.get('query', None)
+		searchLocale = funcArgs.get('locale', 'en-US')
+		resultSections = funcArgs.get('sections', DEFAULT_BINGSEARCH_SECTIONS)
+		if isinstance(resultSections, str):
+			try:
+				resultSections = json.loads(resultSections)
+			except json.JSONDecodeError:
+				pass
+		
+		if queryPhrase:
+			return await ai_searchWeb(message, conversation, queryPhrase,
+							locale=searchLocale, sections=resultSections)
+		else:
+			await _report_error(conversation, message,
+					f"search_web() missing required argument 'query'.")
+			return "Error: Required argument 'query' is missing."
+
+	elif funcName == 'activate_function':
+
+		funcName = funcArgs.get('func_name', None)
+		if funcName:
+			return await ai_activateFunction(message, conversation, funcName)
+		else:
+			await _report_error(conversation, message,
+					f"activate_function() missing required argument 'func_name'.")
+			return "Error: Required argument 'func_name' is missing."
 
 	elif funcName == 'pass_turn':
 		_logger.normal(f"\nNOTE: The AI is passing its turn in conversation {chat_id}.")
@@ -3812,6 +4137,20 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 	# around everywhere.
 	botConvo.raw_oaiMsgs = oaiMsgList
 	
+	# Does this engine support the functions interface? If so, then we'll
+	# pass it our list of function descriptions.
+	if hasFunctions(ENGINE_NAME):
+		# Retrieve our current functions list...
+		functions = botConvo.cur_funcs + \
+					[ACTIVATE_FUNCTION_SCHEMA, PASS_TURN_SCHEMA]
+					# Plus always include these two.
+
+		func_names = [func['name'] for func in functions if 'name' in func]
+		_logger.info(f"\tIn chat {chat_id}, current function list is: {func_names}.")
+
+	else:
+		functions = None
+
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#| Here's our main loop, which calls the API with exception handling as
 	#| needed to recover from situations where our prompt data is too long.
@@ -3883,9 +4222,8 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 		# If this engine supports functions, add in the estimated size in tokens
 		# of the functions structure. (Note that this is just a guesstimate
 		# since we don't know how it's formatted at the back end exactly.)
-		if hasFunctions(ENGINE_NAME):
-			funcsSize = tiktokenCount(json.dumps(FUNCTIONS_LIST),
-									  model=ENGINE_NAME)
+		if functions is not None:
+			funcsSize = tiktokenCount(json.dumps(functions), model=ENGINE_NAME)
 			#_logger.info(f"Estimating size of FUNCTIONS_LIST is {funcsSize}.)")
 			msgsSizeToks += funcsSize
 
@@ -3976,12 +4314,7 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 		#	f"absMaxRetToks = {absMaxRetToks}, "
 		#	f"availSpaceToks = {availSpaceToks}")
 
-		# Does this engine support the functions interface? If so, then we'll
-		# pass it our list of function descriptions.
-		if hasFunctions(ENGINE_NAME):
-			functions = FUNCTIONS_LIST
-		else:
-			functions = None
+		#_logger.info(f"CURRENT FUNCTION LIST IS:\n{pformat(functions)}")
 
 		# Now we'll do the actual API call, with exception handling.
 		try:
@@ -4062,7 +4395,7 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 				try:
 					botConvo.expunge_oldest_message()
 						# NOTE: If it succeeds, this modifies conversation.context_string.
-				except ConversationError:
+				except _ConversationError:
 					# We can't expunge the oldest message, presumably
 					# because it's the only message left in the
 					# conversation. All that we can do here is trim
@@ -4162,7 +4495,7 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 	# When we get here, we're done, and we just return.
 
 #__/ End definition of function get_ai_response().
-
+						 
 
 # Process a command (message starting with '/') from the AI.
 async def process_ai_command(update:Update, context:Context, response_text:str) -> None:
@@ -4305,12 +4638,28 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 
 #__/ End function process_ai_command().
 
-
+						 
 async def process_chat_message(update:Update, context:Context) -> None:
 
 	"""We dispatch to this function to process messages from the user if our
 		selected engine is for OpenAI's chat endpoint."""
 	
+	# To save space, when processing a new user message, we'll just
+	# let the bot remember only the last function schema it previously
+	# activated when starting to process a new message. (Except, the
+	# activate_function and pass_turn schemas are always visible.)
+
+	botConvo	= context.chat_data['conversation']
+	chat_id		= botConvo.chat_id
+	cur_funcs	= botConvo.cur_funcs
+	HOWMANY_FUNCS = 1
+	if len(cur_funcs) > HOWMANY_FUNCS:
+		cur_funcs = cur_funcs[-(HOWMANY_FUNCS):]
+		botConvo.cur_funcs = cur_funcs
+	#__/
+	func_names = [func['name'] for func in cur_funcs if 'name' in func]
+	_logger.info(f"Current function list in chat {chat_id} is {func_names}.")
+
 	# Now everything is handled by this new implementation, which has been
 	# rewritten so that it can also handle cases where the AI is responding from
 	# a result that's been returned from a function that it previously called.
@@ -4318,579 +4667,6 @@ async def process_chat_message(update:Update, context:Context) -> None:
 	return await get_ai_response(update, context)
 
 #__/ End definition of async function process_chat_message().
-
-
-	########### BELOW VERSION OF THIS FUNCTION BODY IS OBSOLETE #################
-
-# Quoting out all the old code in this function from before refactoring:
-"""
-	# Get the message, or edited message from the update.
-	(tgMsg, edited) = _get_update_msg(update)
-		
-	if tgMsg is None:
-		_logger.error("In process_chat_message() with no message! Aborting.")
-		return
-
-	chat_id = tgMsg.chat.id
-
-	# Get user_name & unique ID (for content violation logging).
-	user_name = _get_user_tag(tgMsg.from_user)
-	user_id = tgMsg.from_user.id
-
-	# Get our Conversation object.
-	conversation = context.chat_data['conversation']
-
-	# This loop will call the API with exception handling.
-	#	If we get a PromptTooLongException, we'll try again with a shorter prompt.
-	#	If we get a RateLimitError, we'll emit a diagnostic reponse message.
-
-	while True:		# Loop until we get a response from the API.
-
-		# Construct the message list in the format expected by the GPT-3 chat API.
-		oaiMessages = conversation.get_chat_messages()
-
-		# At this point, we want to archive the chat messages to a file in the
-		# log/ directory called 'latest-messages.txt'. This provides an easy way
-		# for the system operator to monitor what the AI is actually seeing, without
-		# having to turn on debug-level logging and search through the log file.
-
-		# Open the file for writing.
-		with open(f"{LOG_DIR}/latest-messages.txt", "w") as f:
-			for oaiMessage in oaiMessages:
-				f.write(messageRepr(oaiMessage))
-				
-		# Also do a json dump
-		with open(f"{LOG_DIR}/latest-messages.json", "w") as outfile:
-			json.dump(oaiMessages, outfile)
-
-		# Now we'll try actually calling the API.
-		try:
-
-			# Calculate what value of the maxLength parameter to use; this 
-			# controls the size of the response window, i.e., the maximum
-			# length of the reponse returned by the core, in tokens. This
-			# is set to the available space in the context window, but 
-			# capped by the aiConf.maxReturnedTokens parameter (from the
-			# api-conf/max-returned-tokens element in glados-config.hjson
-			# or ai-config.hjson) and no less than the aiConf.minReplyWinToks
-			# parameter (from the mind-conf/min-replywin-toks element in
-			# ai-config.hjson).
-
-			# Figure out how much space is left in the context window currently.
-			# We'll do this by subtracting the length of the chat messages from 
-			# the context window size.
-
-			# Get the context window size from the global_gptCore object.
-			contextWinSizeToks = global_gptCore.fieldSize
-
-			# The +1 here seems true in practice, except for GPT-4. Not sure why.
-			if ENGINE_NAME != 'gpt-4':
-				contextWinSizeToks += 1
-
-			#_logger.debug(f"In process_chat_message(), contextWinSizeToks={contextWinSizeToks}.")
-
-			# Get the length of the chat messages in tokens.
-			msgsSizeToks = ChatMessages(oaiMessages).totalTokens(model=ENGINE_NAME)
-
-			# If this engine supports functions, add in the estimated size in tokens
-			# of the functions structure. (This is a guesstimate since we don't know
-			# how it's formatted at the back end exactly.)
-			if hasFunctions(ENGINE_NAME):
-				funcsSize = tiktokenCount(json.dumps(FUNCTIONS_LIST), model=ENGINE_NAME)
-				#_logger.info(f"Estimating size of FUNCTIONS_LIST is {funcsSize}.)")
-				msgsSizeToks += funcsSize
-
-			#_logger.debug(f"In process_chat_message(), msgsSizeToks={msgsSizeToks}.")
-
-			# Calculate the available space in the context window.
-			availSpaceToks = contextWinSizeToks - msgsSizeToks
-				# Note this is an estimate of the available space, because
-				# the actual space available may be less than this if the
-				# chat messages at the back end contain any additional 
-				# formatting tokens or extra undocumented fields.
-
-			#_logger.debug(f"In process_chat_message(), availSpaceToks={availSpaceToks}.")
-
-			# Remember: globalMaxRetToks, globalMinReplWinToks were already
-			# retrieved from the aiConf object and stored in globals
-			# early in this module.
-
-			# Here we're setting a local variable from the global.
-			if globalMaxRetToks is None:	# In the chat API, this becomes inf.
-				absMaxRetToks = float('inf')	# So in other words, no limit.
-			else:
-				absMaxRetToks = globalMaxRetToks
-
-			#_logger.debug(f"In process_chat_message(), absMaxRetToks={absMaxRetToks}.")
-
-			# If the available space is in between globalMinReplWinToks and
-			# absMaxRetToks, then just set maxTokens=inf (i.e., tell the API
-			# that it can use all the available space). Otherwise, calculate the
-			# value of maxTokens in the same way we used to do it.
-
-			if globalMinReplWinToks <= availSpaceToks and availSpaceToks <= absMaxRetToks:
-				maxTokens = None	# No maximum; i.e., infinity; i.e., use all
-					# of the available space.
-			else:
-				# Calculate the actual maximum length of the returned reponse
-				# in tokens, given all of our constraints above.
-				maxTokens = max(globalMinReplWinToks, min(absMaxRetToks, availSpaceToks))
-					# Explanation: maxTokens is the amount of space that will
-					# be made available to the AI core for its response. This
-					# should not be less than the AI's requested minimum reply
-					# window size, and it should be as large as possible, but
-					# not more than either the maximum number of tokens that
-					# the AI is allowed to return, or the amount of space that
-					# is actually available right now in the AI's context window.
-
-			#_logger.debug(f"In process_chat_message(), maxTokens={maxTokens}.")
-
-			# Temporary hack to see if we can max out the output length.
-			#maxTokens = None	# Equivalent to float('inf')?
-
-			#_logger.debug(f"process_chat_message(): maxTokens = {maxTokens}, "
-			#	f"globalMinReplWinToks = {globalMinReplWinToks}, globalMaxRetToks = {globalMaxRetToks}, "
-			#	f"absMaxRetToks = {absMaxRetToks}, availSpaceToks = {availSpaceToks}")
-
-			# Does this engine support the functions interface? If so,
-			# then pass it our list of function descriptions.
-			if hasFunctions(ENGINE_NAME):
-				functions = FUNCTIONS_LIST
-			else:
-				functions = None
-
-			# Get the response from GPT-3, as a gpt3.api.ChatCompletion object.
-			chatCompletion = global_gptCore.genChatCompletion(	# Call the API.
-				
-				maxTokens=maxTokens,	# Max. number of tokens to return.
-					# We went to a lot of trouble to set this up properly above!
-
-				messages=oaiMessages,		# Current message list for chat API.
-					# Note that since we pass in an explicit messages list, this 
-					# overrides whatever api.Messages object is being maintained 
-					# in the GPT3ChatCore object.
-
-				user = str(user_id),		# Send the user's unique ID for
-					# traceability in the event of severe content violations.
-
-				minRepWin = globalMinReplWinToks,	# Min. reply window size in tokens.
-					# This parameter gets passed through to the ChatCompletion()
-					# initializer and thence to ChatCompletion._createComplStruct(),
-					# which does the actual work of retrieving the raw completion
-					# structure from the OpenAI API. Note that this parameter is 
-					# necessary because our computed maxTokens value may be greater
-					# than the actual available space in the context window (either
-					# because our estimate was wrong, or because we simply 
-					# requested a minimum space larger than is available). In the 
-					# latter case, getChatCompletion() should notice this & throw a 
-					# PromptTooLargeException, which we'll catch below. If our 
-					# estimate was wrong, then the actual reply window size could be
-					# less than the minimum requested size, but as long as our 
-					# estimates were pretty close, the difference will be small, and 
-					# the AI should still be able to generate a reasonable response.
-
-				# The following are only relevant in 0613 (June 13, 2023) or later
-				# releases of chat models, which support the functions interface.
-				functionList = functions,	# Available function list, if supported.
-				functionCall = 'auto'		# Let AI decide whether/which functions to call.
-			)
-
-			# Get the full response message object.
-			response_oaiMsg = chatCompletion.message
-
-			# Really, what we should do here is to call out to a separate function
-			# to process the response message object. That way, we can also call the
-			# same function to process the response message object that we get in
-			# response to a function's return value after we process a function call 
-			# from the AI. (This is a TODO item for the future.)
-			#
-			# NOTE: This is now in the process of being done. See
-			# process_raw_response().
-
-			# In case there's a function call in the response, display it.
-			_logger.debug(f"RETURNED MESSAGE = [{pformat(response_oaiMsg)}]")
-
-			# Get the text field of the response. (Could be None, if function call.)
-			response_text = chatCompletion.text
-
-			# Diagnostic for debugging.
-			_logger.debug(f"Got response text: [{response_text}]")
-
-			if response_text is not None:
-
-				# Trim prompt off start of response.
-				new_response_text = _trim_prompt(response_text)
-
-				if new_response_text != response_text:
-					response_text = new_response_text
-
-					# Do surgery on the chat message object to fix it there also.
-					chatCompletion.text = response_text
-
-					# NOTE: This could invalidate the chat message if it contains
-					# a function object too.
-
-					_logger.debug(f"Modified response message text is: [{chatCompletion.text}]")
-
-			# In case there's a function call in the response, display it.
-			#_logger.normal(f"RETURNED MESSAGE = \n" + pformat(response_message))
-
-			funCall = response_oaiMsg.get('function_call')
-			if funCall:
-
-				function_name = funCall['name']
-				function_args = json.loads(funCall['arguments'])
-
-				_logger.info(f"AI wants to call function {function_name} with " \
-					"arguments: \n" + pformat(function_args))
-
-				# Generate a description of the function call, for diagnostic purposes.
-				call_desc = _call_desc(function_name, function_args)
-
-				# Have the bot server make a note to help the AI remember that it did the function call.
-				fcall_note = f"[NOTE: {BOT_NAME} is doing function call {call_desc}.]"
-				conversation.add_message(BotMessage(SYS_NAME, fcall_note))
-
-				# Extract the optional remark argument from the argument list.
-				if 'remark' in function_args:
-					remark = function_args['remark']
-					del function_args['remark']
-				else:
-					remark = ""		# If no remark, take it as empty string.
-
-				# Make sure response_text is a string.
-				if response_text is None:
-					response_text = ""
-
-				# Generate a description of the function call, for diagnostic purposes.
-				call_desc = _call_desc(function_name, function_args)
-
-				## Just did this temporarily while debugging.
-				# # Prepend a diagnostic with the call description to the response_text (which is probably null).
-				# response_text = f"[SYSTEM DIAGNOSTIC: Called {call_desc}]\n\n" + remark + '\n' + response_text
-
-				# This probably is just the remark. Use it as our response text below.
-				response_text = (response_text + '\n' + remark).strip()
-
-				# Before calling the function, we'll send the response_text, if non-empty.
-				# (which is probably contents of a remark argument, if anything)'
-				if response_text != "":
-
-					conversation.add_message(BotMessage(BOT_NAME, response_text))
-					
-					# Try sending the response text to the user. (But ignore send errors here.)
-					await send_response(update, context, response_text)
-				#__/
-
-				# Actually do the call here, and assemble appropriate result text.
-				result = await ai_call_function(update, context, function_name, function_args)
-
-				if result is None or result == "":
-					result = "null result"
-
-				_logger.info(f"The AI's function call returned the result: [{pformat(result)}]")
-				
-				# Before functions returned a result, we just skipped all the rest:
-
-				_logger.info("Assembling temporary message list for function call & return...")
-
-				# Get current chat message list.
-				temp_chat_oaiMsgs = conversation.get_chat_messages()[:-1]
-					# Trim off final message which is the system prompt. Not needed right now.
-
-				# Trim off all trailing messages back to the function call note,
-				# since these would be remarks and various system notifications
-				# and errors generated during function execution.
-
-				trailing_oaiMsgs = []
-				# Scan back until we get to the "system: [NOTE: " message...
-				while not (temp_chat_oaiMsgs[-1]['role'] == 'system'
-						   and temp_chat_oaiMsgs[-1]['content'].startswith(f'{SYS_NAME}> [NOTE: ')):
-					# NOTE: Above will break if MESSAGE_DELIMITER is not empty string.
-					_logger.info(f"Flipping back through message: [{pformat(temp_chat_oaiMsgs[-1])}]")
-					sys_oaiMsg = temp_chat_oaiMsgs.pop()
-					trailing_oaiMsgs = [sys_oaiMsg] + trailing_oaiMsgs
-				#__/
-
-				# Construct some messages to represent the function call
-				# and return value.
-
-				# This message represents the actual function call.
-				funcall_oaiMsg = response_oaiMsg
-						# This is the message that contains the AI's function call.
-
-				# Make sure we didn't add a content field to the message cuz the API will choke.
-				if 'content' in funcall_oaiMsg and funcall_oaiMsg['content'] is not None:
-					_logger.info(f"Oops, our funcall message has text content?? [\n{pformat(funcall_oaiMsg)}\n]")
-					funcall_oaiMsg['content'] = None
-
-				# Get the result in the form of a string, even if it isn't.
-				resultStr = result if isinstance(result, str) else json.dumps(result)
-
-				# Have the bot server make a note to help the AI remember that it got a function result.
-				fret_note = f'[NOTE: {function_name}() call returned value: [{resultStr}]]'
-				conversation.add_message(BotMessage(SYS_NAME, fret_note))
-
-				# This new raw-format message represents the actual return value
-				# of the function.
-				funcret_oaiMsg = {
-					'role':		'function',
-					'name':		function_name,
-					'content':	resultStr
-				}
-
-				# If the function call was a successful "pass_turn" call, then
-				# we don't need to do anything else here.
-				if resultStr == PASS_TURN_RESULT:
-					_logger.normal(f"\t{BOT_NAME} is refraining from responding in chat #{chat_id}.")
-					return
-
-				# Finish building the message list. So, the sequence here is:
-				#
-				#	system:		[NOTE: ... is doing function call ...]
-				#	assistant:	(function call)
-				#	assistant:	{remark emitted by bot during function call, if any}
-				#	(any other incidental outputs produced from within the function call)
-				#   function:	(function return)
-
-				temp_chat_oaiMsgs += [funcall_oaiMsg]
-				temp_chat_oaiMsgs += trailing_oaiMsgs
-				temp_chat_oaiMsgs += [funcret_oaiMsg]
-				temp_chat_oaiMsgs += [{
-					'role':		'system',
-					'content':	f"Instructions from bot server: {BOT_NAME}, you " \
-						"may now provide your response, if any, to the " \
-						"function's return value above.",
-				}]
-
-				# Display the most recent 10 chat messages from temp list.
-				_logger.info(f"Last few chat messages are [\n{pformat(temp_chat_oaiMsgs[-10:])}\n].")
-
-				# We'll just do a quick-and-dirty approach here to the context length management.
-				while True:
-					try:
-						# Do a dummy 2nd API call with the result.
-						second_chatCompl = global_gptCore.genChatCompletion(
-							messages 		= temp_chat_oaiMsgs,
-							functionList	= functions
-						)
-						break
-					except PromptTooLargeException:
-						# Just trim off the oldest message after the first
-						# N_HEADER_MSGS.
-
-						_logger.info(f"NOTE: Expunging oldest chat message:\n" +
-									 pformat(temp_chat_oaiMsgs[N_HEADER_MSGS]))
-
-						temp_chat_oaiMsgs = temp_chat_oaiMsgs[0:N_HEADER_MSGS].\
-											extend(oaiMessages[N_HEADER_MSGS+1:])
-						continue
-					#__/
-				#__/
-
-				# Just for diagnostic purposes.
-				_logger.info(f"GPT response to function return: [{pformat(second_chatCompl.message)}]")
-
-				# If the response to the function return was another function
-				# call, complain.
-				second_response_oaiMessage = second_chatCompl.message
-
-				if 'function_call' in second_response_oaiMessage:
-
-					fcall2 = second_response_oaiMessage['function_call']
-
-					fcall_str = _call_desc(fcall2.name, json.loads(fcall2.arguments))
-
-					conversation.add_message(BotMessage(SYS_NAME,
-						"[Error: You tried to respond to a function return "
-						"with another function call; this is unsupported. The "
-						f"2nd call was: {fcall_str}.]"))
-
-					errmsg = "AI tried to respond to function return with "\
-							 "another function call; this is not yet supported."
-					await _report_error(conversation, message, errmsg, showAI=False)
-						
-					# If there was no text (likely the case), set the text to the funcall desc.
-					if second_chatCompl.text is None:
-						second_chatCompl.text = f"I tried and failed to call {fcall_str}."
-
-				# Go ahead and add the danged thing. It better not be another
-				# function call though, or empty, or trigger a content filter,
-				# or be a '/pass' command, because we just aren't handling any
-				# of that here. Really need to rethink whole code structure.
-
-				second_response_text = second_chatCompl.text
-				_logger.info(f"Text of function return response: [{second_response_text}].")
-
-				# If second response text has prompt in it, fix it.
-				if second_response_text is not None:
-					second_response_text = _trim_prompt(second_response_text)
-
-				second_response_botMsg = BotMessage(conversation.bot_name, second_response_text)
-				_logger.info(f"Resulting message object is: [{str(second_response_botMsg)}].")
-				conversation.add_message(second_response_botMsg)
-
-				if second_response_botMsg.text != '':	# Don't bother sending empty responses.
-
-					# Is this even necessary in the case of chat engines?
-					conversation.finalize_message(second_response_botMsg)
-
-					# Process the AI's response to the function call's return.
-					await process_response(update, context, second_response_botMsg)
-
-				# NOTE: If the second response is a function call or a command,
-				# we don't handle those cases properly here!  Fix this sometime.
-
-				# At this point, we finished processing the function call. Just return.
-				return
-
-			#__/ End special code to handle function calls requested by the AI.
-
-			# Also check for finish_reason == 'content_filter' and log/send a warning.
-			finish_reason = chatCompletion.finishReason
-			if finish_reason == 'content_filter':
-				
-				_logger.warn(f"OpenAI content filter triggered by user {user_name} " \
-							 "(ID {user_id}) in chat {chat_id}. Response was:\n" + \
-							 pformat(chatCompletion.chatComplStruct))
-
-				WARNING_MSG = "WARNING: User {user_name} triggered OpenAI's content " + \
-							  "filter. Repeated violations could result in a ban."
-
-				# This allows the AI to see this warning message too.
-				conversation.add_message(BotMessage(SYS_NAME, WARNING_MSG))
-
-				repRes = await _reply_user(tgMsg, conversation, "[SYSTEM {WARNING_MSG}]")
-				if repRes != 'success': return
-				
-			break	# We got a response, so we can break out of the loop.
-
-		except PromptTooLargeException:				# Imported from gpt3.api module.
-
-				# The prompt (constructed internally at the remote API back-end) is too long.  
-				# Thus, we need to expunge the oldest message from the conversation.
-
-			conversation.expunge_oldest_message()
-				# NOTE: If it succeeds, this modifies conversation.context_string.
-
-			# We've successfully expunged the oldest message.
-			continue	# Loop back and try again.
-
-		except RateLimitError as e:
-			# This also may indicate that the server is overloaded
-			# or our monthly quota was exceeded.
-
-			# We exceeded our OpenAI API quota, or we've exceeded the rate limit 
-			# for this model. There isn't really anything we can do here except 
-			# send a diagnostic message to the user.
-
-			_logger.error(f"Got a {type(e).__name__} from OpenAI ({e}) for conversation {chat_id}; aborting.")
-
-			# Send a diagnostic message to the AI and to the user.
-			diagMsg = "AI model is overloaded; please try again later."
-			await _send_diagnostic(tgMsg, conversation, diagMsg)
-
-			return	# That's all she wrote.
-		#__/
-
-		# Stuff from Copilot that we didn't use:
-		#
-		# except PromptTooLongException as e:
-		#	  # The prompt was too long, so we need to shorten it.
-		#	  # First, we'll log this at the INFO level.
-		#	  _logger.info(f"Prompt too long; shortening it.")
-		#	  # Then, we'll shorten the prompt and try again.
-		#	  conversation.shorten_prompt()
-		#	  continue
-		# except RateLimitException as e:
-		#	  # We've hit the rate limit, so we need to wait a bit before trying again.
-		#	  # First, we'll log this at the INFO level.
-		#	  _logger.info(f"Rate limit exceeded; waiting {e.retry_after} seconds.")
-		#	  # Then, we'll wait for the specified number of seconds and try again.
-		#	  time.sleep(e.retry_after)
-		#	  continue
-
-		# This one was also suggested by Copilot; we'll go ahead and use it.
-		except Exception as e:
-			# We've hit some other exception, so we need to log it and send
-			# a diagnostic message to the user.
-			# (And also add it to the conversation so the AI can see it.)
-			
-			await _report_error(conversation, tgMsg, f"Exception while "
-								f"getting response: {type(e).__name__} ({e})")
-			return
-		#__/
-	#__/
-
-	# If we get here, we've successfully gotten a normal (text) response from
-	# the API.
-
-	# Strip off any leading or trailing whitespace (Telegram won't display it anyway.).
-	response_text = response_text.strip()
-
-	# If the response is empty, then return early. (Can't even send an empty message anyway.)
-	if response_text == "":
-
-		_logger.warn("AI's text response was null. Ignoring...")
-
-		## No longer needed because we don't add an empty message.
-		# Delete the last message from the conversation.
-		#conversation.delete_last_message()
-
-		## Commenting this out for production.
-		# # Send the user a diagnostic message indicating that the response was empty.
-		# # (Doing this temporarily during development.)
-		#diagMsg = "Response was empty."
-		#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
-		
-		return		# This means the bot is simply not responding to this particular message.
-	
-	# Generate a debug-level log message to indicate that we're starting a new response.
-	_logger.debug(f"Creating new response from {conversation.bot_name} with "
-				  f"text: [{response_text}].")
-
-	# Create a new Message object and add it to the conversation.
-	response_botMsg = BotMessage(conversation.bot_name, response_text)
-	conversation.add_message(response_botMsg)
-
-	# Update the message object, and the context.
-	response_botMsg.text = response_text
-	conversation.expand_context()	 
-
-	# If this message is already in the conversation, then we'll suppress it, so
-	# as not to exacerbate the AI's tendency to repeat itself.  (So, as a user,
-	# if you see that the AI isn't responding to a message, this may mean that
-	# it has the urge to just repeat something that it already said earlier, but
-	# is holding its tongue.)
-	if response_text.lower() != '/pass' and conversation.is_repeated_message(response_botMsg):
-
-		# Generate an info-level log message to indicate that we're suppressing the response.
-		_logger.info(f"Suppressing response [{response_text}]; it's a repeat.")
-
-		# Delete the last message from the conversation.
-		conversation.delete_last_message()
-
-		## Send the user a diagnostic message (doing this temporarily during development).
-		#diagMsg = f"Suppressing response [{response_text}]; it's a repeat."
-		#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
-		
-		return		# This means the bot is simply not responding to the message
-
-	# If we get here, then we have a non-empty message that's also not a repeat.
-	# It's finally OK at this point to archive the message and send it to the user.
-
-	# Make sure the response message has been finalized (this also archives it).
-	conversation.finalize_message(response_botMsg)
-
-	# If we get here, we have finally obtained a non-empty, non-repeat,
-	# already-archived message that we can go ahead and send to the user.
-	# We also check to see if the message is a command line.
-
-	await process_response(update, context, response_botMsg)	   # Defined below.
-
-#__/ End of process_chat_message() function definition.
-""" # Quoted out the bulk of the process_chat_message() function
-	# material that was in the (old version before refactoring). 
 
 
 # Another new function, to handle function call requests from the AI.
@@ -4911,6 +4687,7 @@ async def process_function_call(
 
 	# Get the bot's conversation object.
 	botConvo = tgContext.chat_data['conversation']
+	chat_id = botConvo.chat_id
 
 	# Retrieve the function call object from the OpenAI message containing it.
 	funCall = funcall_oaiMsg.get('function_call')
@@ -4943,14 +4720,14 @@ async def process_function_call(
 	if response_text is None:
 		response_text = ""
 
-	# Generate a description of the function call, for diagnostic purposes.
-	call_desc = _call_desc(function_name, function_args)
-
 	## Just did this temporarily while debugging.
 	# # Prepend a diagnostic with the call description and remark to the
 	# # response_text (which is probably null).
 	# response_text = f"[SYSTEM DIAGNOSTIC: Called {call_desc}]\n\n" \
 	#					+ remark + '\n' + response_text
+
+	# Generate a description of the function call, for diagnostic purposes.
+	call_desc = _call_desc(function_name, function_args)
 
 	# The original response text, followed by the remark. This probably is just
 	# the remark, since the original response text should have been null. But in
@@ -5057,7 +4834,7 @@ async def process_function_call(
 
 	if resultStr == PASS_TURN_RESULT:
 		_logger.normal(f"\t{BOT_NAME} is refraining from responding to a "
-					   "returned function result in chat #{chat_id}.")
+					   f"returned function result in chat #{chat_id}.")
 		return
 
 	#--------------------------------------------------------------------------|
@@ -5391,16 +5168,17 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 #__/ End of process_response() function definition.
 
 
-async def send_image(update:Update, context:Context, desc:str, caption=None, save_copy=True) -> None:
+async def send_image(update:Update, context:Context, desc:str, caption=None, save_copy=True) -> str:
 	"""Generates an image from the given description and sends it to the user.
-		Also archives a copy on the server unless save_copy=False is specified."""
+		Also archives a copy on the server unless save_copy=False is specified.
+		Returns a temporary URL for the image, if successful."""
 
 	# Get the message, or edited message from the update.
 	(tgMsg, edited) = _get_update_msg(update)
 		
 	if tgMsg is None:
 		_logger.warning("In send_image() with no message? Aborting.")
-		return
+		return None
 
 	# Get the message's chat ID.
 	chat_id = tgMsg.chat.id
@@ -5457,6 +5235,8 @@ async def send_image(update:Update, context:Context, desc:str, caption=None, sav
 		conversation.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram " \
 			"exception {exType} ({e}) while sending to user {user_name}.]"))
 	#__/
+
+	return image_url
 #__/
 
 
@@ -5481,11 +5261,11 @@ async def send_response(update:Update, context:Context, response_text:str) -> No
 
 	# Send the message in chunks.
 	while len(response_text) > MAX_MESSAGE_LENGTH:
-		await _reply_user(message, None, response_text[:MAX_MESSAGE_LENGTH])
+		await _reply_user(message, None, response_text[:MAX_MESSAGE_LENGTH], markup=True)
 		response_text = response_text[MAX_MESSAGE_LENGTH:]
 
 	# Send the last chunk.
-	await _reply_user(message, None, response_text)
+	await _reply_user(message, None, response_text, markup=True)
 #__/
 
 
@@ -5609,6 +5389,72 @@ def _addUser(tgUser:User):
 	conn.close()
 
 #__/ End definition of private function _addUser().
+
+
+# Markets currently supported by Bing search.
+BING_MARKETS = ["en-US", "en-AR", "en-AU", "de-AT", "nl-BE", "pt-BR", "en-CA",
+	"fr-CA", "es-CL", "zh-CN", "da-DK", "fi-FI", "fr-FR", "de-DE", "zh-HK",
+	"en-IN", "en-ID", "it-IT", "ja-JP", "ko-KR", "en-MY", "es-MX", "nl-NL",
+	"en-NZ", "no-NO", "pl-PL", "en-PH", "ru-RU", "en-ZA", "es-ES", "sv-SE",
+	"zh-TW", "tr-TR", "en-GB", "es-US"]
+
+class SearchError(Exception): pass
+
+# This function will be used internally by the WebAssistant when
+# doing web searches.
+def _bing_search(query_string:str, market:str='en-US', count=3):
+	# The caller should fill in the market parameter based on the
+	# user's locale (if known), or on an alternate market for this
+	# particular search (if specified by the user).
+
+	# Error-checking on 'market' parameter.
+	if market not in BING_MARKETS:
+
+		# Make the error string available to callers.
+		global _lastError
+		_lastError = f"Market '{market}' is not supported by Bing search."
+
+		# Also log the error.
+		_logger.error(_lastError)
+
+		# Raise this as an exception so the caller can decide how to
+		# handle it appropriately.
+		raise SearchError(msg=_lastError)
+
+	subscription_key = os.environ['BING_SEARCH_V7_SUBSCRIPTION_KEY']
+	endpoint = os.environ['BING_SEARCH_V7_ENDPOINT'] + "/v7.0/search"
+	params = {
+		'q':		query_string,
+		'mkt':		market,
+		'count':	count
+	}
+	headers = {
+		'Ocp-Apim-Subscription-Key': subscription_key
+	}
+
+	_logger.normal(f"\tDoing web search in {market} for [{query_string}]...")
+
+	try:
+		response = requests.get(endpoint, headers=headers, params=params)
+		response.raise_for_status()
+
+		search_results = response.json()
+
+		## Diagnostic output for debugging:
+		#i = 0
+		#for item in search_results['webPages']['value']:
+		#	i += 1
+		#	_logger.normal(f"\nResult #{i}: name=\"{item['name']}\", "
+		#				   f"\n\turl={item['url']}, "
+		#				   f"\nsnippet={pformat(item['snippet'])}")
+
+		return search_results
+
+	except Exception as ex:
+		# No handling here; just pass it on.
+		raise ex
+
+#__/ End private function _bing_search().
 
 
 # NOTE: This function is being deprecated because user tags
@@ -6402,7 +6248,7 @@ def _printUsers():
 # If ignore=True, then the error string indicates that the error is being
 # ignored by the program.
 async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
-					  msgToSend:str, ignore:bool=False) -> str:
+					  msgToSend:str, ignore:bool=False, markup:bool=False) -> str:
 
 	"""Sends text message <msgToSend> in reply to the user's
 		Telegram message <userTgMessage> in conversation <convo>."""
@@ -6418,28 +6264,90 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 	else:
 		chat_id = convo.chat_id
 
+	if markup:
+		parseMode = ParseMode.MARKDOWN_V2
+	else:
+		parseMode = None
+
+	## Escape some commonplace characters for the AI since it usually flubs this.
+	#text = msgToSend
+	#if parseMode:
+	#	text = text.replace('\\', '\\\\')	# Escape backslashes
+	#	text = text.replace('.', '\.')			# Escape periods
+	#	text = re.sub(r'!(?!\[)', r'\!', text)  # Escape '!' not followed by '['
+	#	text = text.replace('-', '\-')			# Escape hyphens
+	#else:
+	#	text = msgToSend
+
+	def _local_replaceFunc(match):
+		firstGroup = match.group(1)
+		fullMatch = match.group(0)
+		if firstGroup:
+			return firstGroup
+		else:
+			return '\\' + fullMatch
+
+	if parseMode:
+
+		#escapedMsg = re.sub(r'(\[[^\][]*]\(http[^()]*\))|[_*[\]()~>#+=|{}.!-]', _local_replaceFunc, msgToSend)
+		## ^^^ This version is overly aggressive, since it backslash-escapes even the '*', '_', '~' characters
+		## 	that we use for formatting text styles.
+
+		escapedMsg = re.sub(r'(\[[^\][]*]\(http[^()]*\))|[\\[\]()>#+=|{}.!-]', _local_replaceFunc, msgToSend)
+			# Replaces well-formatted hyperlinks with themselves,
+			# and special characters with their backslash-escaped equivalents.
+
+		text = escapedMsg
+	else:
+		text = msgToSend
+
 	# Try sending the message to the user.
-	try:
-		await message.reply_text(msgToSend)
+	while True:
+		try:
 
-	except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
+			await message.reply_text(text, parse_mode=parseMode)
+			break
+	
+		except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
+	
+			exType = type(e).__name__
+	
+			if exType == 'BadRequest' and str(e).startswith("Can't parse entities"):
 
-		exType = type(e).__name__
+				errmsg = str(e)
 
-		whatDoing = "ignoring" if ignore else "aborting"
+				# If it's just asking us to escape a character, then escape it and try again.
+				match = re.match(r"Can't parse entities: character '(.)' is reserved and must be escaped with the preceding '\\'", errmsg)
+				if match:
+					char = match.group(1)
+				
+					_logger.normal(f"\tBackslash-escaping '{char}' character in response to {user_name} in {chat_id}...")
+				
+					# Replace occurrences of the reserved character in text with the escaped version
+					text = text.replace(char, '\\' + char)
+					continue
 
-		_logger.error(f"Got a {exType} exception from Telegram ({e}) "
-					  f"for conversation {chat_id}; {whatDoing}.")
+				_logger.error(f"Got a markdown error from Telegram in chat {chat_id}: {e}. Punting on markdown.")
 
-		if convo is not None:
-			convo.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram exception " \
-				f"{exType} ({e}) while sending to user {user_name}.]"))
+				text = msgToSend	# Revert to original text.
+				parseMode = None	# Turn off markdown parsing.
 
-		# Note: Eventually we need to do something smarter here -- like, if we've
-		# been banned from replying in a group chat or something, then leave it.
-
-		return "error: Telegram threw a {exType} exception while sending " \
-			"diagnostic output to the user"
+				continue	# Try again without markdown
+				
+			whatDoing = "ignoring" if ignore else "aborting"
+	
+			_logger.error(f"Got a {exType} exception from Telegram ({e}) "
+						  f"for conversation {chat_id}; {whatDoing}.")
+	
+			if convo is not None:
+				convo.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram exception " \
+					f"{exType} ({e}) while sending to user {user_name}.]"))
+	
+			# Note: Eventually we need to do something smarter here -- like, if we've
+			# been banned from replying in a group chat or something, then leave it.
+	
+			return "error: Telegram threw a {exType} exception while sending " \
+				"diagnostic output to the user"
 	
 	#__/
 
@@ -6701,6 +6609,8 @@ def _unblockUser(user:str) -> bool:
 	
 	if user not in block_list:
 		_logger.warn(f"_unblockUser(): User {user} is not blocked. Ignoring.")
+		_lastError = f"User {user} is already not on the block list."
+		return True
 
 	block_list.remove(user)
 	with open(bcl_file, 'w') as f:
@@ -6880,243 +6790,363 @@ PASS_TURN_RESULT = "Success: I will refrain from responding to the last user mes
 	#  Sets the functions list (describes the functions AI may call).
 	#  Note this is only supported in chat models dated 6/13/'23 or later.
 
-# Functions available to the AI in the Telegram app.
-FUNCTIONS_LIST = [
 
-	# Function for command: /remember <item_text>
-	{
-		"name":         "remember_item",
-		"description":  "Adds an item to the AI's persistent memory list.",
-		"parameters":   {
-			"type":         "object",
-			"properties":   {
-				"item_text":    {
-					"type":         "string",   # <item_text> argument has type string.
-					"description":  "Text of item to remember, as a single line."
+# Function schema for command: /remember <item_text>
+REMEMBER_ITEM_SCHEMA = {
+	"name":         "remember_item",
+	"description":  "Adds an item to the AI's persistent memory list.",
+	"parameters":   {
+		"type":         "object",
+		"properties":   {
+			"item_text":    {
+				"type":         "string",   # <item_text> argument has type string.
+				"description":  "Text of item to remember, as a single line."
+			},
+			"is_private":	{
+				"type":			"boolean",	# <private> argument is Boolean.
+				"description":	"Is this information considered private "\
+									"to the current user or group chat? ",
+				"default":		True,
+			},
+			"is_global": {
+				"type":			"boolean",	# <private> argument is Boolean.
+				"description":	"Does this information need to be accessible "\
+									"to the AI from within any chat?",
+				"default":		False,
+			},
+			"remark":	{
+				"type":			"string",	# <remark> argument has type string.
+				"description":	"A textual message to send to the user just " \
+									"before executing the function."
+			}
+		},
+		"required":     ["item_text"]	# <item_text> argument is required.
+	},
+	"returns":	{	# This describes the function's return type.
+		"type":			"string",
+		"description":	"A string indicating the success or failure of " \
+							"the operation."
+	}
+}
+
+
+# Function schema for command: /search <query_phrase>
+SEARCH_MEMORY_SCHEMA = {
+	"name":			"search_memory",
+	"description":	"Do a context-sensitive semantic search for the top N "\
+						"memories related to a given search phrase.",
+	"parameters":	{
+		"type":			"object",
+		"properties":	{
+			"query_phrase":	{
+				"type":			"string",	# <query_phrase> is a string
+				"description":	"Text to semantically match against memories."
+			},
+			"max_results": {
+				"type":			"integer",	# <max_results> is an integer
+				"description":	"The maximum number of items to return "
+									f"(up to {MAXIMUM_SEARCHMEM_NITEMS}).",
+				"default":		DEFAULT_SEARCHMEM_NITEMS,
+			},
+		},
+		"required":		["query_phrase"]	# <query_phrase> arg is required.
+	},
+	"returns":	{	# This describes the function's return type.
+		"description":	"A list of semantic matches, closest first.",
+		"type":			"array",
+		"items":	{
+			"type":			"object",
+			"properties":	{
+				"item_id":	{
+					"type":			"string",
+					"description":	"8-digit hex ID of this memory item."
+				},
+				"item_text":	{
+					"type":			"string",
+					"description":	"Complete text of this memory item."
 				},
 				"is_private":	{
 					"type":			"boolean",	# <private> argument is Boolean.
-					"description":	"Is this information considered private "\
-									"to the current user or group chat? ",
-					"default":		True,
+					"description":	"Indicates whether this memory contains "\
+										"information specific to the user or group in which "\
+										"it was created. If true, the information should not "\
+										"be openly disclosed in different contexts without "\
+										"authorization."
+					# ^ Suggested by Aria. My original description:
+					#"Is this information considered private "\
+					#	"to the current user or group chat? "
 				},
 				"is_global": {
 					"type":			"boolean",	# <private> argument is Boolean.
-					"description":	"Does this information need to be accessible "\
-									"to the AI from within any chat?",
-					"default":		False,
+					"description":	"Indicates whether this memory is "\
+										"accessible to the AI across all contexts. If "\
+										"true, the AI can use this information to shape "\
+										"responses in any context, but must respect privacy "\
+										"restrictions if `is_private` is also true."
+					# ^ Suggested by Aria. My original description:
+					#"Does this information need to be accessible "\
+					#"to the AI from within any chat?"
 				},
-				"remark":	{
-					"type":		"string",	# <remark> argument has type string.
-					"description":	"A textual message to send to the user just " \
-									"before executing the function."
-				}
-			},
-			"required":     ["item_text"]	# <item_text> argument is required.
-		},
-		"returns":	{	# This describes the function's return type.
-			"description":	"A string indicating the success or failure of " \
-							"the operation.",
-			"type": "string"
-		}
-	},
-
-	# Function for command: /search <query_phrase>
-	{
-		"name":			"search_memory",
-		"description":	"Do a context-sensitive semantic search for the top N "\
-							"memories related to a given search phrase.",
-		"parameters":	{
-			"type":			"object",
-			"properties":	{
-				"query_phrase":	{
-					"type":			"string",	# <query_phrase> is a string
-					"description":	"Text to semantically match against memories."
-				},
-				"max_results": {
-					"type":			"integer",	# <max_results> is an integer
-					"description":	"The maximum number of items to return "
-									"(up to {MAXIMUM_SEARCHMEM_NITEMS}).",
-					"default":		DEFAULT_SEARCHMEM_NITEMS,
-				},
-			},
-			"required":		["query_phrase"]	# <query_phrase> arg is required.
-		},
-		"returns":	{	# This describes the function's return type.
-			"description":	"A list of semantic matches, closest first.",
-			"type":			"array",
-			"items":	{
-				"type":			"object",
-				"properties":	{
-					"item_id":	{
-						"type":			"string",
-						"description":	"8-digit hex ID of this memory item."
-					},
-					"item_text":	{
-						"type":			"string",
-						"description":	"Complete text of this memory item."
-					},
-					"is_private":	{
-						"type":			"boolean",	# <private> argument is Boolean.
-						"description":	"Indicates whether this memory contains "\
-							"information specific to the user or group in which "\
-							"it was created. If true, the information should not "\
-							"be openly disclosed in different contexts without "\
-							"authorization."
-							# ^ Suggested by Aria. My original description:
-								#"Is this information considered private "\
-								#	"to the current user or group chat? "
-					},
-					"is_global": {
-						"type":			"boolean",	# <private> argument is Boolean.
-						"description":	"Indicates whether this memory is "\
-							"accessible to the AI across all contexts. If "\
-							"true, the AI can use this information to shape "\
-							"responses in any context, but must respect privacy "\
-							"restrictions if `is_private` is also true."
-							# ^ Suggested by Aria. My original description:
-								#"Does this information need to be accessible "\
-								#"to the AI from within any chat?"
-					},
-					"distance":		{
-						"type":			"number",
-						"description":	"Semantic distance of item from query (in the interval [0,1])."
-					}
+				"distance":		{
+					"type":			"number",
+					"description":	"Semantic distance of item from query (in the interval [0,1])."
 				}
 			}
 		}
-	},
-
-	# Function for command: /forget <item_text>
-	{
-		"name":         "forget_item",
-		"description":  "Removes an item from the AI's persistent memory list. "\
-							"Either item_text or item_id must be supplied.",
-		"parameters":   {
-			"type":         "object",
-			"properties":   {
-				"item_text":    {
-					"type":         "string",   # <item_text> argument has type string.
-					"description":  "Exact text of item to forget, as a single line."
-				},
-				"item_id": {
-					"type":			"string",	# <item_id> argument is a string.
-					"description":	"8-digit hex ID of specific memory item to forget."
-				},
-				"remark":	{
-					"type":		"string",	# <remark> argument has type string.
-					"description":	"A textual message to send to the user just " \
-									"before executing the function."
-				}
-			},
-			"required":     []	# No single argument is required.
-				# (But, either item_text or item_id must be supplied.
-		},
-		"returns":	{	# This describes the function's return type.
-			"description":	"A string indicating the success or failure of " \
-							"the operation.",
-			"type": "string"
-		}
-	},
-
-	# Function for command: /image <image_desc>
-	{
-		"name":         "create_image",
-		"description":  "Generates an image using Dall-E and sends it to the user.",
-		"parameters":   {
-			"type":         "object",
-			"properties":   {
-				"image_desc":    {
-					"type":         "string",   # <image_desc> argument has type string.
-					"description":  "Detailed text prompt describing the desired image."
-				},
-				"caption":    {
-					"type":         "string",   # <image_desc> argument has type string.
-					"description":  "Text caption to attach to the generated image."
-				},
-				"remark":	{
-					"type":		"string",	# <remark> argument has type string.
-					"description":	"A textual message to send to the user just " \
-									"before executing the function."
-				}
-			},
-			"required":     ["image_desc"]      # <image_desc> argument is required.
-		},
-		"returns":	{	# This describes the function's return type.
-			"description":	"A string indicating the success or failure of " \
-							"the operation.",
-			"type": "string"
-		}
-	},
-
-	# Function for command: /block [<user_tag>|<user_id>]
-	{
-		"name":         "block_user",
-		"description":  "Blocks a given user from accessing this Telegram bot again.",
-		"parameters":   {
-			"type":         "object",
-			"properties":   {
-				"user_name":    {
-					"type":         "string",   # <user_name> argument has type string.
-					"description":  "Name of user to block; defaults to current user."
-				},
-				"remark":	{
-					"type":			"string",	# <remark> argument has type string.
-					"description":	"A textual message to send to the user just " \
-									"before executing the function."
-				},
-			},
-			"required":     []     # <user_name> argument is not required.
-		},
-		"returns":	{	# This describes the function's return type.
-			"description":	"A string indicating the success or failure of " \
-							"the operation.",
-			"type": "string"
-		}
-	},        
-
-	# Function for command: /unblock [<user_name>]
-	{
-		"name":         "unblock_user",
-		"description":  "Removes a given user from this Telegram bot's block list.",
-		"parameters":   {
-			"type":         "object",
-			"properties":   {
-				"user_name":    {
-					"type":         "string",   # <user_name> argument has type string.
-					"description":  "Name of user to unblock; defaults to current user."
-				},
-				"remark":	{
-					"type":			"string",	# <remark> argument has type string.
-					"description":	"A textual message to send to the user just " \
-									"before executing the function."
-				},
-			},
-			"required":     []       # <user_name> argument is not required.
-		},
-		"returns":	{	# This describes the function's return type.
-			"description":	"A string indicating the success or failure of " \
-							"the operation.",
-			"type": "string"
-		}
-	},        
-
-	# Function for command: /pass
-	{
-		"name":			"pass_turn",
-		"description":	"Refrain from responding to the user's current message.",
-		"parameters":   {
-			"type":         "object",
-			"properties":	{},			# No parameters.
-			"required":     []
-		},
-		"returns":	{	# No return value.
-			"type":	"null"
-		}
 	}
+}
+	
 
-]
+# Function schema for command: /forget <item_text>
+FORGET_ITEM_SCHEMA = {
+	"name":         "forget_item",
+	"description":  "Removes an item from the AI's persistent memory list. "\
+	"Either item_text or item_id must be supplied.",
+	"parameters":   {
+		"type":         "object",
+		"properties":   {
+			"item_text":    {
+				"type":         "string",   # <item_text> argument has type string.
+				"description":  "Exact text of item to forget, as a single line."
+			},
+			"item_id": {
+				"type":			"string",	# <item_id> argument is a string.
+				"description":	"8-digit hex ID of specific memory item to forget."
+			},
+			"remark":	{
+				"type":			"string",	# <remark> argument has type string.
+				"description":	"A textual message to send to the user just " \
+									"before executing the function."
+			}
+		},
+		"required":     []	# No single argument is required.
+		# (But, either item_text or item_id must be supplied.
+	},
+	"returns":	{	# This describes the function's return type.
+		"type":			"string",
+		"description":	"A string indicating the success or failure of " \
+							"the operation."
+	}
+}
 
+
+# Function schema for command: /image <description>
+CREATE_IMAGE_SCHEMA = {
+	"name":         "create_image",
+	"description":  "Generates an image using Dall-E and sends it to the user.",
+	"parameters":   {
+		"type":         "object",
+		"properties":   {
+			"description":    {
+				"type":         "string",   # <description> argument has type string.
+				"description":  "Detailed text prompt describing the desired image."
+			},
+			"caption":    {
+				"type":         "string",   # <caption> argument has type string.
+				"description":  "Text caption to attach to the generated image."
+			},
+			"remark":	{
+				"type":			"string",	# <remark> argument has type string.
+				"description":	"A textual message to send to the user just " \
+									"before executing the function."
+			}
+		},
+		"required":     ["description"]      # <description> argument is required.
+	},
+	"returns":	{	# This describes the function's return type.
+		"type":			"string",
+		"description":	"A string indicating the success or failure of " \
+							"the operation."
+	}
+}
+
+
+# Function schema for command: /block [<user_tag>|<user_id>]
+BLOCK_USER_SCHEMA = {
+	"name":         "block_user",
+	"description":  "Blocks a given user from accessing this Telegram bot again.",
+	"parameters":   {
+		"type":         "object",
+		"properties":   {
+			"user_name":    {
+				"type":         "string",   # <user_name> argument has type string.
+				"description":  "Name of user to block; defaults to current user."
+			},
+			"remark":	{
+				"type":			"string",	# <remark> argument has type string.
+				"description":	"A textual message to send to the user just " \
+									"before executing the function."
+			},
+		},
+		"required":     []     # <user_name> argument is not required.
+	},
+	"returns":	{	# This describes the function's return type.
+		"type":			"string",
+		"description":	"A string indicating the success or failure of " \
+							"the operation."
+	}
+}
+
+
+# Function schema for command: /unblock [<user_name>]
+UNBLOCK_USER_SCHEMA = {
+	"name":         "unblock_user",
+	"description":  "Removes a given user from this Telegram bot's block list.",
+	"parameters":   {
+		"type":         "object",
+		"properties":   {
+			"user_name":    {
+				"type":         "string",   # <user_name> argument has type string.
+				"description":  "Name of user to unblock; defaults to current user."
+			},
+			"remark":	{
+				"type":			"string",	# <remark> argument has type string.
+				"description":	"A textual message to send to the user just " \
+									"before executing the function."
+			},
+		},
+		"required":     []       # <user_name> argument is not required.
+	},
+	"returns":	{	# This describes the function's return type.
+		"type":			"string",
+		"description":	"A string indicating the success or failure of " \
+							"the operation."
+	}
+}
+
+
+# Function schema to search the web.
+SEARCH_WEB_SCHEMA = {
+	"name":			"search_web",
+	"description":	"Retrieves web search results using the Bing search API.",
+	"parameters":	{
+		"type": "object",
+		"properties": {
+			"query": {
+				"type": 		"string",
+				"description":	"The search query string.",
+				"minLength":	1
+			},
+			"locale": {
+				"type": 		"string",
+				"description":	"The locale for the search results.",
+				"default":		"en-US",
+				"enum": ["da-DK", "de-AT", "de-DE", "en-AR", "en-AU",  
+						 "en-CA", "en-GB", "en-ID", "en-IN", "en-MY",  
+						 "en-NZ", "en-PH", "en-US", "en-ZA", "es-CL",  
+						 "es-ES", "es-MX", "es-US", "fi-FI", "fr-CA",  
+						 "fr-FR", "it-IT", "ja-JP", "ko-KR", "nl-BE", 
+						 "nl-NL", "no-NO", "pl-PL", "pt-BR", "ru-RU",  
+						 "sv-SE", "tr-TR", "zh-CN", "zh-HK", "zh-TW"]
+			},
+			"sections": {
+				"type":			"array",
+				"description":	"List of sections to return in the search results. "
+									"(Default is ['webPages', 'relatedSearches']).",
+				"minLength":	1,
+				"uniqueItems":	True,
+				"items": {
+					"type":	"string",
+					"enum": ["entities", "images", "news", "rankingResponse",
+							 "relatedSearches", "webPages"]
+				}
+			},
+			"remark":	{
+				"type":			"string",	# <remark> argument has type string.
+				"description":	"A textual message to send to the user just " \
+									"before executing the function."
+			}
+		},
+		"required": ["query"],
+		"additionalProperties": False
+	},
+	"returns":	{	# This describes the function's return type.
+		"type": "object",
+		"properties": {
+			"entities": {
+				"type":			"object",
+				"description":	"Information about entities related to the search query."
+			},
+			"images": {
+				"type":			"object",
+				"description":	"Images related to the search query."
+			},
+			"news": {
+				"type":			"object",
+				"description":	"News articles related to the search query."
+			},
+			"rankingResponse": {
+				"type":			"object",
+				"description":	"Information about the ranking of the search results."
+			},
+			"relatedSearches": {
+				"type":			"object",
+				"description":	"Search terms related to the original query."
+			},
+			"webPages": {
+				"type":			"object",
+				"description":	"Web pages related to the search query."
+			}
+		},
+		"additionalProperties": False
+	}
+}
+
+
+# Function schema for the 'activate_function' function.
+ACTIVATE_FUNCTION_SCHEMA = {
+	"name":			"activate_function",
+	"description":	"Causes the detailed schema for the named function to "
+						"be visible among the list of available functions, "
+						"effectively enabling the function's use.",
+	"parameters":	{
+		"type":			"object",
+		"properties":	{
+			"func_name":	{
+				"type":		"string",
+				"enum":		["remember_item", "search_memory", "forget_item",
+							 "create_image", "block_user", "unblock_user",
+							 "search_web"]
+			}
+		},
+		"required":				["func_name"],
+		"additionalProperties":	False
+	},
+	"returns":	{	# This describes the function's return type.
+		"type":			"string",
+		"description":	"A string indicating the success or failure of " \
+							"the operation."
+	}
+}
+
+
+# Function schema for command: /pass
+PASS_TURN_SCHEMA = {
+	"name":			"pass_turn",
+	"description":	"Refrain from responding to the user's current message.",
+	"parameters":   {
+		"type":         "object",
+		"properties":	{},			# No parameters.
+		"required":     []
+	},
+	"returns":	{	# No return value.
+		"type":	"null"
+	}
+}
+
+
+# Functions available to the AI in the Telegram app.
+FUNCTIONS_LIST = [
+	REMEMBER_ITEM_SCHEMA,
+	SEARCH_MEMORY_SCHEMA,
+	FORGET_ITEM_SCHEMA,
+	CREATE_IMAGE_SCHEMA,
+	BLOCK_USER_SCHEMA,
+	UNBLOCK_USER_SCHEMA,
+	SEARCH_WEB_SCHEMA,
+	ACTIVATE_FUNCTION_SCHEMA,
+	PASS_TURN_SCHEMA
+]	
 
 		#/============================================================
 		#| Constants retrieved from the environment.
@@ -7272,6 +7302,7 @@ Available commands:
 /help - Shows this help message.
 /image <desc> - Generate and return an image for the given description.
 /remember <text> - Adds the given statement to the bot's persistent context data.
+/search (memory|web) for <phrase> - Searches bot's memory or the web for <phrase>.
 /forget <item> - Removes the given statement from the bot's persistent context data.
 /reset - Clears the bot's memory of the conversation. Useful for breaking output loops.
 /echo <text> - Echoes back the given text. (I/O test.)
@@ -7288,7 +7319,7 @@ else:
 	customHelp = False
 
 # Create the custom filter to detect and handle unknown commands.
-unknown_command_filter = UnknownCommandFilter()
+unknown_command_filter = _UnknownCommandFilter()
 
 # Question from human programmer to Copilot: Do you know who you are, Copilot?
 # Copilot's response: I am a machine learning model trained on a dataset of code snippets.
@@ -7324,6 +7355,7 @@ start - Starts bot; reloads conversation history.
 help - Displays general help and command help.
 image - Generates an image from a description.
 remember - Adds an item to the bot's persistent memory.
+search - Search bot's memory or the web for a phrase.
 forget - Removes an item from the bot's persistent memory.
 reset - Clears the bot's conversation memory.
 echo - Echoes back the given text.
@@ -7378,6 +7410,7 @@ app.add_handler(CommandHandler('help',		handle_help), 		group = 0)
 app.add_handler(CommandHandler('image',		handle_image),		group = 0)
 app.add_handler(CommandHandler('reset',		handle_reset),		group = 0)
 app.add_handler(CommandHandler('remember',	handle_remember),	group = 0)
+app.add_handler(CommandHandler('search',	handle_search),		group = 0)
 app.add_handler(CommandHandler('forget',	handle_forget),		group = 0)	# Not available to most users.
 
 # These commands are not for general users; they are undocumented.
@@ -7421,7 +7454,19 @@ app.add_handler(MessageHandler(unknown_command_filter,
 				group = 3)
 
 	#|==========================================================================
-	#|  7.4. Start main loop.
+	#|  7.4. Run miscellaneous tests.
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+# Test our web search capability.
+#result = _bing_search("Latest advancements in AI technology")
+#pprint(result)
+
+# Show a diagnostic: How much token space does the function list take?
+FUNC_TOKS = tiktokenCount(json.dumps(FUNCTIONS_LIST), model=ENGINE_NAME)
+_logger.normal(f"\nNOTE: Complete specs for all functions together would take up {FUNC_TOKS} tokens.")
+
+	#|==========================================================================
+	#|  7.5. Start main loop.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 # Now, let's run the bot. This will start polling the Telegram servers for new updates.
