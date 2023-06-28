@@ -3707,7 +3707,7 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 	_logger.normal(f"In chat {chatID}, for user #{userID}, AI is doing a web search in the {locale} locale for {sections} on: [{queryPhrase}].")
 	
 	# Calculate how many items to return based on GPT's field size.
-	fieldSize = global_gptCore.fieldSize()
+	fieldSize = global_gptCore.fieldSize	# Retrieve property value.
 		# Total space in tokens for the AI's receptive field (context window).
 
 	if fieldSize >= 16000:		# 16k models and up
@@ -6258,12 +6258,34 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 	else:
 		parseMode = None
 
-	# Escape some commonplace characters for the AI since it usually flubs this.
+	## Escape some commonplace characters for the AI since it usually flubs this.
+	#if parseMode:
+	#	text = msgToSend.replace('\\', '\\\\')	# Escape backslashes
+	#	text = text.replace('.', '\.')			# Escape periods
+	#	text = re.sub(r'!(?!\[)', r'\!', text)	# Escape '!' not followed by '['
+	#	text = text.replace('-', '\-')			# Escape hyphens
+	#else:
+	#	text = msgToSend
+
+	def _local_replaceFunc(match):
+		firstGroup = match.group(1)
+		fullMatch = match.group(0)
+		if firstGroup:
+			return firstGroup
+		else:
+			return '\\' + fullMatch
+
 	if parseMode:
-		text = msgToSend.replace('\\', '\\\\')	# Escape backslashes
-		text = text.replace('.', '\.')			# Escape periods
-		text = re.sub(r'!(?!\[)', r'\!', text)  # Escape '!' not followed by '['
-		text = text.replace('-', '\-')			# Escape hyphens
+
+		#escapedMsg = re.sub(r'(\[[^\][]*]\(http[^()]*\))|[_*[\]()~>#+=|{}.!-]', _local_replaceFunc, msgToSend)
+		## ^^^ This version is overly aggressive, since it backslash-escapes even the '*', '_', '~' characters
+		## 	that we use for formatting text styles.
+
+		escapedMsg = re.sub(r'(\[[^\][]*]\(http[^()]*\))|[\\[\]()>#+=|{}.!-]', _local_replaceFunc, msgToSend)
+			# Replaces well-formatted hyperlinks with themselves,
+			# and special characters with their backslash-escaped equivalents.
+
+		text = escapedMsg
 	else:
 		text = msgToSend
 
