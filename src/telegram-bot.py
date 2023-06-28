@@ -3330,6 +3330,14 @@ async def ai_activateFunction(
 	elif funcName == 'search_web':
 		cur_funcs += [SEARCH_WEB_SCHEMA]
 		
+	elif funcName == 'pass_turn':
+		# Do nothing because it's always activated.
+		return f"Note: The pass_turn function is always available; activation isn't needed."
+
+	elif funcName == 'activate_function':
+		# Do nothing because it's always activated.
+		return f"Note: The activate_function function is always available; activation isn't needed."
+
 	else:
 		_logger.error(f"AI tried to activate an unknown function '{funcName}'.")
 		return f"Error: Unknown function name '{funcName}'."
@@ -3694,100 +3702,6 @@ async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
 	_logger.normal(f"Found the following matches: [\n{matchList}\n].")
 
 	return matchList
-
-#__/
-
-
-# Default list of sections that should be returned by a Bing search.
-#DEFAULT_BINGSEARCH_SECTIONS = ['webPages', 'relatedSearches']
-DEFAULT_BINGSEARCH_SECTIONS = ['webPages']
-	# We made this smaller to increase the chance Turbo can handle it.
-
-# Define a function to handle the AI's search_web() function.
-async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
-					   queryPhrase:str, locale:str="en-US",
-					   sections:list=DEFAULT_BINGSEARCH_SECTIONS) -> str:
-
-	"""Do a web search using the Bing API."""
-
-	userID = updateMsg.from_user.id
-	chatID = botConvo.chat_id
-
-	_logger.normal(f"In chat {chatID}, for user #{userID}, AI is doing a web search in the {locale} locale for {sections} on: [{queryPhrase}].")
-	
-	# Calculate how many items to return based on GPT's field size.
-	fieldSize = global_gptCore.fieldSize	# Retrieve property value.
-		# Total space in tokens for the AI's receptive field (context window).
-
-	if fieldSize >= 16000:		# 16k models and up
-		howMany = 10
-	elif fieldSize >= 8000:		# GPT-4 and higher
-		howMany = 5
-	elif fieldSize >= 4000:		# GPT-3.5 and higher
-		howMany = 3
-	else:
-		_logger.warn(f"This model has only {fieldSize} tokens. Web search results may overwhelm it.")
-
-		howMany = 2		# This is not very useful!
-
-	try:
-		# This actually does the search.
-		searchResult = _bing_search(queryPhrase, market=locale, count=howMany)
-
-		#_logger.debug(f"Raw search result:\n{pformat(searchResult)}")
-
-		# Create a fresh dict for the fields we want to keep.
-		cleanResult = dict()
-
-		# Keep only the fields we care about in our "cleaned" result.
-		for (key, val) in searchResult.items():
-			if key in sections:
-				cleanResult[key] = val
-
-		# If we found nothing, retry with the default section list.
-		if not cleanResult:
-			sections = DEFAULT_BINGSEARCH_SECTIONS
-			for (key, val) in searchResult.items():
-				if key in sections:
-					cleanResult[key] = val
-
-		# Strip out 'deepLinks' out of the webPages value, it's TMI.
-		if 'webPages' in cleanResult:
-			for result in cleanResult['webPages']['value']:
-				if 'deepLinks' in result:
-					del result['deepLinks']
-
-		# Strip a bunch of useless fields out of news values.
-		if 'news' in cleanResult:
-			for result in cleanResult['news']['value']:
-				if 'contractualRules' in result:
-					del result['contractualRules']
-				if 'image' in result:
-					del result['image']
-				if 'about' in result:
-					del result['about']
-				if 'mentions' in result:
-					del result['mentions']
-				if 'provider' in result:
-					del result['provider']
-				if 'video' in result:
-					del result['video']
-				if 'category' in result:
-					del result['category']
-		
-
-		# Return as a string (to go in content field of function message).
-		#return json.dumps(cleanResult)
-
-		# Format the result with tabs to make it easier for Turbo/Max to parse.
-		pp_result = json.dumps(cleanResult, indent=4)
-		tabbed_result = pp_result.replace(' '*8, '\t')
-		return tabbed_result
-
-	except SearchError as e:
-		# We'll let the AI know it failed
-		botConvo.add_message(BotMessage(SYS_NAME, "[ERROR: {_lastError}]"))
-		return "Error: Unsupported locale / target market for search."
 
 #__/
 
@@ -6269,16 +6183,6 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 	else:
 		parseMode = None
 
-	## Escape some commonplace characters for the AI since it usually flubs this.
-	#text = msgToSend
-	#if parseMode:
-	#	text = text.replace('\\', '\\\\')	# Escape backslashes
-	#	text = text.replace('.', '\.')			# Escape periods
-	#	text = re.sub(r'!(?!\[)', r'\!', text)  # Escape '!' not followed by '['
-	#	text = text.replace('-', '\-')			# Escape hyphens
-	#else:
-	#	text = msgToSend
-
 	def _local_replaceFunc(match):
 		firstGroup = match.group(1)
 		fullMatch = match.group(0)
@@ -6289,20 +6193,23 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 
 	if parseMode:
 
-		#escapedMsg = re.sub(r'(\[[^\][]*]\(http[^()]*\))|[_*[\]()~>#+=|{}.!-]', _local_replaceFunc, msgToSend)
-		## ^^^ This version is overly aggressive, since it backslash-escapes even the '*', '_', '~' characters
-		## 	that we use for formatting text styles.
-
 		escapedMsg = re.sub(r'(\[[^\][]*]\(http[^()]*\))|[\\[\]()>#+=|{}.!-]', _local_replaceFunc, msgToSend)
 			# Replaces well-formatted hyperlinks with themselves,
 			# and special characters with their backslash-escaped equivalents.
+			# NOTE: This SKIPS escaping '_' (italic/underline), '*' (bold), '~' (strikethrough) special characters.
 
-		text = escapedMsg
+		text = escapedMsg	# Text with all applicable escapes.
+
+		# NOTE: The above still does not handle automatically escaping "`" within `-quoted or ```-quoted text,
+		# or ")" within hyperlink URLs.  The AI will have to be smart if it wants these cases to come out right.
+
+		_logger.info(f"ESCAPED TEXT TO TRY SENDING IS:\n{text}")
+
 	else:
-		text = msgToSend
+		text = msgToSend	# If not in parseMode, use the unescaped text.
 
 	# Try sending the message to the user.
-	while True:
+ 	while True:
 		try:
 
 			await message.reply_text(text, parse_mode=parseMode)
@@ -6316,6 +6223,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 
 				errmsg = str(e)
 
+				# WHY ISN'T THIS WORKING???
 				# If it's just asking us to escape a character, then escape it and try again.
 				match = re.match(r"Can't parse entities: character '(.)' is reserved and must be escaped with the preceding '\\'", errmsg)
 				if match:
@@ -6346,7 +6254,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 			# Note: Eventually we need to do something smarter here -- like, if we've
 			# been banned from replying in a group chat or something, then leave it.
 	
-			return "error: Telegram threw a {exType} exception while sending " \
+			return f"error: Telegram threw a {exType} exception while sending " \
 				"diagnostic output to the user"
 	
 	#__/
@@ -6786,6 +6694,73 @@ PASS_TURN_RESULT = "Success: I will refrain from responding to the last user mes
 ## NOTE: Setting help string is now done later, after global_gptCore is created.
 
 
+		#/============================================================
+		#| Constants retrieved from the environment.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+AI_DATADIR = os.getenv('AI_DATADIR')			# AI's run-time data directory.
+BOT_TOKEN = os.environ['TELEGRAM_BOT_TOKEN']	# Access token for the Telegram bot API.
+
+
+		#/============================================================
+		#| Constants retrieved from config files.
+		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+# Initialize & retrieve the AI persona configuration object.
+aiConf = TheAIPersonaConfig()
+
+# Define the bot's name (used in many places below).
+#BOT_NAME = 'Gladys'	# The AI persona that we created this bot for originally.
+BOT_NAME = aiConf.botName		# This is the name of the bot.
+
+# These are the section headers of the AI's persistent context.
+PERMANENT_CONTEXT_HEADER = " ~~~ Permanent context data: ~~~\n"
+PERSISTENT_MEMORY_HEADER = " ~~~ Important persistent memories: ~~~\n"
+DYNAMIC_MEMORY_HEADER	 = " ~~~ Contextually relevant memories: ~~~\n"
+RECENT_MESSAGES_HEADER	 = " ~~~ Recent Telegram messages: ~~~\n"
+COMMAND_LIST_HEADER		 = f" ~~~ Commands available for {BOT_NAME} to use: ~~~\n"
+
+# Old obsolete versions of headers.
+#PERSISTENT_MEMORY_HEADER = " ~~~ Dynamically added persistent memories: ~~~\n"
+
+# Retrieve the bot's startup message from the AI persona's configuration.
+START_MESSAGE = aiConf.startMsg
+
+# Text to send in response to the /greet command.
+GREETING_TEXT = "Hello! I'm glad you're here. I'm glad you're here.\n"
+	# Copilot composed this. 
+
+# This is a string that we'll always use to prompt the AI to begin generating a new message.
+AI_PROMPT = f'\n{MESSAGE_DELIMITER} {BOT_NAME}>'	# Used with GPT text API only.
+	# NOTE: The ChatGPT versions of the bot do prompting differently, and don't use this.
+
+# Retrieve some API config parameters we'll use.
+temperature = aiConf.temperature
+presPen = aiConf.presencePenalty
+freqPen = aiConf.frequencyPenalty
+
+# This is the name of the specific text generation engine (model version) that
+# we'll use to generate the AI's responses.
+ENGINE_NAME = aiConf.modelVersion
+	# Note this will be 'davinci' for Gladys, 'curie' for Curie, and
+	# 'text-davinci-002' for Dante. And so on.
+
+globalMaxRetToks		 = aiConf.maxReturnedTokens
+	# This gets the AI's persona's configured preference for the *maximum*
+	# number of tokens the back-end language model may return in a response.
+
+globalMinReplWinToks	 = aiConf.minReplyWinToks
+	# This gets the AI's persona's configured preference for the *minimum*
+	# number of tokens worth of space it should be given for its reply.
+
+# Default list of sections that should be returned by a Bing search.
+if ENGINE_NAME.startswith('gpt-3.5-turbo-16k'):
+	# Turbo Max has enough space to handle 'relatedSearches' as well.
+	DEFAULT_BINGSEARCH_SECTIONS = ['webPages', 'relatedSearches']
+else:
+	DEFAULT_BINGSEARCH_SECTIONS = ['webPages']
+	# We made this smaller to increase the chance Turbo can handle it.
+
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#  Sets the functions list (describes the functions AI may call).
 	#  Note this is only supported in chat models dated 6/13/'23 or later.
@@ -7042,7 +7017,8 @@ SEARCH_WEB_SCHEMA = {
 			"sections": {
 				"type":			"array",
 				"description":	"List of sections to return in the search results. "
-									"(Default is ['webPages', 'relatedSearches']).",
+									f"(Default is {DEFAULT_BINGSEARCH_SECTIONS}).",
+									#f"(Default is ['webPages', 'relatedSearches']).",
 				"minLength":	1,
 				"uniqueItems":	True,
 				"items": {
@@ -7148,65 +7124,93 @@ FUNCTIONS_LIST = [
 	PASS_TURN_SCHEMA
 ]	
 
-		#/============================================================
-		#| Constants retrieved from the environment.
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+# Define a function to handle the AI's search_web() function.
+async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
+					   queryPhrase:str, locale:str="en-US",
+					   sections:list=DEFAULT_BINGSEARCH_SECTIONS) -> str:
 
-AI_DATADIR = os.getenv('AI_DATADIR')			# AI's run-time data directory.
-BOT_TOKEN = os.environ['TELEGRAM_BOT_TOKEN']	# Access token for the Telegram bot API.
+	"""Do a web search using the Bing API."""
 
+	userID = updateMsg.from_user.id
+	chatID = botConvo.chat_id
 
-		#/============================================================
-		#| Constants retrieved from config files.
-		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	_logger.normal(f"In chat {chatID}, for user #{userID}, AI is doing a web search in the {locale} locale for {sections} on: [{queryPhrase}].")
+	
+	# Calculate how many items to return based on GPT's field size.
+	fieldSize = global_gptCore.fieldSize	# Retrieve property value.
+		# Total space in tokens for the AI's receptive field (context window).
 
-# Initialize & retrieve the AI persona configuration object.
-aiConf = TheAIPersonaConfig()
+	if fieldSize >= 16000:		# 16k models and up
+		howMany = 10
+	elif fieldSize >= 8000:		# GPT-4 and higher
+		howMany = 5
+	elif fieldSize >= 4000:		# GPT-3.5 and higher
+		howMany = 3
+	else:
+		_logger.warn(f"This model has only {fieldSize} tokens. Web search results may overwhelm it.")
 
-# Define the bot's name (used in many places below).
-#BOT_NAME = 'Gladys'	# The AI persona that we created this bot for originally.
-BOT_NAME = aiConf.botName		# This is the name of the bot.
+		howMany = 2		# This is not very useful!
 
-# These are the section headers of the AI's persistent context.
-PERMANENT_CONTEXT_HEADER = " ~~~ Permanent context data: ~~~\n"
-PERSISTENT_MEMORY_HEADER = " ~~~ Important persistent memories: ~~~\n"
-DYNAMIC_MEMORY_HEADER	 = " ~~~ Contextually relevant memories: ~~~\n"
-RECENT_MESSAGES_HEADER	 = " ~~~ Recent Telegram messages: ~~~\n"
-COMMAND_LIST_HEADER		 = f" ~~~ Commands available for {BOT_NAME} to use: ~~~\n"
+	try:
+		# This actually does the search.
+		searchResult = _bing_search(queryPhrase, market=locale, count=howMany)
 
-# Old obsolete versions of headers.
-#PERSISTENT_MEMORY_HEADER = " ~~~ Dynamically added persistent memories: ~~~\n"
+		#_logger.debug(f"Raw search result:\n{pformat(searchResult)}")
 
-# Retrieve the bot's startup message from the AI persona's configuration.
-START_MESSAGE = aiConf.startMsg
+		# Create a fresh dict for the fields we want to keep.
+		cleanResult = dict()
 
-# Text to send in response to the /greet command.
-GREETING_TEXT = "Hello! I'm glad you're here. I'm glad you're here.\n"
-	# Copilot composed this. 
+		# Keep only the fields we care about in our "cleaned" result.
+		for (key, val) in searchResult.items():
+			if key in sections:
+				cleanResult[key] = val
 
-# This is a string that we'll always use to prompt the AI to begin generating a new message.
-AI_PROMPT = f'\n{MESSAGE_DELIMITER} {BOT_NAME}>'	# Used with GPT text API only.
-	# NOTE: The ChatGPT versions of the bot do prompting differently, and don't use this.
+		# If we found nothing, retry with the default section list.
+		if not cleanResult:
+			sections = DEFAULT_BINGSEARCH_SECTIONS
+			for (key, val) in searchResult.items():
+				if key in sections:
+					cleanResult[key] = val
 
-# Retrieve some API config parameters we'll use.
-temperature = aiConf.temperature
-presPen = aiConf.presencePenalty
-freqPen = aiConf.frequencyPenalty
+		# Strip out 'deepLinks' out of the webPages value, it's TMI.
+		if 'webPages' in cleanResult:
+			for result in cleanResult['webPages']['value']:
+				if 'deepLinks' in result:
+					del result['deepLinks']
 
-# This is the name of the specific text generation engine (model version) that
-# we'll use to generate the AI's responses.
-ENGINE_NAME = aiConf.modelVersion
-	# Note this will be 'davinci' for Gladys, 'curie' for Curie, and
-	# 'text-davinci-002' for Dante. And so on.
+		# Strip a bunch of useless fields out of news values.
+		if 'news' in cleanResult:
+			for result in cleanResult['news']['value']:
+				if 'contractualRules' in result:
+					del result['contractualRules']
+				if 'image' in result:
+					del result['image']
+				if 'about' in result:
+					del result['about']
+				if 'mentions' in result:
+					del result['mentions']
+				if 'provider' in result:
+					del result['provider']
+				if 'video' in result:
+					del result['video']
+				if 'category' in result:
+					del result['category']
+		
 
-globalMaxRetToks		 = aiConf.maxReturnedTokens
-	# This gets the AI's persona's configured preference for the *maximum*
-	# number of tokens the back-end language model may return in a response.
+		# Return as a string (to go in content field of function message).
+		#return json.dumps(cleanResult)
 
-globalMinReplWinToks	 = aiConf.minReplyWinToks
-	# This gets the AI's persona's configured preference for the *minimum*
-	# number of tokens worth of space it should be given for its reply.
+		# Format the result with tabs to make it easier for Turbo/Max to parse.
+		pp_result = json.dumps(cleanResult, indent=4)
+		tabbed_result = pp_result.replace(' '*8, '\t')
+		return tabbed_result
 
+	except SearchError as e:
+		# We'll let the AI know it failed
+		botConvo.add_message(BotMessage(SYS_NAME, "[ERROR: {_lastError}]"))
+		return "Error: Unsupported locale / target market for search."
+
+#__/
 
 	#/======================================================================
 	#|	6.2. Define global variables.		[python module code subsection]
