@@ -1422,9 +1422,9 @@ class BotConversation:
 
 		# If we get here, we can safely pop the oldest message.
 
-		_logger.info("Expunging oldest message from "
-					 f"{len(thisConv.messages)}-message "
-					 f"conversation #{thisConv.chat_id}.")
+		#_logger.info("Expunging oldest message from "
+		#			 f"{len(thisConv.messages)}-message "
+		#			 f"conversation #{thisConv.chat_id}.")
 
 		#print("Oldest message was:", thisConv.messages[0])
 		thisConv.messages.pop(0)
@@ -6201,7 +6201,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 		text = escapedMsg	# Text with all applicable escapes.
 
 		# NOTE: The above still does not handle automatically escaping "`" within `-quoted or ```-quoted text,
-		# or ")" within hyperlink URLs.  The AI will have to be smart if it wants these cases to come out right.
+		# or ")" within hyperlink URLs.	 The AI will have to be smart if it wants these cases to come out right.
 
 		_logger.info(f"ESCAPED TEXT TO TRY SENDING IS:\n{text}")
 
@@ -6209,7 +6209,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 		text = msgToSend	# If not in parseMode, use the unescaped text.
 
 	# Try sending the message to the user.
- 	while True:
+	while True:
 		try:
 
 			await message.reply_text(text, parse_mode=parseMode)
@@ -6223,17 +6223,19 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 
 				errmsg = str(e)
 
-				# WHY ISN'T THIS WORKING???
-				# If it's just asking us to escape a character, then escape it and try again.
-				match = re.match(r"Can't parse entities: character '(.)' is reserved and must be escaped with the preceding '\\'", errmsg)
-				if match:
-					char = match.group(1)
-				
-					_logger.normal(f"\tBackslash-escaping '{char}' character in response to {user_name} in {chat_id}...")
-				
-					# Replace occurrences of the reserved character in text with the escaped version
-					text = text.replace(char, '\\' + char)
-					continue
+				## WHY ISN'T THIS WORKING???
+				## If it's just asking us to escape a character, then escape it and try again.
+				#match = re.match(r"Can't parse entities: character '(.)' is reserved and must be escaped with the preceding '\\'", errmsg)
+				#if match:
+				#	char = match.group(1)
+				#
+				#	_logger.normal(f"\tBackslash-escaping '{char}' character in response to {user_name} in {chat_id}...")
+				#
+				#	# Replace occurrences of the reserved character in text with the escaped version
+				#	text = text.replace(char, '\\' + char)
+				#
+				#	_logger.info(f"NEW VERSION OF ESCAPED TEXT:\n{text}")
+				#	continue	# Try again with that character escaped.
 
 				_logger.error(f"Got a markdown error from Telegram in chat {chat_id}: {e}. Punting on markdown.")
 
