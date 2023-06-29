@@ -1666,13 +1666,24 @@ class BotConversation:
 		# conversation is started.
 		chat_messages.append({
 			'role': CHAT_ROLE_SYSTEM,
-			'content': COMMAND_LIST_HEADER + \
-				"  /pass - Refrain from responding to the last user message.\n" + \
-				"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
-				"  /remember <text> - Adds <text> to my persistent context data.\n" + \
-				"  /forget <text> - Removes <text> from my persistent context data.\n" + \
-				"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
-				"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n"
+			'content': FUNCTION_USAGE_HEADER + \
+				"  activate_function(func_name:str, remark:str=None) -> status:str\n" + \
+				"  remember_item(text:str, is_private:bool=True, is_global:bool=False, remark:str=None) -> status:str\n" + \
+				"  search_memory(query_phrase:str, max_results:int=3, remark:str=None) -> results:list\n" + \
+				"  forget_item(text:str=None, item_id:str=None, remark:str=None) -> status:str\n" + \
+				"  create_image(description:str, caption:str=None, remark:str=None) -> status:str\n" + \
+				"  block_user(user_name:str={cur_user}, remark:str=None) -> status:str\n" + \
+				"  unblock_user(user_name:str={cur_user}, remark:str=None) -> status:str\n" + \
+				"  search_web(query:str, locale:str='en-US', sections:list=['webPages'], remark:str=None) -> results:dict\n" + \
+				"  pass_turn() -> None\n"
+
+			#COMMAND_LIST_HEADER + \
+			#	"  /pass - Refrain from responding to the last user message.\n" + \
+			#	"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
+			#	"  /remember <text> - Adds <text> to my persistent context data.\n" + \
+			#	"  /forget <text> - Removes <text> from my persistent context data.\n" + \
+			#	"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
+			#	"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n"
 		})
 
 		# MESSAGE #5.
@@ -1815,6 +1826,73 @@ class SubordinateAI_:
 	"""Abstract base class for subordinate AI entities."""
 	pass
 
+def _get_url_content(url:str):
+	"""Query a URL and retrieve its content."""
+	return requests.get(url)
+	
+
+class PageView: pass
+class PageView:
+
+	"""Keeps track of our postion on a loaded webpage."""
+
+	def __init__(newPageView:PageView, url:str, index:int=0):
+
+		newPV = newPageView		# Shorter name.
+
+		newPV.url		= url
+		newPV.response	= response = _get_url_content(url)		# Download the raw data.
+			# NOTE: The returned Response instance has attributes including
+			# .url, .status_code, .headers, .encoding, .text, and .json().
+
+		newPV.resp_url	= resp_url	= response.url
+		newPV.status	= status	= response.status_code
+		newPV.headers	= headers	= response.headers
+		newPV.encoding	= encoding	= response.encoding
+		newPV.text		= text		= response.text
+
+		# See if there's JSON. If so, parse it.
+		if status == 200 and 'json' in headers['Content-Type']:
+			# Really we should do exception checking here.
+			data = response.json()
+		else:
+			data = text
+		
+		newPV.data = data
+
+		# Put everything in a handy dictionary.
+		newPV.resp_dict = resp_dict = {
+			'url':			resp_url,
+			'status_code':	status,
+			'headers':		headers,
+			'encoding':		encoding,
+			'data':			data
+		}
+
+		# Make a formatted representation of that dict.
+		resp_str = json.dumps(resp_dict, indent=4)
+		resp_str.replace(' '*8, '\t')
+		newPV.resp_str = resp_str
+
+		_logger.normal("GENERATED PAGEVIEW WITH CONTENT:\n" + resp_str)
+
+		# Initialize other miscellaneous attributes.
+
+		newPV.index		= index		# Our index in WebAssistant's pageView list.
+
+		newPV.start_pos	= start_pos = 0
+		newPV.end_pos	= end_pos	= None	# Will be determined on 1st render
+
+		newPV.search_term	= search_term	= None	# None yet until there's a search.
+		newPV.search_pos	= search_pos	= 0		# Starting position for search.
+
+	#__/
+
+	# We'll need methods to support forwards and backwards scrolling & searching.
+	# Also to render the page view starting from the current position.
+
+#__/
+
 # Subordinate AI class for web operations.
 class WebAssistant: pass
 class WebAssistant(SubordinateAI_):
@@ -1835,15 +1913,19 @@ class WebAssistant(SubordinateAI_):
 		#	* <= 3K:	Conversation history between caller and assistant.
 
 		newWA.core_llm = createCoreConnection('gpt-3.5-turbo-16k', maxTokens=2000)
-		newWA.current_url = None
-		newWA.page_content = None
-		newWA.page_view = None
-		newWA.view_start_pos = None
-		newWA.view_end_pos = None
-		newWA.search_term = None
-		newWA.search_pos = None
-		newWA.conversation_history = []
+			# Note here we let temperature, etc., go to defaults.
 
+		# Here we have a list of PageView objects, that track where we are
+		# in a stack of pages we're currently narrating. This is like a browser
+		# tab that can support Back and Forward operations. Each pageView has a
+		# URL, a currently-loaded page_content, a start position and end position,
+		# a current search term, and a search cursor position.
+
+		newWA.pageViews			= []		# No pages loaded into stack yet.
+		newWA.cur_page_index	= None		# Numeric index of current pageView.
+
+		# List of OpenAI messages for the conversation history with the caller.
+		newWA.convoOaiMsgs		= []
 
 #__/ End public class WebAssistant.
 
@@ -3706,6 +3788,104 @@ async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
 #__/
 
 
+# Default list of sections that should be returned by a Bing search.
+DEFAULT_BINGSEARCH_SECTIONS = ['webPages', 'relatedSearches']
+#DEFAULT_BINGSEARCH_SECTIONS = ['webPages']
+	# We made this smaller to increase the chance Turbo can handle it.
+
+# Define a function to handle the AI's search_web() function.
+async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
+					   queryPhrase:str, locale:str="en-US",
+					   sections:list=DEFAULT_BINGSEARCH_SECTIONS) -> str:
+
+	"""Do a web search using the Bing API."""
+
+	userID = updateMsg.from_user.id
+	chatID = botConvo.chat_id
+
+	_logger.normal(f"In chat {chatID}, for user #{userID}, AI is doing a web search in the {locale} locale for {sections} on: [{queryPhrase}].")
+	
+	# Calculate how many items to return based on GPT's field size.
+	fieldSize = global_gptCore.fieldSize	# Retrieve property value.
+		# Total space in tokens for the AI's receptive field (context window).
+
+	if fieldSize >= 16000:		# 16k models and up
+		howMany = 10
+	elif fieldSize >= 8000:		# GPT-4 and higher
+		howMany = 5
+	elif fieldSize >= 4000:		# GPT-3.5 and higher
+		howMany = 3
+	else:
+		_logger.warn(f"This model has only {fieldSize} tokens. Web search results may overwhelm it.")
+
+		howMany = 2		# This is not very useful!
+
+	try:
+		# This actually does the search.
+		searchResult = _bing_search(queryPhrase, market=locale, count=howMany)
+
+		#_logger.debug(f"Raw search result:\n{pformat(searchResult)}")
+
+		# Create a fresh dict for the fields we want to keep.
+		cleanResult = dict()
+
+		# Keep only the fields we care about in our "cleaned" result.
+		for (key, val) in searchResult.items():
+			if key in sections:
+				cleanResult[key] = val
+
+		# If we found nothing, retry with the default section list.
+		if not cleanResult:
+			sections = DEFAULT_BINGSEARCH_SECTIONS
+			for (key, val) in searchResult.items():
+				if key in sections:
+					cleanResult[key] = val
+
+		# Strip out 'deepLinks' out of the webPages value, it's TMI.
+		if 'webPages' in cleanResult:
+			for result in cleanResult['webPages']['value']:
+				if 'contractualRules' in result:
+					del result['contractualRules']
+				if 'deepLinks' in result:
+					del result['deepLinks']
+
+		# Strip a bunch of useless fields out of news values.
+		if 'news' in cleanResult:
+			for result in cleanResult['news']['value']:
+				if 'about' in result:
+					del result['about']
+				if 'category' in result:
+					del result['category']
+				if 'contractualRules' in result:
+					del result['contractualRules']
+				if 'image' in result:
+					del result['image']
+				if 'mentions' in result:
+					del result['mentions']
+				if 'provider' in result:
+					del result['provider']
+				if 'video' in result:
+					del result['video']
+		
+
+		# Return as a string (to go in content field of function message).
+		#return json.dumps(cleanResult)
+
+		# Format the result with tabs to make it easier for Turbo/Max to parse.
+		pp_result = json.dumps(cleanResult, indent=4)
+		#pp_result = pformat(cleanResult, indent=4)		# Maybe too much indents
+		tabbed_result = pp_result.replace(' '*8, '\t')
+		return tabbed_result
+
+	except SearchError as e:
+		# We'll let the AI know it failed
+		botConvo.add_message(BotMessage(SYS_NAME, "[ERROR: {_lastError}]"))
+		return "Error: Unsupported locale / target market for search."
+
+#__/
+
+
+>>>>>>> origin/aria
 # Define a function to handle the /unblock command, when issued by the AI.
 async def ai_unblock(updateMsg:TgMsg, conversation:BotConversation,
 					 userToUnblock:str=None, userIDToUnblock:int=None) -> str:
@@ -3840,7 +4020,7 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 
 		# Get the arguments.
 
-		textToAdd = funcArgs.get('item_text', None)
+		textToAdd = funcArgs.get('text', None)
 
 		isPrivate = funcArgs.get('is_private', True)
 			# Is this information considered private
@@ -3855,8 +4035,8 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 									 isPublic=not isPrivate, isGlobal=isGlobal)
 		else:
 			await _report_error(conversation, message,
-					f"remember_item() missing required argument item_text.")
-			return "Error: Required argument item_text is missing."
+					f"remember_item() missing required argument text.")
+			return "Error: Required argument text is missing."
 
 	elif funcName == 'search_memory':
 
@@ -3876,7 +4056,7 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 
 	elif funcName == 'forget_item':
 		itemToDel = funcArgs.get('item_id', None)
-		textToDel = funcArgs.get('item_text', None)
+		textToDel = funcArgs.get('text', None)
 
 		if itemToDel:
 			return await ai_forget(message, conversation, itemToDel=itemToDel)
@@ -3884,8 +4064,8 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 			return await ai_forget(message, conversation, textToDel=textToDel)
 		else:
 			await _report_error(conversation, message,
-					f"forget_item() missing required argument item_id or item_text.")
-			return "Error: Required argument (item_id or item_text) is missing."
+					f"forget_item() missing required argument item_id or text.")
+			return "Error: Required argument (item_id or text) is missing."
 
 	elif funcName == 'create_image':
 		
@@ -5529,7 +5709,7 @@ def _check_access(user_name, prioritize_bcl=True, user_id:int=None) -> bool:
 #__/ End definition of private function _check_access().
 
 
-def _deleteMemoryItem(item_id=None, item_text=None):
+def _deleteMemoryItem(item_id=None, text=None):
 
     # Path to the database file
     db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
@@ -5545,9 +5725,9 @@ def _deleteMemoryItem(item_id=None, item_text=None):
             # Delete the item with the specified item ID
             c.execute("DELETE FROM remembered_items WHERE itemID = ?", (item_id,))
 
-        elif item_text is not None:
+        elif text is not None:
             # Delete the item with the specified item text
-            c.execute("DELETE FROM remembered_items WHERE itemText = ?", (item_text,))
+            c.execute("DELETE FROM remembered_items WHERE itemText = ?", (text,))
 
         # Commit the changes
         conn.commit()
@@ -6187,18 +6367,35 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 		firstGroup = match.group(1)
 		fullMatch = match.group(0)
 		if firstGroup:
-			return firstGroup
+
+			hlink_text = match.group(2)
+			url = match.group(3)
+			
+			# In the []-delimited hyperlinked text, we want to make sure that
+			# any of MarkdownV2's reserved characters that appears in that text
+			# is escaped. We use negative lookbehind to match just the ones that
+			# are not already escaped.
+
+			hlink_text = re.sub(r'(?<!\\)([\[\]()>#+=|{}.!`-])',
+								lambda m: '\\' + m.group(), hlink_text)
+
+			return f"[{hlink_text}]({url})"
+
 		else:
 			return '\\' + fullMatch
 
 	if parseMode:
 
-		escapedMsg = re.sub(r'(\[[^\][]*]\(http[^()]*\))|[\\[\]()>#+=|{}.!-]', _local_replaceFunc, msgToSend)
-			# Replaces well-formatted hyperlinks with themselves,
-			# and special characters with their backslash-escaped equivalents.
-			# NOTE: This SKIPS escaping '_' (italic/underline), '*' (bold), '~' (strikethrough) special characters.
+		#escapedMsg = re.sub(r'(\[[^\][]*]\(http[^()]*\))|[_*[\]()~>#+=|{}.!-]', _local_replaceFunc, msgToSend)
+		## ^^^ This version is overly aggressive, since it backslash-escapes even the '*', '_', '~' characters
+		## 	that we use for formatting text styles.
 
-		text = escapedMsg	# Text with all applicable escapes.
+		#escapedMsg = re.sub(r'(\[[^\][]*]\(http[^()]*\))|[\\[\]()>#+=|{}.!-]', _local_replaceFunc, msgToSend)
+			# Issues with this one too.
+
+		escapedMsg = re.sub(r'(\[([^\]]*[^\\])\]\(([^\]]*[^\\])\))|(?<!\\)[\[\]()>#+=|{}.!-]', _local_replaceFunc, msgToSend)
+			# Replaces well-formatted hyperlinks with themselves, but with escaped hyperlink text,,
+			# and unescaped special characters with their backslash-escaped equivalents.
 
 		# NOTE: The above still does not handle automatically escaping "`" within `-quoted or ```-quoted text,
 		# or ")" within hyperlink URLs.	 The AI will have to be smart if it wants these cases to come out right.
@@ -6207,6 +6404,8 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 
 	else:
 		text = msgToSend	# If not in parseMode, use the unescaped text.
+
+	#_logger.normal("ATTEMPTING TO SEND:[[[\n" + text + '\n]]]')
 
 	# Try sending the message to the user.
 	while True:
@@ -6223,7 +6422,8 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 
 				errmsg = str(e)
 
-				## WHY ISN'T THIS WORKING???
+				## FOR SOME REASON THIS BLOCK IS CAUSING INFINITE LOOPS. COMMENTING OUT FOR NOW.
+
 				## If it's just asking us to escape a character, then escape it and try again.
 				#match = re.match(r"Can't parse entities: character '(.)' is reserved and must be escaped with the preceding '\\'", errmsg)
 				#if match:
@@ -6233,6 +6433,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 				#
 				#	# Replace occurrences of the reserved character in text with the escaped version
 				#	text = text.replace(char, '\\' + char)
+
 				#
 				#	_logger.info(f"NEW VERSION OF ESCAPED TEXT:\n{text}")
 				#	continue	# Try again with that character escaped.
@@ -6720,7 +6921,9 @@ PERMANENT_CONTEXT_HEADER = " ~~~ Permanent context data: ~~~\n"
 PERSISTENT_MEMORY_HEADER = " ~~~ Important persistent memories: ~~~\n"
 DYNAMIC_MEMORY_HEADER	 = " ~~~ Contextually relevant memories: ~~~\n"
 RECENT_MESSAGES_HEADER	 = " ~~~ Recent Telegram messages: ~~~\n"
+FUNCTION_USAGE_HEADER	 = " ~~~ Usage summary for functions available to AI: ~~~\n"
 COMMAND_LIST_HEADER		 = f" ~~~ Commands available for {BOT_NAME} to use: ~~~\n"
+
 
 # Old obsolete versions of headers.
 #PERSISTENT_MEMORY_HEADER = " ~~~ Dynamically added persistent memories: ~~~\n"
@@ -6768,15 +6971,15 @@ else:
 	#  Note this is only supported in chat models dated 6/13/'23 or later.
 
 
-# Function schema for command: /remember <item_text>
+# Function schema for command: /remember <text>
 REMEMBER_ITEM_SCHEMA = {
 	"name":         "remember_item",
 	"description":  "Adds an item to the AI's persistent memory list.",
 	"parameters":   {
 		"type":         "object",
 		"properties":   {
-			"item_text":    {
-				"type":         "string",   # <item_text> argument has type string.
+			"text":    {
+				"type":         "string",   # <text> argument has type string.
 				"description":  "Text of item to remember, as a single line."
 			},
 			"is_private":	{
@@ -6797,7 +7000,7 @@ REMEMBER_ITEM_SCHEMA = {
 									"before executing the function."
 			}
 		},
-		"required":     ["item_text"]	# <item_text> argument is required.
+		"required":     ["text"]	# <text> argument is required.
 	},
 	"returns":	{	# This describes the function's return type.
 		"type":			"string",
@@ -6825,6 +7028,11 @@ SEARCH_MEMORY_SCHEMA = {
 									f"(up to {MAXIMUM_SEARCHMEM_NITEMS}).",
 				"default":		DEFAULT_SEARCHMEM_NITEMS,
 			},
+			"remark":	{
+				"type":			"string",	# <remark> argument has type string.
+				"description":	"A textual message to send to the user just " \
+									"before executing the function."
+			}
 		},
 		"required":		["query_phrase"]	# <query_phrase> arg is required.
 	},
@@ -6838,7 +7046,7 @@ SEARCH_MEMORY_SCHEMA = {
 					"type":			"string",
 					"description":	"8-digit hex ID of this memory item."
 				},
-				"item_text":	{
+				"text":	{
 					"type":			"string",
 					"description":	"Complete text of this memory item."
 				},
@@ -6874,16 +7082,16 @@ SEARCH_MEMORY_SCHEMA = {
 }
 	
 
-# Function schema for command: /forget <item_text>
+# Function schema for command: /forget <text>
 FORGET_ITEM_SCHEMA = {
 	"name":         "forget_item",
 	"description":  "Removes an item from the AI's persistent memory list. "\
-	"Either item_text or item_id must be supplied.",
+	"Either text or item_id must be supplied.",
 	"parameters":   {
 		"type":         "object",
 		"properties":   {
-			"item_text":    {
-				"type":         "string",   # <item_text> argument has type string.
+			"text":    {
+				"type":         "string",   # <text> argument has type string.
 				"description":  "Exact text of item to forget, as a single line."
 			},
 			"item_id": {
@@ -6897,7 +7105,7 @@ FORGET_ITEM_SCHEMA = {
 			}
 		},
 		"required":     []	# No single argument is required.
-		# (But, either item_text or item_id must be supplied.
+		# (But, either text or item_id must be supplied.
 	},
 	"returns":	{	# This describes the function's return type.
 		"type":			"string",
@@ -7085,6 +7293,11 @@ ACTIVATE_FUNCTION_SCHEMA = {
 				"enum":		["remember_item", "search_memory", "forget_item",
 							 "create_image", "block_user", "unblock_user",
 							 "search_web"]
+			},
+			"remark":	{
+				"type":			"string",	# <remark> argument has type string.
+				"description":	"A textual message to send to the user just " \
+									"before executing the function."
 			}
 		},
 		"required":				["func_name"],
