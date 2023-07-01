@@ -3885,7 +3885,6 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 #__/
 
 
->>>>>>> origin/aria
 # Define a function to handle the /unblock command, when issued by the AI.
 async def ai_unblock(updateMsg:TgMsg, conversation:BotConversation,
 					 userToUnblock:str=None, userIDToUnblock:int=None) -> str:
@@ -6400,7 +6399,9 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 		# NOTE: The above still does not handle automatically escaping "`" within `-quoted or ```-quoted text,
 		# or ")" within hyperlink URLs.	 The AI will have to be smart if it wants these cases to come out right.
 
-		_logger.info(f"ESCAPED TEXT TO TRY SENDING IS:\n{text}")
+		#_logger.info(f"ESCAPED TEXT TO TRY SENDING IS:\n{escapedMsg}")
+
+		text = escapedMsg
 
 	else:
 		text = msgToSend	# If not in parseMode, use the unescaped text.
