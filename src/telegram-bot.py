@@ -5591,7 +5591,7 @@ def _blockUserByID(userID:int) -> bool:
 
 	global _lastError
 
-	_logger.normal("\tIn _blockUserByID() with userID={userID}...")
+	_logger.normal(f"\tIn _blockUserByID() with userID={userID}...")
 
 	# If the AI is trying to block the Creator, don't let it do that.
 	if userID == 1774316494:	# Mike's user ID on Telegram.
@@ -6328,6 +6328,304 @@ def _printUsers():
 #__/
 
 
+# Define the bits in the "inside mask" for markdown parsing.
+
+IN_BOLD				= 1<<0
+IN_ITALIC			= 1<<1
+IN_UNDERLINE		= 1<<2
+IN_STRIKETHROUGH	= 1<<3
+IN_INLINE_CODE		= 1<<4
+IN_CODE_BLOCK		= 1<<5
+IN_CODE				= (IN_INLINE_CODE | IN_CODE_BLOCK)
+IN_HYPERLINK_TEXT	= 1<<6
+IN_HYPERLINK_URL	= 1<<7
+IN_HYPERLINK		= (IN_HYPERLINK_TEXT | IN_HYPERLINK_URL)
+
+
+BOLD_PATTERN		= r"\*(?:\\\*|\\\\|[^*])*\*"
+	# Inside asterisks we can have '\*' (escaped asterisk), '\\' (escaped backslash), and any other non-asterisk characters.
+	
+UNDERLINE_PATTERN	= r"__(?:\\_|\\\\|_(?!_)|[^_])*__"
+	# Inside double-underscores we can have '\_' (escaped underscore), '\\' (escaped backslash), single underscores, and any other non-underscore characters.
+
+ITALIC_PATTERN		= r"_(?:\\_|\\\\|[^_])*_"
+	# Inside single-underscores we can have '\_' (escaped underscore), '\\' (escaped backslash), and any other non-underscore characters.
+
+STRIKETHROUGH_PATTERN	= r"~(?:\\~|\\\\|[^~])*~"
+	# Inside tildes we can have '\~' (escaped tilde), '\\' (escaped backslash), and any other non-tilde characters.
+
+CODE_BLOCK_PATTERN	= r"```(?:\\`|\\\\|`(?!`)|``(?!`)|[^`])*```"
+	# Inside triple-backticks we can have '\`' (escaped backtick), '\\' (escaped backslash), single or double backticks, and any other non-underscore characters.
+
+INLINE_CODE_PATTERN	= r"`(?:\\`|\\\\|[^`])+`"
+	# Inside single-backticks we can have '\`' (escaped backticks), '\\' (escaped backslash), and any other non-backtick characters.
+	# NOTE: We require what's inside single-backticks to be non-empty. So "```" -> "`\``" instead of "``\`".
+
+HYPERLINK_PATTERN	= r"\[(?P<hlink_text>(?:\\\]|\\\\|[^\]])*)\]\((?P<hlink_url>(?:\\\)|\\\\|[^\)])*)\)"
+	# [...](...) form. Both parts are captured. 
+	#	Elements in link text can include: Escaped close bracket '\]', escaped backslash '\\', any non-close-bracket character.
+	#	Elements in url text can include: Escaped close paren '\)', escaped backslash '\\', any non-close-paren character
+
+UNESCAPED_SPECIALS	= r"-_*[\]()~`>#+=|{}.!\\"
+
+
+def _cleanup_markdown(text, inside_mask=0):
+
+	"""Attempts to clean up (make legal) the given text, interpreted
+		as Telegram Markdown V2 format. NOTE: spoilers and custom emojis
+		are not yet supported."""
+
+	# Note that generally re.sub() will try to match the longest
+	# matching element each time, so we don't really have to worry
+	# that shorter elements might take precedence over longer ones.
+	# However, to hellp clarify our intent to human readers, we will
+	# list the longer elements first in the regex, if appropriate.
+
+	regex = ""
+
+	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#| First up we'll do the code spans, since they suppress most of
+	#| the other special parsing rules inside themselves.
+
+	## Next up is the code block pattern. Six delimiters!
+
+	# If not inside a code block already, or a hyperlink,
+	if inside_mask & (IN_CODE_BLOCK | IN_HYPERLINK) == 0:	
+		# include the code block pattern in the regex.
+		regex += r"(?P<code_block>" + CODE_BLOCK_PATTERN + ')|'
+
+	## We'll look for inline code blocks next.
+
+	# If not inside a code span already, or a hyperlink,
+	if inside_mask & (IN_CODE | IN_HYPERLINK) == 0:
+		# include the inline code pattern in the regex.
+		regex += r"(?P<inline_code>" + INLINE_CODE_PATTERN + ')|'
+
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	# Hyperlinks are the most complex pattern, and they suppress code
+	# block parsing in their text sections, so we'll do those next.
+
+	# If not inside a hyperlink already, or a code span
+	if inside_mask & (IN_HYPERLINK | IN_CODE) == 0:
+		# include the hyperlink pattern in the regex.
+		regex += r"(?P<hyperlink>" + HYPERLINK_PATTERN + ')|'
+
+	#|======================================================
+	#| Next comes various types of spans of formatted text.
+	#|	NOTE: These don't apply inside code spans or URLs!
+
+	## First we'll look for spans of strikethrough text (rarest).
+
+	# If not inside a strikethrough text span already,
+	#	or a code span, or a hyperlink URL,
+	if inside_mask & (IN_STRIKETHROUGH | IN_CODE | IN_HYPERLINK_URL) == 0:
+		# include the strikethrough text span pattern in the regex.
+		regex += r"(?P<strikethrough_text>" + STRIKETHROUGH_PATTERN + ')|'
+		
+	## Next we'll look for spans of underlined text (double '_' delimiter).
+
+	# If not inside an underline text span already, or a code span,
+	if inside_mask & (IN_UNDERLINE | IN_CODE | IN_HYPERLINK_URL) == 0:
+		# include the underline text span pattern in the regex.
+		regex += r"(?P<underline_text>" + UNDERLINE_PATTERN + ')|'
+
+	## Next we'll look for spans of italicized text (single '_' delimiter).
+
+	# If not inside an italic text span already, or a code span,
+	if inside_mask & (IN_ITALIC | IN_CODE | IN_HYPERLINK_URL) == 0:
+		# include the italic text span pattern in the regex.
+		regex += r"(?P<italic_text>" + ITALIC_PATTERN + ')|'
+
+	## Next we'll look for spans of boldface text (single '*' delimiter).
+
+	if inside_mask & (IN_BOLD | IN_CODE | IN_HYPERLINK_URL) == 0:
+		# include the bold text span pattern in the regex.
+		regex += r"(?P<bold_text>" + BOLD_PATTERN + ')|'
+
+	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#| Now we'll check for reserved characters, in both their escaped
+	#| and unescaped forms, in the contexts where they're treated
+	#| specially. Note we have three basic types of contexts:
+	#|
+	#|		1. Normal contexts: This includes both normal text
+	#|			and hyperlink text. All reserved characters are
+	#|			supposed to be escaped in such contexts. '\'
+	#|			should be escaped when not escaping something.
+	#|
+	#|		2. URL context: This is a hyperlink URL. ')' and '\'
+	#|			should always be escaped in this context.
+	#|
+	#|		3. Code context: Either block or inline. "`" and '\'
+	#|			should always be escaped in this context.
+	#|
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	
+	# First we decide what the set of special characters is now:
+	if inside_mask & IN_CODE:	# In a code context.
+		specials = r"`\\"		# Backtick and backslash.
+
+	elif inside_mask & IN_HYPERLINK_URL:	# In a URL context.
+		specials = r")\\"		# Close-paren and backslash.
+
+	else:	# In a normal context.
+ 		specials = UNESCAPED_SPECIALS
+
+	# OK, next we'll first check for properly escaped specials:
+	regex += r"(?P<escaped_special>" + r'\\[' + specials + "])|"
+
+	# And then we'll check for unescaped specials (note these
+	# will need to be automatically escaped in general).
+	regex += r"(?P<unescaped_special>[" + specials + "])|"
+
+	# And finally we'll check for normal (non-special) chars.
+	regex += r"(?P<normal_char>[^" + specials + "])"
+
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	# At this point, we have assembled the complete regex that is
+	# appropriate to use with re.sub() in this context, so we go
+	# ahead and do the substitution, using our custom replacement
+	# function.
+
+	def _local_replaceFunc(match):
+		"""Custom replacement function, defined in the local
+			lexical context, which transforms matched elements
+			appropriately to hopefully massage them into a form
+			that will pass Telegram's Markdown V2 parser. Note
+			this recursively calls _cleanup_markdown() where
+			needed."""
+
+		named_groups = match.groupdict()
+
+		# Is this a code block?
+		code_block = named_groups.get('code_block')
+		if code_block:
+
+			#_logger.normal(f"I found a code block with contents: [\n{code_block}\n]")
+
+			# Get the body text of the code block.
+			body_text = code_block[3:-3]	# Strip delimiters off ```...```
+
+			# Clean it up.
+			clean_body = _cleanup_markdown(body_text, inside_mask | IN_CODE_BLOCK)
+
+			# Reassemble and return the cleaned code block.
+			return f"```{clean_body}```"
+
+		# Is this an inline code span?
+		inline_code = named_groups.get('inline_code')
+		if inline_code:
+
+			#_logger.normal(f"I found inline code with contents: [{inline_code}]")
+
+			# Get the body text of the code block.
+			body_text = inline_code[1:-1]	# Strip delimiters off `...`
+
+			# Clean it up.
+			clean_body = _cleanup_markdown(body_text, inside_mask | IN_INLINE_CODE)
+
+			# Reassemble and return the cleaned code block.
+			return f"`{clean_body}`"
+
+		# Is this a hyperlink?
+		hyperlink = named_groups.get('hyperlink')
+		if hyperlink:
+
+			# Get the text and URL portions.
+			hlink_text = match.group('hlink_text')
+			hlink_url = match.group('hlink_url')
+
+			# Clean them both up appropriately.
+			clean_text = _cleanup_markdown(hlink_text,
+										   inside_mask | IN_HYPERLINK_TEXT)
+			clean_url = _cleanup_markdown(hlink_url,
+										  inside_mask | IN_HYPERLINK_URL)
+
+			# Reassemble and return the cleaned hyperlink.
+			return f"[{clean_text}]({clean_url})"
+			
+		# Is this a strikethrough text span?
+		strikethrough_text = named_groups.get('strikethrough_text')
+		if strikethrough_text:
+
+			# Get the text span.
+			span_text = strikethrough_text[1:-1]
+
+			# Clean it up appropriately.
+			clean_span = _cleanup_markdown(span_text,
+										   inside_mask | IN_STRIKETHROUGH)
+
+			# Reassemble and return the cleaned strikethrough span..
+			return f"~{clean_span}~"
+
+		# Is this an underlined text span?
+		underlined_text = named_groups.get('underline_text')
+		if underlined_text:
+
+			# Get the text span.
+			span_text = underlined_text[2:-2]
+
+			# Clean it up appropriately.
+			clean_span = _cleanup_markdown(span_text,
+										   inside_mask | IN_UNDERLINE)
+
+			# Reassemble and return the cleaned underlined span.
+			return f"__{clean_span}__"
+
+		# Is this an italicized text span?
+		italicized_text = named_groups.get('italic_text')
+		if italicized_text:
+
+			# Get the text span.
+			span_text = italicized_text[1:-1]
+
+			# Clean it up appropriately.
+			clean_span = _cleanup_markdown(span_text,
+										   inside_mask | IN_ITALIC)
+
+			# Reassemble and return the cleaned italicized span.
+			return f"_{clean_span}_"
+
+		# Is this a boldface text span?
+		boldface_text = named_groups.get('bold_text')
+		if boldface_text:
+		
+			# Get the text span.
+			span_text = boldface_text[1:-1]
+
+			# Clean it up appropriately.
+			clean_span = _cleanup_markdown(span_text,
+										   inside_mask | IN_BOLD)
+
+			# Reassemble and return the cleaned boldface span.
+			return f"*{clean_span}*"
+
+		# Already-escaped specials we just return unmodified...
+		escaped_special = named_groups.get('escaped_special')
+		if escaped_special:
+			return escaped_special
+
+		# Unescaped specials, we escape and return (whole point of all this)..
+		unescaped_special = named_groups.get('unescaped_special')
+		if unescaped_special:
+			return '\\' + unescaped_special
+		
+		# And normal characters, we just return unmodified.
+		normal_char = match.group('normal_char')
+		return normal_char
+
+	#__/ End local private replacement function _local_replacefunc().
+
+	#_logger.normal(f"Using regex: {regex}\nto clean up text [\n{text}\n]")
+
+	# Now replace all regex matches in the text with their cleaned versions.
+	cleanText = re.sub(regex, _local_replaceFunc, text)
+
+	#_logger.normal(f"Got cleaned-up text: [\n{text}\n]")
+
+	# We are done! Just return the cleaned-up text.
+	return cleanText
+
+
 # Sends a message to the user, with some appropriate exception handling.
 # Returns 'success' if the send succeeded, or an error string if it failed.
 # If ignore=True, then the error string indicates that the error is being
@@ -6349,57 +6647,15 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 	else:
 		chat_id = convo.chat_id
 
+	# If our caller requested we utilize markup to style our message,
+	# then turn on the 'MarkdownV2' parse mode supported by Telegram,
+	# and make sure reserved characters are properly escaped.
+
 	if markup:
 		parseMode = ParseMode.MARKDOWN_V2
+		text = _cleanup_markdown(msgToSend)
 	else:
 		parseMode = None
-
-	## Escape some commonplace characters for the AI since it usually flubs this.
-	#text = msgToSend
-	#if parseMode:
-	#	text = text.replace('\\', '\\\\')	# Escape backslashes
-	#	text = text.replace('.', '\.')			# Escape periods
-	#	text = re.sub(r'!(?!\[)', r'\!', text)  # Escape '!' not followed by '['
-	#	text = text.replace('-', '\-')			# Escape hyphens
-	#else:
-	#	text = msgToSend
-
-	def _local_replaceFunc(match):
-		firstGroup = match.group(1)
-		fullMatch = match.group(0)
-		if firstGroup:
-
-			hlink_text = match.group(2)
-			url = match.group(3)
-			
-			# In the []-delimited hyperlinked text, we want to make sure that
-			# any of MarkdownV2's reserved characters that appears in that text
-			# is escaped. We use negative lookbehind to match just the ones that
-			# are not already escaped.
-
-			hlink_text = re.sub(r'(?<!\\)([\[\]()>#+=|{}.!`-])',
-								lambda m: '\\' + m.group(), hlink_text)
-
-			return f"[{hlink_text}]({url})"
-
-		else:
-			return '\\' + fullMatch
-
-	if parseMode:
-
-		#escapedMsg = re.sub(r'(\[[^\][]*]\(http[^()]*\))|[_*[\]()~>#+=|{}.!-]', _local_replaceFunc, msgToSend)
-		## ^^^ This version is overly aggressive, since it backslash-escapes even the '*', '_', '~' characters
-		## 	that we use for formatting text styles.
-
-		#escapedMsg = re.sub(r'(\[[^\][]*]\(http[^()]*\))|[\\[\]()>#+=|{}.!-]', _local_replaceFunc, msgToSend)
-			# Issues with this one too.
-
-		escapedMsg = re.sub(r'(\[([^\]]*[^\\])\]\(([^\]]*[^\\])\))|(?<!\\)[\[\]()>#+=|{}.!-]', _local_replaceFunc, msgToSend)
-			# Replaces well-formatted hyperlinks with themselves, but with escaped hyperlink text,,
-			# and unescaped special characters with their backslash-escaped equivalents.
-
-		text = escapedMsg
-	else:
 		text = msgToSend
 
 	#_logger.normal("ATTEMPTING TO SEND:[[[\n" + text + '\n]]]')
@@ -6418,20 +6674,6 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 			if exType == 'BadRequest' and str(e).startswith("Can't parse entities"):
 
 				errmsg = str(e)
-
-
-				## FOR SOME REASON THIS BLOCK IS CAUSING INFINITE LOOPS. COMMENTING OUT FOR NOW.
-
-				## If it's just asking us to escape a character, then escape it and try again.
-				#match = re.match(r"Can't parse entities: character '(.)' is reserved and must be escaped with the preceding '\\'", errmsg)
-				#if match:
-				#	char = match.group(1)
-				#
-				#	_logger.normal(f"\tBackslash-escaping '{char}' character in response to {user_name} in {chat_id}...")
-				#
-				#	# Replace occurrences of the reserved character in text with the escaped version
-				#	text = text.replace(char, '\\' + char)
-				#	continue
 
 				_logger.error(f"Got a markdown error from Telegram in chat {chat_id}: {e}. Punting on markdown.")
 
