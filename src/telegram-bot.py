@@ -6423,6 +6423,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 
 				errmsg = str(e)
 
+
 				## FOR SOME REASON THIS BLOCK IS CAUSING INFINITE LOOPS. COMMENTING OUT FOR NOW.
 
 				## If it's just asking us to escape a character, then escape it and try again.
