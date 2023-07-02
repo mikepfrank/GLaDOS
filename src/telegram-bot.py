@@ -6535,7 +6535,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		code_block = named_groups.get('code_block')
 		if code_block:
 
-			_logger.normal(f"I found a code block with contents: [\n{code_block}\n]")
+			#_logger.normal(f"I found a code block with contents: [\n{code_block}\n]")
 
 			# Get the body text of the code block.
 			body_text = code_block[3:-3]	# Strip delimiters off ```...```
@@ -6550,7 +6550,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		inline_code = named_groups.get('inline_code')
 		if inline_code:
 
-			_logger.normal(f"I found inline code with contents: [{inline_code}]")
+			#_logger.normal(f"I found inline code with contents: [{inline_code}]")
 
 			# Get the body text of the code block.
 			body_text = inline_code[1:-1]	# Strip delimiters off `...`
@@ -6565,7 +6565,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		hyperlink = named_groups.get('hyperlink')
 		if hyperlink:
 
-			_logger.normal(f"I found a hyperlink: [{hyperlink}]")
+			#_logger.normal(f"I found a hyperlink: [{hyperlink}]")
 
 			# Get the text and URL portions.
 			hlink_text = match.group('hlink_text')
@@ -6584,7 +6584,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		extra_strikethrough_text = named_groups.get('extra_strikethrough_text')
 		if extra_strikethrough_text:
 
-			_logger.normal(f"I found extra strikethrough text: [{extra_strikethrough_text}]")
+			#_logger.normal(f"I found extra strikethrough text: [{extra_strikethrough_text}]")
 
 			# Get the text span.
 			span_text = extra_strikethrough_text[2:-2]
@@ -6600,7 +6600,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		strikethrough_text = named_groups.get('strikethrough_text')
 		if strikethrough_text:
 
-			_logger.normal(f"I found strikethrough text: [{strikethrough_text}]")
+			#_logger.normal(f"I found strikethrough text: [{strikethrough_text}]")
 
 			# Get the text span.
 			span_text = strikethrough_text[1:-1]
@@ -6616,7 +6616,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		underlined_text = named_groups.get('underline_text')
 		if underlined_text:
 
-			_logger.normal(f"I found underlined text: [{underlined_text}]")
+			#_logger.normal(f"I found underlined text: [{underlined_text}]")
 
 			# Get the text span.
 			span_text = underlined_text[2:-2]
@@ -6632,7 +6632,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		italicized_text = named_groups.get('italic_text')
 		if italicized_text:
 
-			_logger.normal(f"I found italicized text: [{italicized_text}]")
+			#_logger.normal(f"I found italicized text: [{italicized_text}]")
 
 			# Get the text span.
 			span_text = italicized_text[1:-1]
@@ -6648,7 +6648,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		extra_bold_text = named_groups.get('extra_bold_text')
 		if extra_bold_text:
 
-			_logger.normal(f"I found extra bold text: [{extra_bold_text}]")
+			#_logger.normal(f"I found extra bold text: [{extra_bold_text}]")
 
 			# Get the text span.
 			span_text = extra_bold_text[2:-2]
@@ -6663,7 +6663,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		boldface_text = named_groups.get('bold_text')
 		if boldface_text:
 		
-			_logger.normal(f"I found boldface text: [{boldface_text}]")
+			#_logger.normal(f"I found boldface text: [{boldface_text}]")
 
 			# Get the text span.
 			span_text = boldface_text[1:-1]
@@ -6691,12 +6691,12 @@ def _cleanup_markdown(text, inside_mask=0):
 
 	#__/ End local private replacement function _local_replacefunc().
 
-	_logger.normal(f"Using regex: {regex}\nto clean up text [\n{text}\n]")
+	#_logger.normal(f"Using regex: {regex}\nto clean up text [\n{text}\n]")
 
 	# Now replace all regex matches in the text with their cleaned versions.
 	cleanText = re.sub(regex, _local_replaceFunc, text)
 
-	_logger.normal(f"Got cleaned-up text: [\n{text}\n]")
+	#_logger.normal(f"Got cleaned-up text: [\n{text}\n]")
 
 	# We are done! Just return the cleaned-up text.
 	return cleanText
