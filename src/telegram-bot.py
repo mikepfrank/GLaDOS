@@ -6336,46 +6336,64 @@ def _printUsers():
 #__/
 
 
+### NOTE: The following approach to markdown parsing does not handle partially overlapping spans. For example:
+###
+### ```markdown
+### Here the user *starts a bold span, 
+### then _starts an italic span, 
+### then ends the bold span*, then 
+### ends the italic span._ So crazy!```
+### 
+### Normal markdown environments won't render that as intended. But, we could translate the above text to correctly nested markdown like so:
+###
+### ```markdown
+### Here the user *starts a bold span, then _starts an italic span, then ends the bold span_*_, then ends the italic span._ So crazy!```
+###
+### Note how in the above, we turn off italic before turning off bold to keep those spans properly nested,
+### but then immediately turn on italic again so that the text renders as the user intended.
+
+
 # Define the bits in the "inside mask" for markdown parsing.
 
-IN_BOLD				= 1<<0
-IN_ITALIC			= 1<<1
-IN_UNDERLINE		= 1<<2
-IN_STRIKETHROUGH	= 1<<3
-IN_INLINE_CODE		= 1<<4
-IN_CODE_BLOCK		= 1<<5
-IN_CODE				= (IN_INLINE_CODE | IN_CODE_BLOCK)
-IN_HYPERLINK_TEXT	= 1<<6
-IN_HYPERLINK_URL	= 1<<7
+IN_BOLD				= 1<<0	# We're in a boldface span of text.
+IN_ITALIC			= 1<<1	# We're in an italicized span of text.
+IN_UNDERLINE		= 1<<2	# We're in an underlined span of text.
+IN_STRIKETHROUGH	= 1<<3	# We're in a struck-through span of text.
+IN_INLINE_CODE		= 1<<4	# We're in an inline fixed-width code span.
+IN_CODE_BLOCK		= 1<<5	# We're in a multiline preformatted code block.
+IN_CODE				= (IN_INLINE_CODE | IN_CODE_BLOCK)	# We're in either type of code span.
+IN_HYPERLINK_TEXT	= 1<<6	# We're in the linked-text part of a hyperlink.
+IN_HYPERLINK_URL	= 1<<7	# We're in the URL part of a hyperlink.
 IN_HYPERLINK		= (IN_HYPERLINK_TEXT | IN_HYPERLINK_URL)
+							# We're in one of the parts of a hyperlink.
 
 
-EXTRA_BOLD_PATTERN		= r"\*\*(?:\\\*|\\\\|\*(?!\*)|[^*])*\*\*"
+EXTRA_BOLD_PATTERN		= r"\*\*(?:\\\*|\\\\|\*(?!\*)|[^*])+\*\*"
 	# Inside double asterisks we can have '\*' (escaped asterisk), '\\' (escaped backslash), single asterisks, and any other non-asterisk characters.
 	
-BOLD_PATTERN		= r"\*(?:\\\*|\\\\|[^*])*\*"
+BOLD_PATTERN		= r"\*(?:\\\*|\\\\|[^*])+\*"
 	# Inside asterisks we can have '\*' (escaped asterisk), '\\' (escaped backslash), and any other non-asterisk characters.
 	
-UNDERLINE_PATTERN	= r"__(?:\\_|\\\\|_(?!_)|[^_])*__"
+UNDERLINE_PATTERN	= r"__(?:\\_|\\\\|_(?!_)|[^_])+__"
 	# Inside double-underscores we can have '\_' (escaped underscore), '\\' (escaped backslash), single underscores, and any other non-underscore characters.
 
-ITALIC_PATTERN		= r"_(?:\\_|\\\\|[^_])*_"
-	# Inside single-underscores we can have '\_' (escaped underscore), '\\' (escaped backslash), and any other non-underscore characters.
+ITALIC_PATTERN		= r"_(?:\\_|\\\\|__(?!_)|[^_])+_"
+	# Inside single-underscores we can have '\_' (escaped underscore), '\\' (escaped backslash), '__' (double underscore), and any other non-underscore characters.
 
-EXTRA_STRIKETHROUGH_PATTERN	= r"~~(?:\\~|\\\\|~(?!~)|[^~])*~~"
+EXTRA_STRIKETHROUGH_PATTERN	= r"~~(?:\\~|\\\\|~(?!~)|[^~])+~~"
 	# Inside double tildes we can have '\~' (escaped tilde), '\\' (escaped backslash), single tildes, and any other non-tilde characters.
 
-STRIKETHROUGH_PATTERN	= r"~(?:\\~|\\\\|[^~])*~"
+STRIKETHROUGH_PATTERN	= r"~(?:\\~|\\\\|[^~])+~"
 	# Inside tildes we can have '\~' (escaped tilde), '\\' (escaped backslash), and any other non-tilde characters.
 
-CODE_BLOCK_PATTERN	= r"```(?:\\`|\\\\|`(?!`)|``(?!`)|[^`])*```"
+CODE_BLOCK_PATTERN	= r"```(?:\\`|\\\\|`(?!`)|``(?!`)|[^`])+```"
 	# Inside triple-backticks we can have '\`' (escaped backtick), '\\' (escaped backslash), single or double backticks, and any other non-underscore characters.
 
 INLINE_CODE_PATTERN	= r"`(?:\\`|\\\\|[^`])+`"
 	# Inside single-backticks we can have '\`' (escaped backticks), '\\' (escaped backslash), and any other non-backtick characters.
 	# NOTE: We require what's inside single-backticks to be non-empty. So "```" -> "`\``" instead of "``\`".
 
-HYPERLINK_PATTERN	= r"\[(?P<hlink_text>(?:\\\]|\\\\|[^\]])*)\]\((?P<hlink_url>(?:\\\)|\\\\|[^\)])*)\)"
+HYPERLINK_PATTERN	= r"\[(?P<hlink_text>(?:\\\]|\\\\|[^\]])+)\]\((?P<hlink_url>(?:\\\)|\\\\|[^\)])+)\)"
 	# [...](...) form. Both parts are captured. 
 	#	Elements in link text can include: Escaped close bracket '\]', escaped backslash '\\', any non-close-bracket character.
 	#	Elements in url text can include: Escaped close paren '\)', escaped backslash '\\', any non-close-paren character
@@ -6555,6 +6573,8 @@ def _cleanup_markdown(text, inside_mask=0):
 		hyperlink = named_groups.get('hyperlink')
 		if hyperlink:
 
+			#_logger.normal(f"I found a hyperlink: [{hyperlink}]")
+
 			# Get the text and URL portions.
 			hlink_text = match.group('hlink_text')
 			hlink_url = match.group('hlink_url')
@@ -6572,8 +6592,10 @@ def _cleanup_markdown(text, inside_mask=0):
 		extra_strikethrough_text = named_groups.get('extra_strikethrough_text')
 		if extra_strikethrough_text:
 
+			#_logger.normal(f"I found extra strikethrough text: [{extra_strikethrough_text}]")
+
 			# Get the text span.
-			span_text = strikethrough_text[2:-2]
+			span_text = extra_strikethrough_text[2:-2]
 
 			# Clean it up appropriately.
 			clean_span = _cleanup_markdown(span_text,
@@ -6585,6 +6607,8 @@ def _cleanup_markdown(text, inside_mask=0):
 		# Is this a strikethrough text span?
 		strikethrough_text = named_groups.get('strikethrough_text')
 		if strikethrough_text:
+
+			#_logger.normal(f"I found strikethrough text: [{strikethrough_text}]")
 
 			# Get the text span.
 			span_text = strikethrough_text[1:-1]
@@ -6600,6 +6624,8 @@ def _cleanup_markdown(text, inside_mask=0):
 		underlined_text = named_groups.get('underline_text')
 		if underlined_text:
 
+			#_logger.normal(f"I found underlined text: [{underlined_text}]")
+
 			# Get the text span.
 			span_text = underlined_text[2:-2]
 
@@ -6613,6 +6639,8 @@ def _cleanup_markdown(text, inside_mask=0):
 		# Is this an italicized text span?
 		italicized_text = named_groups.get('italic_text')
 		if italicized_text:
+
+			#_logger.normal(f"I found italicized text: [{italicized_text}]")
 
 			# Get the text span.
 			span_text = italicized_text[1:-1]
@@ -6628,6 +6656,8 @@ def _cleanup_markdown(text, inside_mask=0):
 		extra_bold_text = named_groups.get('extra_bold_text')
 		if extra_bold_text:
 
+			#_logger.normal(f"I found extra bold text: [{extra_bold_text}]")
+
 			# Get the text span.
 			span_text = extra_bold_text[2:-2]
 
@@ -6641,6 +6671,8 @@ def _cleanup_markdown(text, inside_mask=0):
 		boldface_text = named_groups.get('bold_text')
 		if boldface_text:
 		
+			#_logger.normal(f"I found boldface text: [{boldface_text}]")
+
 			# Get the text span.
 			span_text = boldface_text[1:-1]
 
