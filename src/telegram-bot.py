@@ -6575,7 +6575,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		code_block = named_groups.get('code_block')
 		if code_block:
 
-			_logger.normal(f"I found a code block with contents: [\n{code_block}\n]")
+			#_logger.normal(f"I found a code block with contents: [\n{code_block}\n]")
 
 			# Get the body text of the code block.
 			body_text = code_block[3:-3]	# Strip delimiters off ```...```
@@ -6590,7 +6590,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		inline_code = named_groups.get('inline_code')
 		if inline_code:
 
-			_logger.normal(f"I found inline code with contents: [{inline_code}]")
+			#_logger.normal(f"I found inline code with contents: [{inline_code}]")
 
 			# Get the body text of the code block.
 			body_text = inline_code[1:-1]	# Strip delimiters off `...`
@@ -6605,7 +6605,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		hyperlink = named_groups.get('hyperlink')
 		if hyperlink:
 
-			_logger.normal(f"I found a hyperlink: [{hyperlink}]")
+			#_logger.normal(f"I found a hyperlink: [{hyperlink}]")
 
 			# Get the text and URL portions.
 			hlink_text = match.group('hlink_text')
@@ -6624,7 +6624,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		alt_strikethrough_text = named_groups.get('alt_strikethrough_text')
 		if alt_strikethrough_text:
 
-			_logger.normal(f"I found alternative strikethrough text: [{alt_strikethrough_text}]")
+			#_logger.normal(f"I found alternative strikethrough text: [{alt_strikethrough_text}]")
 
 			# Get the text span.
 			span_text = alt_strikethrough_text[2:-2]	# Strip delimiters off ~~...~~
@@ -6656,7 +6656,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		alt_underlined_text = named_groups.get('alt_underline_text')
 		if alt_underlined_text:
 
-			_logger.normal(f"I found alternative underlined text: [{alt_underlined_text}]")
+			#_logger.normal(f"I found alternative underlined text: [{alt_underlined_text}]")
 
 			# Get the text span.
 			span_text = alt_underlined_text[3:-3]	# Strip delimiters off ___...___
@@ -6688,7 +6688,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		alt_italic_text = named_groups.get('alt_italic_text')
 		if alt_italic_text:
 
-			_logger.normal(f"I found alternative italic text: [{alt_italic_text}]")
+			#_logger.normal(f"I found alternative italic text: [{alt_italic_text}]")
 
 			# Get the text span.
 			span_text = alt_italic_text[2:-2]	# Strip delimiters off __...__
@@ -6720,7 +6720,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		alt_bold_text = named_groups.get('alt_bold_text')
 		if alt_bold_text:
 
-			_logger.normal(f"I found extra bold text: [{alt_bold_text}]")
+			#_logger.normal(f"I found extra bold text: [{alt_bold_text}]")
 
 			# Get the text span.
 			span_text = alt_bold_text[2:-2]		# Strip delimiters off **...**

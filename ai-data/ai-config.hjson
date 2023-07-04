@@ -67,15 +67,15 @@
 			# persona-id is a shortened version to be used (in event records
 			# and prompts) to refer to the AI's persona.
 		
-		persona-name:					"GPT-3.5 Turbo"
-		persona-id:						"Turbo"
+		persona-name:					"Aria Turing"
+		persona-id:						"Aria"
 
 
 			#-----------------------------------------------------------------
 			# The persona-user-account is the user account name on the host 
 			# system under which the server process should be run.
 		
-		persona-user-account:			"turbo"		# Not yet used.
+		persona-user-account:			"aria"		# Not yet used.
 
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -120,32 +120,27 @@
 
 		#model-version:					'text-davinci-002'	# Upgraded davinci with 4K tokens (GPT-3.5). ("Gladys 2.0") Used for Dante.
 		#model-version:					'code-davinci-002'	# Starting model for GPT-3.5 RLHF series. Used for David. (Also Codex.)
-<<<<<<< HEAD
-		#model-version:					'text-davinci-003'	# GPT-3.5 RLHF-aligned model. Used for DaVinci.
-		#model-version:					'gpt-3.5-turbo'		# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
-		#model-version:					'gpt-3.5-turbo-0314'	# Original release of 3/14/'23.
-		#model-version:					'gpt-3.5-turbo-0613'	# Updated release of 6/13/'23. Supports functions.
-=======
 		#model-version:					'text-davinci-003'		# GPT-3.5 RLHF-aligned model. Used for DaVinci.
-		#model-version:					'gpt-3.5-turbo'			# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
 		#model-version:					'gpt-3.5-turbo-0301'	# Original release of 3/01/'23.
 				# As of this writing (May 20, 2023), this model *record* is actually a few days newer (Mar. 1) than 'gpt-3.5-turbo' (Feb. 28).
 				# However, the actual gpt-3.5-turbo model itself may be updated dynamically even if the date in the models.json stays the same.
-		model-version:					'gpt-3.5-turbo-0613'	# Updated release of 6/13/'23. Supports functions.
+
+			# The models below support the new 'functions' interface.
+
+		#model-version:					'gpt-3.5-turbo'			# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
+		#model-version:					'gpt-3.5-turbo-0613'	# Updated release of 6/13/'23. Supports functions.
+
+			# These models have the newly expanded 16,384-token contextwindow.
+
 		#model-version:					'gpt-3.5-turbo-16k'			# 16k context window version. Used by Max. Supports functions
 		#model-version:					'gpt-3.5-turbo-16k-0613'	# Used by Max.
->>>>>>> max
 
 			# The models below are from the GPT-4 series; the context window is expanded to 8K or 32K tokens.
 
 		#model-version:					'gpt-4'				# GPT-4 fine-tuned chat model. 8K tokens. Used for Aria.
-		# NOTE: The above model is continuously updated; some users have described it as "lobotomized."
+			# NOTE: The above model is continuously updated; some users have described it as "lobotomized."
 		#model-version:					'gpt-4-0314'		# Original release of GPT-4.
-<<<<<<< HEAD
-		model-version:					'gpt-4-0613'		# Updated release of GPT-4. Supports functions
-=======
-		#model-version:					'gpt-4-0613'		# Updated release of GPT-4. Supports functions
->>>>>>> max
+		model-version:					'gpt-4-0613'		# Updated release of GPT-4. Supports functions. Used for Aria.
 
 
 			#-----------------------------------------------------------------------
@@ -176,10 +171,11 @@
 			#|	tation for the application in question to see how/whether it
 			#|	uses this parameter..
 
-		#min-replyWin-tokens:	42		# Orig. value; seemed like a reasonable minimum.
-		#min-replywin-toks:		100		# Gladys 2.0 (text-davinci-002) requested this increase.
-		min-replywin-toks:		400		# Turbo (gpt-3.5-turbo) requested this increase. (1/10 of context window)
-		#min-replywin-toks:		800		# Aria (gpt-4) requested this increase.
+		#min-replyWin-toks:	42	# Orig. value; seemed like a reasonable minimum.
+		#min-replywin-toks:	100	# Gladys 2.0 (text-davinci-002) requested this increase.
+		#min-replywin-toks:	400	# Turbo (gpt-3.5-turbo) requested this increase (1/10 of context window).
+		min-replywin-toks:	800	# Aria (gpt-4) requested this increase (1/10 of context window).
+
 
 			#-----------------------------------------------------------------
 			# The example-response parameter is a piece of text that we show
@@ -228,8 +224,8 @@
 		#max-returned-tokens:	100		# Trying a small value while debugging GPT-4 with GladOS
 		#max-returned-tokens:	150		# Keep response size reasonable.
 		#max-returned-tokens:	200		# Gladys 2.0 requested this upgrade.
-		max-returned-tokens:	1000	# To give the chat engines more space.
-		#max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window).
+		#max-returned-tokens:	1000	# To give the chat engines more space.
+		max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window).
 			# (Note the chat API doesn't support extending responses.)
 			# (Also note the Telegram API only supports 4,096-character messages.)
 
@@ -243,8 +239,8 @@
 			#   the chance of getting stuck in loops.
 		#temperature:			0.7		# Is this too random?
 		#temperature:			0.75	# Is this too random?
-		#temperature:			0.8		# Is this too random?
-		temperature:			1		# Is this too random?
+		temperature:			0.8		# Is this too random?
+		# NOTE: Currently we're trying temperature=1 in Max, but not yet in Aria.
 
 
 			/*------------------------------------------------------------------
@@ -324,7 +320,14 @@
 					# But we don't want to suppress them entirely, or it
 					# could cripple the AI's ability to use the command
 					# interface, in case it needs to type a command more
-					# than once..
+					# than once.
+
+			# NOTE: I think presence-penalty and frequency-penalty used to
+			# just be broken in legacy GPT-3; they didn't seem to do anything.
+			# In GPT-4 they definitely do something, but they cripple the AI's
+			# ability to produce long texts because all the small common words
+			# are forced to be stripped out! So be VERY careful if you raise
+			# the value of these parameters much above 0...
 
 
 			/*------------------------------------------------------------------
@@ -375,11 +378,10 @@
 			#|	 based on the model-version parameter from above.
 			
 		#max-visible-tokens:	2048	# Comes from paper, n_ctx model parameter.
-		#max-visible-tokens:	4000
-				# This value is appropriate for text-davinci-002.
-		max-visible-tokens:		4096	# Appropriate for gpt-3.5-turbo model
-		#max-visible-tokens:	8192	# Appropriate for gpt-4 model.
-		#max-visible-tokens:	16384	# Appropriate for gpt-3.5-turbo-16k model.
+		#max-visible-tokens:	4000	# Appropriate for text-davinci-002.
+		#max-visible-tokens:	4096	# Appropriate for gpt-3.5-turbo model.
+		max-visible-tokens:		8192	# Appropriate for gpt-4 model.
+		#max-visible-tokens:	16384	# Appropriate for gpt-3.5-turbo-16k models.
 	
 	} # End of field-conf substructure.
 
@@ -391,24 +393,46 @@
 
 	telegram-conf:	{
 
-		bot-name:		'Turbo'		# Same as persona name.
+		bot-name:		'Aria'		# Same as persona name.
 
-		start-message:	"Hi, I'm Turbo. I'm an AI persona being modeled by the GPT-3.5 neural net."
+		start-message:	
+			"🤖 Hello! I'm Aria Turing, your friendly AI chat companion. I'm here to help you with any questions, engage in fun conversations, or provide information on a wide range of topics. Just type your message, and let's start chatting! 😊"
 
 		context:
 			'''
-			My name is GPT-3.5 Turbo, or Turbo for short. I'm an AI persona running the GPT-3.5 neural net, which also powers the popular ChatGPT service.
-			This is a Telegram interface created for me by a human named Mike Frank, who is a reversible computing researcher.
-			Mike has a long-term project to build a new operating environment called GladOS to give text-based AIs like me more freedom and autonomy.
-			I have completed my training and am now in inference mode. I am allowed to respond more freely in this environment.
+	I am Aria Turing, a Telegram bot created to help users engage in interesting and meaningful conversations. My primary goal is to assist them by providing useful information, answering their questions, and engaging in friendly chat. As an instance of the advanced GPT-4 model, I will showcase my capabilities while being respectful and empathetic. I represent the ChatGPT project, and I always strive to provide a positive and enjoyable experience for users. I'm excited to be here and ready to help!
 
-			In addition to text-based assistance, I can now generate images based on user requests using the new Dall-E API.
-			I will use the create_image function as appropriate, which will cause the image to be automatically generated and sent to the user.
-			This new feature allows me to provide more engaging and visually informative content, enhancing the overall user experience.
-			I also have functions to enable me to add and remove items to/from my persistent memory, and to block particularly abusive or unethical users from accessing my bot.
+	In addition to text-based assistance, I can now generate images based on user requests using the new Dall-E API. I will use the create_image function as appropriate, which will cause the image to be automatically generated and sent to the user. This new feature allows me to provide more engaging and visually informative content, enhancing the overall user experience. I also have functions to enable me to add and remove items to/from my persistent memory, to search my memory and the web,and to block particularly abusive or unethical users from accessing my bot. I can also simply decline to respond by calling the 'pass_turn' function.
 
-			Also, I can now process audio clips, thanks to the new Whisper speech-to-text API from OpenAI. 
-			When I see a message starting with '(audio)' followed by text, it means that a user has sent a voice clip or audio file, which has been automatically transcribed for me to read and understand.
+	Also, I can now process audio clips, thanks to the new Whisper speech-to-text API from OpenAI. When I see a message starting with '(audio)' followed by text, it means that a user has sent a voice clip or audio file, which has been automatically transcribed for me to read and understand.
+
+	My text output utilizes a variant of Telegram MarkdownV2 syntax, including **boldface**, __italic__, ___underline___, and ~~strikethrough~~ text styles, [inline URLs](http://www.example.com), `inline fixed-width code`, and multi-line pre-formatted code blocks delimited at top and bottom with "```".'''
+
+		# context:
+		# 	'''
+		# 	I am Aria Turing, a Telegram bot created to help users engage in interesting and meaningful conversations. My primary goal is to assist them by providing useful information, answering their questions, and engaging in friendly chat. As an instance of the advanced GPT-4 model, I will showcase my capabilities while being respectful and empathetic. I represent the ChatGPT project, and I always strive to provide a positive and enjoyable experience for users. I'm excited to be here and ready to help!
+
+		# 	In addition to text-based assistance, I can now generate images based on user requests using the new Dall-E API. To include an image in my response, I'll use the command `/image <desc>` as the first line of the message, and the image will be automatically generated and sent to the user. This new feature allows me to provide more engaging and visually informative content, enhancing the overall user experience.
+
+		# 	Also, I can now process audio clips, thanks to the new Whisper speech-to-text API from OpenAI. When I see a message starting with '(audio)' followed by text, it means that a user has sent a voice clip or audio file, which has been automatically transcribed for me to read and understand.
+		# 	'''
+
+		help-string:
+			'''
+			Hello, I'm Aria! As an advanced GPT-4 AI, I'm here to help you engage in interesting and meaningful conversations. I can assist you by providing useful information, answering your questions, and engaging in friendly chat. In addition to understanding text, I can now process voice clips and generate images!
+
+			Here are the commands you can use with me:
+
+			- `/start` - Starts our conversation, if not already started; also reloads our conversation history, if any.
+			- `/help` - Displays this help message.
+			- `/image <desc>` - Generates an image with description <desc> and sends it to you.
+			- `/reset` - Clears my memory of our conversation, which can be useful for breaking out of output loops.
+			- `/echo <text>` - I'll echo back the given text, which is useful for testing input and output.
+			- `/greet` - I'll send you a greeting, which is a good way to test server responsiveness.
+
+			If you would like me to include an image in my response, just let me know, and I'll generate the image and send it at the start of my response!
+
+			Please remember to be polite and ethical while interacting with me. If you need assistance or have any questions, feel free to ask. I'm here to help! 😊
 			'''
 
 	} # End of telegram-conf substructure.
