@@ -5504,7 +5504,7 @@ def _bing_search(query_string:str, market:str='en-US', count=3):
 
 		# Raise this as an exception so the caller can decide how to
 		# handle it appropriately.
-		raise SearchError(msg=_lastError)
+		raise SearchError(_lastError)
 
 	subscription_key = os.environ['BING_SEARCH_V7_SUBSCRIPTION_KEY']
 	endpoint = os.environ['BING_SEARCH_V7_ENDPOINT'] + "/v7.0/search"
