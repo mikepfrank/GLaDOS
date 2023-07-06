@@ -3755,8 +3755,8 @@ async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
 		_logger.warn(f"{nItems} search results requested; capping to {maxn}.")
 
 		warning_msgStr = f"WARNING: {nItems} search results were requested, "\
-			"but returning more than {maxn} items from a memory search is "\
-			"not supported. Limiting search to top {maxn} results."
+			f"but returning more than {maxn} items from a memory search is "\
+			f"not supported. Limiting search to top {maxn} results."
 
 		nItems = maxn
 
@@ -3766,7 +3766,7 @@ async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
             # Also send the warning message to the user. (Making it clear that 
             # it's a system message, not from the AI persona itself.)
 		reply_msgStr = f"[SYSTEM {warning_msgStr}]"
-		await _reply_user(tgMessage, conversation, reply_msgStr, ignore=True)
+		await _reply_user(updateMsg, conversation, reply_msgStr, ignore=True)
 
 	#__/
 
@@ -3795,7 +3795,7 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 	userID = updateMsg.from_user.id
 	chatID = botConvo.chat_id
 
-	_logger.normal(f"In chat {chatID}, for user #{userID}, AI is doing a web search in the {locale} locale for {sections} on: [{queryPhrase}].")
+	_logger.normal(f"\nIn chat {chatID}, for user #{userID}, AI is doing a web search in the {locale} locale for {sections} on: [{queryPhrase}].")
 	
 	# Calculate how many items to return based on GPT's field size.
 	fieldSize = global_gptCore.fieldSize	# Retrieve property value.
@@ -5078,8 +5078,8 @@ async def process_raw_response(
 		# return. There shouldn't have been any response text in a function call
 		# anyway, but if there is, we warn that we're ignoring it.
 
-		if response_text is not None:
-			_logger.warn(f"NOTE: Done with original response text: [{response_text}].")
+		#if response_text is not None:
+		#	_logger.warn(f"NOTE: Done with original response text: [{response_text}].")
 
 		return	# End process_chat_message() when done function processing.
 
@@ -5591,7 +5591,7 @@ def _blockUserByID(userID:int) -> bool:
 
 	global _lastError
 
-	_logger.normal("\tIn _blockUserByID() with userID={userID}...")
+	_logger.normal(f"\tIn _blockUserByID() with userID={userID}...")
 
 	# If the AI is trying to block the Creator, don't let it do that.
 	if userID == 1774316494:	# Mike's user ID on Telegram.
@@ -6720,7 +6720,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		alt_bold_text = named_groups.get('alt_bold_text')
 		if alt_bold_text:
 
-			#_logger.normal(f"I found extra bold text: [{alt_bold_text}]")
+			#_logger.normal(f"I found alternative bold text: [{alt_bold_text}]")
 
 			# Get the text span.
 			span_text = alt_bold_text[2:-2]		# Strip delimiters off **...**
