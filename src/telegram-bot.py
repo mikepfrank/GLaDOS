@@ -4792,7 +4792,7 @@ async def process_function_call(
 		botConvo.add_message(BotMessage(SYS_NAME, '[ERROR: AI tried to call '
 			f'function {function_name} with arguments ```{function_argStr}``` '
 			'but there was a JSON decode error while parsing the arguments: '
-			f'"{str(e)}"'))
+			f'"{str(e)}"]'))
 
 		# Give the AI a chance to respond to that JSON error.
 		await get_ai_response(tgUpdate, tgContext)
