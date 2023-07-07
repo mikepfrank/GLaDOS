@@ -2180,7 +2180,7 @@ async def handle_help(update:Update, context:Context) -> None:
 	conversation.add_message(BotMessage(who, HELP_STRING))
 
 	# Send the help string to the user.
-	if 'success' != await _reply_user(tgMessage, conversation, HELP_STRING):
+	if 'success' != await _reply_user(tgMessage, conversation, HELP_STRING, markup=True):	# The help message may include markup.
 		return
 
 	# Finished processing this message.
@@ -7827,9 +7827,9 @@ Available commands:
 /start - Starts the bot, if not already started; also reloads conversation history, if any.
 /help - Shows this help message.
 /image <desc> - Generate and return an image for the given description.
-/remember <text> - Adds the given statement to the bot's persistent context data.
+/remember <text> - Adds the given statement to the bot's dynamic persistent memory.
 /search (memory|web) for <phrase> - Searches bot's memory or the web for <phrase>.
-/forget <item> - Removes the given statement from the bot's persistent context data.
+/forget <item> - Removes the given statement from the bot's dynamic persistent memory.
 /reset - Clears the bot's memory of the conversation. Useful for breaking output loops.
 /echo <text> - Echoes back the given text. (I/O test.)
 /greet - Causes the server to send a greeting. (Server responsiveness test.)
