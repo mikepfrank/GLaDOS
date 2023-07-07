@@ -2180,7 +2180,7 @@ async def handle_help(update:Update, context:Context) -> None:
 	conversation.add_message(BotMessage(who, HELP_STRING))
 
 	# Send the help string to the user.
-	if 'success' != await _reply_user(tgMessage, conversation, HELP_STRING):
+	if 'success' != await _reply_user(tgMessage, conversation, HELP_STRING, markup=True):	# The help message may include markup.
 		return
 
 	# Finished processing this message.
@@ -6431,6 +6431,9 @@ HYPERLINK_PATTERN	= r"\[(?P<hlink_text>(?:\\\]|\\\\|[^\]])+)\]\((?P<hlink_url>(?
 	#	Elements in url text can include: Escaped close paren '\)', escaped backslash '\\', any non-close-paren character
 
 UNESCAPED_SPECIALS	= r"-_*[\]()~`>#+=|{}.!\\"
+	# This is used later for defining character sets in regexes.
+	# It's important that the '-' is first (or last) here since otherwise it'll be interpreted as indicating a character range.
+	# We need to escape ']' here since it ends a character set. And we escape '\' since a single backslash starts an escaped character.
 
 
 def _cleanup_markdown(text, inside_mask=0):
@@ -6476,8 +6479,12 @@ def _cleanup_markdown(text, inside_mask=0):
 
 	#|===============================================================
 	#| Next comes various types of spans of formatted text.
-	#|		NOTE: These don't apply inside code spans or URLs!
+	#|		 NOTE: These don't apply inside code spans or URLs!
+	#|
 	#|	ALSO NOTE: We are now only recognizing alternative styles.
+	#|		This is so that single delimiters '*', '_', '~' will 
+	#|		just get escaped (and thus rendered literally) instead
+	#|		of being interpreted as markdown.
 
 	## First we'll look for spans of strikethrough text (rarest).
 
@@ -6563,14 +6570,17 @@ def _cleanup_markdown(text, inside_mask=0):
 	# will need to be automatically escaped in general).
 	regex += r"(?P<unescaped_special>[" + specials + "])|"
 
-	# And finally we'll check for normal (non-special) chars.
-	regex += r"(?P<normal_char>[^" + specials + "])"
+	## And finally we'll check for normal (non-special) chars.
+	#regex += r"(?P<normal_char>[^" + specials + "])"
+	## NOTE: Commented this out because we don't actually need
+	##	to do anything for normal chars, we can just let re.sub()
+	##	pass right on over them.
 
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# At this point, we have assembled the complete regex that is
 	# appropriate to use with re.sub() in this context, so we go
 	# ahead and do the substitution, using our custom replacement
-	# function.
+	# function, which we define right here before using it.
 
 	def _local_replaceFunc(match):
 		"""Custom replacement function, defined in the local
@@ -6579,6 +6589,10 @@ def _cleanup_markdown(text, inside_mask=0):
 			that will pass Telegram's Markdown V2 parser. Note
 			this recursively calls _cleanup_markdown() where
 			needed."""
+
+		# NOTE: We get the raw group dictionary here so we can use .get()
+		# on it. We do this because our regex varies based on context, so
+		# not all groups will even be defined in all contexts.
 
 		named_groups = match.groupdict()
 
@@ -6638,7 +6652,7 @@ def _cleanup_markdown(text, inside_mask=0):
 			#_logger.normal(f"I found alternative strikethrough text: [{alt_strikethrough_text}]")
 
 			# Get the text span.
-			span_text = alt_strikethrough_text[2:-2]
+			span_text = alt_strikethrough_text[2:-2]	# Strip delimiters off ~~...~~
 
 			# Clean it up appropriately.
 			clean_span = _cleanup_markdown(span_text,
@@ -6654,7 +6668,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		#	_logger.normal(f"I found strikethrough text: [{strikethrough_text}]")
 		#
 		#	# Get the text span.
-		#	span_text = strikethrough_text[1:-1]
+		#	span_text = strikethrough_text[1:-1]	# Strip delimiters off ~...~
 		#
 		#	# Clean it up appropriately.
 		#	clean_span = _cleanup_markdown(span_text,
@@ -6670,7 +6684,7 @@ def _cleanup_markdown(text, inside_mask=0):
 			#_logger.normal(f"I found alternative underlined text: [{alt_underlined_text}]")
 
 			# Get the text span.
-			span_text = alt_underlined_text[3:-3]
+			span_text = alt_underlined_text[3:-3]	# Strip delimiters off ___...___
 
 			# Clean it up appropriately.
 			clean_span = _cleanup_markdown(span_text,
@@ -6686,7 +6700,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		#	_logger.normal(f"I found underlined text: [{underlined_text}]")
 		#
 		#	# Get the text span.
-		#	span_text = underlined_text[2:-2]
+		#	span_text = underlined_text[2:-2]	# Strip delimiters off __...__
 		#
 		#	# Clean it up appropriately.
 		#	clean_span = _cleanup_markdown(span_text,
@@ -6702,7 +6716,7 @@ def _cleanup_markdown(text, inside_mask=0):
 			#_logger.normal(f"I found alternative italic text: [{alt_italic_text}]")
 
 			# Get the text span.
-			span_text = alt_italic_text[2:-2]
+			span_text = alt_italic_text[2:-2]	# Strip delimiters off __...__
 
 			# Clean it up appropriately.
 			clean_span = _cleanup_markdown(span_text,
@@ -6718,7 +6732,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		#	_logger.normal(f"I found italicized text: [{italicized_text}]")
 		#
 		#	# Get the text span.
-		#	span_text = italicized_text[1:-1]
+		#	span_text = italicized_text[1:-1]	# Strip delimiters off _..._
 		#
 		#	# Clean it up appropriately.
 		#	clean_span = _cleanup_markdown(span_text,
@@ -6734,7 +6748,7 @@ def _cleanup_markdown(text, inside_mask=0):
 			#_logger.normal(f"I found alternative bold text: [{alt_bold_text}]")
 
 			# Get the text span.
-			span_text = alt_bold_text[2:-2]
+			span_text = alt_bold_text[2:-2]		# Strip delimiters off **...**
 
 			# Clean it up appropriately.
 			clean_span = _cleanup_markdown(span_text,
@@ -6749,7 +6763,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		#	_logger.normal(f"I found boldface text: [{boldface_text}]")
 		#
 		#	# Get the text span.
-		#	span_text = boldface_text[1:-1]
+		#	span_text = boldface_text[1:-1]		# Strip delimiters off *...*
 		#
 		#	# Clean it up appropriately.
 		#	clean_span = _cleanup_markdown(span_text,
@@ -6768,9 +6782,11 @@ def _cleanup_markdown(text, inside_mask=0):
 		if unescaped_special:
 			return '\\' + unescaped_special
 		
-		# And normal characters, we just return unmodified.
-		normal_char = match.group('normal_char')
-		return normal_char
+		# We should never get here!
+
+		## And normal characters, we just return unmodified.
+		#normal_char = match.group('normal_char')
+		#return normal_char
 
 	#__/ End local private replacement function _local_replacefunc().
 
@@ -6779,7 +6795,7 @@ def _cleanup_markdown(text, inside_mask=0):
 	# Now replace all regex matches in the text with their cleaned versions.
 	cleanText = re.sub(regex, _local_replaceFunc, text)
 
-	#_logger.normal(f"Got cleaned-up text: [\n{text}\n]")
+	#_logger.normal(f"Got cleaned-up text: [\n{cleanText}\n]")
 
 	# We are done! Just return the cleaned-up text.
 	return cleanText
@@ -7916,9 +7932,9 @@ Available commands:
 /start - Starts the bot, if not already started; also reloads conversation history, if any.
 /help - Shows this help message.
 /image <desc> - Generate and return an image for the given description.
-/remember <text> - Adds the given statement to the bot's persistent context data.
+/remember <text> - Adds the given statement to the bot's dynamic persistent memory.
 /search (memory|web) for <phrase> - Searches bot's memory or the web for <phrase>.
-/forget <item> - Removes the given statement from the bot's persistent context data.
+/forget <item> - Removes the given statement from the bot's dynamic persistent memory.
 /reset - Clears the bot's memory of the conversation. Useful for breaking output loops.
 /echo <text> - Echoes back the given text. (I/O test.)
 /greet - Causes the server to send a greeting. (Server responsiveness test.)
