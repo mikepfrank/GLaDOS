@@ -4787,7 +4787,24 @@ async def process_function_call(
 
 	# Retrieve the function name and arguments from the function call object.
 	function_name = funCall['name']
-	function_args = json.loads(funCall['arguments'])
+	function_argStr = funCall['arguments']
+
+	try:
+		function_args = json.loads(function_argStr)		# This could fail!
+
+	except json.decoder.JSONDecodeError as e:
+
+		_logger.error(f'Got a JSON decoding error "{str(e)}" when parsing '
+					  f'argument list: [\n{function_argStr}\n]')
+
+		botConvo.add_message(BotMessage(SYS_NAME, '[ERROR: AI tried to call '
+			f'function {function_name} with arguments ```{function_argStr}``` '
+			'but there was a JSON decode error while parsing the arguments: '
+			f'"{str(e)}"]'))
+
+		# Give the AI a chance to respond to that JSON error.
+		await get_ai_response(tgUpdate, tgContext)
+		return
 	
 	_logger.info(f"AI wants to call function {function_name} with " \
 				 "arguments: \n" + pformat(function_args))
