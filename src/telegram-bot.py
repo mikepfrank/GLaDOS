@@ -3833,13 +3833,15 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 				if key in sections:
 					cleanResult[key] = val
 
-		# Strip out 'deepLinks' out of the webPages value, it's TMI.
+		# Strip out 'deepLinks' etc. out of the webPages value, it's TMI.
 		if 'webPages' in cleanResult:
 			for result in cleanResult['webPages']['value']:
 				if 'contractualRules' in result:
 					del result['contractualRules']
 				if 'deepLinks' in result:
 					del result['deepLinks']
+				if 'searchTags' in result:
+					del result['searchTags']
 
 		# Strip a bunch of useless fields out of news values.
 		if 'news' in cleanResult:
