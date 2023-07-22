@@ -383,7 +383,9 @@ import	numpy as np		# Used for vector math in cosine_similarity().
 from	telegram		import (
 			Update,				# Class for updates (notifications) from Telegram.
 			InputFile,			# Use this to prepare image files to send.
-			User				# Class for User objects from Telegram.
+			User,				# Class for User objects from Telegram.
+			InlineQueryResultArticle,	# Item in result list for inline queries.
+			InputTextMessageContent,	# Content of text message in an inline query result.
 		)
 
 from	telegram		import	Message	as	TgMsg
@@ -394,6 +396,7 @@ from	telegram.ext 	import (
 			Updater,			# Class to fetch updates from Telegram.
 			CommandHandler,		# For automatically dispatching on user commands.
 			MessageHandler,		# For handling ordinary messages.
+			InlineQueryHandler,	# For handling inline queries.
 			#Filters,			# For filtering different types of messages.
 			filters,			# We'll use AUDIO, VOICE, TEXT, COMMAND
 			#BaseFilter,		# Abstract base class for defining new filters.
@@ -486,6 +489,9 @@ _logger = logmaster.appLogger	# Leading '_' denotes this is a private name.
 	# Get the directory to be used for logging purposes.
 LOG_DIR = logmaster.LOG_DIR
 
+import logging
+# set higher logging level for httpx to avoid all GET and POST requests being logged
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
 		# Import some custom time-related functions we'll use.
@@ -5775,6 +5781,7 @@ async def _ensure_convo_loaded(update:Update, context:Context) -> bool:
 	# Get the user's name.
 	user_name = _get_user_tag(message.from_user)
 
+	# If we don't have a conversation object for this chat yet, create one.
 	if not 'conversation' in context.chat_data:
 
 		_logger.normal(f"\nUser {user_name} sent a message in an uninitialized conversation {chat_id}.")
@@ -7837,7 +7844,73 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 		botConvo.add_message(BotMessage(SYS_NAME, "[ERROR: {_lastError}]"))
 		return "Error: Unsupported locale / target market for search."
 
-#__/
+#__/ End AI function call handler ai_searchWeb().
+
+
+async def handle_inline_query(update: Update, context: Context) -> None:
+	"""Handles inline queries."""
+
+	# Get the inline query.
+	query = update.inline_query.query
+
+	# Get the Telegram user object.
+	tgUser = update.inline_query.from_user
+
+	# Get the user tag and ID.
+	user_tag = _get_user_tag(tgUser)
+	user_id = tgUser.id
+
+	# Get the chat type and ID.
+
+	chat_type = update.inline_query.chat_type
+	if chat_type is None:
+		chat_type = "secret"	# This is a guess.
+
+	# Is there a chat_data object?
+	if context.chat_data:
+		chat_data = context.chat_data
+		chat_id = context.chat_data.id	# Will this work?
+	else:
+		chat_data = dict()		# Empty dict!
+		chat_id = "UNKNOWN"
+
+	# Set thread component and role.
+	logmaster.setComponent(_appName)
+	logmaster.setThreadRole("InlQ" + str(chat_id)[-4:])
+
+	# To generate a real result here, we'd have to rethink a lot of our code, since we don't
+	# necessarily have a conversation present. :/ We could check for a conversation associated
+	# with the user, and load that. But the context may actually be a group chat that we aren't
+	# a member of, in which case we won't have access to any of its messages except for inline
+	# queries/results we've handled. But persisting those isn't something we're set up for.
+	# I suppose we could record just the queries/results that we know about.
+
+	# Do we have a conversation object for the current chat?
+	haveConvo = 'conversation' in chat_data
+
+	# Diagnostics.
+	_logger.normal(f"\nUser {user_tag} sent an inline query from {chat_type} chat {chat_id}.")
+	if haveConvo:
+		_logger.normal(f"\tNOTE: We DO actually have a conversation object already loaded for this chat.")
+	else:
+		_logger.normal(f"\tNOTE: We don't have a conversation object loaded yet for this chat.")
+
+	# Return result(s).
+
+	sorry = f"Sorry, inline queries are not yet supported by {BOT_NAME}. Try again later."
+
+	results = [
+		InlineQueryResultArticle(
+			id=str(0),
+			title="UNSUPPORTED",
+			input_message_content=InputTextMessageContent(sorry)
+		)
+	]
+
+	await update.inline_query.answer(results)
+
+#__/ End inline query handler function handle_inline_query().
+
 
 	#/======================================================================
 	#|	6.2. Define global variables.		[python module code subsection]
@@ -8083,6 +8156,12 @@ app.add_handler(MessageHandler((filters.TEXT|filters.AUDIO|filters.VOICE)
 app.add_handler(MessageHandler(unknown_command_filter,
 							   handle_unknown_command),
 				group = 3)
+
+	#------------------------------------------
+	# HANDLER GROUP 4: Inline query handler.
+
+app.add_handler(InlineQueryHandler(handle_inline_query))
+
 
 	#|==========================================================================
 	#|  7.4. Run miscellaneous tests.
