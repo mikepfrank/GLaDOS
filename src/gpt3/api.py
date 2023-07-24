@@ -2713,6 +2713,8 @@ class GPT3Core:
 			for a completion object for the given prompt using the
 			connection's current API configuration."""
 		
+		_logger.info(f"--> INSIDE .genCompletion() WITH A {len(prompt)}-CHARACTER LONG PROMPT.")
+
 		return Completion(self, prompt)
 			# Calls the Completion constructor with the supplied prompt. This
 			# constructor does all the real work of calling the API.

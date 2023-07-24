@@ -238,6 +238,8 @@ import asyncio	# We need this for python-telegram-bot v20.
 	#|	 NOTE: Use pip install <library-name> to install the library.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+from pprint import pformat
+
 import json
 import hjson	# Human-readable JSON. Used for access control lists.
 
@@ -411,8 +413,8 @@ logmaster.configLogMaster(
 		consdebug	= False,		# Turn off full debug logging on the console.
 		#consdebug	= True,			# Turn on full debug logging on the console.
 
-		#consinfo	= True,			# Turn on info-level logging on the console.
-		consinfo	 = False,		 # Turn off info-level logging on the console.
+		consinfo	= True,			# Turn on info-level logging on the console.
+		#consinfo	 = False,		 # Turn off info-level logging on the console.
 
 		#logdebug	= True			# Turn on full debug logging in the log file.
 		logdebug	 = False		 # Turn off full debug logging in the log file.
@@ -702,8 +704,16 @@ class Conversation:
 		# the current date and time, in the local timezone (from TZ).
 		thisConv.context_string = f"Current time: {timeString()}\n"	# This function is defined above.
 
+
+		# This version of the code is to prevent Gladys from getting confused by the BotServer messages.
+		thisConv.context_string += PERSISTENT_CONTEXT
+		if ENGINE_NAME.startswith("davinci"):
+			thisConv.context_string += '\n'.join([str(m) for m in thisConv.messages if m.sender != SYS_NAME])
+		else:
+			thisConv.context_string += '\n'.join([str(m) for m in thisConv.messages])
+
 		# Now we'll add the persistent context, and then the last N messages.
-		thisConv.context_string += PERSISTENT_CONTEXT + '\n'.join([str(m) for m in thisConv.messages])
+		#thisConv.context_string += PERSISTENT_CONTEXT + '\n'.join([str(m) for m in thisConv.messages])
 			# Join the messages into a single string, with a newline between each.
 			# Include the persistent context at the beginning of the string.
 
@@ -1249,10 +1259,15 @@ class UnknownCommandFilter(filters.BaseFilter):
 		text = message.text
 		defined_commands = ['/start', '/help', '/remember', '/forget', '/reset', '/echo', '/greet']
 		
+		# If the message doesn't even have a text field, it's not an unknown command.
 		if text is None:
 			return False
+
+		# If it starts with '/' and isn't a known command, then it's an unknown command.
 		if text.startswith('/') and text.split()[0] not in defined_commands:
 			return True
+
+		# Otherwise, it isn't an unknown command.
 		return False
 	#__/
 #__/
@@ -1936,13 +1951,19 @@ async def handle_forget(update:Update, context:Context) -> None:
 async def handle_audio(update:Update, context:Context) -> None:
 	"""Handle an audio message from the user."""
 
+	_logger.info("--> ENTERED handle_audio().")
+
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 		
+	_logger.info("--> IN handle_audio(), GOT UPDATE MESSAGE:\n" + pformat(str(message)))
+
 	user_name = _get_user_name(message.from_user)
 
 	# Get the chat ID.
 	chat_id = message.chat.id
+
+	_logger.info(f"--> IN handle_audio(), user_name={user_name}, chat_id={chat_id}, ABOUT TO ENSURE CONVO LOADED.")
 
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not await _ensure_convo_loaded(update, context):
@@ -2043,22 +2064,33 @@ async def handle_message(update:Update, context:Context) -> None:
 		# Note that <context>, in this context, denotes the Telegram context object.
 	"""Process a message."""
 
+	_logger.info("--> ENTERED handle_message().")
+
 	# The following code is here in case the user edited
 	# an old message instead of sending a new one.
 
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 		
+	_logger.info("--> GOT MESSAGE:\n" + pformat(str(message)))
+
 	if message is None:
 		_logger.error("Update of unknown type received; ignoring...")
 		return
 
 	text = message.text
+		# NOTE: This will be None if it's a voice or audio message!
+
+	_logger.info("--> MESSAGE TEXT = " + str(text))
 
 	user_name = _get_user_name(message.from_user)
 
+	_logger.info("--> USER NAME = " + user_name)
+
 	# Get the chat ID.
 	chat_id = message.chat.id
+
+	_logger.info(f"--> CHAT ID = {chat_id}")
 
 	# Make sure the thread component is set to this application (for logging).
 	logmaster.setComponent(_appName)
@@ -2067,17 +2099,25 @@ async def handle_message(update:Update, context:Context) -> None:
 	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
 	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
 
+	_logger.info("--> ABOUT TO CALL _ensure_convo_loaded().")
+
 	# Attempt to ensure the conversation is loaded; if we failed, bail.
 	if not await _ensure_convo_loaded(update, context):
 		return
+
+	_logger.info("--> CONVERSATION HAS BEEN LOADED.")
 
 	# If the message contained audio or voice, then represent it using an
 	# appropriate text format.
 
 	if 'audio_text' in context.user_data:	# We added this earlier if appropriate.
 
+		_logger.info(f"--> IN handle_message(), GOT AUDIO TEXT: [{context.user_data['audio_text']}].")
+
 		# Utilize the transcript created by handle_audio() above.
 		text = f"(audio) {context.user_data['audio_text']}"	
+
+		_logger.info(f"--> CONSTRUCTED MESSAGE TEXT: [{text}].")
 
 		# Append the text caption, if present.
 		if message.caption:
@@ -2109,6 +2149,8 @@ async def handle_message(update:Update, context:Context) -> None:
 	# Add the message just received to the conversation.
 	conversation.add_message(Message(user_name, text))
 
+	_logger.info(f"--> CHECKING ACCESS FOR USER {user_name}...")
+
 	# Check whether the user is in our access list.
 	if not _check_access(user_name):
 		_logger.normal(f"User {user_name} tried to access chat {chat_id}, "
@@ -2127,11 +2169,15 @@ async def handle_message(update:Update, context:Context) -> None:
 		conversation.add_message(Message(SYS_NAME, errMsg))
 		return
 
+	_logger.info(f"--> USER HAS ACCESS. IS ENGINE {ENGINE_NAME} A CHAT ENGINE?")
+
 	# If the currently selected engine is a chat engine, we'll dispatch the rest
 	# of the message processing to a different function that's specialized to use 
 	# OpenAI's new chat API.
 	if gptCore.isChat:
 		return await process_chat_message(update, context)
+
+	_logger.info(f"--> ENGINE {ENGINE_NAME} IS NOT A GPT CHAT ENGINE; COMMENCING MESSAGE HANDLING FOR GPT TEXT ENGINES.")
 
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#|	At this point, we know that we're using a standard GPT-3 engine, and we 
@@ -2190,10 +2236,15 @@ async def handle_message(update:Update, context:Context) -> None:
 			else:
 				context_string = conversation.context_string
 
+			_logger.info(f"--> ABOUT TO TRY CALLING GPT CORE WITH A LENGTH-{len(context_string)} PROMPT.")
+
 			try:
 				# Get the response from GPT-3, as a Completion object.
 				completion = gptCore.genCompletion(context_string)
 				response_text = completion.text
+
+				_logger.info(f"--> GOT A RESPONSE FROM CORE: {response_text}")
+
 				break
 
 			except PromptTooLargeException as e:				# Imported from gpt3.api module.
@@ -2243,6 +2294,14 @@ async def handle_message(update:Update, context:Context) -> None:
 				conversation.add_message(Message(SYS_NAME, DIAG_MSG))
 
 				return	# That's all she wrote.
+
+			except Exception as e:
+
+				_logger.error(f"Got a {type(e).__name__} exception from "
+							  f"OpenAI ({e}) for conversation {chat_id}; "
+							  "don't know how to handle it! Re-raising.")
+
+				raise
 
 		# Unless the total response length has just maxed out the available space,
 		# if we get here, then we have a new chunk of response from GPT-3 that we
@@ -2418,6 +2477,8 @@ async def handle_unknown_command(update:Update, context:Context) -> None:
 	"""Handle an attempted user command that doesn't match any of the known
 		command types. We do this by just treating the command like a normal
 		text message and letting the AI decide how to handle it."""
+
+	_logger.info("--> INSIDE handle_unknown_command with message:\n" + str(update.message))
 
 	await handle_message(update, context)		# Treat it like a normal message.
 
@@ -3289,6 +3350,8 @@ async def _ensure_convo_loaded(update:Update, context:Context) -> bool:
 	"""Helper function to ensure the conversation data is loaded,
 		and auto-restart the conversation if isn't."""
 
+	_logger.info("--> ENTERED _ensure_convo_loaded().")
+
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 		
@@ -3306,14 +3369,20 @@ async def _ensure_convo_loaded(update:Update, context:Context) -> bool:
 		DIAG_MSG = "[DIAGNOSTIC: Either this is a new chat, or the bot server was rebooted. Auto-starting conversation.]"
 			# NOTE: The AI won't see this diagnostic because the convo hasn't even been reloaded yet!
 
+		_logger.info("--> ABOUT TO SEND THIS DIAGNOSTIC MESSAGE TO USER: " + DIAG_MSG)
+
 		try:
 			await message.reply_text(DIAG_MSG)
 		except BadRequest or Forbidden or ChatMigrated as e:
 			_logger.error(f"Got a {type(e).__name__} from Telegram ({e}) for conversation {chat_id}; aborting.")
 			return False
 
+		_logger.info("--> ABOUT TO CALL handle_start()...")
+
 		await handle_start(update, context, autoStart=True)
 	
+	_logger.info("--> RETURNING SUCCESSFULLY FROM _ensure_convo_loaded().")
+
 	return True
 #__/
 
@@ -3537,9 +3606,9 @@ async def _report_error(convo:Conversation, telegramMessage,
 
 	# We'll use this to delimit the start of each new message event in the AI's receptive field.
 
-#MESSAGE_DELIMITER = '🤍'	# A Unicode character. Gladys selected the white heart emoji.
+MESSAGE_DELIMITER = '🤍'	# A Unicode character. Gladys selected the white heart emoji.
 	# We're temporarily trying a different delimiter that's less likely to appear in message text:
-MESSAGE_DELIMITER = chr(ascii.RS)	# (Gladys agreed to try this.)
+#MESSAGE_DELIMITER = chr(ascii.RS)	# (Gladys agreed to try this.)
 	# A control character.	(ASCII RS = 0x1E, record separator.)
 #MESSAGE_DELIMITER = chr(ascii.ETX)	# End-of-text control character.
 #MESSAGE_DELIMITER = chr(ascii.ETB)	# End-of-transmission-block control character.
@@ -3564,8 +3633,8 @@ _TIME_FORMAT = "%A, %B %d, %Y, %I:%M %p"
 	#  Sets the stop sequence (terminates response when encountered).
 
 # Configure the stop sequence appropriate for this application.
-stop_seq = MESSAGE_DELIMITER	# This is appropriate given the RS delimiter.
-#stop_seq = ['\n' + MESSAGE_DELIMITER]	# Needed if delimiter might be in text.
+#stop_seq = MESSAGE_DELIMITER	# This is appropriate given the RS delimiter.
+stop_seq = ['\n' + MESSAGE_DELIMITER]	# Needed if delimiter might be in text.
 	# NOTE: The stop parameter is used to tell the API to stop generating 
 	# tokens when it encounters the specified string(s). We set it to stop 
 	# when it encounters the message delimiter string at the start of a new 
