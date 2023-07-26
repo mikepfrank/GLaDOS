@@ -2992,7 +2992,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 
 		# Append the text caption, if present.
 		if tgMsg.caption:
-			text += f"\n(message.caption)"
+			text += f"\n({message.caption})"
 
 		# Clear the audio_text entry from the user_data dictionary
 		del context.user_data['audio_text']
