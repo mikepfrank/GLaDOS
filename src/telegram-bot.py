@@ -7979,7 +7979,7 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 		howMany = 2		# This is not very useful!
 
 	# Cap number of results at whatever the AI suggested.
-	if maxResults < howMany:
+	if maxResults and maxResults < howMany:
 		howMany = maxResults
 
 	try:
