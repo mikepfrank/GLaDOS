@@ -4248,6 +4248,7 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 	elif funcName == 'search_web':
 
 		queryPhrase = funcArgs.get('query', None)
+		maxResults = funcArgs.get('max_results', None)
 		searchLocale = funcArgs.get('locale', 'en-US')
 		resultSections = funcArgs.get('sections', DEFAULT_BINGSEARCH_SECTIONS)
 		if isinstance(resultSections, str):
@@ -4258,7 +4259,8 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 		
 		if queryPhrase:
 			return await ai_searchWeb(message, conversation, queryPhrase,
-							locale=searchLocale, sections=resultSections)
+							maxResults=maxResults, locale=searchLocale,
+							sections=resultSections)
 		else:
 			await _report_error(conversation, message,
 					f"search_web() missing required argument 'query'.")
@@ -6333,6 +6335,9 @@ def _isBlockedByID(userID:int) -> bool:
 
 	if userID:
 		userData = _lookup_user(userID)
+		if userData is None:
+			_logger.warn(f"Couldn't find user data for ID#{userID}; assuming not blocked.")
+			return False	# If user does not exist, assume not blocked. (Is this a good idea?)
 		isBlocked = userData['blocked']
 		return isBlocked
 	else:
@@ -7815,6 +7820,10 @@ SEARCH_WEB_SCHEMA = {
 				"description":	"The search query string.",
 				"minLength":	1
 			},
+			"max_results": {
+				"type":			"integer",	# <max_results> is an integer
+				"description":	"The maximum number of items to return."
+			},
 			"locale": {
 				"type": 		"string",
 				"description":	"The locale for the search results.",
@@ -7944,7 +7953,7 @@ FUNCTIONS_LIST = [
 
 # Define a function to handle the AI's search_web() function.
 async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
-					   queryPhrase:str, locale:str="en-US",
+					   queryPhrase:str, maxResults:int=None, locale:str="en-US",
 					   sections:list=DEFAULT_BINGSEARCH_SECTIONS) -> str:
 
 	"""Do a web search using the Bing API."""
@@ -7968,6 +7977,10 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 		_logger.warn(f"This model has only {fieldSize} tokens. Web search results may overwhelm it.")
 
 		howMany = 2		# This is not very useful!
+
+	# Cap number of results at whatever the AI suggested.
+	if maxResults < howMany:
+		howMany = maxResults
 
 	try:
 		# This actually does the search.
