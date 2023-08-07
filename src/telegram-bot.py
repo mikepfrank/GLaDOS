@@ -1728,7 +1728,7 @@ class BotConversation:
 		#response_prompt = f"Respond as {botName}. (Remember you can use an available " \
 		#	"function if there is one that is appropriate.)"
 
-		response_prompt = f"Respond below. (Remember you can also activate an available" \
+		response_prompt = f"Respond below. (Remember you can also activate an available " \
 			"function and then call that function if appropriate.)"
 
 		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
@@ -2480,7 +2480,7 @@ async def handle_delmem(update:Update, context:Context) -> None:
 		
 	elif subcmd=='text':
 		_logger.normal(f"\tDeleting memory item with text=[rest]...")
-		_deleteMemoryItem(item_text=rest)
+		_deleteMemoryItem(text=rest)
 		CONF_TEXT = f"The memory item with item_text='{rest}' has been deleted."
 
 	# Also record the echo text in our conversation data structure.
@@ -3717,7 +3717,7 @@ async def ai_forget(updateMsg:TgMsg, conversation:BotConversation,
 		return "error: missing required argument"
 	#__/
 
-	_deleteMemoryItem(item_id=itemToDel, item_text=textToDel)
+	_deleteMemoryItem(item_id=itemToDel, text=textToDel)
 	# For now we assume it always succeeds.
 
 	if itemToDel is not None:
@@ -5997,9 +5997,24 @@ def _getDynamicMemory(convo:BotConversation):
 
 	searchPhrase = convo.lastMessageBy(_get_user_tag(user)).text
 
+	# Customize number of items returned based on context window size.
+	fieldSize = global_gptCore.fieldSize
+	if fieldSize >= 16000:		# 16k models and up
+		nItems = 7
+	elif fieldSize >= 8000:		# GPT-4 (initial release & up)
+		nItems = 5
+	elif fieldSize >= 4000:		# GPT-3.5 and up
+		nItems = 3
+	else:
+		_logger.warn(f"This model has only {fieldSize} tokens. Dynamic memory  may overwhelm it.")
+		nItems = 2
+
+	# We'll get the best-matching N items (based on field size).
+	memList = _searchMemories(userID, chatID, searchPhrase, nItems=nItems)
+
 	# We'll get the best-matching N items (currently set to 5).
-	memList = _searchMemories(userID, chatID, searchPhrase,
-							  nItems=DYNAMIC_CONTEXT_NITEMS)
+	#memList = _searchMemories(userID, chatID, searchPhrase,
+	#						  nItems=DYNAMIC_CONTEXT_NITEMS)
 
 	# We'll accumulate lines with the following format:
 	#
@@ -7423,7 +7438,7 @@ MAXIMUM_SEARCHMEM_NITEMS	= 10
 	# Cap the number of itself to return at this level.
 
 # We'll include in each prompt the top this many relevant items.
-DYNAMIC_CONTEXT_NITEMS		= 5
+DYNAMIC_CONTEXT_NITEMS		= 3
 
 # Result string to return when pass_turn() is successful.
 PASS_TURN_RESULT = "Success: Noted that the AI is not responding to the last user message."
@@ -7989,7 +8004,7 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 	except UnsupportedLocale as e:
 		# We'll let the AI know it failed
 		botConvo.add_message(BotMessage(SYS_NAME, f"[ERROR: {_lastError}]"))
-		return "Error: Unsupported locale / target market for search."
+		return f"Error: Unsupported locale / target market '{locale}' for search."
 
 	except BingQuotaExceeded as e:
 		# We'll let the AI know it failed
