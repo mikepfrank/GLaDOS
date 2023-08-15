@@ -3630,7 +3630,7 @@ async def ai_block(updateMsg:TgMsg, conversation:BotConversation,
 
 		if len(matchingUsers) > 1:
 			diagMsg = f"Can't block user by name tag '{userToBlock}' because it isn't unique."
-			return_msg = f"Error: User name tag {userToBlock} is not unique!"
+			return_msg = f"Error: User name tag {userToBlock} is not unique! To block the current user, call block_user() with no argument."
 
 			# Send diagnostic message to AI and to user.
 			sendRes = await _send_diagnostic(message, conversation, diagMsg)
@@ -7778,7 +7778,7 @@ BLOCK_USER_SCHEMA = {
 		"properties":   {
 			"user_name":    {
 				"type":         "string",   # <user_name> argument has type string.
-				"description":  "Name of user to block; defaults to current user."
+				"description":  "Name of user to block; defaults to current user if not specified."
 			},
 			"remark":	{
 				"type":			"string",	# <remark> argument has type string.
