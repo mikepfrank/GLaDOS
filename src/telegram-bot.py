@@ -1728,7 +1728,7 @@ class BotConversation:
 		#response_prompt = f"Respond as {botName}. (Remember you can use an available " \
 		#	"function if there is one that is appropriate.)"
 
-		response_prompt = f"Respond below. (Remember you can also activate an available" \
+		response_prompt = f"Respond below. (Remember you can also activate an available " \
 			"function and then call that function if appropriate.)"
 
 		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
@@ -2480,8 +2480,8 @@ async def handle_delmem(update:Update, context:Context) -> None:
 		
 	elif subcmd=='text':
 		_logger.normal(f"\tDeleting memory item with text=[rest]...")
-		_deleteMemoryItem(item_text=rest)
-		CONF_TEXT = f"The memory item with item_text='{rest}' has been deleted."
+		_deleteMemoryItem(text=rest)
+		CONF_TEXT = f"The memory item with text='{rest}' has been deleted."
 
 	# Also record the echo text in our conversation data structure.
 	conversation.add_message(BotMessage(SYS_NAME, CONF_TEXT))
@@ -2886,7 +2886,7 @@ async def handle_forget(update:Update, context:Context) -> None:
 	conversation.add_message(BotMessage(user_name, tgMsg.text))
 
 	# Check whether the user is in our access list.
-	if not _check_access(user_name, user_id):
+	if not _check_access(user_name, user_id=user_id):
 		_logger.normal(f"\nUser {user_name} tried to access chat {chat_id}, "
 					   "but is not in the access list. Denying access.")
 
@@ -3709,7 +3709,7 @@ async def ai_forget(updateMsg:TgMsg, conversation:BotConversation,
 		return "error: missing required argument"
 	#__/
 
-	_deleteMemoryItem(item_id=itemToDel, item_text=textToDel)
+	_deleteMemoryItem(item_id=itemToDel, text=textToDel)
 	# For now we assume it always succeeds.
 
 	if itemToDel is not None:
@@ -5812,9 +5812,12 @@ def _check_access(user_name, prioritize_bcl=True, user_id:int=None) -> bool:
 		Blacklist (bcl.[h]json) overrides whitelist (acl.hjson)
 		unless prioritize_bcl=False is specified."""
 
-	# If user_id argument is provided, just use the new user database.
+	# If user_id argument is provided, try to use the new user database.
 	if user_id:
-		return not _isBlockedByID(user_id)
+		blockedInDB = _isBlockedByID(user_id)
+		if blockedInDB is not None:
+			return not blockedInDB
+		# Else, revert to legacy system.
 
 	# Otherwise, use the legacy system.
 	if prioritize_bcl:
@@ -5951,9 +5954,20 @@ def _getDynamicMemory(convo:BotConversation):
 
 	searchPhrase = convo.lastMessageBy(_get_user_tag(user)).text
 
+	# Customize number of items returned based on context window size.
+	fieldSize = global_gptCore.fieldSize
+	if fieldSize >= 16000:		# 16k models and up
+		nItems = 7
+	elif fieldSize >= 8000:		# GPT-4 (initial release & up)
+		nItems = 5
+	elif fieldSize >= 4000:		# GPT-3.5 and up
+		nItems = 3
+	else:
+		_logger.warn(f"This model has only {fieldSize} tokens. Dynamic memory  may overwhelm it.")
+		nItems = 2
+
 	# We'll get the best-matching N items (currently set to 5).
-	memList = _searchMemories(userID, chatID, searchPhrase,
-							  nItems=DYNAMIC_CONTEXT_NITEMS)
+	memList = _searchMemories(userID, chatID, searchPhrase, nItems=nItems)
 
 	# We'll accumulate lines with the following format:
 	#
@@ -6285,11 +6299,21 @@ def _isBlocked(user:str) -> bool:
 
 def _isBlockedByID(userID:int) -> bool:
 
-	# Look up the complete user data.
-	userData = _lookup_user(userID)
-	isBlocked = userData['blocked']
+	"""Given a user ID, determine whether the user is blocked by consulting
+		the user database. Returns None if the user is not in the database."""
 
-	return isBlocked
+	# Look up the complete user data.
+
+	if userID:
+		userData = _lookup_user(userID)
+		if userData is None:
+			_logger.warn(f"Couldn't find user data for ID#{userID}; assuming not blocked.")
+			return None	   # If user does not exist, assume not blocked. (Is this a good idea?)
+		isBlocked = userData['blocked']
+		return isBlocked
+	else:
+		_logger.error("Falsy user ID passed to _isBlockedByID().")
+		return None # Is this a good idea?
 
 
 def _listToStr(vec:list):
