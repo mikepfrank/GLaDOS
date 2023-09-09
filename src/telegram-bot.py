@@ -1490,7 +1490,16 @@ class BotConversation:
 		# current dynamic memories.
 		if message.sender != BOT_NAME and message.sender != SYS_NAME \
 		   and not _isBlocked(message.sender):
-			thisConv.dynamicMem = _getDynamicMemory(thisConv)
+			try:
+				thisConv.dynamicMem = _getDynamicMemory(thisConv)
+
+			except RateLimitError as e:
+
+				_logger.error(f"Got a {type(e).__name__} from OpenAI ({e}) for "
+							  f"conversation {thisConv.chat_id}.")
+				
+				return	# Skip the dynamic memory updating.
+
 			# NOTE: This is relatively slow. Get rid of it?
 
 	#__/ End add_message() instance method for class Conversation.
@@ -1657,12 +1666,13 @@ class BotConversation:
 		# it only depends on the last user memory. It could also change if a
 		# new memory is added by a different user, but that shouldn't happen
 		# very often
-		chat_messages.append({
-			'role': CHAT_ROLE_SYSTEM,
-			'content': DYNAMIC_MEMORY_HEADER + \
-				thisConv.dynamicMem
+		if hasattr(thisConv, 'dynamicMem') and thisConv.dynamicMem:
+			chat_messages.append({
+				'role': CHAT_ROLE_SYSTEM,
+				'content': DYNAMIC_MEMORY_HEADER + \
+					thisConv.dynamicMem
 					# ^ Note this only changes when a new user message is added to the convo.
-		})
+			})
 
 		# MESSAGE #4.
 		# This one is fixed forever, we could just initialize it when the
@@ -3297,7 +3307,10 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 				_logger.error(f"Got a {type(e).__name__} from OpenAI ({e}) for "
 							  f"conversation {chat_id}.")
 
-				diagMsgStr = "AI model is overloaded; please try again later."
+				diagMsgStr = "AI model is overloaded, or monthly quota has "\
+					"been reached; please try again later. Quotas reset on "\
+					"the 1st of the month."
+
 				await _send_diagnostic(tgMsg, conversation, diagMsgStr, ignore=True)
 				return	# That's all she wrote.
 			#__/
@@ -4678,8 +4691,12 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 						  f"conversation {chat_id}; aborting.")
 
 			# Send a diagnostic message to the AI and to the user.
-			diagMsg = "AI model is overloaded; please try again later."
-			await _send_diagnostic(tgMsg, botConvo, diagMsg)
+
+			diagMsgStr = "AI model is overloaded, or monthly quota has "\
+					"been reached; please try again later. Quotas reset on "\
+					"the 1st of the month."
+
+			await _send_diagnostic(tgMsg, botConvo, diagMsgStr)
 
 			return	# That's all she wrote.
 
@@ -6012,10 +6029,6 @@ def _getDynamicMemory(convo:BotConversation):
 	# We'll get the best-matching N items (based on field size).
 	memList = _searchMemories(userID, chatID, searchPhrase, nItems=nItems)
 
-	# We'll get the best-matching N items (currently set to 5).
-	#memList = _searchMemories(userID, chatID, searchPhrase,
-	#						  nItems=DYNAMIC_CONTEXT_NITEMS)
-
 	# We'll accumulate lines with the following format:
 	#
 	#	id=<itemID> (user:<userTag> private/public local/global) <text>
@@ -6032,7 +6045,10 @@ def _getDynamicMemory(convo:BotConversation):
 		# Look up detailed user data. This is a dict with keys:
 		#	'dispName', 'userName', 'userID', 'userTag', 'blocked'.
 		userData = _lookup_user(userID)
-		userTag = userData['userTag']		# Could sometimes be "(unknown)"
+		if userData:
+			userTag = userData['userTag']		# Could sometimes be "(unknown)"
+		else:	# Not sure why this happens, but it does.
+			userTag = '(null)'
 
 		privacy = "public" if isPublic else "private"
 		locality = "global" if isGlobal else "local"
@@ -7152,18 +7168,12 @@ def _searchMemories(userID, chatID, searchPhrase,
 	# Close the connection
 	conn.close()
 
-	# Priority queue for storing the nItems closest matches (distance, item)
+	# Priority queue for storing the nItems closest matches (distance, id, item)
 	closestMatches = []
 
 	# Iterate through all the satisfying items
 	for item in items:
-		## OLD VERSION:
-		## Convert the item to a dictionary
-		#itemDict = {"itemID": item[0], "userID": item[1], "chatID": item[2],
-		#			"public": item[3], "global": item[4], "itemText": item[5],
-		#			"embedding": _strToList(item[6])}
 
-		# NEW VERSION:
 		# Convert the item to a dictionary
 		itemDict = {"itemID": item[0], "userID": item[1], "chatID": item[2],
 					"public": item[3], "global": item[4], "itemText": item[5],
@@ -7178,18 +7188,18 @@ def _searchMemories(userID, chatID, searchPhrase,
 		# Delete the embedding field now that we're done with it, cuz it's huge.
 		del itemDict['embedding']
 
-		# Add the item to the priority queue
-		if len(closestMatches) < nItems:
-			heapq.heappush(closestMatches, (distance, itemDict['itemID'], itemDict))
-		else:
-			heapq.heappushpop(closestMatches, (distance, itemDict['itemID'], itemDict))
+		# Pushes new item onto heap (note the negative sign before distance, 
+		# this results in the most distant item being on the top of the heap).
+		heapq.heappush(closestMatches, (-distance, itemDict['itemID'], itemDict))
+		# If heap gets too large, pop the "largest" (i.e., most negative) element.
+		if len(closestMatches) > nItems:
+			heapq.heappop(closestMatches)
 
 	# Return the closest matches
+	results = [itemDict for (_dist, _id, itemDict) in heapq.nlargest(nItems, closestMatches)]
 
-	results = [itemDict for (_dist, _id, itemDict) in heapq.nsmallest(nItems, closestMatches)]
-
-	#for itemDict in results:
-	#	itemDict['distance'] = round(itemDict['distance'], 6)
+	for itemDict in results:
+		itemDict['distance'] = format(itemDict['distance'], '.6f')
 
 	return results
 
