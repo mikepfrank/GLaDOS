@@ -2142,6 +2142,20 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 		await _reply_user(tgMessage, conversation, reply_msgStr, ignore=True)
 	#__/
 
+	# Check for a file 'announcement.txt' in the AI's datadir; if it's present,
+	# send it to the user as a system announcement.
+
+	ai_datadir = AI_DATADIR
+	ann_path = os.path.join(ai_datadir, 'telegram', 'announcement.txt')
+	if os.path.exists(ann_path):
+		with open(ann_path, 'r') as ann_file:
+			ann_text = ann_file.read().strip()
+			msgStr = f"ANNOUNCEMENT: {ann_text}"
+			conversation.add_message(BotMessage(SYS_NAME, msgStr))
+			fullMsgStr = f"[SYSTEM {msgStr}]"
+			_logger.info("Sending user {user_name} system announcement: {fullMsgStr}")
+			await _reply_user(tgMessage, conversation, fullMsgStr, ignore=True)
+
 #__/ End handle_start() function definition.
 
 
@@ -3962,6 +3976,8 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 
 	"""Do a web search using the Bing API."""
 
+	global _lastError
+
 	userID = updateMsg.from_user.id
 	chatID = botConvo.chat_id
 
@@ -4041,8 +4057,19 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 
 	except SearchError as e:
 		# We'll let the AI know it failed
-		botConvo.add_message(BotMessage(SYS_NAME, f"[ERROR: {_lastError}]"))
-		return "Error: Unsupported locale / target market for search."
+
+		errMsg = f"{type(e).__name__} exception: {e}"
+
+		botConvo.add_message(BotMessage(SYS_NAME, f"[ERROR: {errMsg}]"))
+		return errMsg
+
+		#botConvo.add_message(BotMessage(SYS_NAME, f"[ERROR: {_lastError}]"))
+		#return _lastError
+		#   ^ Commented this out because using errMsg is cleaner.
+
+		#return "Error: Unsupported locale / target market for search."
+		#	^ Commented out since this may or may not be the correct error.
+		#		We now also have BingQuotaExceeded exceptions.
 
 #__/
 
@@ -5765,7 +5792,8 @@ def _bing_search(query_string:str, market:str='en-US', count=3):
 		exType = type(ex).__name__
 	
 		# Log the error.
-		_logger.error(f"Search query generated a {exType} exception ({ex}).")
+		_lastError = f"Search query generated a {exType} exception ({ex})."
+		_logger.error(_lastError)
 
 		# Re-raise the exception so caller can also try to handle it.
 		raise ex
@@ -7201,6 +7229,9 @@ def _searchMemories(userID, chatID, searchPhrase,
 	for itemDict in results:
 		itemDict['distance'] = format(itemDict['distance'], '.6f')
 
+	for itemDict in results:
+		_logger.info(f"Got item at distance {itemDict['distance']}: [{itemDict['itemText']}]")
+
 	return results
 
 
@@ -7982,6 +8013,8 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 					   sections:list=DEFAULT_BINGSEARCH_SECTIONS) -> str:
 
 	"""Do a web search using the Bing API."""
+
+	global _lastError
 
 	userID = updateMsg.from_user.id
 	chatID = botConvo.chat_id
