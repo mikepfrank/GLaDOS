@@ -50,30 +50,6 @@
       "parent": null
     },
     {
-      "id": "gpt-3.5-turbo",
-      "object": "model",
-      "created": 1677610602,
-      "owned_by": "openai",
-      "permission": [
-        {
-          "id": "modelperm-Gsp3SyIu7GamHB3McQv3rMf5",
-          "object": "model_permission",
-          "created": 1684434433,
-          "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
-          "allow_search_indices": false,
-          "allow_view": true,
-          "allow_fine_tuning": false,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "gpt-3.5-turbo",
-      "parent": null
-    },
-    {
       "id": "davinci",
       "object": "model",
       "created": 1649359874,
@@ -119,30 +95,6 @@
         }
       ],
       "root": "text-davinci-edit-001",
-      "parent": null
-    },
-    {
-      "id": "text-davinci-003",
-      "object": "model",
-      "created": 1669599635,
-      "owned_by": "openai-internal",
-      "permission": [
-        {
-          "id": "modelperm-y4r1Z53hJ9TJxrUMPM50fYoS",
-          "object": "model_permission",
-          "created": 1684345476,
-          "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
-          "allow_search_indices": false,
-          "allow_view": true,
-          "allow_fine_tuning": false,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "text-davinci-003",
       "parent": null
     },
     {
@@ -362,27 +314,27 @@
       "parent": null
     },
     {
-      "id": "gpt-4",
+      "id": "gpt-3.5-turbo-16k-0613",
       "object": "model",
-      "created": 1678604602,
+      "created": 1685474247,
       "owned_by": "openai",
       "permission": [
         {
-          "id": "modelperm-HnvVZ1tf2jVawVaM1B3yjZnD",
+          "id": "modelperm-RizYeOCRqav9e70KnCJXhMlS",
           "object": "model_permission",
-          "created": 1684465847,
+          "created": 1686675077,
           "allow_create_engine": false,
-          "allow_sampling": false,
-          "allow_logprobs": false,
+          "allow_sampling": true,
+          "allow_logprobs": true,
           "allow_search_indices": false,
-          "allow_view": false,
+          "allow_view": true,
           "allow_fine_tuning": false,
           "organization": "*",
           "group": null,
           "is_blocking": false
         }
       ],
-      "root": "gpt-4",
+      "root": "gpt-3.5-turbo-16k-0613",
       "parent": null
     },
     {
@@ -434,30 +386,6 @@
       "parent": null
     },
     {
-      "id": "text-embedding-ada-002",
-      "object": "model",
-      "created": 1671217299,
-      "owned_by": "openai-internal",
-      "permission": [
-        {
-          "id": "modelperm-Dbv2FOgMdlDjO8py8vEjD5Mi",
-          "object": "model_permission",
-          "created": 1678892857,
-          "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
-          "allow_search_indices": true,
-          "allow_view": true,
-          "allow_fine_tuning": false,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "text-embedding-ada-002",
-      "parent": null
-    },
-    {
       "id": "text-similarity-ada-001",
       "object": "model",
       "created": 1651172505,
@@ -506,27 +434,27 @@
       "parent": null
     },
     {
-      "id": "gpt-4-0314",
+      "id": "gpt-3.5-turbo-0301",
       "object": "model",
-      "created": 1678604601,
+      "created": 1677649963,
       "owned_by": "openai",
       "permission": [
         {
-          "id": "modelperm-wD0mMKN1qMMpZ1ptTiU1uNNz",
+          "id": "modelperm-MZu3pkMUhS3y2QQXfDf4d8h3",
           "object": "model_permission",
-          "created": 1684465847,
+          "created": 1686776856,
           "allow_create_engine": false,
-          "allow_sampling": false,
-          "allow_logprobs": false,
+          "allow_sampling": true,
+          "allow_logprobs": true,
           "allow_search_indices": false,
-          "allow_view": false,
+          "allow_view": true,
           "allow_fine_tuning": false,
           "organization": "*",
           "group": null,
           "is_blocking": false
         }
       ],
-      "root": "gpt-4-0314",
+      "root": "gpt-3.5-turbo-0301",
       "parent": null
     },
     {
@@ -575,6 +503,30 @@
         }
       ],
       "root": "ada-similarity",
+      "parent": null
+    },
+    {
+      "id": "gpt-3.5-turbo",
+      "object": "model",
+      "created": 1677610602,
+      "owned_by": "openai",
+      "permission": [
+        {
+          "id": "modelperm-xRZ4uyi8qg210GOll6fp4YJ9",
+          "object": "model_permission",
+          "created": 1686776903,
+          "allow_create_engine": false,
+          "allow_sampling": true,
+          "allow_logprobs": true,
+          "allow_search_indices": false,
+          "allow_view": true,
+          "allow_fine_tuning": false,
+          "organization": "*",
+          "group": null,
+          "is_blocking": false
+        }
+      ],
+      "root": "gpt-3.5-turbo",
       "parent": null
     },
     {
@@ -962,6 +914,30 @@
       "parent": null
     },
     {
+      "id": "gpt-3.5-turbo-0613",
+      "object": "model",
+      "created": 1686587434,
+      "owned_by": "openai",
+      "permission": [
+        {
+          "id": "modelperm-8NTe6DBDMj9BJf9rJ4eKhgoW",
+          "object": "model_permission",
+          "created": 1686767378,
+          "allow_create_engine": false,
+          "allow_sampling": true,
+          "allow_logprobs": true,
+          "allow_search_indices": false,
+          "allow_view": true,
+          "allow_fine_tuning": false,
+          "organization": "*",
+          "group": null,
+          "is_blocking": false
+        }
+      ],
+      "root": "gpt-3.5-turbo-0613",
+      "parent": null
+    },
+    {
       "id": "curie-search-document",
       "object": "model",
       "created": 1651172508,
@@ -1082,6 +1058,30 @@
       "parent": null
     },
     {
+      "id": "text-embedding-ada-002",
+      "object": "model",
+      "created": 1671217299,
+      "owned_by": "openai-internal",
+      "permission": [
+        {
+          "id": "modelperm-Zn6DCHbetWQvnEAkktCo6UDP",
+          "object": "model_permission",
+          "created": 1686354304,
+          "allow_create_engine": false,
+          "allow_sampling": true,
+          "allow_logprobs": true,
+          "allow_search_indices": true,
+          "allow_view": true,
+          "allow_fine_tuning": false,
+          "organization": "*",
+          "group": null,
+          "is_blocking": false
+        }
+      ],
+      "root": "text-embedding-ada-002",
+      "parent": null
+    },
+    {
       "id": "text-search-babbage-query-001",
       "object": "model",
       "created": 1651172509,
@@ -1130,6 +1130,30 @@
       "parent": null
     },
     {
+      "id": "gpt-4",
+      "object": "model",
+      "created": 1678604602,
+      "owned_by": "openai",
+      "permission": [
+        {
+          "id": "modelperm-7sCp8ygtfObAPzc3SEF5g1T2",
+          "object": "model_permission",
+          "created": 1686673860,
+          "allow_create_engine": false,
+          "allow_sampling": false,
+          "allow_logprobs": false,
+          "allow_search_indices": false,
+          "allow_view": false,
+          "allow_fine_tuning": false,
+          "organization": "*",
+          "group": null,
+          "is_blocking": false
+        }
+      ],
+      "root": "gpt-4",
+      "parent": null
+    },
+    {
       "id": "curie",
       "object": "model",
       "created": 1649359874,
@@ -1154,27 +1178,51 @@
       "parent": null
     },
     {
-      "id": "gpt-3.5-turbo-0301",
+      "id": "gpt-4-0314",
       "object": "model",
-      "created": 1677649963,
+      "created": 1678604601,
       "owned_by": "openai",
       "permission": [
         {
-          "id": "modelperm-pvjOAsmQhwelYZvz8BlX18w0",
+          "id": "modelperm-zYf0qdBhKW2vE0yU8vbJgEiH",
           "object": "model_permission",
-          "created": 1684521457,
+          "created": 1686673860,
           "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
+          "allow_sampling": false,
+          "allow_logprobs": false,
           "allow_search_indices": false,
-          "allow_view": true,
+          "allow_view": false,
           "allow_fine_tuning": false,
           "organization": "*",
           "group": null,
           "is_blocking": false
         }
       ],
-      "root": "gpt-3.5-turbo-0301",
+      "root": "gpt-4-0314",
+      "parent": null
+    },
+    {
+      "id": "gpt-4-0613",
+      "object": "model",
+      "created": 1686588896,
+      "owned_by": "openai",
+      "permission": [
+        {
+          "id": "modelperm-u279Sc34Phof0SIiFlEzlAkb",
+          "object": "model_permission",
+          "created": 1686784727,
+          "allow_create_engine": false,
+          "allow_sampling": false,
+          "allow_logprobs": false,
+          "allow_search_indices": false,
+          "allow_view": false,
+          "allow_fine_tuning": false,
+          "organization": "*",
+          "group": null,
+          "is_blocking": false
+        }
+      ],
+      "root": "gpt-4-0613",
       "parent": null
     },
     {
@@ -1226,6 +1274,54 @@
       "parent": null
     },
     {
+      "id": "gpt-3.5-turbo-16k",
+      "object": "model",
+      "created": 1683758102,
+      "owned_by": "openai-internal",
+      "permission": [
+        {
+          "id": "modelperm-egUvgn6mWr4DTIDZt5WfrIdw",
+          "object": "model_permission",
+          "created": 1686785670,
+          "allow_create_engine": false,
+          "allow_sampling": true,
+          "allow_logprobs": true,
+          "allow_search_indices": false,
+          "allow_view": true,
+          "allow_fine_tuning": false,
+          "organization": "*",
+          "group": null,
+          "is_blocking": false
+        }
+      ],
+      "root": "gpt-3.5-turbo-16k",
+      "parent": null
+    },
+    {
+      "id": "text-davinci-003",
+      "object": "model",
+      "created": 1669599635,
+      "owned_by": "openai-internal",
+      "permission": [
+        {
+          "id": "modelperm-OCpZQfjQpoXnuT1DcEr3TtVy",
+          "object": "model_permission",
+          "created": 1686222972,
+          "allow_create_engine": false,
+          "allow_sampling": true,
+          "allow_logprobs": true,
+          "allow_search_indices": false,
+          "allow_view": true,
+          "allow_fine_tuning": false,
+          "organization": "*",
+          "group": null,
+          "is_blocking": false
+        }
+      ],
+      "root": "text-davinci-003",
+      "parent": null
+    },
+    {
       "id": "davinci-similarity",
       "object": "model",
       "created": 1651172509,
@@ -1247,342 +1343,6 @@
         }
       ],
       "root": "davinci-similarity",
-      "parent": null
-    },
-    {
-      "id": "cushman:2020-05-03",
-      "object": "model",
-      "created": 1590625110,
-      "owned_by": "system",
-      "permission": [
-        {
-          "id": "snapperm-FAup8P1KqclNlTsunLDRiesT",
-          "object": "model_permission",
-          "created": 1590625111,
-          "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
-          "allow_search_indices": false,
-          "allow_view": true,
-          "allow_fine_tuning": true,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "cushman:2020-05-03",
-      "parent": null
-    },
-    {
-      "id": "ada:2020-05-03",
-      "object": "model",
-      "created": 1607631625,
-      "owned_by": "system",
-      "permission": [
-        {
-          "id": "snapperm-9TYofAqUs54vytKYL0IX91rX",
-          "object": "model_permission",
-          "created": 1607631626,
-          "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
-          "allow_search_indices": false,
-          "allow_view": true,
-          "allow_fine_tuning": false,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "ada:2020-05-03",
-      "parent": null
-    },
-    {
-      "id": "babbage:2020-05-03",
-      "object": "model",
-      "created": 1607632611,
-      "owned_by": "system",
-      "permission": [
-        {
-          "id": "snapperm-jaLAcmyyNuaVmalCE1BGTGwf",
-          "object": "model_permission",
-          "created": 1607632613,
-          "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
-          "allow_search_indices": false,
-          "allow_view": true,
-          "allow_fine_tuning": false,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "babbage:2020-05-03",
-      "parent": null
-    },
-    {
-      "id": "curie:2020-05-03",
-      "object": "model",
-      "created": 1607632725,
-      "owned_by": "system",
-      "permission": [
-        {
-          "id": "snapperm-bt6R8PWbB2SwK5evFo0ZxSs4",
-          "object": "model_permission",
-          "created": 1607632727,
-          "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
-          "allow_search_indices": false,
-          "allow_view": true,
-          "allow_fine_tuning": false,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "curie:2020-05-03",
-      "parent": null
-    },
-    {
-      "id": "davinci:2020-05-03",
-      "object": "model",
-      "created": 1607640163,
-      "owned_by": "system",
-      "permission": [
-        {
-          "id": "snapperm-99cbfQTYDVeLkTYndX3UMpSr",
-          "object": "model_permission",
-          "created": 1607640164,
-          "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
-          "allow_search_indices": false,
-          "allow_view": true,
-          "allow_fine_tuning": false,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "davinci:2020-05-03",
-      "parent": null
-    },
-    {
-      "id": "if-davinci-v2",
-      "object": "model",
-      "created": 1610745990,
-      "owned_by": "openai",
-      "permission": [
-        {
-          "id": "snapperm-58q0TdK2K4kMgL3MoHvGWMlH",
-          "object": "model_permission",
-          "created": 1610746036,
-          "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
-          "allow_search_indices": false,
-          "allow_view": true,
-          "allow_fine_tuning": false,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "if-davinci-v2",
-      "parent": null
-    },
-    {
-      "id": "if-curie-v2",
-      "object": "model",
-      "created": 1610745968,
-      "owned_by": "openai",
-      "permission": [
-        {
-          "id": "snapperm-fwAseHVq6NGe6Ple6tKfzRSK",
-          "object": "model_permission",
-          "created": 1610746043,
-          "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
-          "allow_search_indices": false,
-          "allow_view": true,
-          "allow_fine_tuning": false,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "if-curie-v2",
-      "parent": null
-    },
-    {
-      "id": "if-davinci:3.0.0",
-      "object": "model",
-      "created": 1629420755,
-      "owned_by": "openai",
-      "permission": [
-        {
-          "id": "snapperm-T53lssiyMWwiuJwhyO9ic53z",
-          "object": "model_permission",
-          "created": 1629421809,
-          "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
-          "allow_search_indices": false,
-          "allow_view": true,
-          "allow_fine_tuning": true,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "if-davinci:3.0.0",
-      "parent": null
-    },
-    {
-      "id": "davinci-if:3.0.0",
-      "object": "model",
-      "created": 1629498070,
-      "owned_by": "openai",
-      "permission": [
-        {
-          "id": "snapperm-s6ZIAVMwlZwrLGGClTXqSK3Q",
-          "object": "model_permission",
-          "created": 1629498084,
-          "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
-          "allow_search_indices": false,
-          "allow_view": true,
-          "allow_fine_tuning": true,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "davinci-if:3.0.0",
-      "parent": null
-    },
-    {
-      "id": "davinci-instruct-beta:2.0.0",
-      "object": "model",
-      "created": 1629501914,
-      "owned_by": "openai",
-      "permission": [
-        {
-          "id": "snapperm-c70U4TBfiOD839xptP5pJzyc",
-          "object": "model_permission",
-          "created": 1629501939,
-          "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
-          "allow_search_indices": false,
-          "allow_view": true,
-          "allow_fine_tuning": true,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "davinci-instruct-beta:2.0.0",
-      "parent": null
-    },
-    {
-      "id": "text-ada:001",
-      "object": "model",
-      "created": 1641949608,
-      "owned_by": "system",
-      "permission": [
-        {
-          "id": "snapperm-d2PSnwFG1Yn9of6PvrrhkBcU",
-          "object": "model_permission",
-          "created": 1641949610,
-          "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
-          "allow_search_indices": false,
-          "allow_view": true,
-          "allow_fine_tuning": false,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "text-ada:001",
-      "parent": null
-    },
-    {
-      "id": "text-davinci:001",
-      "object": "model",
-      "created": 1641943966,
-      "owned_by": "system",
-      "permission": [
-        {
-          "id": "snapperm-Fj1O3zkKXOQy6AkcfQXRKcWA",
-          "object": "model_permission",
-          "created": 1641944340,
-          "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
-          "allow_search_indices": false,
-          "allow_view": true,
-          "allow_fine_tuning": false,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "text-davinci:001",
-      "parent": null
-    },
-    {
-      "id": "text-curie:001",
-      "object": "model",
-      "created": 1641955047,
-      "owned_by": "system",
-      "permission": [
-        {
-          "id": "snapperm-BI9TAT6SCj43JRsUb9CYadsz",
-          "object": "model_permission",
-          "created": 1641955123,
-          "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
-          "allow_search_indices": false,
-          "allow_view": true,
-          "allow_fine_tuning": false,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "text-curie:001",
-      "parent": null
-    },
-    {
-      "id": "text-babbage:001",
-      "object": "model",
-      "created": 1642018370,
-      "owned_by": "openai",
-      "permission": [
-        {
-          "id": "snapperm-7oP3WFr9x7qf5xb3eZrVABAH",
-          "object": "model_permission",
-          "created": 1642018480,
-          "allow_create_engine": false,
-          "allow_sampling": true,
-          "allow_logprobs": true,
-          "allow_search_indices": false,
-          "allow_view": true,
-          "allow_fine_tuning": false,
-          "organization": "*",
-          "group": null,
-          "is_blocking": false
-        }
-      ],
-      "root": "text-babbage:001",
       "parent": null
     }
   ]

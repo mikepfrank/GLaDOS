@@ -1023,6 +1023,8 @@ class BotConversation:
 
 		newConv.bot_name = BOT_NAME	# The name of the bot. ('Gladys', 'Aria', etc.)
 		newConv.chat_id = chat_id		# Remember the chat ID associated with this convo.
+		newConv.quiet_mode = False		# By default, bot can reply to any message.
+		
 		newConv.messages = []			# No messages initially (until added or loaded).
 		newConv.raw_oaiMsgs = []
 			# NOTE: This is a *more complete* list of recent OpenAI-format
@@ -1488,7 +1490,16 @@ class BotConversation:
 		# current dynamic memories.
 		if message.sender != BOT_NAME and message.sender != SYS_NAME \
 		   and not _isBlocked(message.sender):
-			thisConv.dynamicMem = _getDynamicMemory(thisConv)
+			try:
+				thisConv.dynamicMem = _getDynamicMemory(thisConv)
+
+			except RateLimitError as e:
+
+				_logger.error(f"Got a {type(e).__name__} from OpenAI ({e}) for "
+							  f"conversation {thisConv.chat_id}.")
+				
+				return	# Skip the dynamic memory updating.
+
 			# NOTE: This is relatively slow. Get rid of it?
 
 	#__/ End add_message() instance method for class Conversation.
@@ -1655,12 +1666,13 @@ class BotConversation:
 		# it only depends on the last user memory. It could also change if a
 		# new memory is added by a different user, but that shouldn't happen
 		# very often
-		chat_messages.append({
-			'role': CHAT_ROLE_SYSTEM,
-			'content': DYNAMIC_MEMORY_HEADER + \
-				thisConv.dynamicMem
+		if hasattr(thisConv, 'dynamicMem') and thisConv.dynamicMem:
+			chat_messages.append({
+				'role': CHAT_ROLE_SYSTEM,
+				'content': DYNAMIC_MEMORY_HEADER + \
+					thisConv.dynamicMem
 					# ^ Note this only changes when a new user message is added to the convo.
-		})
+			})
 
 		# MESSAGE #4.
 		# This one is fixed forever, we could just initialize it when the
@@ -1726,7 +1738,7 @@ class BotConversation:
 		#response_prompt = f"Respond as {botName}. (Remember you can use an available " \
 		#	"function if there is one that is appropriate.)"
 
-		response_prompt = f"Respond below. (Remember you can also activate an available" \
+		response_prompt = f"Respond below. (Remember you can also activate an available " \
 			"function and then call that function if appropriate.)"
 
 		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
@@ -2130,6 +2142,20 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 		await _reply_user(tgMessage, conversation, reply_msgStr, ignore=True)
 	#__/
 
+	# Check for a file 'announcement.txt' in the AI's datadir; if it's present,
+	# send it to the user as a system announcement.
+
+	ai_datadir = AI_DATADIR
+	ann_path = os.path.join(ai_datadir, 'telegram', 'announcement.txt')
+	if os.path.exists(ann_path):
+		with open(ann_path, 'r') as ann_file:
+			ann_text = ann_file.read().strip()
+			msgStr = f"ANNOUNCEMENT: {ann_text}"
+			conversation.add_message(BotMessage(SYS_NAME, msgStr))
+			fullMsgStr = f"[SYSTEM {msgStr}]"
+			_logger.info("Sending user {user_name} system announcement: {fullMsgStr}")
+			await _reply_user(tgMessage, conversation, fullMsgStr, ignore=True)
+
 #__/ End handle_start() function definition.
 
 
@@ -2478,7 +2504,7 @@ async def handle_delmem(update:Update, context:Context) -> None:
 		
 	elif subcmd=='text':
 		_logger.normal(f"\tDeleting memory item with text=[rest]...")
-		_deleteMemoryItem(item_text=rest)
+		_deleteMemoryItem(text=rest)
 		CONF_TEXT = f"The memory item with item_text='{rest}' has been deleted."
 
 	# Also record the echo text in our conversation data structure.
@@ -2581,9 +2607,8 @@ async def handle_reset(update:Update, context:Context) -> None:
 	# Add the /reset command itself to the conversation archive.
 	conversation.add_message(BotMessage(user_name, tgMsg.text))
 
-	_logger.normal(f"\nUser {user_name} entered a /reset command for chat {chat_id}.")
-
 	# Print diagnostic information.
+	_logger.normal(f"\nUser {user_name} entered a /reset command for chat {chat_id}.")
 	_logger.normal(f"\tResetting conversation {chat_id}.")
 
 	# Clear the conversation.
@@ -2592,7 +2617,7 @@ async def handle_reset(update:Update, context:Context) -> None:
 	# Send a diagnostic message to AI & user.
 	diagMsgStr = f"Cleared conversation {chat_id}."
 	sendRes = await _send_diagnostic(tgMsg, conversation, diagMsgStr)
-	if sendRes != 'success': return sendRes
+	if sendRes != 'success': return
 
 	# Send an initial message to the user.
 
@@ -2605,6 +2630,130 @@ async def handle_reset(update:Update, context:Context) -> None:
 	await _reply_user(tgMsg, conversation, reset_msgStr)
 
 #__/ End definition of /reset command handler function.
+
+
+# Now, let's define a function to handle the /quiet command.
+async def handle_quiet(update:Update, context:Context) -> None:
+
+	"""Put the bot into quiet mode."""
+
+	# Get the message, or edited message from the update.
+	(tgMsg, edited) = _get_update_msg(update)
+
+	if tgMsg is None:
+		_logger.warning("In handle_quiet() with no message? Aborting.")
+		return
+
+	chat_id = tgMsg.chat.id
+
+	# Make sure the thread component is set to this application (for logging).
+	logmaster.setComponent(_appName)
+
+	# Assume we're in a thread associated with a conversation.
+	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
+	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
+
+	# Get user name to use in message records.
+	user_name = _get_user_tag(tgMsg.from_user)
+
+	# Attempt to ensure the conversation is loaded; if we failed, bail.
+	if not await _ensure_convo_loaded(update, context):
+		_logger.error("Couldn't load conversation in handle_quiet(); aborting.")
+		return
+
+	if 'conversation' not in context.chat_data:
+		_logger.error(f"Can't go quiet in conversation {chat_id} because it's not loaded.")
+		return
+
+	# Fetch the conversation object.
+	conversation = context.chat_data['conversation']
+
+	# Add the /quiet command itself to the conversation archive.
+	conversation.add_message(BotMessage(user_name, tgMsg.text))
+
+	# Print diagnostic information.
+	_logger.normal(f"\nUser {user_name} entered a /quiet command for chat {chat_id}.")
+	_logger.normal(f"\tPutting conversation {chat_id} into quiet mode.")
+
+	# Actually do it.
+	conversation.quiet_mode = True
+	
+	# Send a diagnostic message to AI & user.
+	diagMsgStr = f"{BOT_NAME} is now in quiet mode and will only respond when addressed by name. Type '/noisy' to return to normal mode."
+	sendRes = await _send_diagnostic(tgMsg, conversation, diagMsgStr)
+	if sendRes != 'success': return sendRes
+
+	# Send a message from AI to user.
+
+	quiet_msgStr = f'Remember to use my name "{BOT_NAME}" when you want me to respond!'
+		# Record the reset message in our conversation data structure.
+	conversation.add_message(BotMessage(conversation.bot_name, quiet_msgStr))
+		# Send it to the user as well.
+	await _reply_user(tgMsg, conversation, quiet_msgStr)
+
+#__/ End definition of /quiet command handler function.
+
+
+# Now, let's define a function to handle the /noisy command.
+async def handle_noisy(update:Update, context:Context) -> None:
+
+	"""Put the bot into normal (i.e., noisy) mode."""
+
+	# Get the message, or edited message from the update.
+	(tgMsg, edited) = _get_update_msg(update)
+
+	if tgMsg is None:
+		_logger.warning("In handle_noisy() with no message? Aborting.")
+		return
+
+	chat_id = tgMsg.chat.id
+
+	# Make sure the thread component is set to this application (for logging).
+	logmaster.setComponent(_appName)
+
+	# Assume we're in a thread associated with a conversation.
+	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
+	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
+
+	# Get user name to use in message records.
+	user_name = _get_user_tag(tgMsg.from_user)
+
+	# Attempt to ensure the conversation is loaded; if we failed, bail.
+	if not await _ensure_convo_loaded(update, context):
+		_logger.error("Couldn't load conversation in handle_noisy(); aborting.")
+		return
+
+	if 'conversation' not in context.chat_data:
+		_logger.error(f"Can't turn off quiet mode in conversation {chat_id} because it's not loaded.")
+		return
+
+	# Fetch the conversation object.
+	conversation = context.chat_data['conversation']
+
+	# Add the /noisy command itself to the conversation archive.
+	conversation.add_message(BotMessage(user_name, tgMsg.text))
+
+	# Print diagnostic information.
+	_logger.normal(f"\nUser {user_name} entered a /noisy command for chat {chat_id}.")
+	_logger.normal(f"\tPutting conversation {chat_id} into normal (noisy) mode.")
+
+	# Actually do it.
+	conversation.quiet_mode = False
+	
+	# Send a diagnostic message to AI & user.
+	diagMsgStr = f"{BOT_NAME} is now in noisy mode and may respond to any message. Type '/quiet' to return to quiet mode."
+	sendRes = await _send_diagnostic(tgMsg, conversation, diagMsgStr)
+	if sendRes != 'success': return sendRes
+
+	# Send a message from AI to user.
+
+	noisy_msgStr = f'Now I can respond to any message sent in this chat!'
+		# Record the reset message in our conversation data structure.
+	conversation.add_message(BotMessage(conversation.bot_name, noisy_msgStr))
+		# Send it to the user as well.
+	await _reply_user(tgMsg, conversation, noisy_msgStr)
+
+#__/ End definition of /noisy command handler function.
 
 
 # Now, let's define a function to handle the /remember command.
@@ -2979,6 +3128,15 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		_logger.error("Couldn't load conversation in handle_message(); aborting.")
 		return
 
+	# If this is a group chat and the message text is empty or None,
+	# assume we were just added to the chat, and just delegate to the
+	# handle_start() function.
+	if chat_id < 0 and (text is None or text == ""):
+		_logger.normal(f"Added to group chat {chat_id} by user {user_name}. Auto-starting.")
+		#update.message.text = '/start'
+		await handle_start(update, context, autoStart=True)
+		return
+
 
 		#|----------------------------------------------------------------------
 		#| Audio transcripts. If the original message contained audio or voice
@@ -2992,7 +3150,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 
 		# Append the text caption, if present.
 		if tgMsg.caption:
-			text += f"\n(message.caption)"
+			text += f"\n({message.caption})"
 
 		# Clear the audio_text entry from the user_data dictionary
 		del context.user_data['audio_text']
@@ -3004,25 +3162,29 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 					   f"conversation {chat_id}.")
 		text = "(edited) " + text
 
-	# If this is a group chat and the message text is empty or None,
-	# assume we were just added to the chat, and just delegate to the
-	# handle_start() function.
-	if chat_id < 0 and (text is None or text == ""):
-		_logger.normal(f"Added to group chat {chat_id} by user {user_name}. Auto-starting.")
-		#update.message.text = '/start'
-		await handle_start(update, context, autoStart=True)
-		return
-
-	if text is None:
+	# Handle null text.
+	if not text:
 		text = "[null message]"
 
+
+	# Fetch the conversation object. Do some error handling.
+
+	if 'conversation' not in context.chat_data:
+		_logger.error("Conversation object not set in handle_message!!")
+		
 	conversation = context.chat_data['conversation']
+
+	if not conversation:
+		_logger.error("Null conversation object in handle_message()!!")
+
 
 	# Add the message just received to the conversation.
 	if isNewMsg:
 		conversation.add_message(BotMessage(user_name, text))
 
-	# Get the current user object, stash it in convo temporarily., 
+
+	# Get the current user object, stash it in convo temporarily.
+	# (This may be needed later if we decide to block the current user.)
 	cur_user = tgMsg.from_user
 	conversation.last_user = cur_user
 
@@ -3038,11 +3200,21 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 
 		return
 
+
+	# If we are in quiet mode, and we weren't named, and this isn't a command,
+	# then don't respond.
+	
+	if conversation.quiet_mode and (BOT_NAME.lower() not in text.lower()) and text[0]!='/':
+		_logger.warning(f"Ignoring a message from user {user_name} in chat {chat_id} because we're in quiet mode.")
+		return
+
+
 	# If the currently selected engine is a chat engine, we'll dispatch the rest
 	# of the message processing to a different function that's specialized to use 
 	# OpenAI's new chat API.
 	if global_gptCore.isChat:
 		return await process_chat_message(update, context)
+
 
 	## Also move the below code to this new function:
 	# else:
@@ -3149,7 +3321,10 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 				_logger.error(f"Got a {type(e).__name__} from OpenAI ({e}) for "
 							  f"conversation {chat_id}.")
 
-				diagMsgStr = "AI model is overloaded; please try again later."
+				diagMsgStr = "AI model is overloaded, or monthly quota has "\
+					"been reached; please try again later. Quotas reset on "\
+					"the 1st of the month."
+
 				await _send_diagnostic(tgMsg, conversation, diagMsgStr, ignore=True)
 				return	# That's all she wrote.
 			#__/
@@ -3482,7 +3657,7 @@ async def ai_block(updateMsg:TgMsg, conversation:BotConversation,
 
 		if len(matchingUsers) > 1:
 			diagMsg = f"Can't block user by name tag '{userToBlock}' because it isn't unique."
-			return_msg = f"Error: User name tag {userToBlock} is not unique!"
+			return_msg = f"Error: User name tag {userToBlock} is not unique! To block the current user, call block_user() with no argument."
 
 			# Send diagnostic message to AI and to user.
 			sendRes = await _send_diagnostic(message, conversation, diagMsg)
@@ -3569,7 +3744,7 @@ async def ai_forget(updateMsg:TgMsg, conversation:BotConversation,
 		return "error: missing required argument"
 	#__/
 
-	_deleteMemoryItem(item_id=itemToDel, item_text=textToDel)
+	_deleteMemoryItem(item_id=itemToDel, text=textToDel)
 	# For now we assume it always succeeds.
 
 	if itemToDel is not None:
@@ -3801,6 +3976,8 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 
 	"""Do a web search using the Bing API."""
 
+	global _lastError
+
 	userID = updateMsg.from_user.id
 	chatID = botConvo.chat_id
 
@@ -3880,8 +4057,19 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 
 	except SearchError as e:
 		# We'll let the AI know it failed
-		botConvo.add_message(BotMessage(SYS_NAME, f"[ERROR: {_lastError}]"))
-		return "Error: Unsupported locale / target market for search."
+
+		errMsg = f"{type(e).__name__} exception: {e}"
+
+		botConvo.add_message(BotMessage(SYS_NAME, f"[ERROR: {errMsg}]"))
+		return errMsg
+
+		#botConvo.add_message(BotMessage(SYS_NAME, f"[ERROR: {_lastError}]"))
+		#return _lastError
+		#   ^ Commented this out because using errMsg is cleaner.
+
+		#return "Error: Unsupported locale / target market for search."
+		#	^ Commented out since this may or may not be the correct error.
+		#		We now also have BingQuotaExceeded exceptions.
 
 #__/
 
@@ -4100,6 +4288,7 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 	elif funcName == 'search_web':
 
 		queryPhrase = funcArgs.get('query', None)
+		maxResults = funcArgs.get('max_results', None)
 		searchLocale = funcArgs.get('locale', 'en-US')
 		resultSections = funcArgs.get('sections', DEFAULT_BINGSEARCH_SECTIONS)
 		if isinstance(resultSections, str):
@@ -4110,7 +4299,8 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 		
 		if queryPhrase:
 			return await ai_searchWeb(message, conversation, queryPhrase,
-							locale=searchLocale, sections=resultSections)
+							maxResults=maxResults, locale=searchLocale,
+							sections=resultSections)
 		else:
 			await _report_error(conversation, message,
 					f"search_web() missing required argument 'query'.")
@@ -4528,8 +4718,12 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 						  f"conversation {chat_id}; aborting.")
 
 			# Send a diagnostic message to the AI and to the user.
-			diagMsg = "AI model is overloaded; please try again later."
-			await _send_diagnostic(tgMsg, botConvo, diagMsg)
+
+			diagMsgStr = "AI model is overloaded, or monthly quota has "\
+					"been reached; please try again later. Quotas reset on "\
+					"the 1st of the month."
+
+			await _send_diagnostic(tgMsg, botConvo, diagMsgStr)
 
 			return	# That's all she wrote.
 
@@ -5598,7 +5792,8 @@ def _bing_search(query_string:str, market:str='en-US', count=3):
 		exType = type(ex).__name__
 	
 		# Log the error.
-		_logger.error(f"Search query generated a {exType} exception ({ex}).")
+		_lastError = f"Search query generated a {exType} exception ({ex})."
+		_logger.error(_lastError)
 
 		# Re-raise the exception so caller can also try to handle it.
 		raise ex
@@ -5847,9 +6042,20 @@ def _getDynamicMemory(convo:BotConversation):
 
 	searchPhrase = convo.lastMessageBy(_get_user_tag(user)).text
 
-	# We'll get the best-matching N items (currently set to 5).
-	memList = _searchMemories(userID, chatID, searchPhrase,
-							  nItems=DYNAMIC_CONTEXT_NITEMS)
+	# Customize number of items returned based on context window size.
+	fieldSize = global_gptCore.fieldSize
+	if fieldSize >= 16000:		# 16k models and up
+		nItems = 7
+	elif fieldSize >= 8000:		# GPT-4 (initial release & up)
+		nItems = 5
+	elif fieldSize >= 4000:		# GPT-3.5 and up
+		nItems = 3
+	else:
+		_logger.warn(f"This model has only {fieldSize} tokens. Dynamic memory  may overwhelm it.")
+		nItems = 2
+
+	# We'll get the best-matching N items (based on field size).
+	memList = _searchMemories(userID, chatID, searchPhrase, nItems=nItems)
 
 	# We'll accumulate lines with the following format:
 	#
@@ -5867,7 +6073,10 @@ def _getDynamicMemory(convo:BotConversation):
 		# Look up detailed user data. This is a dict with keys:
 		#	'dispName', 'userName', 'userID', 'userTag', 'blocked'.
 		userData = _lookup_user(userID)
-		userTag = userData['userTag']		# Could sometimes be "(unknown)"
+		if userData:
+			userTag = userData['userTag']		# Could sometimes be "(unknown)"
+		else:	# Not sure why this happens, but it does.
+			userTag = '(null)'
 
 		privacy = "public" if isPublic else "private"
 		locality = "global" if isGlobal else "local"
@@ -6185,6 +6394,9 @@ def _isBlockedByID(userID:int) -> bool:
 
 	if userID:
 		userData = _lookup_user(userID)
+		if userData is None:
+			_logger.warn(f"Couldn't find user data for ID#{userID}; assuming not blocked.")
+			return False	# If user does not exist, assume not blocked. (Is this a good idea?)
 		isBlocked = userData['blocked']
 		return isBlocked
 	else:
@@ -6984,18 +7196,12 @@ def _searchMemories(userID, chatID, searchPhrase,
 	# Close the connection
 	conn.close()
 
-	# Priority queue for storing the nItems closest matches (distance, item)
+	# Priority queue for storing the nItems closest matches (distance, id, item)
 	closestMatches = []
 
 	# Iterate through all the satisfying items
 	for item in items:
-		## OLD VERSION:
-		## Convert the item to a dictionary
-		#itemDict = {"itemID": item[0], "userID": item[1], "chatID": item[2],
-		#			"public": item[3], "global": item[4], "itemText": item[5],
-		#			"embedding": _strToList(item[6])}
 
-		# NEW VERSION:
 		# Convert the item to a dictionary
 		itemDict = {"itemID": item[0], "userID": item[1], "chatID": item[2],
 					"public": item[3], "global": item[4], "itemText": item[5],
@@ -7010,18 +7216,21 @@ def _searchMemories(userID, chatID, searchPhrase,
 		# Delete the embedding field now that we're done with it, cuz it's huge.
 		del itemDict['embedding']
 
-		# Add the item to the priority queue
-		if len(closestMatches) < nItems:
-			heapq.heappush(closestMatches, (distance, itemDict['itemID'], itemDict))
-		else:
-			heapq.heappushpop(closestMatches, (distance, itemDict['itemID'], itemDict))
+		# Pushes new item onto heap (note the negative sign before distance, 
+		# this results in the most distant item being on the top of the heap).
+		heapq.heappush(closestMatches, (-distance, itemDict['itemID'], itemDict))
+		# If heap gets too large, pop the "largest" (i.e., most negative) element.
+		if len(closestMatches) > nItems:
+			heapq.heappop(closestMatches)
 
 	# Return the closest matches
+	results = [itemDict for (_dist, _id, itemDict) in heapq.nlargest(nItems, closestMatches)]
 
-	results = [itemDict for (_dist, _id, itemDict) in heapq.nsmallest(nItems, closestMatches)]
+	for itemDict in results:
+		itemDict['distance'] = format(itemDict['distance'], '.6f')
 
-	#for itemDict in results:
-	#	itemDict['distance'] = round(itemDict['distance'], 6)
+	for itemDict in results:
+		_logger.info(f"Got item at distance {itemDict['distance']}: [{itemDict['itemText']}]")
 
 	return results
 
@@ -7270,7 +7479,7 @@ MAXIMUM_SEARCHMEM_NITEMS	= 10
 	# Cap the number of itself to return at this level.
 
 # We'll include in each prompt the top this many relevant items.
-DYNAMIC_CONTEXT_NITEMS		= 5
+DYNAMIC_CONTEXT_NITEMS		= 3
 
 # Result string to return when pass_turn() is successful.
 PASS_TURN_RESULT = "Success: Noted that the AI is not responding to the last user message."
@@ -7610,7 +7819,7 @@ BLOCK_USER_SCHEMA = {
 		"properties":   {
 			"user_name":    {
 				"type":         "string",   # <user_name> argument has type string.
-				"description":  "Name of user to block; defaults to current user."
+				"description":  "Name of user to block; defaults to current user if not specified."
 			},
 			"remark":	{
 				"type":			"string",	# <remark> argument has type string.
@@ -7666,6 +7875,10 @@ SEARCH_WEB_SCHEMA = {
 				"type": 		"string",
 				"description":	"The search query string.",
 				"minLength":	1
+			},
+			"max_results": {
+				"type":			"integer",	# <max_results> is an integer
+				"description":	"The maximum number of items to return."
 			},
 			"locale": {
 				"type": 		"string",
@@ -7796,10 +8009,12 @@ FUNCTIONS_LIST = [
 
 # Define a function to handle the AI's search_web() function.
 async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
-					   queryPhrase:str, locale:str="en-US",
+					   queryPhrase:str, maxResults:int=None, locale:str="en-US",
 					   sections:list=DEFAULT_BINGSEARCH_SECTIONS) -> str:
 
 	"""Do a web search using the Bing API."""
+
+	global _lastError
 
 	userID = updateMsg.from_user.id
 	chatID = botConvo.chat_id
@@ -7821,6 +8036,10 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 
 		howMany = 2		# This is not very useful!
 
+	# Cap number of results at whatever the AI suggested.
+	if maxResults and maxResults < howMany:
+		howMany = maxResults
+
 	try:
 		# This actually does the search.
 		searchResult = _bing_search(queryPhrase, market=locale, count=howMany)
@@ -7828,7 +8047,7 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 	except UnsupportedLocale as e:
 		# We'll let the AI know it failed
 		botConvo.add_message(BotMessage(SYS_NAME, f"[ERROR: {_lastError}]"))
-		return "Error: Unsupported locale / target market for search."
+		return f"Error: Unsupported locale / target market '{locale}' for search."
 
 	except BingQuotaExceeded as e:
 		# We'll let the AI know it failed
@@ -7983,6 +8202,8 @@ Available commands:
 /remember <text> - Adds the given statement to the bot's dynamic persistent memory.
 /search (memory|web) for <phrase> - Searches bot's memory or the web for <phrase>.
 /forget <item> - Removes the given statement from the bot's dynamic persistent memory.
+/quiet - Puts the bot into quiet mode. It will only respond when addressed by name.
+/noisy - Turns off quiet mode. The bot may now respond to any message.
 /reset - Clears the bot's memory of the conversation. Useful for breaking output loops.
 /echo <text> - Echoes back the given text. (I/O test.)
 /greet - Causes the server to send a greeting. (Server responsiveness test.)
@@ -8033,6 +8254,8 @@ COMMAND_LIST = f"""
 start - Starts bot; reloads conversation history.
 help - Displays general help and command help.
 image - Generates an image from a description.
+quiet - Tell bot not to respond unless addressed by name.
+noisy - Tell bot it can respond to any message.
 remember - Adds an item to the bot's persistent memory.
 search - Search bot's memory or the web for a phrase.
 forget - Removes an item from the bot's persistent memory.
@@ -8084,12 +8307,14 @@ app.add_error_handler(handle_error)
 	#----------------------------------------
 	# HANDLER GROUP 0: User command handlers.
 
-app.add_handler(CommandHandler('start',		handle_start),		group = 0)
-app.add_handler(CommandHandler('help',		handle_help), 		group = 0)
-app.add_handler(CommandHandler('image',		handle_image),		group = 0)
-app.add_handler(CommandHandler('reset',		handle_reset),		group = 0)
-app.add_handler(CommandHandler('remember',	handle_remember),	group = 0)
-app.add_handler(CommandHandler('search',	handle_search),		group = 0)
+app.add_handler(CommandHandler('start',		handle_start),		group = 0)	# Start/restart the bot.
+app.add_handler(CommandHandler('help',		handle_help), 		group = 0)	# Display help.
+app.add_handler(CommandHandler('image',		handle_image),		group = 0)	# Generate an image.
+app.add_handler(CommandHandler('reset',		handle_reset),		group = 0)	# Clear conversation memory.
+app.add_handler(CommandHandler('quiet',		handle_quiet),		group = 0)	# Only speak when spoken to.
+app.add_handler(CommandHandler('noisy',		handle_noisy),		group = 0)	# Back to normal mode.
+app.add_handler(CommandHandler('remember',	handle_remember),	group = 0)	# Remember a new memory item.
+app.add_handler(CommandHandler('search',	handle_search),		group = 0)	# Search for a memory item.
 app.add_handler(CommandHandler('forget',	handle_forget),		group = 0)	# Not available to most users.
 
 # These commands are not for general users; they are undocumented.
