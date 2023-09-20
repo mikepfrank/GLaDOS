@@ -70,7 +70,7 @@ _logger = getComponentLogger(_component)  # Create the component logger.
 global _sw_component
 _sw_component = sysName + '.' + _component
 
-import curses
+#import curses
 from curses import error, newwin
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -677,6 +677,8 @@ class PanelClient(DisplayClient):
 
 			# Now is a good time to update the panel client's physical display?
 		client.updateDisplay()
+	
+	#__/ End method redoPlacements().
 
 
 	def handle_resize(thisPanelClient):
@@ -695,6 +697,12 @@ class PanelClient(DisplayClient):
 			# sizes and locations.
 		client.redoPlacements()
 
+			# Now, tell the display to repaint the screen.
+		#client.redisplay()
+			# This is now done in TheDisplay._resize() after this returns.
+
+	#__/ End method panelClient.handle_resize().
+
 
 	def setupColumns(newPanelClient):
 	
@@ -711,6 +719,7 @@ class PanelClient(DisplayClient):
 			client.colSepPos = int(width/2)	# Horizontal position of the column separator.
 		else:
 			client.nColumns = 1				# One column of panels.
+	#__/ End method setupColumns().
 
 	
 	def reserveBot(thisPanelClient, nRows):
@@ -737,10 +746,15 @@ class PanelClient(DisplayClient):
 		screen.attrset(attr)
 		screen.vline(sep_top, sep_pos, '|', sep_height)
 		screen.attrset(0)
+	#__/ End method drawSeparator().
 	
+
 	def redrawFrames(thisPanelClient):
-		"""This is line .paint(), except that it only redraws the panel frames,
+		"""This is like .paint(), except that it only redraws the panel frames,
 			but not the panel contents."""
+		
+		# NOTE: Not yet implemented or used.
+
 
 	def paint(thisPanelClient):
 
@@ -780,7 +794,7 @@ class PanelClient(DisplayClient):
 			if client._title is not None:
 				# Draw the title in the middle of the top border.
 				display.drawCenter(client._title, row=0, lrpad=' ', style=BORDER)
-				# (Pads it on the left and the right with a space.)
+					# (Pads it on the left and the right with a space.)
 			
 			if client.nColumns == 2:	# Two columns; need to draw separator.
 				client.drawSeparator()
@@ -795,6 +809,7 @@ class PanelClient(DisplayClient):
 		# Not that it matters, since we have turned off the automatic cursor
 		# display in display._init(), but we "Home" the cursor to (0,0).
 		screen.move(0,0)
+	#__/ End method panelClient.paint().
 
 	
 	def addPanel(thisPanelClient, panel:Panel):
@@ -813,6 +828,8 @@ class PanelClient(DisplayClient):
 				# Now tell the client to inform the display that the screen needs
 				# repainting.
 			#client.requestRepaint()
+	#__/ End method addPanel().
+
 
 	def handle_event(thisPanelClient:PanelClient, keyEvent:KeyEvent):
 	
@@ -830,6 +847,9 @@ class PanelClient(DisplayClient):
 		focusPanel = client.focusPanel
 		if focusPanel is not None:
 			focusPanel.handle(keyEvent)
+	#__/ End method handle_event().
+
+#__/ End class PanelClient.
 
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #|						END OF FILE:	display/panel.py

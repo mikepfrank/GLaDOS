@@ -3,6 +3,18 @@
 
 Instructions to set up & run GladOS and/or the Telegram bot.
 
+Outline:
+	* Step 1. [Optional] - Create the Telegram bot for your AI persona.
+	* Step 2. - Clone the git repo.
+	* Step 3. - Install dependencies.
+	* Step 4. - Customize as desired.
+	* Step 5. - Set up environment variables.
+	* Step 6. - Install the AI's data files in its ops directory.
+	* Step 7. - Test the connection to the OpenAI API.
+	* Step 8. - Launch AI server programs.
+	* Step 9. - Start using the servers.
+
+Details follow.
 
 =================================================================
 Step 1. [Optional] - Create the Telegram bot for your AI persona.

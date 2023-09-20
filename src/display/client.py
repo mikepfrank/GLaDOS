@@ -253,6 +253,7 @@ class DisplayClient:
 
 	#__/ End sensitive public instance method client.redisplay().
 	
+	
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	def updateDisplay(thisClient):
 		

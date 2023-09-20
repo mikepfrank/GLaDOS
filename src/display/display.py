@@ -170,7 +170,7 @@ from .exceptions import (	# Display-related exception classes.
 		RenderExcursion,		# display.renderText() can throw this.
 		DisplayNotRunning,		# We handle this return from driver().
 		DisplayDied,			# display._do1iteration() can throw this.
-		RequestRestart,			# display._resize() might throw this.
+		#RequestRestart,			# display._resize() might throw this.
 		TerminateServer,		# display._do1iteration() can throw this.
 	
 	) 	
