@@ -412,6 +412,10 @@ _ENGINE_ATTRIBS = {
 
 	'gpt-3.5-turbo-0301':   {'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0301', 	'field-size': 4096, 'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
     'gpt-3.5-turbo':    	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo', 		'field-size': 4096, 'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
+
+		# GPT-3.5-turbo-instruct. (Speed & pricing like GPT-3.5 Turbo, trained like GPT-3 Instruct.)
+
+	'gpt-3.5-turbo-instruct':	{'model-family': 'GPT-3.5', 'engine-name': 'gpt-3.5-turbo-instruct', 'field-size': 4096, 'price': 0.002, 'is-chat': False,  'encoding': 'p50k_base'},
     
 		# GPT-4 models.  (These also use the chat API. Data through Sep. 2021.)
 
