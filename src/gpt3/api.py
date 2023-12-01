@@ -227,6 +227,8 @@ from	curses.ascii	import	RS #, STX, ETX	# We use these to delimit messages.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 import	openai		# OpenAI's Python bindings for their REST API to GPT-3.
+from	openai	import	OpenAI	# Client constructor.
+
 import	tiktoken	# A fast standalone tokenizer module for GPT-3.
 import	backoff		# Utility module for exponential backoff on failures.
 
@@ -421,6 +423,8 @@ _ENGINES = [
     {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06,		'is-chat': False,	'encoding': 'p50k_base'},
     {'model-family': 'GPT-3.5',	'engine-name': 'code-davinci-002', 'field-size': 8001, 'price': 0,			'is-chat': False,	'encoding': 'p50k_base'},
     {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02,		'is-chat': False,	'encoding': 'p50k_base'},
+		# GPT-3.5-turbo-instruct. (Speed & pricing like GPT-3.5 Turbo, trained like GPT-3 Instruct.)
+	{'model-family': 'GPT-3.5', 'engine-name': 'gpt-3.5-turbo-instruct', 'field-size': 4000, 'price': 0.002, 'is-chat': False,  'encoding': 'p50k_base'},
     
 		# ChatGPT-3.5 models. (These use the chat API. Data through Sep. 2021.)
 
@@ -445,6 +449,7 @@ _ENGINES = [
 		# 32k GPT-4 models. (Context window size increased to 32,768 tokens.)
 	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-32k',			'field-size': 32768, 'price': 0.12,	'prompt-price': 0.06,	'is-chat': True,	'encoding': 'p50k_base'},
 	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-32k-0613',	'field-size': 32768, 'price': 0.12,	'prompt-price': 0.06,	'is-chat': True,	'encoding': 'p50k_base'},
+
 
 ] # End _ENGINES constant module global data structure.
 
@@ -621,6 +626,15 @@ CHAT_ROLE_FUNCRET	= 'function'
 #|==============================================================================
 #|	Module-level global variables.							  	[code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#| Recent versions of the API (incl. 1.2.3) require constructing a 
+	#| "client" object and passing the API calls through that.
+	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+global		_client			# The OpenAI API client object.
+_client		= OpenAI()		# Creates the client (we only need 1).
+
 
 global 		_aiPath		# Path to the AI's data directory.
 _aiPath 	= None		# Not yet initialized.
@@ -1415,7 +1429,7 @@ class Completion:
 	@property
 	def text(self):
 		"""Returns the text of this completion, as a single string."""
-		return ''.join(self.complStruct['choices'][0]['text'])
+		return ''.join(self.complStruct.choices[0].text)
 
 
 	# Return the value of the 'finish_reason' field of the completion.
@@ -1430,7 +1444,7 @@ class Completion:
 				'stop' - The completion finished because the engine
 							generated a stop sequence.
 		"""
-		return self.complStruct['choices'][0]['finish_reason']
+		return self.complStruct.choices[0].finish_reason
 
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1455,7 +1469,7 @@ class Completion:
 			if self.core.conf.logProbs != 0:
 				_logger.warn("WARNING: .nTokens only works when logprobs=0!")
 				
-		return len(self.complStruct['choices'][0]['logprobs']['tokens'])
+		return len(self.complStruct.choices[0].logprobs.tokens)
 
 	#__/ End of class gpt3.api.Completion's .nTokens property.
 
@@ -1507,7 +1521,7 @@ class Completion:
 		"""Given a position in the completion text, returns the index 
 			of the token that is at that position."""
 			
-		text_offsets = self.complStruct['choices'][0]['logprobs']['text_offset']
+		text_offsets = self.complStruct.choices[0].logprobs.text_offset
 
 			# We could make this more efficient by doing a binary
 			# search, but it's probably overkill at the moment.
@@ -1539,7 +1553,7 @@ class Completion:
 
 		# This decorator performs automatic exponential backoff on certain REST failures.
 
-	@backoff.on_exception(backoff.expo, (openai.error.APIError), max_tries=6)
+	@backoff.on_exception(backoff.expo, (openai.APIError), max_tries=6)
 	def _createComplStruct(thisCompletion:Completion, apiArgs, minRepWin:int=DEF_TOKENS):
 			# By default, don't accept shortening the space for the response to less than 100 tokens.
 	
@@ -1682,7 +1696,7 @@ class Completion:
 		# object, because we call this method from the initializer,
 		# before the completion object has been fully initialized.
 
-		text = ''.join(complStruct['choices'][0]['text'])
+		text = ''.join(complStruct.choices[0].text)
 			# This syntax concatenates the list of strings returned by
 			# the underlying API together into a single string.
 
@@ -1740,6 +1754,13 @@ class Completion:
 #|
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+def oaiMsgObj_to_msgDict(message: openai.types.chat.ChatCompletionMessage):
+	return {
+		'content':			message.content,
+		'role':				message.role,
+		'function_call':	message.function_call
+	}
+
 class ChatMessages: pass
 class ChatMessages:
 
@@ -1767,6 +1788,17 @@ class ChatMessages:
 		
 		if msgList is None:
 			msgList = []
+
+		# Convert messages from OpenAI's new object representation back
+		# to the legacy dict representation that we use in our code.
+		newList = []
+		for msg in msgList:
+			if isinstance(msg, openai.types.chat.ChatCompletionMessage):
+				newMsg = oaiMsgObj_to_msgDict(msg)
+			else:
+				newMsg = msg
+			newList.append(newMsg)
+		msgList = newList
 
 		# NOTE: It would be a good idea to check the validity of the message 
 		# dicts here, so that we can give a more informative and immediate 
@@ -2082,12 +2114,12 @@ class ChatCompletion(Completion):
 			response = ""
 			
 			for chunk in tcc.complStruct:
-				delta = chunk['choices'][0]['delta']
+				delta = chunk.choices[0].delta
 				if 'role' in delta:
-					role = delta['role']
+					role = delta.role
 					_logger.debug("Got role: {role}")
 				if 'content' in delta:
-					chunkText = delta['content']
+					chunkText = delta.content
 					_logger.debug("Got text chunk: {chunkText}")
 					response += chunkText
 
@@ -2105,14 +2137,14 @@ class ChatCompletion(Completion):
 	@property
 	def firstChoice(thisChatCompletion:ChatCompletion):
 		"""Returns the first choice dict of this chat completion."""
-		return thisChatCompletion.chatComplStruct['choices'][0]
+		return thisChatCompletion.chatComplStruct.choices[0]
 
 	@property
 	def message(thisChatCompletion:ChatCompletion):
 
 		"""Returns the result message dict of this chat completion."""
 
-		return thisChatCompletion.firstChoice['message']
+		return thisChatCompletion.firstChoice.message
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| chatCompletion.text						  [public instance property]
@@ -2132,17 +2164,17 @@ class ChatCompletion(Completion):
 		"""Returns the text of this chat completion, as a single string."""
 
 		# Note the following code differs from the code in the Completion class.
-		return thisChatCompletion.message['content']
+		return thisChatCompletion.message.content
 
 	@text.setter
 	def text(thisChatCompletion:ChatCompletion, newText:str):
 		"""Sets the value of the chat completion text content."""
-		thisChatCompletion.message['content'] = newText
+		thisChatCompletion.message.content = newText
 
 	@property
 	def finishReason(thisChatCompletion:ChatCompletion):
 		"""Returns the value of the finish_reason field of the result."""
-		return thisChatCompletion.firstChoice['finish_reason']
+		return thisChatCompletion.firstChoice.finish_reason
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| chatCompletion.nTokens					  [public instance property]
@@ -2159,8 +2191,8 @@ class ChatCompletion(Completion):
 		"""Returns the total number of tokens in this completion.
 			Note this includes BOTH the prompt and the result."""
 	
-		return thisChatCompletion.chatComplStruct \
-				['usage']['total_tokens']
+		return thisChatCompletion.chatComplStruct\
+				.usage.total_tokens
 
 	#__/ End of class gpt3.api.ChatCompletion's .nTokens property.
 
@@ -2178,8 +2210,8 @@ class ChatCompletion(Completion):
 	
 		"""Returns the length of the prompt in tokens."""
 		
-		return thisChatCompletion.chatComplStruct \
-				['usage']['prompt_tokens']
+		return thisChatCompletion.chatComplStruct\
+				.usage.prompt_tokens
 	
 	#__/ End of class gpt3.api.ChatCompletion's .promptLen property.
 
@@ -2429,56 +2461,62 @@ class ChatCompletion(Completion):
 			# If we get here, we know we have enough space for our query + result,
 			# so we can proceed with the request to the actual underlying API.
 
-		try:
-			chatComplStruct = openai.ChatCompletion.create(**apiArgs)
+		#try:
 
-		except openai.error.InvalidRequestError as e:
-			errStr = str(e)		# Get the error as a string.
+		# New style chat completion call:
+		chatComplObj = _client.chat.completions.create(**apiArgs)
 
-			_logger.error(f"Got an OpenAI InvalidRequestError: [{errStr}].")
+		# Old style:
+		#chatComplStruct = openai.ChatCompletion.create(**apiArgs)
 
-			# Example error string format:
-			#	"This model's maximum context length is 8192 tokens.
-			#	 However, you requested 8194 tokens (7244 in the
-			#	 messages, 950 in the completion). Please reduce the
-			#	 length of the messages or completion."
+		# This exception type seems to have disappeared in 1.x
+		# except openai.InvalidRequestError as e:
+		# 	errStr = str(e)		# Get the error as a string.
 
-			# Extract the substrings that are numbers.
-			numStrs = re.findall(r'\d+', errStr)
+		# 	_logger.error(f"Got an OpenAI InvalidRequestError: [{errStr}].")
 
-			# Convert them to actual numbers.
-			numbers = [int(n) for n in numStrs]
+		# 	# Example error string format:
+		# 	#	"This model's maximum context length is 8192 tokens.
+		# 	#	 However, you requested 8194 tokens (7244 in the
+		# 	#	 messages, 950 in the completion). Please reduce the
+		# 	#	 length of the messages or completion."
 
-			_logger.error(f"Extracted the following numbers: {numbers}")
+		# 	# Extract the substrings that are numbers.
+		# 	numStrs = re.findall(r'\d+', errStr)
 
-			if len(numbers) == 4:
-				maxConLen, reqToks, msgsLen, compLen = numbers
+		# 	# Convert them to actual numbers.
+		# 	numbers = [int(n) for n in numStrs]
+
+		# 	_logger.error(f"Extracted the following numbers: {numbers}")
+
+		# 	if len(numbers) == 4:
+		# 		maxConLen, reqToks, msgsLen, compLen = numbers
 			
-				maxPrompt = maxConLen - reqToks
+		# 		maxPrompt = maxConLen - reqToks
 
-				e = PromptTooLargeException(msgsLen, maxPrompt)
+		# 		e = PromptTooLargeException(msgsLen, maxPrompt)
 
-				raise e
+		# 		raise e
 
-			elif len(numbers) == 5:
-				maxConLen, reqToks, msgsLen, funcsLen, compLen = numbers
+		# 	elif len(numbers) == 5:
+		# 		maxConLen, reqToks, msgsLen, funcsLen, compLen = numbers
 			
-				_logger.error(f"maxConLen={maxConLen}, reqToks={reqToks}, msgsLen={msgsLen}, funcsLen={funcsLen}, compLen={compLen}")
-				_logger.error(f"NOTE: msgsLen+funcsLen = {msgsLen+funcsLen}, but we estimated {estInputLen}.")
+		# 		_logger.error(f"maxConLen={maxConLen}, reqToks={reqToks}, msgsLen={msgsLen}, funcsLen={funcsLen}, compLen={compLen}")
+		# 		_logger.error(f"NOTE: msgsLen+funcsLen = {msgsLen+funcsLen}, but we estimated {estInputLen}.")
 
-				maxPrompt = maxConLen - reqToks
+		# 		maxPrompt = maxConLen - reqToks
 
-				e = PromptTooLargeException(msgsLen, maxPrompt)
+		# 		e = PromptTooLargeException(msgsLen, maxPrompt)
 
-				raise e
+		# 		raise e
 
-			else:	# Maybe this isn't a length issue at all?
-				_logger.error("I don't know what to do with that.")
-				raise e
+		# 	else:	# Maybe this isn't a length issue at all?
+		# 		_logger.error("I don't know what to do with that.")
+		# 		raise e
 
 		# If we get here, there was a successful return from the API call.
 		_logger.debug("ChatCompletion._createChatComplStruct(): Got raw chat completion struct:"
-					  + '\n' + pformat(chatComplStruct))
+					  + '\n' + pformat(chatComplObj))
 
 		#----------------------------------------------------------
 		# If we get here, then the API call succeeded, and we need
@@ -2500,19 +2538,19 @@ class ChatCompletion(Completion):
 				# This accounts for the length of the prompt in tokens, and
 				# updates the global record of API usage statistics accordingly.
 
-			chatCompl._accountForChatInput(engineId, chatComplStruct)
+			chatCompl._accountForChatInput(engineId, chatComplObj)
 
 				# This accounts for the length of the response in tokens, and 
 				# updates the global record of API usage statistics accordingly.
 
-			chatCompl._accountForChatOutput(engineId, chatComplStruct)
+			chatCompl._accountForChatOutput(engineId, chatComplObj)
 
 				# This updates the cost data and the human-readable table of API
 				# usage statistics, and saves the updated data to the _statsFile.
 
 			_saveStats()
 
-		return chatComplStruct		# Return the low-level completion data structure.
+		return chatComplObj		# Return the low-level completion data structure.
 			# Note, this is the actual data structure that the completion object 
 			# uses to populate itself.
 			
@@ -2553,7 +2591,7 @@ class ChatCompletion(Completion):
 		return inToks
 
 
-	def _accountForChatInput(thisChatCompl:ChatCompletion, engine:str, chatComplStruct:dict):
+	def _accountForChatInput(thisChatCompl:ChatCompletion, engine:str, chatComplObj:openai.ChatCompletion):
 
 		"""This method measures the number of tokens in the input messages, and
 			updates the global record of input tokens processed by the API.
@@ -2568,13 +2606,13 @@ class ChatCompletion(Completion):
 
 		global _inputLength
 
-		chatCompl = thisChatCompl			# For convenience.
-		usage = chatComplStruct['usage']	# Sub-dict of usage data.
+		chatCompl = thisChatCompl		# For convenience.
+		usage = chatComplObj.usage		# Sub-dict of usage data.
 
 			# This gets the "official" count of tokens in the prompt
 			# (what we'll be charged for).
 
-		inToks = usage['prompt_tokens']
+		inToks = usage.prompt_tokens
 
 		_logger.debug(f"Accounting for {inToks} tokens in input text.")
 
@@ -2591,22 +2629,22 @@ class ChatCompletion(Completion):
 	#__/ End of class gpt3.api.Completion's ._accountForInput method.
 
 
-	def _accountForChatOutput(thisChatCompl:ChatCompletion, engine:str, chatComplStruct:dict):
+	def _accountForChatOutput(thisChatCompl:ChatCompletion, engine:str, chatComplObj:openai.ChatCompletion):
 
 		"""This method measures the number of tokens in the chat response, and
 			updates the global record of output tokens processed by the API."""
 
-		chatCompl = thisChatCompl			# For convenience.
-		usage = chatComplStruct['usage']	# Sub-dict of usage data.
+		chatCompl = thisChatCompl		# For convenience.
+		usage = chatComplObj.usage		# Sub-dict of usage data.
 
 			# This gets the "official" count of tokens in the result
 			# (what we'll be charged for).
 
-		outToks = usage['completion_tokens']
+		outToks = usage.completion_tokens
 
 			# Extract the message from the raw chat compl struct (for debugging).
 
-		result_msg = chatComplStruct['choices'][0]['message']['content']
+		result_msg = chatComplObj.choices[0].message.content
 		_logger.debug(f"Accounting for {outToks} tokens in output message [{result_msg}].")
 
 			# Update the global record of API usage statistics.
@@ -3058,6 +3096,11 @@ class GPT3ChatCore(GPT3Core):
 
 	def addMessage(self, newMessage:dict):
 		"""Add the given message to our list of messages."""
+
+		# If the message is a new-style message object, change it to a message dict.
+		if isinstance(newMessage, openai.types.chat.ChatCompletionMessage):
+			newMessage = oaiMsgObj_to_msgDict(newMessage)
+
 		self.messages.addMessage(newMessage)
 		self._update_chatconf_msgs()			# Also update the chatConf object.
 
@@ -3474,15 +3517,26 @@ def genImage(desc:str):
 	
 	_logger.info(f"Generating a 1024x1024 image with description [{desc}].")
 
-	response = openai.Image.create(
-		prompt = desc,
-		n = 1,					# Can range from 1-10.
-		size = "1024x1024"		# Other options include 512x512 and 256x256.
+	# This was the old API call for the Dall-E 2 image generator (now deprecated):
+	#response = openai.Image.create(
+	#	prompt = desc,
+	#	n = 1,					# Can range from 1-10.
+	#	size = "1024x1024"		# Other options include 512x512 and 256x256.
+	#)
+
+	# This is the new API call for the Dall-E 3 image generator.
+	response = _client.images.generate(
+		model	= 'dall-e-3',		# Other options include: 'dall-e-2'
+		prompt	= desc,				# max length: 4000 characters for dall-e-3
+		size	= "1024x1024",		# Other options include: 1792x1024 (landscape) and 1024x1792 (portrait).
+		quality = 'hd',				# Other options include: 'standard'
+		style	= 'vivid',			# Other options include: 'natural'
 	)
 
 	_logger.debug(f"Got response: [{response}]")
 
-	image_url = response['data'][0]['url']
+	#image_url = response['data'][0]['url']
+	image_url = response.data[0].url
 
 	return image_url
 #__/ End module public function genImage().
@@ -3494,9 +3548,19 @@ def transcribeAudio(filename:str):
 	
 	_logger.info(f"Passing {filename} to the OpenAI transcription endpoint...")
 	audio_file = open(filename, 'rb')
-	transcript = openai.Audio.transcribe("whisper-1", audio_file)
+
+	transcript = _client.audio.transcriptions.create(
+		model	= "whisper-1",
+		file	= audio_file
+	)
+
+	# Legacy API
+	#transcript = openai.Audio.transcribe("whisper-1", audio_file)
+
 	_logger.info(f"\tGot back this transcript: {transcript}")
-	text = transcript['text']
+
+	text = transcript.text
+	#text = transcript['text']	# Legacy API
 
 	return text
 #__/ End module public function transcribeAudio();
@@ -3901,6 +3965,10 @@ def _msg_repr(msg:dict) -> str:
 		respectively, and [RS] is a message separator token used by the
 		API back-end to separate messages."""
 	
+	# If message is in the new object type, convert it.
+	if isinstance(msg, openai.types.chat.ChatCompletionMessage):
+		msg = oaiMsgObj_to_msgDict(msg)
+
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#| NOTE: Our current best guess as to the back-end message
 	#| representation is as follows:
@@ -3937,7 +4005,7 @@ def _msg_repr(msg:dict) -> str:
 	content = msg['content']
 
 	# Get the 'function_call' value, if present.
-	fcall = msg.get('function_call')
+	fcall = msg.get('function_call', None)
 
 	# Make sure role isn't still None at this point
 	if role is None:
@@ -3956,8 +4024,20 @@ def _msg_repr(msg:dict) -> str:
 
 	elif fcall is not None:		# This is just a damn guess as to how function
 		#calls *might* be formatted at the back end. It's probably wrong.
+
+		# This shtuff is so annoying...
+
+		from openai.types.chat.chat_completion_assistant_message_param import FunctionCall
+
+		if fcall.__class__.__name__ == "FunctionCall":	# Sooo stupid...
+			fname = fcall.name
+			fargs = fcall.arguments
+		else:
+			fname = fcall['name']
+			fargs = fcall['arguments']
+
 		rep = role + '\n' + \
-			  '@' + fcall['name'] + '(' + fcall['arguments'] + ')' \
+			  '@' + fname + '(' + fargs + ')' \
 			  + chr(RS) + '\n'
 
 	return rep

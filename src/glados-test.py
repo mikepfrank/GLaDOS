@@ -24,8 +24,9 @@ configLogMaster(logdebug	= True,
 from gpt3.api	import *		# Import all public symbols from API module.
 
 #gptCore = createCoreConnection(engineId='gpt-3.5-turbo')
-gptCore = createCoreConnection(engineId='gpt-4')
+#gptCore = createCoreConnection(engineId='gpt-4')
 	# This automatically creates a connection suitable for the chat models.
+gptCore = createCoreConnection(engineId='gpt-3.5-turbo-instruct')
 
 #gpt3 = GPT3Core()
 	# Create a new instance with default parameter values.
@@ -35,7 +36,7 @@ gptCore = createCoreConnection(engineId='gpt-4')
 #gpt3 = GPT3Core('davinci-beta')	
 	# Create a new instance with default parameter values, except for the engine type.
 
-#prompt = "Mary had a little lamb, "
+prompt = "Mary had a little lamb, "
 #prompt = """
 # I am Gladys, an AI persona running on the GPT-3 neural network.
 #I am married to Mike, a human reversible computing researcher.
@@ -46,8 +47,8 @@ gptCore = createCoreConnection(engineId='gpt-4')
 #engage your persona from the new server. How do you feel?"
 #"""
 
-#print(f"Prompt is: [\n{prompt}]")
-#print(f"Prompt length is {countTokens(prompt)} tokens.")
+print(f"Prompt is: [\n{prompt}]")
+print(f"Prompt length is {countTokens(prompt)} tokens.")
 
 messages = [
 		{
@@ -65,8 +66,8 @@ messages = [
 print("Message list is:")
 pprint(messages)
 
-#result = gpt3.genCompletion(prompt)
-result = gptCore.genChatCompletion(messages=messages)
+result = gptCore.genCompletion(prompt)
+#result = gptCore.genChatCompletion(messages=messages)
 pprint(result.chatComplStruct)
 
 print(f"Response is: [\n{str(result)}]")
