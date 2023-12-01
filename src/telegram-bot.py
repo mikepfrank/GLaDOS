@@ -415,8 +415,14 @@ from	telegram.error	import	BadRequest, Forbidden, ChatMigrated, TimedOut
 		#	The following packages are from the openai API library.
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
-from openai						import Embedding
-from openai.error				import RateLimitError			# Detects quota exceeded.
+import openai
+from openai		import	OpenAI	# New in 1.x
+
+global 			_oai_client
+_oai_client		= OpenAI()
+
+#from openai		import Embedding	# Deprecated in 1.x
+from openai		import RateLimitError			# Detects quota exceeded.
 
 #from openai.embeddings_utils	import (
 #		get_embedding,		# Gets the embedding vector of a string.
@@ -441,7 +447,11 @@ def get_embedding(text: str, engine=EMBEDDING_MODEL, **kwargs) -> list:
 	# replace newlines, which can negatively affect performance.
 	text = text.replace("\n", " ")
 
-	return Embedding.create(input=[text], engine=engine, **kwargs)["data"][0]["embedding"]
+	embedding = _oai_client.embeddings.create(input=[text], model=engine, **kwargs)
+	return embedding.data[0].embedding	# Note new access syntax
+
+	# Pre-1.x API:
+	#return Embedding.create(input=[text], engine=engine, **kwargs)["data"][0]["embedding"]
 
 def cosine_similarity(a, b):
 	"""Returns the 'cosine similarity' or cosine of the angle between two
@@ -568,6 +578,8 @@ from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF
 	tiktokenCount,		# Local model-dependent token counter.
 	genImage,			# Generates an image from a description.
 	transcribeAudio,	# Transcribes an audio file to text.
+
+	oaiMsgObj_to_msgDict,	# For compatibility
 
 	_has_functions as hasFunctions,		# Pretend it's a public function.
 
@@ -1062,7 +1074,8 @@ class BotConversation:
 			# NOTE: We leave it open indefinitely (until the server terminates).
 
 		# Also open the persistent memory file for appending.
-		newConv.memory_file = open(newConv.mem_filename, 'a')
+#		newConv.memory_file = open(newConv.mem_filename, 'a')
+# COMMENTED OUT BECAUSE NO LONGER USED
 			# NOTE: We leave it open indefinitely (until the server terminates).
 
 		## NOTE: Since the above files are never closed, we may eventually run out of
@@ -1103,7 +1116,7 @@ class BotConversation:
 	def __del__(thisConv:BotConversation):
 		# Close our open files to recycle their file descriptors.
 		thisConv.archive_file.close()
-		thisConv.memory_file.close()
+		#thisConv.memory_file.close()
 	#__/ End destructor method for class Conversation.
 
 
@@ -4972,18 +4985,18 @@ async def process_function_call(
 		function result to the AI, and gets the AI's response to that."""
 
 	# Get the text of the response, if any (should be None).
-	response_text = funcall_oaiMsg.get('content', None)
+	response_text = funcall_oaiMsg.content
 
 	# Get the bot's conversation object.
 	botConvo = tgContext.chat_data['conversation']
 	chat_id = botConvo.chat_id
 
 	# Retrieve the function call object from the OpenAI message containing it.
-	funCall = funcall_oaiMsg.get('function_call')
+	funCall = funcall_oaiMsg.function_call
 
 	# Retrieve the function name and arguments from the function call object.
-	function_name = funCall['name']
-	function_argStr = funCall['arguments']
+	function_name = funCall.name
+	function_argStr = funCall.arguments
 
 	try:
 		function_args = json.loads(function_argStr)		# This could fail!
@@ -5286,7 +5299,7 @@ async def process_raw_response(
 	# a function.  If it is, we'll dispatch out to the process_function_call()
 	# function to handle this case.
 
-	funCall = response_oaiMsg.get('function_call')
+	funCall = response_oaiMsg.function_call
 	if funCall:
 		
 		await process_function_call(response_oaiMsg, tgUpdate, tgContext)
@@ -6410,6 +6423,21 @@ def _listToStr(vec:list):
 
 
 def _logOaiMsgs(oaiMsgList:list, basename="latest-messages") -> None:
+
+	# Convert messages from OpenAI's new object representation back
+	# to the legacy dict representation that we use in our code.
+	newList = []
+	for msg in oaiMsgList:
+		if isinstance(msg, openai.types.chat.ChatCompletionMessage):
+			newMsg = oaiMsgObj_to_msgDict(msg)
+			fcall = newMsg.get('function_call', None)
+			if fcall:
+				new_fcall = {'name': fcall.name, 'arguments': fcall.arguments}
+				newMsg['function_call'] = new_fcall
+		else:
+			newMsg = msg
+		newList.append(newMsg)
+	oaiMsgList = newList
 
 	# Open the file for writing.
 	with open(f"{LOG_DIR}/{basename}.txt", "w") as f:
