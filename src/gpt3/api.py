@@ -3513,11 +3513,14 @@ def stats():
 #__/ End module public function stats().
 
 
-def genImage(desc:str):
-	"""Generate an image from the given description string.
+def genImage(desc:str, dims:str=None):
+	"""Generate an image from the given description string with given dimensions.
 		Returns the URL of the generated image."""
 	
-	_logger.info(f"Generating a 1024x1024 image with description [{desc}].")
+	if dims is None:
+		dims = "1024x1024"
+
+	_logger.info(f"Generating a {dims} image with description [{desc}].")
 
 	# This was the old API call for the Dall-E 2 image generator (now deprecated):
 	#response = openai.Image.create(
@@ -3530,7 +3533,7 @@ def genImage(desc:str):
 	response = _client.images.generate(
 		model	= 'dall-e-3',		# Other options include: 'dall-e-2'
 		prompt	= desc,				# max length: 4000 characters for dall-e-3
-		size	= "1024x1024",		# Other options include: 1792x1024 (landscape) and 1024x1792 (portrait).
+		size	= dims,				# Options include: 1024x1024 (square, default), 1792x1024 (landscape) and 1024x1792 (portrait).
 		quality = 'hd',				# Other options include: 'standard'
 		style	= 'vivid',			# Other options include: 'natural'
 	)
