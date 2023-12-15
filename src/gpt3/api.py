@@ -205,6 +205,8 @@
 
 #from	sys			import	stderr	# Not currently used.
 
+import	random
+
 import	re	# Regex
 
 from	os			import	path, rename, makedirs
@@ -3536,11 +3538,48 @@ def genImage(desc:str):
 	_logger.debug(f"Got response: [{response}]")
 
 	#image_url = response['data'][0]['url']
-	image_url = response.data[0].url
 
-	return image_url
+	image_url		= response.data[0].url
+	revised_prompt	= response.data[0].revised_prompt
+
+	return (image_url, revised_prompt)
 #__/ End module public function genImage().
 	
+
+def genSpeech(text:str, user:str = None, response_format=None):
+	"""Generates spoken voice audio for the given text.
+		Returns the filename of the generated (.mp3) file.
+		The <user> argument, if provided, is used in the
+		output filename to distinguish speech responding
+		to different users."""
+
+	_logger.info(f"Generating speech for the following text: [{text}]")
+
+	if response_format is None:
+		response_format = "mp3"	# Do this by default
+
+	speechDir = _speechDirname()	# Creates dir if it doesn't exist.
+
+	# Construct the filename using the username (if provided) and a random number.
+	randnum = random.randint(0, 999999)
+	filename = str(randnum).zfill(6)		# Format with leading 0s
+	if user:
+		filename = user + '--' + filename
+	filename += '.' + response_format
+
+	speech_filepath = path.join(speechDir, filename)
+
+	response = _client.audio.speech.create(
+		model = "tts-1",
+		voice = "echo",
+		input = text,
+		response_format = response_format
+	)
+
+	response.stream_to_file(speech_filepath)
+
+	return speech_filepath
+
 
 def transcribeAudio(filename:str):
 	"""Given the path to an MP3 audio file, use the transcriptions endpoint
@@ -3578,11 +3617,30 @@ def _aiEngine() -> str:
 	return TheAIPersonaConfig().modelVersion
 
 
-def _statsPathname(prefix:str=None):
+def _speechDirname():
 
-	"""Constructs and returns the pathname to the api-stats.json file."""
+	"""Constructs and returns the pathname to the $AI_DATADIR/speech/
+		directory. Assumes the global _aiPath has already been
+		initialized to $AI_DATADIR. Creates the speech/ subdirectory
+		if it doesn't already exist."""
 
+	_initAiPath()
+
+	speech_dir = path.join(_aiPath, 'speech')
+
+	_logger.debug(f"Got AI speech directory = {speech_dir}.")
+
+	if not path.exists(speech_dir):
+		makedirs(speech_dir)
+
+	return speech_dir
+
+
+def _initAiPath():
 	global _aiPath
+
+	if _aiPath is not None:
+		return	# Already initialized
 
 		#----------------------------------------------------------
 		# First, get the AI persona configuration, because it 
@@ -3590,8 +3648,6 @@ def _statsPathname(prefix:str=None):
 		# of the AI's data directory.
 
 	aiConf = TheAIPersonaConfig()
-		# Note this retrieves the singleton instance 
-		# of the TheAIPersonaConfig class.
 
 		#------------------------------------------------------
 		# Next, get the location of the AI's data directory,
@@ -3603,7 +3659,14 @@ def _statsPathname(prefix:str=None):
 		
 	_logger.debug(f"Got AI data directory = {aiDataDir}.")
 
-	stats_dir = path.join(aiDataDir, 'stats')
+
+def _statsPathname(prefix:str=None):
+
+	"""Constructs and returns the pathname to the api-stats.json file."""
+
+	_initAiPath()
+
+	stats_dir = path.join(_aiPath, 'stats')
 	if not path.exists(stats_dir):
 		makedirs(stats_dir)
 
@@ -3632,6 +3695,9 @@ def _statsPathname(prefix:str=None):
 
 def _textPath():
 	"""Constructs and returns the pathname to the text file to store the API stats table."""
+
+	_initAiPath()
+
 	return path.join(_aiPath, 'stats', 'api-stats.txt')
 
 
@@ -3795,6 +3861,7 @@ def _displayStats(doWrite:bool=True):
 				_logger.normal("Stats display: Starting a new day!")
 				
 				oldPath = _textPath()
+				_initAiPath()
 				newPath = path.join(_aiPath, 'stats', f"api-stats-{lastMod}.txt")
 				try:
 					rename(oldPath, newPath)

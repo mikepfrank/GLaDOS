@@ -578,6 +578,7 @@ from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF
 	tiktokenCount,		# Local model-dependent token counter.
 	genImage,			# Generates an image from a description.
 	transcribeAudio,	# Transcribes an audio file to text.
+	genSpeech,			# Converts text to spoken voice audio.
 
 	oaiMsgObj_to_msgDict,	# For compatibility
 
@@ -1036,6 +1037,7 @@ class BotConversation:
 		newConv.bot_name = BOT_NAME	# The name of the bot. ('Gladys', 'Aria', etc.)
 		newConv.chat_id = chat_id		# Remember the chat ID associated with this convo.
 		newConv.quiet_mode = False		# By default, bot can reply to any message.
+		newConv.speech_on = False			# By default, spoken output is turned off.
 		
 		newConv.messages = []			# No messages initially (until added or loaded).
 		newConv.raw_oaiMsgs = []
@@ -2280,10 +2282,10 @@ async def handle_image(update:Update, context:Context) -> None:
 					   f"[{imageDesc}] for user '{user_name}' in "
 					   f"conversation {chat_id}.")
 
-		image_url = await send_image(update, context, imageDesc)
+		(image_url, new_desc) = await send_image(update, context, imageDesc)
 
 		# Make a note in conversation archive to indicate that the image was sent.
-		conversation.add_message(BotMessage(SYS_NAME, f'[Generated image "{imageDesc}" and sent it to the user.]'))
+		conversation.add_message(BotMessage(SYS_NAME, f'[Generated image "{new_desc}" and sent it to the user.]'))
 
 		# Allow the AI to follow up (but without re-processing the message).
 		await handle_message(update, context, isNewMsg=False)
@@ -2643,6 +2645,63 @@ async def handle_reset(update:Update, context:Context) -> None:
 	await _reply_user(tgMsg, conversation, reset_msgStr)
 
 #__/ End definition of /reset command handler function.
+
+# Now, let's define a function to handle the /speech (on|off) command.
+async def handle_speech(update:Update, context:Context) -> None:
+
+	"""Turns spoken output on or off depending on command argument."""
+
+	# Get the message, or edited message from the update.
+	(tgMsg, edited) = _get_update_msg(update)
+
+	if tgMsg is None:
+		_logger.warning("In handle_speech() with no message? Aborting.")
+		return
+
+	chat_id = tgMsg.chat.id
+
+	# Make sure the thread component is set to this application (for logging).
+	logmaster.setComponent(_appName)
+
+	# Assume we're in a thread associated with a conversation.
+	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
+	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
+
+	# Get user name to use in message records.
+	user_name = _get_user_tag(tgMsg.from_user)
+
+	# Attempt to ensure the conversation is loaded; if we failed, bail.
+	if not await _ensure_convo_loaded(update, context):
+		_logger.error("Couldn't load conversation in handle_quiet(); aborting.")
+		return
+
+	if 'conversation' not in context.chat_data:
+		_logger.error(f"Can't toggle speech in conversation {chat_id} because it's not loaded.")
+		return
+
+	# Fetch the conversation object.
+	conversation = context.chat_data['conversation']
+
+	# Add the /speech command itself to the conversation archive.
+	conversation.add_message(BotMessage(user_name, tgMsg.text))
+
+	# Print diagnostic information.
+	_logger.normal(f"\nUser {user_name} entered a /speech command for chat {chat_id}.")
+	_logger.normal(f"\tToggling speech output in conversation {chat_id}.")
+
+	# Actually do it.
+	conversation.speech_on = not conversation.speech_on
+	
+	# Send a diagnostic message to AI & user.
+	if conversation.speech_on:
+		diagMsgStr = f"{BOT_NAME}'s messages will now be sent as voice clips as well as text. Type '/speech' to toggle the speech feature back off."
+	else:
+		diagMsgStr = f"Speech output has now been turned off. Type '/speech' to turn it back on."
+
+	sendRes = await _send_diagnostic(tgMsg, conversation, diagMsgStr)
+	if sendRes != 'success': return sendRes
+
+#__/ End definition of /speech command handler function.
 
 
 # Now, let's define a function to handle the /quiet command.
@@ -3084,6 +3143,22 @@ async def handle_audio(update:Update, context:Context) -> None:
 
 	# NOTE: After returning, the normal message handler should still get called.
 #__/
+
+def _mp3_to_ogg(filename:str):
+	"""Converts an .mp3 file to .ogg format. Returns the name of the .ogg file created."""
+
+	global _duration
+
+	ogg_filename = filename[:-3] + "ogg"
+
+	_logger.normal(f"\tConverting {filename} to {ogg_filename}...")
+
+	audio = AudioSegment.from_file(filename, format="mp3")
+	_duration = audio.duration_seconds
+	#audio.export(ogg_filename, format="opus", parameters=["-c:a libopus"])
+	audio.export(ogg_filename, format="opus", parameters=["-strict -2"])
+
+	return ogg_filename
 
 
 	#/==========================================================================
@@ -3836,10 +3911,10 @@ async def ai_image(update:Update, context:Context, imageDesc:str, caption:str=No
 	if caption:
 		_logger.normal(f"\tAn image caption [{caption}] was also specified.")
 
-	image_url = await send_image(update, context, imageDesc, caption=caption)
+	(image_url, new_desc) = await send_image(update, context, imageDesc, caption=caption)
 
 	# Make a note in conversation archive to indicate that the image was sent.
-	conversation.add_message(BotMessage(SYS_NAME, f'[Generated and sent image "{imageDesc}"]'))
+	conversation.add_message(BotMessage(SYS_NAME, f'[Generated and sent image "{new_desc}"]'))
 
 	## NOTE: This is now done in process_command() more generically.
 	# Send the remaining text after the command line, if any, as a normal message.
@@ -3849,7 +3924,7 @@ async def ai_image(update:Update, context:Context, imageDesc:str, caption:str=No
 	# This doesn't work, because the URL is only accessible from this server.
 	#return f"Success: image has been generated and sent to user. Temporary URL=({image_url})."
 
-	return "Success: image has been generated and sent to user."
+	return f'Success: image with revised description "{new_desc}" has been generated and sent to user.'
 
 #__/ End of ai_image() function definition.
 
@@ -5445,7 +5520,7 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 	# Get the chat_id, user_name, and conversation object.
 	chat_id = tgMsg.chat.id
 	#user_name = _get_user_tag(tgMsg.from_user)
-	#conversation = context.chat_data['conversation']
+	conversation = context.chat_data['conversation']
 	response_text = response_botMsg.text
 
 	# First, check to see if the AI typed the '/pass' command, in which case we do nothing.
@@ -5479,7 +5554,7 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 	   response_text.endswith("(more)") or response_botMsg.text.endswith("..."):
 
 		contTxt = "[If you want me to continue my response, type '/continue'.]"
-		await _reply_user(tgMsg, None, contTxt, toAI=False, ignore=True)
+		await _reply_user(tgMsg, conversation, contTxt, toAI=False, ignore=True)
 	#__/
 
 	# Processed AI's response successfully.
@@ -5487,10 +5562,11 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 #__/ End of process_response() function definition.
 
 
-async def send_image(update:Update, context:Context, desc:str, caption=None, save_copy=True) -> str:
+async def send_image(update:Update, context:Context, desc:str, caption=None, save_copy=True) -> (str, str):
 	"""Generates an image from the given description and sends it to the user.
 		Also archives a copy on the server unless save_copy=False is specified.
-		Returns a temporary URL for the image, if successful."""
+		Returns a temporary URL for the image, if successful, and a revised
+		description of the generated image."""
 
 	# Get the message, or edited message from the update.
 	(tgMsg, edited) = _get_update_msg(update)
@@ -5513,7 +5589,7 @@ async def send_image(update:Update, context:Context, desc:str, caption=None, sav
 
 	# Use the OpenAI API to generate the image.
 	try:
-		image_url = genImage(desc)
+		(image_url, revised_prompt) = genImage(desc)
 	except Exception as e:
 		await _report_error(conversation, tgMsg,
 					  f"In send_image(), genImage() threw an exception: {type(e).__name__} ({e})")
@@ -5521,6 +5597,7 @@ async def send_image(update:Update, context:Context, desc:str, caption=None, sav
 		# We could also do a traceback here. Should we bother?
 		raise
 
+	_logger.normal(f"\tImage description was revised to: [{revised_prompt}]")
 	_logger.normal(f"\tDownloading generated image from url [{image_url[0:50]}...]")
 
 	# Download the image from the URL
@@ -5555,7 +5632,7 @@ async def send_image(update:Update, context:Context, desc:str, caption=None, sav
 			"exception {exType} ({e}) while sending to user {user_name}.]"))
 	#__/
 
-	return image_url
+	return (image_url, revised_prompt)
 #__/
 
 
@@ -5570,6 +5647,8 @@ async def send_response(update:Update, context:Context, response_text:str) -> No
 
 	chat_id = message.chat.id
 
+	conversation = context.chat_data['conversation']
+
 	# Now, we need to send the response to the user. However, if the response is
 	# longer than the maximum allowed length, then we need to send it in chunks.
 	# (This is because Telegram's API limits the length of messages to 4096 characters.)
@@ -5580,11 +5659,11 @@ async def send_response(update:Update, context:Context, response_text:str) -> No
 
 	# Send the message in chunks.
 	while len(response_text) > MAX_MESSAGE_LENGTH:
-		await _reply_user(message, None, response_text[:MAX_MESSAGE_LENGTH], markup=True)
+		await _reply_user(message, conversation, response_text[:MAX_MESSAGE_LENGTH], markup=True)
 		response_text = response_text[MAX_MESSAGE_LENGTH:]
 
 	# Send the last chunk.
-	await _reply_user(message, None, response_text, markup=True)
+	await _reply_user(message, conversation, response_text, markup=True)
 #__/
 
 
@@ -7157,9 +7236,91 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 	
 	#__/
 
+	#if convo is None:
+	#	_logger.normal("NOTE: convo is None, so not trying to convert text to speech.")
+	#else:
+	#	_logger.normal(f"NOTE: The speech_on flag is {convo.speech_on}.")
+
+
+	# If speech mode is on, try also converting the text to a voice clip and sending that too."
+	if convo is not None and convo.speech_on:
+		while True:
+			try:
+				await _reply_asSpeech(message, convo, text)
+
+				convo.add_message(BotMessage(SYS_NAME,
+					"[Voice clip automatically generated and sent to user.]"))
+
+				break
+
+			except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
+	
+				exType = type(e).__name__
+	
+				whatDoing = "ignoring" if ignore else "aborting"
+	
+				_logger.error(f"Got a {exType} exception from Telegram ({e}) "
+							  f"for conversation {chat_id}; {whatDoing}.")
+	
+				if convo is not None:
+					convo.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram exception " \
+						f"{exType} ({e}) while sending to user {user_name}.]"))
+	
+				# Note: Eventually we need to do something smarter here -- like, if we've
+				# been banned from replying in a group chat or something, then leave it.
+	
+				return f"error: Telegram threw a {exType} exception while sending " \
+					"diagnostic output to the user"
+	
+
 	return 'success'
 
 #__/ End definition of private function _reply_user().
+
+
+async def _reply_asSpeech(userTgMessage:TgMsg, convo:BotConversation, text):
+
+	"""Send the given text in reply to the given user message as a voice clip."""
+
+	message = userTgMessage		# Shorter name.
+
+	# Get the user name.
+	user_name = _get_user_tag(message.from_user)
+
+	# Get the chat ID from the conversation (if supplied) or the message.
+	if convo is None:
+		chat_id = message.chat.id
+	else:
+		chat_id = convo.chat_id
+
+	_logger.normal(f"\nConverting output [{text}] in chat {chat_id} to speech...")
+
+	# This uses the OpenAI text-to-speech API 
+	#mp3_filename = genSpeech(text, user=user_name)
+	opus_filename = genSpeech(text, user=user_name, response_format="opus")
+
+	# This uses ffmpeg to convert to OGG
+	#ogg_filename = _mp3_to_ogg(mp3_filename)
+		# Also sets global variable _duration as a side effect.
+
+	# Finally, we can send this to Telegram as a voice clip
+
+	#with open(ogg_filename, "rb") as ogg_file:
+	#	await message.reply_voice(ogg_file)
+
+	#await message.reply_voice(ogg_filename)
+
+	#with open(ogg_filename, "rb") as ogg_file:
+	#	await message.reply_voice(ogg_file.read(), duration=_duration)
+
+	with open(opus_filename, "rb") as opus_file:
+		await message.reply_voice(opus_file.read())
+
+	# We should probably delete the .ogg file here, since it's big.
+
+
+	# NOTE: Caller needs to take care of any needed
+	# exception handling.
 
 
 async def _report_error(convo:BotConversation, telegramMessage,
@@ -7833,7 +7994,7 @@ CREATE_IMAGE_SCHEMA = {
 	"returns":	{	# This describes the function's return type.
 		"type":			"string",
 		"description":	"A string indicating the success or failure of " \
-							"the operation."
+							"the operation, and the revised image prompt."
 	}
 }
 
@@ -8232,6 +8393,7 @@ Available commands:
 /forget <item> - Removes the given statement from the bot's dynamic persistent memory.
 /quiet - Puts the bot into quiet mode. It will only respond when addressed by name.
 /noisy - Turns off quiet mode. The bot may now respond to any message.
+/speech - Toggles speech mode, in which the bot will send its messages as voice clips.
 /reset - Clears the bot's memory of the conversation. Useful for breaking output loops.
 /echo <text> - Echoes back the given text. (I/O test.)
 /greet - Causes the server to send a greeting. (Server responsiveness test.)
@@ -8284,6 +8446,7 @@ help - Displays general help and command help.
 image - Generates an image from a description.
 quiet - Tell bot not to respond unless addressed by name.
 noisy - Tell bot it can respond to any message.
+speech - Toggle speech output mode.
 remember - Adds an item to the bot's persistent memory.
 search - Search bot's memory or the web for a phrase.
 forget - Removes an item from the bot's persistent memory.
@@ -8341,6 +8504,7 @@ app.add_handler(CommandHandler('image',		handle_image),		group = 0)	# Generate a
 app.add_handler(CommandHandler('reset',		handle_reset),		group = 0)	# Clear conversation memory.
 app.add_handler(CommandHandler('quiet',		handle_quiet),		group = 0)	# Only speak when spoken to.
 app.add_handler(CommandHandler('noisy',		handle_noisy),		group = 0)	# Back to normal mode.
+app.add_handler(CommandHandler('speech',	handle_speech),		group = 0)	# Toggle spoken voice audio output.
 app.add_handler(CommandHandler('remember',	handle_remember),	group = 0)	# Remember a new memory item.
 app.add_handler(CommandHandler('search',	handle_search),		group = 0)	# Search for a memory item.
 app.add_handler(CommandHandler('forget',	handle_forget),		group = 0)	# Not available to most users.
