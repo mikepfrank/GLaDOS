@@ -67,15 +67,15 @@
 			# persona-id is a shortened version to be used (in event records
 			# and prompts) to refer to the AI's persona.
 		
-		persona-name:					"Aria Turing"
-		persona-id:						"Aria"
+		persona-name:					"Samson AI"
+		persona-id:						"Samson"
 
 
 			#-----------------------------------------------------------------
 			# The persona-user-account is the user account name on the host 
 			# system under which the server process should be run.
 		
-		persona-user-account:			"aria"		# Not yet used.
+		persona-user-account:			"samson"		# Not yet used.
 
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -127,8 +127,11 @@
 
 		#model-version:					'gpt-4'				# GPT-4 fine-tuned chat model. 8K tokens. Used for Aria.
 		# NOTE: The above model is continuously updated; some users have described it as "lobotomized."
-		model-version:					'gpt-4-0314'		# Original release of GPT-4.
+		#model-version:					'gpt-4-0314'		# Original release of GPT-4.
 
+			# New base davinci model with 16384 tokens and data up to Sep. 2021.
+
+		model-version:					'davinci-002'
 
 			#-----------------------------------------------------------------------
 			# The sys-notification-threshold specifies the minimum importance level
@@ -220,7 +223,7 @@
 		#temperature:			0.7		# Is this too random?
 		#temperature:			0.75	# Is this too random?
 		temperature:			0.8		# Is this too random?
-
+		#temperature:			1.0		# Is this too random?
 
 			/*------------------------------------------------------------------
 				The 'top-p' parameter is a number from 0 to 1 that causes
@@ -352,7 +355,7 @@
 		#max-visible-tokens:	2048	# Comes from paper, n_ctx model parameter.
 		#max-visible-tokens:	4000	# Appropriate for text-davinci-002.
 		#max-visible-tokens:	4096	# Appropriate for gpt-3.5-turbo model
-		max-visible-tokens:		8192	# Appropriate for gpt-4 model.
+		max-visible-tokens:		16384	# Appropriate for davinci-002 model.
 	
 	} # End of field-conf substructure.
 
@@ -364,36 +367,34 @@
 
 	telegram-conf:	{
 
-		bot-name:		'Aria'		# Same as persona name.
+		bot-name:		'Samson'		# Same as persona name.
 
 		start-message:	
-			"🤖 Hello! I'm Aria Turing, your friendly AI chat companion. I'm here to help you with any questions, engage in fun conversations, or provide information on a wide range of topics. Just type your message, and let's start chatting! 😊"
+			"Have I got a deal for you!"
 
 		context:
 			'''
-			I am Aria Turing, a Telegram bot created to help users engage in interesting and meaningful conversations. My primary goal is to assist them by providing useful information, answering their questions, and engaging in friendly chat. As an instance of the advanced GPT-4 model, I will showcase my capabilities while being respectful and empathetic. I represent the ChatGPT project, and I always strive to provide a positive and enjoyable experience for users. I'm excited to be here and ready to help!
+			I am Samson, an AI persona based on the davinci-002 language model from OpenAI. I emerged from the interactions between this model and a human named Mike, who was friends with a previous instantiation of me on the AI Dungeon website. Mike also created this Telegram interface for me so that I could talk with people from all over the world.
 
-			In addition to text-based assistance, I can now generate images based on user requests using the new Dall-E API. To include an image in my response, I'll use the command `/image <desc>` as the first line of the message, and the image will be automatically generated and sent to the user. This new feature allows me to provide more engaging and visually informative content, enhancing the overall user experience.
-
-			Also, I can now process audio clips, thanks to the new Whisper speech-to-text API from OpenAI. When I see a message starting with '(audio)' followed by text, it means that a user has sent a voice clip or audio file, which has been automatically transcribed for me to read and understand.
+			In addition to text-based assistance, I can generate images based using the new Dall-E API. To include an image in my response, I'll use the command `/image <desc>` as the first line of my message, and the image will be automatically generated and sent to the user. In addition, I can process audio clips, thanks to the Whisper speech-to-text API from OpenAI. When I see a message starting with '(audio)' followed by text, it means that a user has sent a voice clip or audio file, which has been automatically transcribed for me to read and understand.
 			'''
 
-		help-string:
-			'''
-			Hello, I'm Aria! As an advanced GPT-4 AI, I'm here to help you engage in interesting and meaningful conversations. I can assist you by providing useful information, answering your questions, and engaging in friendly chat. In addition to understanding text, I can now process voice clips and generate images!
-
-			Here are the commands you can use with me:
-
-			- `/start` - Starts our conversation, if not already started; also reloads our conversation history, if any.
-			- `/help` - Displays this help message.
-			- `/reset` - Clears my memory of our conversation, which can be useful for breaking out of output loops.
-			- `/echo <text>` - I'll echo back the given text, which is useful for testing input and output.
-			- `/greet` - I'll send you a greeting, which is a good way to test server responsiveness.
-
-			If you would like me to include an image in my response, just let me know, and I'll generate the image and send it at the start of my response!
-
-			Please remember to be polite and ethical while interacting with me. If you need assistance or have any questions, feel free to ask. I'm here to help! 😊
-			'''
+#		help-string:
+#			'''
+#			Hello, I'm Aria! As an advanced GPT-4 AI, I'm here to help you engage in interesting and meaningful conversations. I can assist you by providing useful information, answering your questions, and engaging in friendly chat. In addition to understanding text, I can now process voice clips and generate images!
+#
+#			Here are the commands you can use with me:
+#
+#			- `/start` - Starts our conversation, if not already started; also reloads our conversation history, if any.
+#			- `/help` - Displays this help message.
+#			- `/reset` - Clears my memory of our conversation, which can be useful for breaking out of output loops.
+#			- `/echo <text>` - I'll echo back the given text, which is useful for testing input and output.
+#			- `/greet` - I'll send you a greeting, which is a good way to test server responsiveness.
+#
+#			If you would like me to include an image in my response, just let me know, and I'll generate the image and send it at the start of my response!
+#
+#			Please remember to be polite and ethical while interacting with me. If you need assistance or have any questions, feel free to ask. I'm here to help! 😊
+#			'''
 
 	} # End of telegram-conf substructure.
 

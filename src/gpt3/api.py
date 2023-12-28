@@ -404,9 +404,12 @@ _ENGINE_ATTRIBS = {
 
 		# GPT-3.5 models. (Increased context length; data through June 2021.)
 
-    'text-davinci-002': {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06,		'is-chat': False,	'encoding': 'p50k_base'},
-    'code-davinci-002': {'model-family': 'GPT-3.5',	'engine-name': 'code-davinci-002', 'field-size': 4000, 'price': 0,			'is-chat': False,	'encoding': 'p50k_base'},
-    'text-davinci-003': {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02,		'is-chat': False,	'encoding': 'p50k_base'},
+	# This is a base model (not instruct-tuned).
+	'davinci-002':		{'model-family': 'GPT-3.5', 'engine-name': 'davinci-002',	   'field-size': 16384, 'price': 0.002,	'is-chat': False, 'encoding': 'p50k_base'},
+
+    'text-davinci-002': {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-002', 'field-size': 4000,  'price': 0.06,	'is-chat': False, 'encoding': 'p50k_base'},
+    'code-davinci-002': {'model-family': 'GPT-3.5',	'engine-name': 'code-davinci-002', 'field-size': 4000,  'price': 0,		'is-chat': False, 'encoding': 'p50k_base'},
+    'text-davinci-003': {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-003', 'field-size': 4000,  'price': 0.02,	'is-chat': False, 'encoding': 'p50k_base'},
     
 		# ChatGPT models. (These use the chat API. Data through Sep. 2021.)
 
