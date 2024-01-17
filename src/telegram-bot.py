@@ -413,8 +413,8 @@ logmaster.configLogMaster(
 		consdebug	= False,		# Turn off full debug logging on the console.
 		#consdebug	= True,			# Turn on full debug logging on the console.
 
-		consinfo	= True,			# Turn on info-level logging on the console.
-		#consinfo	 = False,		 # Turn off info-level logging on the console.
+		#consinfo	= True,			# Turn on info-level logging on the console.
+		consinfo	 = False,		 # Turn off info-level logging on the console.
 
 		#logdebug	= True			# Turn on full debug logging in the log file.
 		logdebug	 = False		 # Turn off full debug logging in the log file.
@@ -3461,7 +3461,7 @@ def _initPersistentContext() -> None:
 		"  /block - Adds the current user to my block list.\n" + \
 		"  /remember <text> - Adds <text> to my persistent context data.\n" + \
 		"  /forget <text> - Removes <text> from my persistent context data.\n" + \
-		MESSAGE_DELIMITER + " ~~~ Recent Telegram messages: ~~~"
+		MESSAGE_DELIMITER + " ~~~ Recent Telegram messages: ~~~\n"
 	#__/
 #__/
 

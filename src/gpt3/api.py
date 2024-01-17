@@ -404,6 +404,8 @@ _ENGINE_ATTRIBS = {
 
 		# GPT-3.5 models. (Increased context length; data through June 2021.)
 
+    'davinci-002':      {'model-family': 'GPT-3.5', 'engine-name': 'davinci-002',      'field-size': 16384, 'price': 0.002, 'is-chat': False, 'encoding': 'p50k_base'},
+
     'text-davinci-002': {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06,		'is-chat': False,	'encoding': 'p50k_base'},
     'code-davinci-002': {'model-family': 'GPT-3.5',	'engine-name': 'code-davinci-002', 'field-size': 4000, 'price': 0,			'is-chat': False,	'encoding': 'p50k_base'},
     'text-davinci-003': {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02,		'is-chat': False,	'encoding': 'p50k_base'},
@@ -415,6 +417,7 @@ _ENGINE_ATTRIBS = {
     
 		# GPT-4 models.  (These also use the chat API. Data through Sep. 2021.)
 
+	'gpt-4-base':	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-base',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
 	'gpt-4-0314':	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-0314',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
 	'gpt-4':		{'model-family': 'GPT-4',	'engine-name': 'gpt-4-0314',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
 		# NOTE: In these models, prompt tokens are discounted, so there's a new field 'prompt-price'.
@@ -504,14 +507,16 @@ _STATS_FILENAME = 'api-stats.json'	# This file is saved in the AI's data directo
 
 global				DEF_ENGINE				# Default GPT-3 engine name.
 #DEF_ENGINE			= 'davinci'				# This is the original largest (175B-parameter) model. Origin of Gladys.
-DEF_ENGINE			= 'text-davinci-003'	# This is currently the recommended model for text generation.
+#DEF_ENGINE			= 'text-davinci-003'	# This is currently the recommended model for text generation.
+DEF_ENGINE			= 'davinci-002'			# The best base completion model at present.
 
 global				DEF_CHAT_ENGINE		# Default engine when using the chat interface.
 DEF_CHAT_ENGINE		= 'gpt-3.5-turbo'	# OpenAI updates this model periodically.
 
 global			DEF_TOKENS	# Default minimum space (in tokens) provided for the return.
 #DEF_TOKENS		= 42		# Of course.
-DEF_TOKENS  	= 100		# Gladys requested this.
+DEF_TOKENS  	= 200		# Gladys requested this.
+DEF_TOKENS  	= 500		# Gladys 3.0 (davinci-002) requested this.
 
 global			DEF_TEMP	# Default temperature value.
 #DEF_TEMP		= 0.5		# Is this reasonable?
