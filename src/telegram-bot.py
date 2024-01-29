@@ -510,8 +510,9 @@ from	infrastructure.time		import	(
 				#	time-zone preference (from TZ).
 	tznow,		# Returns a current datetime object localized to the
 				#	user's timezone preference (from TZ).
-	tzAbbr		# Returns an abbreviation for the given time zone offset,
+	tzAbbr,		# Returns an abbreviation for the given time zone offset,
 				#	which defaults to the user's time zone preference.
+	get_current_date	# Gets current date in YYYY-MM-DD in system timezone.
 )
 		# Time-zone related functions we use in the AI's date/time display.
 
@@ -1699,7 +1700,7 @@ class BotConversation:
 				"  remember_item(text:str, is_private:bool=True, is_global:bool=False, remark:str=None) -> status:str\n" + \
 				"  search_memory(query_phrase:str, max_results:int=3, remark:str=None) -> results:list\n" + \
 				"  forget_item(text:str=None, item_id:str=None, remark:str=None) -> status:str\n" + \
-				"  create_image(description:str, caption:str=None, remark:str=None) -> status:str\n" + \
+				"  create_image(description:str, shape:str='square', caption:str=None, remark:str=None) -> status:str\n" + \
 				"  block_user(user_name:str={cur_user}, remark:str=None) -> status:str\n" + \
 				"  unblock_user(user_name:str={cur_user}, remark:str=None) -> status:str\n" + \
 				"  search_web(query:str, locale:str='en-US', sections:list=['webPages'], remark:str=None) -> results:dict\n" + \
@@ -2168,7 +2169,7 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 			msgStr = f"ANNOUNCEMENT: {ann_text}"
 			conversation.add_message(BotMessage(SYS_NAME, msgStr))
 			fullMsgStr = f"[SYSTEM {msgStr}]"
-			_logger.info("Sending user {user_name} system announcement: {fullMsgStr}")
+			_logger.info(f"Sending user {user_name} system announcement: {fullMsgStr}")
 			await _reply_user(tgMessage, conversation, fullMsgStr, ignore=True)
 
 #__/ End handle_start() function definition.
@@ -3216,16 +3217,6 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		_logger.error("Couldn't load conversation in handle_message(); aborting.")
 		return
 
-	# If this is a group chat and the message text is empty or None,
-	# assume we were just added to the chat, and just delegate to the
-	# handle_start() function.
-	if chat_id < 0 and (text is None or text == ""):
-		_logger.normal(f"Added to group chat {chat_id} by user {user_name}. Auto-starting.")
-		#update.message.text = '/start'
-		await handle_start(update, context, autoStart=True)
-		return
-
-
 		#|----------------------------------------------------------------------
 		#| Audio transcripts. If the original message contained audio or voice
 		#| data, then present its transcription using an appropriate text
@@ -3250,10 +3241,18 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 					   f"conversation {chat_id}.")
 		text = "(edited) " + text
 
-	# Handle null text.
+	# If this is a group chat and the message text is empty or None,
+	# assume we were just added to the chat, and just delegate to the
+	# handle_start() function.
+	if chat_id < 0 and (text is None or text == ""):
+		_logger.normal(f"Added to group chat {chat_id} by user {user_name}. Auto-starting.")
+		#update.message.text = '/start'
+		await handle_start(update, context, autoStart=True)
+		return
+
+	# Handle null text in other circumstances.
 	if not text:
 		text = "[null message]"
-
 
 	# Fetch the conversation object. Do some error handling.
 
@@ -3881,6 +3880,7 @@ async def ai_forget(updateMsg:TgMsg, conversation:BotConversation,
 
 #__/ End of ai_forget() function definition.
 
+DAILY_IMAGE_LIMIT = 5
 
 # Define a function to handle the /image command, when issued by the AI.
 async def ai_image(update:Update, context:Context, imageDesc:str,
@@ -3894,6 +3894,27 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 	chat_id = message.chat.id
 	user_name = _get_user_tag(message.from_user)
 	conversation = context.chat_data['conversation']
+
+	# Make sure that too many images haven't been generated today in this chat.
+	if 'last_image_date' in context.chat_data and context.chat_data['nimages_today'] >= DAILY_IMAGE_LIMIT:
+		_logger.warning(f"Daily image generation limit reached in chat {chat_id}.")
+
+		diagMsg = f"Image generation rate limit of {DAILY_IMAGE_LIMIT} has been reached in this chat. Try again tomorrow!"
+
+		sendRes = await _send_diagnostic(message, conversation, diagMsg)
+		if sendRes != 'success': return sendRes
+
+		return "error: daily image generation rate limit reached in this chat"
+
+	#if user_name != "Michael":
+	#	_logger.warning(f"Image generation disabled for users other than Michael.")
+	#
+	#	diagMsg = "Turbo's image generation capability is presently disabled due to excessive usage."
+	#
+	#	sendRes = await _send_diagnostic(message, conversation, diagMsg)
+	#	if sendRes != 'success': return sendRes
+	#
+	#	return "note: image generation capability is presently disabled"
 
 	# Error-checking for null argument.
 	if imageDesc == None or imageDesc=="":
@@ -5654,6 +5675,17 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, captio
 			"exception {exType} ({e}) while sending to user {user_name}.]"))
 	#__/
 
+	# Update record of how many images have been generated today in this context.
+
+	today = get_current_date()
+	if 'last_image_date' not in context.chat_data or today != context.chat_data['last_image_date']:
+		context.chat_data['last_image_date'] = get_current_date()
+		context.chat_data['nimages_today'] = 1	# The image we just made.
+	else:
+		context.chat_data['nimages_today'] += 1
+
+	_logger.normal(f"\tA total of {context.chat_data['nimages_today']} images have been generated in chat {chat_id} today.")
+
 	return (image_url, revised_prompt)
 #__/
 
@@ -6119,6 +6151,10 @@ async def _ensure_convo_loaded(update:Update, context:Context) -> bool:
 
 	# Get the chat ID.
 	chat_id = message.chat.id
+
+	if chat_id == -1002063308162 or chat_id == -1001661701088:
+		_logger.warn(f"Ignoring message from stupid chat {chat_id}.")
+		return False
 
 	# Get the user's name.
 	user_name = _get_user_tag(message.from_user)
