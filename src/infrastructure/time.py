@@ -19,6 +19,8 @@ __all__ = {
 
 		'tznow',		# Returns a current datetime object localized to the
 						#	user's timezone preference (from TZ).
+
+		'get_current_date'	# Gets the current date in YYYY-MM-DD (relative to system timezone).
 	}
 
 from os import path, getenv
@@ -29,7 +31,8 @@ from datetime import	(
 		
 		timedelta	as	TimeDelta,
 		timezone	as	TimeZone,
-		datetime	as	DateTime
+		datetime	as	DateTime,
+		date		as	Date
 		
 	)
 
@@ -179,3 +182,8 @@ def tznow():
 	dtz = DateTime.now(tz)		# Return current DateTime with timezone specified.
 		
 	return dtz
+
+
+def get_current_date():
+	"""Returns the current date in ISO 8601 format (YYYY-MM-DD)."""
+	return Date.today().isoformat()

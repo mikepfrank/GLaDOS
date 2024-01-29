@@ -8,9 +8,9 @@
       "owned_by": "openai-dev"
     },
     {
-      "id": "gpt-3.5-turbo-16k-0613",
+      "id": "gpt-4-0613",
       "object": "model",
-      "created": 1685474247,
+      "created": 1686588896,
       "owned_by": "openai"
     },
     {
@@ -20,9 +20,15 @@
       "owned_by": "openai-dev"
     },
     {
-      "id": "gpt-3.5-turbo-16k",
+      "id": "gpt-4",
       "object": "model",
-      "created": 1683758102,
+      "created": 1687882411,
+      "owned_by": "openai"
+    },
+    {
+      "id": "text-davinci-003",
+      "object": "model",
+      "created": 1669599635,
       "owned_by": "openai-internal"
     },
     {
@@ -44,16 +50,16 @@
       "owned_by": "openai-dev"
     },
     {
+      "id": "gpt-3.5-turbo-0613",
+      "object": "model",
+      "created": 1686587434,
+      "owned_by": "openai"
+    },
+    {
       "id": "text-babbage-001",
       "object": "model",
       "created": 1649364043,
       "owned_by": "openai"
-    },
-    {
-      "id": "whisper-1",
-      "object": "model",
-      "created": 1677532384,
-      "owned_by": "openai-internal"
     },
     {
       "id": "text-similarity-davinci-001",
@@ -62,16 +68,22 @@
       "owned_by": "openai-dev"
     },
     {
+      "id": "gpt-3.5-turbo",
+      "object": "model",
+      "created": 1677610602,
+      "owned_by": "openai"
+    },
+    {
+      "id": "gpt-3.5-turbo-1106",
+      "object": "model",
+      "created": 1698959748,
+      "owned_by": "system"
+    },
+    {
       "id": "davinci-similarity",
       "object": "model",
       "created": 1651172509,
       "owned_by": "openai-dev"
-    },
-    {
-      "id": "code-davinci-edit-001",
-      "object": "model",
-      "created": 1649880484,
-      "owned_by": "openai"
     },
     {
       "id": "curie-similarity",
@@ -98,15 +110,21 @@
       "owned_by": "openai-dev"
     },
     {
+      "id": "gpt-3.5-turbo-0301",
+      "object": "model",
+      "created": 1677649963,
+      "owned_by": "openai"
+    },
+    {
       "id": "davinci-instruct-beta",
       "object": "model",
       "created": 1649364042,
       "owned_by": "openai"
     },
     {
-      "id": "gpt-4",
+      "id": "gpt-3.5-turbo-16k-0613",
       "object": "model",
-      "created": 1687882411,
+      "created": 1685474247,
       "owned_by": "openai"
     },
     {
@@ -146,6 +164,12 @@
       "owned_by": "openai-dev"
     },
     {
+      "id": "gpt-3.5-turbo-instruct",
+      "object": "model",
+      "created": 1692901427,
+      "owned_by": "system"
+    },
+    {
       "id": "text-davinci-001",
       "object": "model",
       "created": 1649364042,
@@ -170,15 +194,33 @@
       "owned_by": "openai-dev"
     },
     {
+      "id": "davinci-002",
+      "object": "model",
+      "created": 1692634301,
+      "owned_by": "system"
+    },
+    {
+      "id": "gpt-3.5-turbo-instruct-0914",
+      "object": "model",
+      "created": 1694122472,
+      "owned_by": "system"
+    },
+    {
       "id": "babbage-002",
       "object": "model",
       "created": 1692634615,
       "owned_by": "system"
     },
     {
-      "id": "davinci-002",
+      "id": "gpt-4-1106-preview",
       "object": "model",
-      "created": 1692634301,
+      "created": 1698957206,
+      "owned_by": "system"
+    },
+    {
+      "id": "gpt-4-vision-preview",
+      "object": "model",
+      "created": 1698894917,
       "owned_by": "system"
     },
     {
@@ -236,6 +278,12 @@
       "owned_by": "openai-dev"
     },
     {
+      "id": "tts-1-hd",
+      "object": "model",
+      "created": 1699046015,
+      "owned_by": "system"
+    },
+    {
       "id": "text-search-curie-query-001",
       "object": "model",
       "created": 1651172509,
@@ -248,28 +296,10 @@
       "owned_by": "openai"
     },
     {
-      "id": "text-davinci-edit-001",
-      "object": "model",
-      "created": 1649809179,
-      "owned_by": "openai"
-    },
-    {
       "id": "code-search-babbage-text-001",
       "object": "model",
       "created": 1651172507,
       "owned_by": "openai-dev"
-    },
-    {
-      "id": "gpt-3.5-turbo",
-      "object": "model",
-      "created": 1677610602,
-      "owned_by": "openai"
-    },
-    {
-      "id": "gpt-3.5-turbo-instruct-0914",
-      "object": "model",
-      "created": 1694122472,
-      "owned_by": "system"
     },
     {
       "id": "ada",
@@ -302,16 +332,16 @@
       "owned_by": "openai-dev"
     },
     {
-      "id": "gpt-3.5-turbo-0301",
+      "id": "text-davinci-edit-001",
       "object": "model",
-      "created": 1677649963,
+      "created": 1649809179,
       "owned_by": "openai"
     },
     {
-      "id": "gpt-3.5-turbo-instruct",
+      "id": "code-davinci-edit-001",
       "object": "model",
-      "created": 1692901427,
-      "owned_by": "system"
+      "created": 1649880484,
+      "owned_by": "openai"
     },
     {
       "id": "text-search-curie-doc-001",
@@ -320,16 +350,10 @@
       "owned_by": "openai-dev"
     },
     {
-      "id": "text-davinci-003",
+      "id": "whisper-1",
       "object": "model",
-      "created": 1669599635,
+      "created": 1677532384,
       "owned_by": "openai-internal"
-    },
-    {
-      "id": "gpt-4-0613",
-      "object": "model",
-      "created": 1686588896,
-      "owned_by": "openai"
     },
     {
       "id": "text-curie-001",
@@ -344,10 +368,10 @@
       "owned_by": "openai"
     },
     {
-      "id": "gpt-4-0314",
+      "id": "tts-1",
       "object": "model",
-      "created": 1687882410,
-      "owned_by": "openai"
+      "created": 1681940951,
+      "owned_by": "openai-internal"
     },
     {
       "id": "davinci",
@@ -362,10 +386,28 @@
       "owned_by": "system"
     },
     {
-      "id": "gpt-3.5-turbo-0613",
+      "id": "gpt-4-0314",
       "object": "model",
-      "created": 1686587434,
+      "created": 1687882410,
       "owned_by": "openai"
+    },
+    {
+      "id": "tts-1-1106",
+      "object": "model",
+      "created": 1699053241,
+      "owned_by": "system"
+    },
+    {
+      "id": "tts-1-hd-1106",
+      "object": "model",
+      "created": 1699053533,
+      "owned_by": "system"
+    },
+    {
+      "id": "gpt-3.5-turbo-16k",
+      "object": "model",
+      "created": 1683758102,
+      "owned_by": "openai-internal"
     }
   ]
 }

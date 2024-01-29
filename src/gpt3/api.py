@@ -3573,8 +3573,8 @@ def genSpeech(text:str, user:str = None, response_format=None):
 	speech_filepath = path.join(speechDir, filename)
 
 	response = _client.audio.speech.create(
-		model = "tts-1",
-		voice = "echo",
+		model = "tts-1",	# Optimized for speed. Other choices include: tts-1-hd (optimized for quality).
+		voice = "echo",		# Other choices include alloy, fable, onyx, nova, shimmer.
 		input = text,
 		response_format = response_format
 	)
