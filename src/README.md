@@ -158,9 +158,9 @@ Note that there is also a plan to eventually have a subconscious, subordinate "s
 The Supervisor system is the main top-level subsystem of GLaDOS as a whole.  It creates and manages the other principal subsystems, including: 
 
 1. The command interface (`commands/`), 
-2. (Future) The process system (`processes`), 
+2. (Future) The process system (`processes/`), 
 3. The mind system (`mind/`) of the AI, 
-4. The window system (`windows`).
+4. The window system (`windows/`).
 
 Eventually, the architecture of GLaDOS may change to where individual AI minds may run within their own separate Python program instances (*i.e.*, in separate UNIX processes) and communicate with the Supervisor process via inter-process communication, but this separation has not yet been implemented.
 
