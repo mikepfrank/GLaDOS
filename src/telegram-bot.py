@@ -580,6 +580,7 @@ from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF
 	genImage,			# Generates an image from a description.
 	transcribeAudio,	# Transcribes an audio file to text.
 	genSpeech,			# Converts text to spoken voice audio.
+	describeImage,		# Uses GPT-4V to generate a detailed description of an image.
 
 	oaiMsgObj_to_msgDict,	# For compatibility
 
@@ -1700,6 +1701,7 @@ class BotConversation:
 				"  remember_item(text:str, is_private:bool=True, is_global:bool=False, remark:str=None) -> status:str\n" + \
 				"  search_memory(query_phrase:str, max_results:int=3, remark:str=None) -> results:list\n" + \
 				"  forget_item(text:str=None, item_id:str=None, remark:str=None) -> status:str\n" + \
+				"  analyze_image(filename:str, verbosity:str='medium', query:str=None, remark:str=None) -> result:str\n" + \
 				"  create_image(description:str, shape:str='square', caption:str=None, remark:str=None) -> status:str\n" + \
 				"  block_user(user_name:str={cur_user}, remark:str=None) -> status:str\n" + \
 				"  unblock_user(user_name:str={cur_user}, remark:str=None) -> status:str\n" + \
@@ -3143,6 +3145,7 @@ async def handle_audio(update:Update, context:Context) -> None:
 	context.user_data['audio_text'] = text
 
 	# NOTE: After returning, the normal message handler should still get called.
+
 #__/
 
 def _mp3_to_ogg(filename:str):
@@ -3160,6 +3163,83 @@ def _mp3_to_ogg(filename:str):
 	audio.export(ogg_filename, format="opus", parameters=["-strict -2"])
 
 	return ogg_filename
+
+async def handle_photo(update:Update, context:Context) -> None:
+	"""Handles an image message sent by the user."""
+
+	# Get the message, or edited message from the update.
+	(tgMsg, edited) = _get_update_msg(update)
+		
+	if tgMsg is None:
+		_logger.warning("In handle_photo() with no message? Aborting.")
+		return
+
+	user_name = _get_user_tag(tgMsg.from_user)
+
+	# Get the chat ID.
+	chat_id = tgMsg.chat.id
+
+	# Attempt to ensure the conversation is loaded; if we failed, bail.
+	if not await _ensure_convo_loaded(update, context):
+		_logger.error("Couldn't load conversation in handle_photo(); aborting.")
+		return
+
+	# Get our Conversation object.
+	conversation = context.chat_data['conversation']
+
+	_logger.normal(f"\nReceived a photo message from user {user_name} in chat {chat_id}.")
+	
+	# Make sure the message actually contains a photo.
+	if tgMsg.photo:
+		photo = tgMsg.photo
+	else:
+		_logger.error("A message passed the photo filter, but did not contain a photo.")
+		return	# Dispatcher will still try other filters.
+	
+	# Get the file_id and download the file
+	file_id = photo[-1].file_id
+		# The [-1] gets the largest available size of photo if it's available in several sizes.
+	file_obj = await context.bot.get_file(file_id)
+
+	# Get the value of environment variable AI_DATADIR.
+	# This is where we'll save any photo files.
+	ai_datadir = AI_DATADIR
+	photo_dir = os.path.join(ai_datadir, 'photos')
+
+	# Create a folder to save the photo files if it doesn't exist
+	if not os.path.exists(photo_dir):
+		os.makedirs(photo_dir)
+
+	# Pick a shorter ID for the file (collisions will be fairly rare).
+	short_file_id = f"{random.randint(1,1000000)-1:06d}"
+
+	# Save the audio as a JPEG file
+	short_filename = f'{user_name}-{short_file_id}.jpg'
+	jpg_file_path = os.path.join(photo_dir, short_filename)
+	_logger.normal(f"\tDownloading photo from user {user_name} in chat {chat_id} to JPG file {jpg_file_path}.")
+	await file_obj.download_to_drive(jpg_file_path)
+
+	# UPDATE: Now postponing this to analyze_image()/ai_vision() call.
+	## Now we'll use the OpenAI GPT-4V model to generate a detailed description of the image.
+	#_logger.normal(f"\tConverting image from user {user_name} in chat {chat_id} to a text description using GPT-4V.")
+	#try:
+	#	text = describeImage(jpg_file_path)
+	#except Exception as e:
+	#	await _report_error(conversation, tgMsg,
+	#		f"In handle_photo(), describeImage() threw an exception: {type(e).__name__} {e}")
+	#
+	#	text = f"[Image analysis error: {e}]"
+	#	# We could also do a traceback here. Should we bother?
+	#
+	#_logger.normal(f'\tDescription of image from {user_name}: [{text}]')
+	#context.user_data['image_text'] = text
+	
+	# Store the text in the image_text attribute of the context object for later reference.
+	context.user_data['image_filename'] = os.path.join('photos', short_filename)
+
+	await handle_message(update, context)
+
+#__/ End async function handle_photo().
 
 
 	#/==========================================================================
@@ -3222,17 +3302,46 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		#| data, then present its transcription using an appropriate text
 		#| format.
 
-	if isNewMsg and 'audio_text' in context.user_data:	# We added this earlier if appropriate.
+	if isNewMsg and 'audio_text' in context.user_data:	# We added this earlier (in handle_audio) if appropriate.
 
 		# Utilize the transcript created by handle_audio() above.
 		text = f"(audio) {context.user_data['audio_text']}"	
 
+		_logger.normal(f"\tGot the audio message: {text}")
+
 		# Append the text caption, if present.
 		if tgMsg.caption:
-			text += f"\n({message.caption})"
+			_logger.normal(f"\tThe audio clip also has a caption: [{tgMsg.caption}]")
+			text += f"\n(Caption: {tgMsg.caption})"
 
 		# Clear the audio_text entry from the user_data dictionary
 		del context.user_data['audio_text']
+
+		#|----------------------------------------------------------------------
+		#| Handling for photo messages. If the original message contained a
+		#| photo, then present its description using an appropriate text format.
+
+	if isNewMsg and 'image_filename' in context.user_data:	# We added this earlier (in handle_photo) if appropriate.
+		
+		# At this point, we just note the image filename and caption in the message text.
+		# We hope that the AI is smart enough to then call the analyze_image() function as needed.
+
+		text = f'''[PHOTO ATTACHMENT; filename="{context.user_data['image_filename']}"]'''
+
+		## Utilize the description created by handle_photo() above.
+		#text = f"[PHOTO ATTACHMENT; {BOT_NAME} running visual analysis... detailed_result=```{context.user_data['image_text']}```]"	
+
+		_logger.normal(f"\tGot the photo: {text}")
+
+		# Append the photo's text caption, if present.
+		if tgMsg.caption:
+			_logger.normal(f"\tThe photo also has a caption: [{tgMsg.caption}]")
+			text += f"\n(CAPTION: {tgMsg.caption})"
+
+		# Clear the image_filename entry from the user_data dictionary - don't need it any more.
+
+		del context.user_data['image_filename']
+		#del context.user_data['image_text']
 
 	# If the message was an edited version of an earlier message,
 	# make a note of that.
@@ -3663,6 +3772,9 @@ async def ai_activateFunction(
 	elif funcName == 'forget_item':
 		cur_funcs += [FORGET_ITEM_SCHEMA]
 	
+	elif funcName == 'analyze_image':
+		cur_funcs += [ANALYZE_IMAGE_SCHEMA]
+	
 	elif funcName == 'create_image':
 		cur_funcs += [CREATE_IMAGE_SCHEMA]
 	
@@ -3880,6 +3992,44 @@ async def ai_forget(updateMsg:TgMsg, conversation:BotConversation,
 
 #__/ End of ai_forget() function definition.
 
+
+async def ai_vision(update:Update, context:Context, filename:str,
+					verbosity:str=None, query:str=None
+	) -> str:
+
+
+	# Get the message, or edited message from the update.
+	(message, edited) = _get_update_msg(update)
+
+	# Get the chat_id, user_name, and conversation object.
+	chat_id = message.chat.id
+	user_name = _get_user_tag(message.from_user)
+	conversation = context.chat_data['conversation']
+
+	fullpath = os.path.join(AI_DATADIR, filename)
+
+	# Now we'll use the OpenAI GPT-4V model to generate a description of the image.
+
+	_logger.normal(f"\tConverting image from user {user_name} in chat {chat_id} to a {verbosity} text description using GPT-4V.")
+	if query:
+		_logger.normal(f"\t(And also asking the question: {query})")
+
+	try:
+		text = describeImage(fullpath, verbosity=verbosity, query=query)
+	except Exception as e:
+		await _report_error(conversation, tgMsg,
+			f"In handle_photo(), describeImage() threw an exception: {type(e).__name__} {e}")
+
+		text = f"[Image analysis error: {e}]"
+		# We could also do a traceback here. Should we bother?
+	
+	_logger.normal(f'\tDescription of image from {user_name}: [{text}]')
+	
+	return text
+
+#__/ End async function ai_vision().
+
+
 DAILY_IMAGE_LIMIT = 5
 
 # Define a function to handle the /image command, when issued by the AI.
@@ -3896,15 +4046,41 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 	conversation = context.chat_data['conversation']
 
 	# Make sure that too many images haven't been generated today in this chat.
-	if 'last_image_date' in context.chat_data and context.chat_data['nimages_today'] >= DAILY_IMAGE_LIMIT:
-		_logger.warning(f"Daily image generation limit reached in chat {chat_id}.")
 
-		diagMsg = f"Image generation rate limit of {DAILY_IMAGE_LIMIT} has been reached in this chat. Try again tomorrow!"
+	if user_name == 'Michael':	# Michaels are blessed with an infinite image limit.
+		daily_image_limit = float('inf')	# Infinite images.
+	else:
+		daily_image_limit = DAILY_IMAGE_LIMIT	# Global defined above.
 
-		sendRes = await _send_diagnostic(message, conversation, diagMsg)
-		if sendRes != 'success': return sendRes
+	if 'last_image_date' in context.chat_data:	# Have we generated images in this convo?
 
-		return "error: daily image generation rate limit reached in this chat"
+		# Let's check whether the most recent one generated was earlier on this same date.
+		if context.chat_data['last_image_date'] == get_current_date():
+			
+			if context.chat_data['nimages_today'] >= daily_image_limit:
+				_logger.warning(f"Daily image generation limit reached in chat {chat_id}.")
+
+				diagMsg = f"Image generation rate limit of {daily_image_limit} has been reached in this chat. Try again tomorrow!"
+
+				sendRes = await _send_diagnostic(message, conversation, diagMsg)
+				if sendRes != 'success': return sendRes
+
+				return "error: daily image generation rate limit reached in this chat"
+
+			#__/ End if reached daily image limit.
+
+		#__/ End if it's still the same day as last image.
+
+		# The following else case isn't really needed...
+
+		else:	# It's a new day!
+			
+			context.chat_data['nimages_today'] = 0		# No images generated today yet!
+			_logger.normal(f"No images generated yet today in chat {chat_id}! Resetting counter.")
+
+		#__/ End new-day case.
+
+	#__/ End if images previously generated in this chat session.
 
 	#if user_name != "Michael":
 	#	_logger.warning(f"Image generation disabled for users other than Michael.")
@@ -4381,6 +4557,19 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 					f"forget_item() missing required argument item_id or text.")
 			return "Error: Required argument (item_id or text) is missing."
 
+	elif funcName == 'analyze_image':
+
+		filename	= funcArgs.get('filename',	None)		# A real value is required.
+		verbosity	= funcArgs.get('verbosity', 'medium')
+		query		= funcArgs.get('query',		None)
+
+		if filename:
+			return await ai_vision(update, context, filename, verbosity=verbosity, query=query)
+		else:
+			await _report_error(conversation, message,
+					f"analyze_image() missing required argument 'filename'.")
+			return "Error: Required argument 'filename' is missing."
+
 	elif funcName == 'create_image':
 		
 		imageDesc = funcArgs.get('description', None)
@@ -4391,8 +4580,8 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 			return await ai_image(update, context, imageDesc, shape=shape, caption=caption)
 		else:
 			await _report_error(conversation, message,
-					f"create_image() missing required argument description.")
-			return "Error: Required argument description is missing."
+					f"create_image() missing required argument 'description'.")
+			return "Error: Required argument 'description' is missing."
 
 	elif funcName == 'block_user':
 
@@ -5684,7 +5873,7 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, captio
 	else:
 		context.chat_data['nimages_today'] += 1
 
-	_logger.normal(f"\tA total of {context.chat_data['nimages_today']} images have been generated in chat {chat_id} today.")
+	_logger.normal(f"\tA total of {context.chat_data['nimages_today']} images have been generated in chat {chat_id} today ({today}).")
 
 	return (image_url, revised_prompt)
 #__/
@@ -8026,6 +8215,41 @@ FORGET_ITEM_SCHEMA = {
 }
 
 
+ANALYZE_IMAGE_SCHEMA = {
+	"name":			"analyze_image",
+	"description":	"Analyzes an image, and returns a description of the image or answers a query about it.",
+	"parameters":	{
+		"type":			"object",
+		"properties":	{
+			"filename":		{
+				"type":			"string",
+				"description":	"Pathname of the image file, starting with 'photos/' or 'images/'."
+			},
+			"verbosity":	{
+				"type":			"string",
+				"description":	"How verbose a description of the image do we want?",
+				"default":		'medium',
+				"enum":			['concise', 'medium', 'detailed']
+			},
+			"query":		{
+				"type":			"string",
+				"description":	"Optional parameter: A specific question to ask the image analyzer about the image."
+			},
+			"remark":	{
+				"type":			"string",	# <remark> argument has type string.
+				"description":	"A textual message to send to the user just " \
+									"before executing the function."
+			}
+		},
+		"required":		["filename"]
+	},
+	"returns":	{
+		"type":			"string",
+		"description":	"A string describing the image, a query response, or an error message."
+	}
+}
+
+
 # Function schema for command: /image <description>
 CREATE_IMAGE_SCHEMA = {
 	"name":         "create_image",
@@ -8040,8 +8264,8 @@ CREATE_IMAGE_SCHEMA = {
 			"shape":	{
 				"type":			"string",
 				"description":	"Overall shape of image to generate.",
-				"default":		"square",
-				"enum":			["square", "portrait", "landscape"]
+				"default":		'square',
+				"enum":			['square', 'portrait', 'landscape']
 			},
 			"caption":    {
 				"type":         "string",   # <caption> argument has type string.
@@ -8252,6 +8476,7 @@ FUNCTIONS_LIST = [
 	REMEMBER_ITEM_SCHEMA,
 	SEARCH_MEMORY_SCHEMA,
 	FORGET_ITEM_SCHEMA,
+	ANALYZE_IMAGE_SCHEMA,
 	CREATE_IMAGE_SCHEMA,
 	BLOCK_USER_SCHEMA,
 	UNBLOCK_USER_SCHEMA,
@@ -8272,7 +8497,7 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 	userID = updateMsg.from_user.id
 	chatID = botConvo.chat_id
 
-	_logger.normal(f"In chat {chatID}, for user #{userID}, AI is doing a web search in the {locale} locale for {sections} on: [{queryPhrase}].")
+	_logger.normal(f"\nIn chat {chatID}, for user #{userID}, AI is doing a web search in the {locale} locale for {sections} on: [{queryPhrase}].")
 	
 	# Calculate how many items to return based on GPT's field size.
 	fieldSize = global_gptCore.fieldSize	# Retrieve property value.
@@ -8588,6 +8813,13 @@ app.add_handler(CommandHandler('greet',	handle_greet),	group = 0)
 # In case user sends an audio message, we add a handler to convert the audio to
 # text so that the text-based AI can understand it.
 app.add_handler(MessageHandler(filters.AUDIO|filters.VOICE, handle_audio),
+					   group = 1)
+
+
+# In case user sends a photo (image), we add a handler to receive the image and
+# use GPT-4V to generate a detailed text description of it so that the text-based
+# AI can understand it.
+app.add_handler(MessageHandler(filters.PHOTO, handle_photo),
 					   group = 1)
 
 
