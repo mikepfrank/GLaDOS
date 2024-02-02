@@ -427,19 +427,20 @@ _ENGINES = [
     {'model-family': 'GPT-3.5',	'engine-name': 'code-davinci-002', 'field-size': 8001, 'price': 0,			'is-chat': False,	'encoding': 'p50k_base'},
     {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02,		'is-chat': False,	'encoding': 'p50k_base'},
 		# GPT-3.5-turbo-instruct. (Speed & pricing like GPT-3.5 Turbo, trained like GPT-3 Instruct.)
-	{'model-family': 'GPT-3.5', 'engine-name': 'gpt-3.5-turbo-instruct', 'field-size': 4000, 'price': 0.002, 'is-chat': False,  'encoding': 'p50k_base'},
+	{'model-family': 'GPT-3.5', 'engine-name': 'gpt-3.5-turbo-instruct', 'field-size': 4000, 'prompt-price': 0.0015, 'price': 0.002, 'is-chat': False,  'encoding': 'p50k_base'},
     
 		# ChatGPT-3.5 models. (These use the chat API. Data through Sep. 2021.)
 
-    {'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo', 		'field-size': 4096, 	'price': 0.002,		'prompt-price': 0.0015,		'is-chat': True,	'encoding': 'p50k_base'},
-	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0301', 	'field-size': 4096, 	'price': 0.002,		'prompt-price': 0.0015,		'is-chat': True,	'encoding': 'p50k_base'},
+    {'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo', 		'field-size': 4096, 	'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
+	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0301', 	'field-size': 4096, 	'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
 		# To be discontinued on 9/13/23. Switch to gpt-3.5-turbo-0613.
-	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0613', 	'field-size': 4096, 	'price': 0.002,		'prompt-price': 0.0015,		'is-chat': True,	'encoding': 'p50k_base'},
+	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0613', 	'field-size': 4096, 	'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
     
 		# 16k ChatGPT-3.5 models. (Context window size increased to 16,384.)
 
-	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-16k', 		'field-size': 16384, 	'price': 0.004,		'prompt-price': 0.003,		'is-chat': True,	'encoding': 'p50k_base'},
-	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-16k-0613', 	'field-size': 16384, 	'price': 0.004,		'prompt-price': 0.003,		'is-chat': True,	'encoding': 'p50k_base'},
+	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-16k', 		'field-size': 16384, 	'prompt-price': 0.003,	'price': 0.004,		'is-chat': True,	'encoding': 'p50k_base'},
+	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-16k-0613', 	'field-size': 16384, 	'prompt-price': 0.003,	'price': 0.004,		'is-chat': True,	'encoding': 'p50k_base'},
+	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',	 	'field-size': 16384, 	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
 
 		# GPT-4 models.  (These also use the chat API. Data through Sep. 2021.)
 
@@ -453,19 +454,34 @@ _ENGINES = [
 	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-32k',			'field-size': 32768, 'price': 0.12,	'prompt-price': 0.06,	'is-chat': True,	'encoding': 'p50k_base'},
 	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-32k-0613',	'field-size': 32768, 'price': 0.12,	'prompt-price': 0.06,	'is-chat': True,	'encoding': 'p50k_base'},
 
+		# 128k GPT-4 models. (Context window size increased to 128,000 tokens; data through Apr. 2023.)
+	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-turbo-preview',  'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-1106-preview',   'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',   'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	
+		# 128k GPT-4V models. (Vision capability added.)
+	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-vision-preview',      'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-1106-vision-preview', 'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 
 ] # End _ENGINES constant module global data structure.
 
 # Set of models that support the functions interface.
+# TO DO: Change this to a field in _ENGINES.
 _FUNCTION_MODELS = [
 	'gpt-3.5-turbo',			# Supports functions as of 6/13/'23.
 	'gpt-3.5-turbo-0613',
 	'gpt-3.5-turbo-16k',
 	'gpt-3.5-turbo-16k-0613',
+	'gpt-3.5-turbo-0125',
 	'gpt-4',					# Supports functions as of 6/13/'23.
 	'gpt-4-0613',
 	'gpt-4-32k',				# Supports functions as of 6/13/'23.
 	'gpt-4-32k-0613',
+	'gpt-4-turbo-preview',
+	'gpt-4-1106-preview',
+	'gpt-4-0125-preview',
+	'gpt-4-vision-preview',
+	'gpt-4-1106-vision-preview',
 ]
 def _has_functions(engine_name):
 	"""Return True if the named engine supports the functions interface."""
@@ -478,28 +494,6 @@ for _engine_dict in _ENGINES:
 	_engine_dict['has-functions'] = _has_functions(_engine_name)
 	_ENGINE_ATTRIBS[_engine_name] = _engine_dict
 
-# Set of models that support the functions interface.
-_FUNCTION_MODELS = [
-	'gpt-3.5-turbo',			# Supports functions as of 6/13/'23.
-	'gpt-3.5-turbo-0613',
-	'gpt-3.5-turbo-16k',
-	'gpt-3.5-turbo-16k-0613',
-	'gpt-4',					# Supports functions as of 6/13/'23.
-	'gpt-4-0613',
-	'gpt-4-32k',				# Supports functions as of 6/13/'23.
-	'gpt-4-32k-0613',
-]
-def _has_functions(engine_name):
-	"""Return True if the named engine supports the functions interface."""
-	return engine_name in _FUNCTION_MODELS
-
-
-# Generate the _ENGINE_ATTRIBS fast lookup table for engine attributes by engine name.
-_ENGINE_ATTRIBS = dict()
-for _engine_dict in _ENGINES:
-	_engine_name = _engine_dict['engine-name']
-	_engine_dict['has-functions'] = _has_functions(_engine_name)
-	_ENGINE_ATTRIBS[_engine_name] = _engine_dict
 
 		#----------------------------------------------------------------------
 		#  The following are private convenience functions for retrieving
@@ -2371,13 +2365,10 @@ class ChatCompletion(Completion):
 			# For some reason, the engines that supposedly can only handle
 			# 2,048 tokens in their query + response together actually are
 			# able to handle 2,049 tokens. So, we'll adjust the value of
-			# fieldSize in that case.
+			# fieldSize in that case. Likewise for field sizes 4096 & 16384.
 
-		if fieldSize == 2048:
-			fieldSize = 2049
-
-		elif fieldSize == 4096:
-			fieldSize = 4097
+		if fieldSize == 2048 or fieldSize == 4096 or fieldSize == 16384:
+			fieldSize += 1
 
 			# (NOTE: Still need to research whether the engines that supposedly
 			# can only handle 4,000 tokens can similarly handle 4,001 tokens,
@@ -3204,7 +3195,10 @@ class GPT3ChatCore(GPT3Core):
 
 			# Available only in 0613 (June 13, 2023) or later releases of chat models.
 		functionList		= kwargs.get('functionList')			# Default is None.
-		functionCall		= kwargs.get('functionCall', 'auto')	# Default is 'auto'
+		if functionList:
+			functionCall		= kwargs.get('functionCall', 'auto')	# Default is 'auto'
+		else:
+			functionCall		= kwargs.get('functionCall', None)	# Default is 'auto'
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| Now, add the selected (non-None) parameter values to the argument list.
@@ -3514,14 +3508,17 @@ def stats():
 #__/ End module public function stats().
 
 
-def genImage(desc:str, dims:str=None):
+def genImage(desc:str, dims:str=None, style:str=None):
 	"""Generate an image from the given description string with given dimensions.
 		Returns the URL of the generated image."""
 	
 	if dims is None:
 		dims = "1024x1024"
 
-	_logger.info(f"Generating a {dims} image with description [{desc}].")
+	if style is None:
+		style = 'vivid'
+
+	_logger.info(f"Generating a {style} {dims} image with description [{desc}].")
 
 	# This was the old API call for the Dall-E 2 image generator (now deprecated):
 	#response = openai.Image.create(
@@ -3536,7 +3533,7 @@ def genImage(desc:str, dims:str=None):
 		prompt	= desc,				# max length: 4000 characters for dall-e-3
 		size	= dims,				# Options include: 1024x1024 (square, default), 1792x1024 (landscape) and 1024x1792 (portrait).
 		quality = 'hd',				# Other options include: 'standard'
-		style	= 'vivid',			# Other options include: 'natural'
+		style	= style,			# Options include: 'vivid', 'natural'
 	)
 
 	_logger.debug(f"Got response: [{response}]")

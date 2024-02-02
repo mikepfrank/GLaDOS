@@ -1702,7 +1702,7 @@ class BotConversation:
 				"  search_memory(query_phrase:str, max_results:int=3, remark:str=None) -> results:list\n" + \
 				"  forget_item(text:str=None, item_id:str=None, remark:str=None) -> status:str\n" + \
 				"  analyze_image(filename:str, verbosity:str='medium', query:str=None, remark:str=None) -> result:str\n" + \
-				"  create_image(description:str, shape:str='square', caption:str=None, remark:str=None) -> status:str\n" + \
+				"  create_image(description:str, shape:str='square', style:str='vivid', caption:str=None, remark:str=None) -> status:str\n" + \
 				"  block_user(user_name:str={cur_user}, remark:str=None) -> status:str\n" + \
 				"  unblock_user(user_name:str={cur_user}, remark:str=None) -> status:str\n" + \
 				"  search_web(query:str, locale:str='en-US', sections:list=['webPages'], remark:str=None) -> results:dict\n" + \
@@ -2285,10 +2285,10 @@ async def handle_image(update:Update, context:Context) -> None:
 					   f"[{imageDesc}] for user '{user_name}' in "
 					   f"conversation {chat_id}.")
 
-		(image_url, new_desc) = await send_image(update, context, imageDesc)
+		(image_url, new_desc, save_filename) = await send_image(update, context, imageDesc)
 
 		# Make a note in conversation archive to indicate that the image was sent.
-		conversation.add_message(BotMessage(SYS_NAME, f'[Generated image "{new_desc}" and sent it to the user.]'))
+		conversation.add_message(BotMessage(SYS_NAME, f'[Generated image "{new_desc}" in file "{save_filename}" and sent it to the user.]'))
 
 		# Allow the AI to follow up (but without re-processing the message).
 		await handle_message(update, context, isNewMsg=False)
@@ -4010,7 +4010,12 @@ async def ai_vision(update:Update, context:Context, filename:str,
 
 	# Now we'll use the OpenAI GPT-4V model to generate a description of the image.
 
-	_logger.normal(f"\tConverting image from user {user_name} in chat {chat_id} to a {verbosity} text description using GPT-4V.")
+	if filename.startswith('image'):
+		who_from = BOT_NAME
+	else:
+		who_from = f"user {user_name}"
+
+	_logger.normal(f"\tConverting image {filename} from {who_from} in chat {chat_id} to a {verbosity} text description using GPT-4V.")
 	if query:
 		_logger.normal(f"\t(And also asking the question: {query})")
 
@@ -4023,7 +4028,7 @@ async def ai_vision(update:Update, context:Context, filename:str,
 		text = f"[Image analysis error: {e}]"
 		# We could also do a traceback here. Should we bother?
 	
-	_logger.normal(f'\tDescription of image from {user_name}: [{text}]')
+	_logger.normal(f'\tDescription of image from {who_from}: [{text}]')
 	
 	return text
 
@@ -4034,7 +4039,7 @@ DAILY_IMAGE_LIMIT = 5
 
 # Define a function to handle the /image command, when issued by the AI.
 async def ai_image(update:Update, context:Context, imageDesc:str,
-				   shape:str=None, caption:str=None	#, remaining_text:str=None
+				   shape:str=None, style:str=None, caption:str=None	#, remaining_text:str=None
 	) -> str:
 
 	# Get the message, or edited message from the update.
@@ -4118,17 +4123,24 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 		conversation.add_message(BotMessage(SYS_NAME, f"Warning: Shape '{shape}' is invalid; defaulting to 'square'."))
 		size = "1024x1024"
 
+	# Process the "style" parameter.
+	if style is None:
+		style = 'vivid'
+	if style != 'vivid' and style != 'natural':
+		_logger.warn(f"\tUnknown style '{style}'; reverting to 'natural'.")
+		style = 'natural'
+
 	# Generate and send an image described by the /image command argument string.
-	_logger.normal(f"\nGenerating a {shape} image with description "
+	_logger.normal(f"\nGenerating a {style} {shape} image with description "
 					f"[{imageDesc}] for user '{user_name}' in "
 					f"conversation {chat_id}.")
 	if caption:
 		_logger.normal(f"\tAn image caption [{caption}] was also specified.")
 
-	(image_url, new_desc) = await send_image(update, context, imageDesc, dims=size, caption=caption)
+	(image_url, new_desc, save_filename) = await send_image(update, context, imageDesc, dims=size, style=style, caption=caption)
 
 	# Make a note in conversation archive to indicate that the image was sent.
-	conversation.add_message(BotMessage(SYS_NAME, f'[Generated and sent image "{new_desc}"]'))
+	conversation.add_message(BotMessage(SYS_NAME, f'[Generated and sent image "{new_desc}" in filename "{save_filename}"]'))
 
 	## NOTE: This is now done in process_command() more generically.
 	# Send the remaining text after the command line, if any, as a normal message.
@@ -4138,7 +4150,7 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 	# This doesn't work, because the URL is only accessible from this server.
 	#return f"Success: image has been generated and sent to user. Temporary URL=({image_url})."
 
-	return f'Success: image with revised description "{new_desc}" has been generated and sent to user.'
+	return f'Success: image with revised description "{new_desc}" has been generated in file "{save_filename}" and sent to user.'
 
 #__/ End of ai_image() function definition.
 
@@ -4574,10 +4586,11 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 		
 		imageDesc = funcArgs.get('description', None)
 		shape	  = funcArgs.get('shape', None)
+		style	  = funcArgs.get('style', None)
 		caption	  = funcArgs.get('caption', None)
 
 		if imageDesc:
-			return await ai_image(update, context, imageDesc, shape=shape, caption=caption)
+			return await ai_image(update, context, imageDesc, shape=shape, style=style, caption=caption)
 		else:
 			await _report_error(conversation, message,
 					f"create_image() missing required argument 'description'.")
@@ -5790,11 +5803,11 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 #__/ End of process_response() function definition.
 
 
-async def send_image(update:Update, context:Context, desc:str, dims=None, caption=None, save_copy=True) -> (str, str):
+async def send_image(update:Update, context:Context, desc:str, dims=None, style=None, caption=None, save_copy=True) -> (str, str, str):
 	"""Generates an image from the given description and sends it to the user.
 		Also archives a copy on the server unless save_copy=False is specified.
 		Returns a temporary URL for the image, if successful, and a revised
-		description of the generated image."""
+		description of the generated image. And the image filename, if saved."""
 
 	# Get the message, or edited message from the update.
 	(tgMsg, edited) = _get_update_msg(update)
@@ -5821,7 +5834,7 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, captio
 
 	# Use the OpenAI API to generate the image.
 	try:
-		(image_url, revised_prompt) = genImage(desc, dims)
+		(image_url, revised_prompt) = genImage(desc, dims, style)
 	except Exception as e:
 		await _report_error(conversation, tgMsg,
 					  f"In send_image(), genImage() threw an exception: {type(e).__name__} ({e})")
@@ -5837,6 +5850,7 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, captio
 	response.raise_for_status()
 	
 	# Save the image to the filesystem if the flag is set to True
+	save_filename = None
 	if save_copy:
 		_logger.normal(f"\tSaving a copy of the generated image to the filesystem...")
 		image_dir = os.path.join(AI_DATADIR, 'images')
@@ -5844,7 +5858,9 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, captio
 			os.makedirs(image_dir)
 		# Pick a short ID for the file (collisions will be fairly rare).
 		short_file_id = f"{random.randint(1,1000000)-1:06d}"
-		image_save_path = os.path.join(image_dir, f'{username}--{short_file_id}.png')
+		short_filename = f'{username}--{short_file_id}.png'
+		image_save_path = os.path.join(image_dir, short_filename)
+		save_filename = os.path.join('images', short_filename)
 		with open(image_save_path, 'wb') as image_file:
 			image_file.write(response.content)
 		_logger.normal(f"\t\tImage saved to {image_save_path}.")
@@ -5875,7 +5891,7 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, captio
 
 	_logger.normal(f"\tA total of {context.chat_data['nimages_today']} images have been generated in chat {chat_id} today ({today}).")
 
-	return (image_url, revised_prompt)
+	return (image_url, revised_prompt, save_filename)
 #__/
 
 
@@ -8266,6 +8282,12 @@ CREATE_IMAGE_SCHEMA = {
 				"description":	"Overall shape of image to generate.",
 				"default":		'square',
 				"enum":			['square', 'portrait', 'landscape']
+			},
+			"style":	{
+				"type":			"string",
+				"description":	"Overall style of image appearance.",
+				"default":		'vivid',
+				"enum":			['vivid', 'natural']
 			},
 			"caption":    {
 				"type":         "string",   # <caption> argument has type string.
