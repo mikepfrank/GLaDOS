@@ -209,7 +209,7 @@ import	random
 
 import	re	# Regex
 
-from	os			import	path, rename, makedirs
+from	os			import	path, rename, makedirs, getenv
 	# Manipulate filesystem path strings, create directories.
 
 from	pprint		import	pformat #,pprint	# Pretty-print complex objects.
@@ -372,6 +372,7 @@ __all__ = [
 
 		'genImage',				# Function: Generate an image from a description.
 		'transcribeAudio',		# Function: Transcribe an audio file to text.
+		'describeImage',		# Function: Generate a text description of an image.
 
 	]
 
@@ -3606,6 +3607,88 @@ def transcribeAudio(filename:str):
 
 	return text
 #__/ End module public function transcribeAudio();
+
+
+import base64
+import requests
+
+api_key = getenv('OPENAI_API_KEY')
+
+def encode_image(image_path):
+  with open(image_path, "rb") as image_file:
+    return base64.b64encode(image_file.read()).decode('utf-8')
+
+def describeImage(filename:str, verbosity:str='medium', query:str=None):
+	"""Given the path to a JPEG image, use the GPT-4V model
+		to generate a text description of the image, and return
+		the text."""
+
+	_logger.info(f"Passing {filename} to the OpenAI GPT-4V model...")
+
+	# Select description type.
+	if verbosity == 'concise':
+		which_kind = 'concise description'
+	elif verbosity == 'detailed':
+		which_kind = 'detailed description'
+	else:
+		which_kind = 'description'
+
+	# Compose the prompt.
+	prompt = f"Please provide a {which_kind} of the following image."
+
+	# Specifically ask for text if generating a detailed description.
+	if verbosity == 'detailed':
+		prompt += " If the image includes text, please include it in your response."
+
+	# Include the query, if provided.
+	if query:
+		prompt += " Also, after the image description, please repeat and then answer the following question about the image: " + query
+
+	# Load the image to base64.
+	base64_image = encode_image(filename)
+
+	# Construct POST headers.
+	headers = {
+		"Content-Type": "application/json",
+		"Authorization": f"Bearer {api_key}"
+	}
+
+	# Construct POST payload.
+	payload = {
+		"model": "gpt-4-vision-preview",
+		"messages": [
+			{
+				"role": "user",
+				"content": [
+					{
+						"type": "text",
+						"text": prompt
+					},
+					{
+						"type": "image_url",
+						"image_url": {
+							"url": f"data:image/jpeg;base64,{base64_image}"
+						}
+					}
+				]
+			}
+		],
+		"max_tokens": 500
+	}
+	
+	# Stream the image to the API via an https POST.
+	response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+
+	# Parse the response.
+
+	response_json = response.json()
+	#print(response.json())
+
+	description = response_json['choices'][0]['message']['content']
+	_logger.info(f"Got image description: [{description}]")
+
+	#return "[to be implemented]"
+	return description
 
 
 	#/==========================================================================
