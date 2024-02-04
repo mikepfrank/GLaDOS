@@ -880,6 +880,9 @@ class	TheAIPersonaConfig:
 											belonging to the AI persona.
 											(E.g., "gladys").
 
+				.personaVoice [str]		- The symbolic name identifying the
+											AI persona's voice in tts.
+
 				.modelFamily [string] 	- AI model type (e.g., 'gpt-2' or 
 											'gpt-3').
 				
@@ -1106,6 +1109,19 @@ class	TheAIPersonaConfig:
 			theAIConfig.personaID = None
 
 	
+			#-------------------------------------
+			# Extract the persona-voice parameter.
+		
+		if 'persona-voice' in mindConf:
+			theAIConfig.personaVoice = personaVoice = mindConf['persona-voice']
+				# TODO: Make sure value given is valid.
+			_logger.normal(f"    [Config/AI]     AI config:     The AI persona's voice is {personaVoice}.")
+		else:
+			_logger.warn("parseConf(): The required persona-voice parameter "
+							"was not provided.")
+			theAIConfig.personaVoice = None
+				
+
 			#------------------------------------
 			# Extract the persona-user-account parameter.
 		
