@@ -3571,8 +3571,8 @@ def genSpeech(text:str, user:str = None, response_format=None):
 	speech_filepath = path.join(speechDir, filename)
 
 	response = _client.audio.speech.create(
-		model = "tts-1",	# Optimized for speed. Other choices include: tts-1-hd (optimized for quality).
-		voice = "echo",		# Other choices include alloy, fable, onyx, nova, shimmer.
+		model = 'tts-1',	# Optimized for speed. Other choices include: tts-1-hd (optimized for quality).
+		voice = 'nova',		# Female voice for Aria. Choices include alloy, echo, fable, onyx, nova, shimmer.
 		input = text,
 		response_format = response_format
 	)
@@ -3623,23 +3623,35 @@ def describeImage(filename:str, verbosity:str='medium', query:str=None):
 	_logger.info(f"Passing {filename} to the OpenAI GPT-4V model...")
 
 	# Select description type.
-	if verbosity == 'concise':
+	if verbosity == 'none' or verbosity is None:
+		which_kind = None
+	elif verbosity == 'concise':
 		which_kind = 'concise description'
 	elif verbosity == 'detailed':
 		which_kind = 'detailed description'
 	else:
 		which_kind = 'description'
 
-	# Compose the prompt.
-	prompt = f"Please provide a {which_kind} of the following image."
+	# If a description was requested, construct an appropriate prompt.
+	if which_kind:
+		# Compose the prompt.
+		prompt = f"Please provide a {which_kind} of the following image."
 
-	# Specifically ask for text if generating a detailed description.
-	if verbosity == 'detailed':
-		prompt += " If the image includes text, please include it in your response."
+		# Specifically ask for text if generating a detailed description.
+		if verbosity == 'detailed':
+			prompt += " If the image includes text, please include it in your response."
 
-	# Include the query, if provided.
-	if query:
-		prompt += " Also, after the image description, please repeat and then answer the following question about the image: " + query
+		# Include the query, if provided.
+		if query:
+			prompt += " Also, after the image description, please repeat and then answer the following question about the image: " + query
+
+	# If only a query was requested, construct an appropriate prompt.
+	elif query:
+		prompt = "Please answer the following question about the image: " + query
+
+	# Default prompt if no description was requested and no query was provided.
+	else:
+		prompt = "Please respond to the following image."
 
 	# Load the image to base64.
 	base64_image = encode_image(filename)
