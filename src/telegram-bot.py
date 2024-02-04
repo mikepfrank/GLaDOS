@@ -585,6 +585,7 @@ from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF
 	oaiMsgObj_to_msgDict,	# For compatibility
 
 	_has_functions as hasFunctions,		# Pretend it's a public function.
+	_get_field_size as getFieldSize
 
 )	# End of imports from gpt3.api module.
 
@@ -3943,6 +3944,7 @@ async def ai_forget(updateMsg:TgMsg, conversation:BotConversation,
 		return "error: missing required argument"
 	#__/
 
+	_logger.normal("Deleting a memory item in chat #{chat_id}.")
 	_deleteMemoryItem(item_id=itemToDel, text=textToDel)
 	# For now we assume it always succeeds.
 
@@ -4022,7 +4024,7 @@ async def ai_vision(update:Update, context:Context, filename:str,
 	try:
 		text = describeImage(fullpath, verbosity=verbosity, query=query)
 	except Exception as e:
-		await _report_error(conversation, tgMsg,
+		await _report_error(conversation, message,
 			f"In handle_photo(), describeImage() threw an exception: {type(e).__name__} {e}")
 
 		text = f"[Image analysis error: {e}]"
@@ -4232,8 +4234,22 @@ async def ai_remember(updateMsg:TgMsg, conversation:BotConversation, textToAdd:s
 				
 
 # Number of items that the search_memory function returns by default.
+
 DEFAULT_SEARCHMEM_NITEMS	= 3
-	# Reasonable default. Do not recommend setting this higher than 10.
+
+# Call this later to reinitialize the default based on the engine's
+# receptive field (context window) size.
+def _adjust_searchmem_defaults():
+	global DEFAULT_SEARCHMEM_NITEMS
+	
+	fieldSize = getFieldSize(ENGINE_NAME)
+	if fieldSize > 16000:	# Current 3.5 and 4 Turbo models are in this range.
+		DEFAULT_SEARCHMEM_NITEMS = 10
+	elif fieldSize > 8000:	# The original GPT-4 was in this category.
+		DEFAULT_SEARCHMEM_NITEMS = 5
+
+	# ^ NOTE: Reasonable defaults. Do not recommend setting this higher than 10.
+
 
 async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
 					queryPhrase:str, nItems:int=DEFAULT_SEARCHMEM_NITEMS
@@ -8066,6 +8082,9 @@ ENGINE_NAME = aiConf.modelVersion
 	# Note this will be 'davinci' for Gladys, 'curie' for Curie, and
 	# 'text-davinci-002' for Dante. And so on.
 
+# Do this only now because it needs to know ENGINE_NAME.
+_adjust_searchmem_defaults()
+
 globalMaxRetToks		 = aiConf.maxReturnedTokens
 	# This gets the AI's persona's configured preference for the *maximum*
 	# number of tokens the back-end language model may return in a response.
@@ -8085,7 +8104,9 @@ else:
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#  Sets the functions list (describes the functions AI may call).
 	#  Note this is only supported in chat models dated 6/13/'23 or later.
-
+	#
+	#  NOTE: It's important that all this is done after calling
+	# _adjust_searchmem_defaults(), which changes globals we use..
 
 # Function schema for command: /remember <text>
 REMEMBER_ITEM_SCHEMA = {
