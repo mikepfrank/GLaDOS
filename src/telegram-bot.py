@@ -7576,7 +7576,7 @@ async def _reply_asSpeech(userTgMessage:TgMsg, convo:BotConversation, text):
 
 	# This uses the OpenAI text-to-speech API 
 	#mp3_filename = genSpeech(text, user=user_name)
-	opus_filename = genSpeech(text, user=user_name, response_format="opus")
+	opus_filename = genSpeech(text, user=user_name, voice=AI_VOICE, response_format="opus")
 
 	# This uses ffmpeg to convert to OGG
 	#ogg_filename = _mp3_to_ogg(mp3_filename)
@@ -8047,6 +8047,7 @@ aiConf = TheAIPersonaConfig()
 # Define the bot's name (used in many places below).
 #BOT_NAME = 'Gladys'	# The AI persona that we created this bot for originally.
 BOT_NAME = aiConf.botName		# This is the name of the bot.
+AI_VOICE = aiConf.personaVoice	# The name of the voice used for text-to-speech.
 
 # These are the section headers of the AI's persistent context.
 PERMANENT_CONTEXT_HEADER = " ~~~ Permanent context data: ~~~\n"

@@ -3547,7 +3547,7 @@ def genImage(desc:str, dims:str=None, style:str=None):
 #__/ End module public function genImage().
 	
 
-def genSpeech(text:str, user:str = None, response_format=None):
+def genSpeech(text:str, user:str = None, voice:str = None, response_format=None):
 	"""Generates spoken voice audio for the given text.
 		Returns the filename of the generated (.mp3) file.
 		The <user> argument, if provided, is used in the
@@ -3555,6 +3555,9 @@ def genSpeech(text:str, user:str = None, response_format=None):
 		to different users."""
 
 	_logger.info(f"Generating speech for the following text: [{text}]")
+
+	if voice is None:
+		voice = 'alloy'		# Default, male-ish but somewhat androgynous voice.
 
 	if response_format is None:
 		response_format = "mp3"	# Do this by default
@@ -3572,7 +3575,8 @@ def genSpeech(text:str, user:str = None, response_format=None):
 
 	response = _client.audio.speech.create(
 		model = 'tts-1',	# Optimized for speed. Other choices include: tts-1-hd (optimized for quality).
-		voice = 'nova',		# Female voice for Aria. Choices include alloy, echo, fable, onyx, nova, shimmer.
+		voice = voice,		# Female voice for Aria. Choices include alloy, echo, fable, onyx, nova, shimmer.
+		#voice = 'nova',		# Female voice for Aria. Choices include alloy, echo, fable, onyx, nova, shimmer.
 		input = text,
 		response_format = response_format
 	)
