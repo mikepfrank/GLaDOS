@@ -6437,8 +6437,8 @@ def _getDynamicMemory(convo:BotConversation):
 
 		itemID = mem['itemID']
 		userID = mem['userID']
-		isPublic = mem['public']
-		isGlobal = mem['global']
+		isPublic = not mem['is_private']
+		isGlobal = mem['is_global']
 		itemText = mem['itemText']
 		
 		# Look up detailed user data. This is a dict with keys:
@@ -6456,7 +6456,7 @@ def _getDynamicMemory(convo:BotConversation):
 
 	return memString
 
-#__/ End private function _searchMemories().
+#__/ 
 
 
 def _getEmbedding(text):
@@ -7675,27 +7675,55 @@ def _searchMemories(userID, chatID, searchPhrase,
 					"public": item[3], "global": item[4], "itemText": item[5],
 					"embedding": pickle.loads(item[6])}
 
-		# Compute the semantic distance between the search phrase and the item
-		distance = _semanticDistance(searchEmbedding, itemDict["embedding"])
+		# We now have a stricter privacy policy than before: We will
+		# only include an item if BOTH of the following conditions are true:
+		#
+		#	(1) The item is public OR the user IDs match.
+		#	(2) The item is global OR the chat IDs match.
 
-		# Remember the distance from the search query.
-		itemDict['distance'] = distance
+		if (itemDict['public'] == 1 or itemDict['userID'] == userID) and \
+		   (itemDict['global'] == 1 or itemDict['chatID'] == chatID):
 
-		# Delete the embedding field now that we're done with it, cuz it's huge.
-		del itemDict['embedding']
+			# Compute the semantic distance between the search phrase and the item
+			distance = _semanticDistance(searchEmbedding, itemDict["embedding"])
 
-		# Pushes new item onto heap (note the negative sign before distance, 
-		# this results in the most distant item being on the top of the heap).
-		heapq.heappush(closestMatches, (-distance, itemDict['itemID'], itemDict))
-		# If heap gets too large, pop the "largest" (i.e., most negative) element.
-		if len(closestMatches) > nItems:
-			heapq.heappop(closestMatches)
+			# Remember the distance from the search query.
+			itemDict['distance'] = distance
 
-	# Return the closest matches
+			# Delete the embedding field now that we're done with it, cuz it's huge.
+			del itemDict['embedding']
+
+			# Pushes new item onto heap (note the negative sign before distance, 
+			# this results in the most distant item being on the top of the heap).
+			heapq.heappush(closestMatches, (-distance, itemDict['itemID'], itemDict))
+
+			# If heap gets too large, we pop off the "smallest" (i.e., most
+			# negative, most distant) element, which is at the top of the heap..
+			if len(closestMatches) > nItems:
+				heapq.heappop(closestMatches)
+
+		#__/ End if item satisfies privacy policy.
+
+	#__/ End for loop over matching items.
+
+	# Return the closest matches -- which are those that have the largest
+	# (least negative) negative distances.
 	results = [itemDict for (_dist, _id, itemDict) in heapq.nlargest(nItems, closestMatches)]
 
+	# Clean up the item dictionary to be more presentable...
 	for itemDict in results:
+
+		# Only show distance to 6 significant figures.
 		itemDict['distance'] = format(itemDict['distance'], '.6f')
+
+		# Show the user's tag and not just his ID, to help reassure the AI that it isn't violating user privacy.
+		userData = _lookup_user(itemDict['userID'])
+		itemDict['userTag'] = userData['userTag']
+
+		# Change the 'public' and 'global' numeric flags to 'is_private' and 'is_global' booleans.
+		itemDict['is_private'] = not itemDict['public'];    del itemDict['public']
+		itemDict['is_global'] = not not itemDict['global']; del itemDict['global']
+			# ^ Note the double negative here is just doing an int->bool conversion.
 
 	for itemDict in results:
 		_logger.info(f"Got item at distance {itemDict['distance']}: [{itemDict['itemText']}]")
@@ -8123,13 +8151,13 @@ REMEMBER_ITEM_SCHEMA = {
 			"is_private":	{
 				"type":			"boolean",	# <private> argument is Boolean.
 				"description":	"Is this information considered private "\
-									"to the current user or group chat? ",
+									"(only viewable by the current user)? ",
 				"default":		True,
 			},
 			"is_global": {
 				"type":			"boolean",	# <private> argument is Boolean.
-				"description":	"Does this information need to be accessible "\
-									"to the AI from within any chat?",
+				"description":	"Is this information considered global "\
+									"(viewable outside the current chat)?",
 				"default":		False,
 			},
 			"remark":	{
@@ -8152,7 +8180,7 @@ REMEMBER_ITEM_SCHEMA = {
 SEARCH_MEMORY_SCHEMA = {
 	"name":			"search_memory",
 	"description":	"Do a context-sensitive semantic search for the top N "\
-						"memories related to a given search phrase.",
+						"viewable memories related to a given search phrase.",
 	"parameters":	{
 		"type":			"object",
 		"properties":	{
@@ -8184,28 +8212,40 @@ SEARCH_MEMORY_SCHEMA = {
 					"type":			"string",
 					"description":	"8-digit hex ID of this memory item."
 				},
+				"user_id":	{
+					"type":			"integer",
+					"description":	"Numeric ID of the user for whom the item was added."
+				},
+				"user_tag":	{
+					"type":			"string",
+					"description":	"Display name of the user for whom the item was added."
+				},
 				"text":	{
 					"type":			"string",
 					"description":	"Complete text of this memory item."
 				},
+				"chatID": {
+					"type":			"integer",
+					"description":	"Numeric ID of the chat in which this memory was created."
+				},
 				"is_private":	{
 					"type":			"boolean",	# <private> argument is Boolean.
-					"description":	"Indicates whether this memory contains "\
-										"information specific to the user or group in which "\
-										"it was created. If true, the information should not "\
-										"be openly disclosed in different contexts without "\
-										"authorization."
+					"description":	"Indicates whether this memory may contain "\
+										"information that is private to the user "\
+										"who created it. If true, the information "\
+										"should not be openly disclosed in different "\
+										"contexts (e.g., group chats) without "\
+										"authorization from the user."
 					# ^ Suggested by Aria. My original description:
 					#"Is this information considered private "\
 					#	"to the current user or group chat? "
 				},
 				"is_global": {
 					"type":			"boolean",	# <private> argument is Boolean.
-					"description":	"Indicates whether this memory is "\
-										"accessible to the AI across all contexts. If "\
-										"true, the AI can use this information to shape "\
-										"responses in any context, but must respect privacy "\
-										"restrictions if `is_private` is also true."
+					"description":	"Indicates whether this memory is potentially "\
+										"accessible from within any chat. If false, "\
+										"the item will only be accessible from within "\
+										"the chat in which it was created."
 					# ^ Suggested by Aria. My original description:
 					#"Does this information need to be accessible "\
 					#"to the AI from within any chat?"
