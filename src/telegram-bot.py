@@ -8755,9 +8755,9 @@ MODEL_FAMILY = global_gptCore.modelFamily
 
 	# This is the default help string if a custom one is not set.
 HELP_STRING=f"""
-{BOT_NAME} bot powered by {MODEL_FAMILY}/{ENGINE_NAME}. NOTE: {BOT_NAME} now understands voice clips and can generate images!
+{BOT_NAME} bot powered by {MODEL_FAMILY}/{ENGINE_NAME}. NOTE: {BOT_NAME} can now both understand and generate voice clips and images!
 
-Available commands:
+Available user commands:
 /start - Starts the bot, if not already started; also reloads conversation history, if any.
 /help - Shows this help message.
 /image <desc> - Generate and return an image for the given description.
