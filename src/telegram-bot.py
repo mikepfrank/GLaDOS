@@ -8245,7 +8245,7 @@ ANALYZE_IMAGE_SCHEMA = {
 				"type":			"string",
 				"description":	"How verbose a description of the image do we want?",
 				"default":		'medium',
-				"enum":			['concise', 'medium', 'detailed']
+				"enum":			['none', 'concise', 'medium', 'detailed']
 			},
 			"query":		{
 				"type":			"string",
@@ -8458,8 +8458,8 @@ ACTIVATE_FUNCTION_SCHEMA = {
 			"func_name":	{
 				"type":		"string",
 				"enum":		["remember_item", "search_memory", "forget_item",
-							 "create_image", "block_user", "unblock_user",
-							 "search_web"]
+							 "analyze_image", "create_image", "block_user",
+							 "unblock_user", "search_web"]
 			},
 			"remark":	{
 				"type":			"string",	# <remark> argument has type string.
