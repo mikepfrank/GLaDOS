@@ -1040,7 +1040,7 @@ class BotConversation:
 		newConv.bot_name = BOT_NAME	# The name of the bot. ('Gladys', 'Aria', etc.)
 		newConv.chat_id = chat_id		# Remember the chat ID associated with this convo.
 		newConv.quiet_mode = False		# By default, bot can reply to any message.
-		newConv.speech_on = False			# By default, spoken output is turned off.
+		newConv.speech_on = False		# By default, spoken output is turned off.
 		
 		newConv.messages = []			# No messages initially (until added or loaded).
 		newConv.raw_oaiMsgs = []

@@ -440,7 +440,9 @@ _ENGINES = [
 
 	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-16k', 		'field-size': 16384, 	'prompt-price': 0.003,	'price': 0.004,		'is-chat': True,	'encoding': 'p50k_base'},
 	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-16k-0613', 	'field-size': 16384, 	'prompt-price': 0.003,	'price': 0.004,		'is-chat': True,	'encoding': 'p50k_base'},
-	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',	 	'field-size': 16384, 	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
+	#{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',	 	'field-size': 16384, 	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
+	# -------- NOTE: Artificially cutting this down from 16K to 12K to reduce costs.
+	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',	 	'field-size': 12288, 	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
 
 		# GPT-4 models.  (These also use the chat API. Data through Sep. 2021.)
 
@@ -457,7 +459,9 @@ _ENGINES = [
 		# 128k GPT-4 models. (Context window size increased to 128,000 tokens; data through Apr. 2023.)
 	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-turbo-preview',  'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
 	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-1106-preview',   'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
-	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',   'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',   'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	# -------- NOTE: Artificially cutting this down from 128K to 96K to reduce costs.
+	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',   'field-size': 96000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	
 		# 128k GPT-4V models. (Vision capability added.)
 	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-vision-preview',      'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
