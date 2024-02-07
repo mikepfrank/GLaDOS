@@ -3461,7 +3461,7 @@ def _initPersistentContext() -> None:
 		"  /block - Adds the current user to my block list.\n" + \
 		"  /remember <text> - Adds <text> to my persistent context data.\n" + \
 		"  /forget <text> - Removes <text> from my persistent context data.\n" + \
-		MESSAGE_DELIMITER + " ~~~ Recent Telegram messages: ~~~"
+		MESSAGE_DELIMITER + " ~~~ Recent Telegram messages: ~~~\n"
 	#__/
 #__/
 
