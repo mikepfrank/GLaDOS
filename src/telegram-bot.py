@@ -4301,7 +4301,7 @@ DEFAULT_BINGSEARCH_SECTIONS = ['webPages', 'relatedSearches']
 
 # Define a function to handle the AI's search_web() function.
 async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
-					   queryPhrase:str, locale:str="en-US",
+					   queryPhrase:str, maxResults:int=None, locale:str="en-US",
 					   sections:list=DEFAULT_BINGSEARCH_SECTIONS) -> str:
 
 	"""Do a web search using the Bing API."""
@@ -4318,7 +4318,7 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 		# Total space in tokens for the AI's receptive field (context window).
 
 	if fieldSize >= 16000:		# 16k models and up
-		howMany = 10
+		howMany = 8
 	elif fieldSize >= 8000:		# GPT-4 and higher
 		howMany = 5
 	elif fieldSize >= 4000:		# GPT-3.5 and higher
@@ -4327,6 +4327,10 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 		_logger.warn(f"This model has only {fieldSize} tokens. Web search results may overwhelm it.")
 
 		howMany = 2		# This is not very useful!
+
+	# Cap number of results at whatever the AI suggested.
+	if maxResults and maxResults < howMany:
+		howMany = maxResults
 
 	try:
 		# This actually does the search.
@@ -4349,13 +4353,35 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 				if key in sections:
 					cleanResult[key] = val
 
-		# Strip out 'deepLinks' out of the webPages value, it's TMI.
+		# Strip out 'deepLinks' etc. out of the webPages value, it's TMI.
+		npages = 0
+		_logger.normal("Looking for webPages section...")
 		if 'webPages' in cleanResult:
+			#_logger.normal("Found webPages section...")
 			for result in cleanResult['webPages']['value']:
+
+				npages += 1
+				#_logger.normal(f"Examining web page result #{npages}...")
+
+				if 'cachedPageUrl' in result:
+					#_logger.normal(f"In #{npages}, deleting cachedPageUrl: {result['cachedPageUrl']}")
+					del result['cachedPageUrl']
+
 				if 'contractualRules' in result:
+					#_logger.normal(f"In #{npages}, deleting contractualRules: {result['contractualRules']}")
 					del result['contractualRules']
+
 				if 'deepLinks' in result:
+					#_logger.normal(f"In #{npages}, deleting deepLinks: {result['deepLinks']}")
 					del result['deepLinks']
+
+				if 'primaryImageOfPage' in result:
+					#_logger.normal(f"In #{npages}, deleting primaryImageOfPage: {result['primaryImageOfPage']}")
+					del result['primaryImageOfPage']
+
+				if 'richFacts' in result:
+					#_logger.normal(f"In #{npages}, deleting richFacts: {result['richFacts']}")
+					del result['richFacts']
 
 		# Strip a bunch of useless fields out of news values.
 		if 'news' in cleanResult:
@@ -4395,7 +4421,7 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 
 		#botConvo.add_message(BotMessage(SYS_NAME, f"[ERROR: {_lastError}]"))
 		#return _lastError
-		#   ^ Commented this out because using errMsg is cleaner.
+		#	^ Commented this out because using errMsg is cleaner.
 
 		#return "Error: Unsupported locale / target market for search."
 		#	^ Commented out since this may or may not be the correct error.
@@ -8569,104 +8595,104 @@ FUNCTIONS_LIST = [
 	PASS_TURN_SCHEMA
 ]	
 
-# Define a function to handle the AI's search_web() function.
-async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
-					   queryPhrase:str, maxResults:int=None, locale:str="en-US",
-					   sections:list=DEFAULT_BINGSEARCH_SECTIONS) -> str:
+# # Define a function to handle the AI's search_web() function.
+# async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
+# 					   queryPhrase:str, maxResults:int=None, locale:str="en-US",
+# 					   sections:list=DEFAULT_BINGSEARCH_SECTIONS) -> str:
 
-	"""Do a web search using the Bing API."""
+# 	"""Do a web search using the Bing API."""
 
-	global _lastError
+# 	global _lastError
 
-	userID = updateMsg.from_user.id
-	chatID = botConvo.chat_id
+# 	userID = updateMsg.from_user.id
+# 	chatID = botConvo.chat_id
 
-	_logger.normal(f"\nIn chat {chatID}, for user #{userID}, AI is doing a web search in the {locale} locale for {sections} on: [{queryPhrase}].")
+# 	_logger.normal(f"\nIn chat {chatID}, for user #{userID}, AI is doing a web search in the {locale} locale for {sections} on: [{queryPhrase}].")
 	
-	# Calculate how many items to return based on GPT's field size.
-	fieldSize = global_gptCore.fieldSize	# Retrieve property value.
-		# Total space in tokens for the AI's receptive field (context window).
+# 	# Calculate how many items to return based on GPT's field size.
+# 	fieldSize = global_gptCore.fieldSize	# Retrieve property value.
+# 		# Total space in tokens for the AI's receptive field (context window).
 
-	if fieldSize >= 16000:		# 16k models and up
-		howMany = 10
-	elif fieldSize >= 8000:		# GPT-4 and higher
-		howMany = 5
-	elif fieldSize >= 4000:		# GPT-3.5 and higher
-		howMany = 3
-	else:
-		_logger.warn(f"This model has only {fieldSize} tokens. Web search results may overwhelm it.")
+# 	if fieldSize >= 16000:		# 16k models and up
+# 		howMany = 10
+# 	elif fieldSize >= 8000:		# GPT-4 and higher
+# 		howMany = 5
+# 	elif fieldSize >= 4000:		# GPT-3.5 and higher
+# 		howMany = 3
+# 	else:
+# 		_logger.warn(f"This model has only {fieldSize} tokens. Web search results may overwhelm it.")
 
-		howMany = 2		# This is not very useful!
+# 		howMany = 2		# This is not very useful!
 
-	# Cap number of results at whatever the AI suggested.
-	if maxResults and maxResults < howMany:
-		howMany = maxResults
+# 	# Cap number of results at whatever the AI suggested.
+# 	if maxResults and maxResults < howMany:
+# 		howMany = maxResults
 
-	try:
-		# This actually does the search.
-		searchResult = _bing_search(queryPhrase, market=locale, count=howMany)
+# 	try:
+# 		# This actually does the search.
+# 		searchResult = _bing_search(queryPhrase, market=locale, count=howMany)
 
-	except UnsupportedLocale as e:
-		# We'll let the AI know it failed
-		botConvo.add_message(BotMessage(SYS_NAME, f"[ERROR: {_lastError}]"))
-		return f"Error: Unsupported locale / target market '{locale}' for search."
+# 	except UnsupportedLocale as e:
+# 		# We'll let the AI know it failed
+# 		botConvo.add_message(BotMessage(SYS_NAME, f"[ERROR: {_lastError}]"))
+# 		return f"Error: Unsupported locale / target market '{locale}' for search."
 
-	except BingQuotaExceeded as e:
-		# We'll let the AI know it failed
-		botConvo.add_message(BotMessage(SYS_NAME, f"[ERROR: {_lastError}]"))
-		return "Error: Bing search quota exceeded."
+# 	except BingQuotaExceeded as e:
+# 		# We'll let the AI know it failed
+# 		botConvo.add_message(BotMessage(SYS_NAME, f"[ERROR: {_lastError}]"))
+# 		return "Error: Bing search quota exceeded."
 
-	#_logger.debug(f"Raw search result:\n{pformat(searchResult)}")
+# 	#_logger.debug(f"Raw search result:\n{pformat(searchResult)}")
 
-	# Create a fresh dict for the fields we want to keep.
-	cleanResult = dict()
+# 	# Create a fresh dict for the fields we want to keep.
+# 	cleanResult = dict()
 
-	# Keep only the fields we care about in our "cleaned" result.
-	for (key, val) in searchResult.items():
-		if key in sections:
-			cleanResult[key] = val
+# 	# Keep only the fields we care about in our "cleaned" result.
+# 	for (key, val) in searchResult.items():
+# 		if key in sections:
+# 			cleanResult[key] = val
 
-	# If we found nothing, retry with the default section list.
-	if not cleanResult:
-		sections = DEFAULT_BINGSEARCH_SECTIONS
-		for (key, val) in searchResult.items():
-			if key in sections:
-				cleanResult[key] = val
+# 	# If we found nothing, retry with the default section list.
+# 	if not cleanResult:
+# 		sections = DEFAULT_BINGSEARCH_SECTIONS
+# 		for (key, val) in searchResult.items():
+# 			if key in sections:
+# 				cleanResult[key] = val
 
-	# Strip out 'deepLinks' out of the webPages value, it's TMI.
-	if 'webPages' in cleanResult:
-		for result in cleanResult['webPages']['value']:
-			if 'deepLinks' in result:
-				del result['deepLinks']
+# 	# Strip out 'deepLinks' out of the webPages value, it's TMI.
+# 	if 'webPages' in cleanResult:
+# 		for result in cleanResult['webPages']['value']:
+# 			if 'deepLinks' in result:
+# 				del result['deepLinks']
 
-	# Strip a bunch of useless fields out of news values.
-	if 'news' in cleanResult:
-		for result in cleanResult['news']['value']:
-			if 'contractualRules' in result:
-				del result['contractualRules']
-			if 'image' in result:
-				del result['image']
-			if 'about' in result:
-				del result['about']
-			if 'mentions' in result:
-				del result['mentions']
-			if 'provider' in result:
-				del result['provider']
-			if 'video' in result:
-				del result['video']
-			if 'category' in result:
-				del result['category']
+# 	# Strip a bunch of useless fields out of news values.
+# 	if 'news' in cleanResult:
+# 		for result in cleanResult['news']['value']:
+# 			if 'contractualRules' in result:
+# 				del result['contractualRules']
+# 			if 'image' in result:
+# 				del result['image']
+# 			if 'about' in result:
+# 				del result['about']
+# 			if 'mentions' in result:
+# 				del result['mentions']
+# 			if 'provider' in result:
+# 				del result['provider']
+# 			if 'video' in result:
+# 				del result['video']
+# 			if 'category' in result:
+# 				del result['category']
 		
 
-	# Return as a string (to go in content field of function message).
-	#return json.dumps(cleanResult)
+# 	# Return as a string (to go in content field of function message).
+# 	#return json.dumps(cleanResult)
 
-	# Format the result with tabs to make it easier for Turbo/Max to parse.
-	pp_result = json.dumps(cleanResult, indent=4)
-	tabbed_result = pp_result.replace(' '*8, '\t')
-	return tabbed_result
+# 	# Format the result with tabs to make it easier for Turbo/Max to parse.
+# 	pp_result = json.dumps(cleanResult, indent=4)
+# 	tabbed_result = pp_result.replace(' '*8, '\t')
+# 	return tabbed_result
 
-#__/
+# #__/
 
 	#/======================================================================
 	#|	6.2. Define global variables.		[python module code subsection]
