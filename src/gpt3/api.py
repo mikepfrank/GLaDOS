@@ -442,7 +442,8 @@ _ENGINES = [
 	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-16k-0613', 	'field-size': 16384, 	'prompt-price': 0.003,	'price': 0.004,		'is-chat': True,	'encoding': 'p50k_base'},
 	#{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',	 	'field-size': 16384, 	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
 	# -------- NOTE: Artificially cutting this down from 16K to 12K to reduce costs.
-	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',	 	'field-size': 12288, 	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
+	#{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',	 	'field-size': 12288, 	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
+	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',	 	'field-size': 8192, 	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
 
 		# GPT-4 models.  (These also use the chat API. Data through Sep. 2021.)
 
