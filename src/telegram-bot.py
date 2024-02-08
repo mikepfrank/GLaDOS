@@ -1625,6 +1625,7 @@ class BotConversation:
 
 		botName = thisConv.bot_name
 		lastUser = thisConv.last_user	# Telegram object for last user that messaged us.
+		userTag = _get_user_tag(lastUser)
 
 		#/======================================================================
 		#|	Message list format:
@@ -1679,6 +1680,32 @@ class BotConversation:
 		})
 
 		# MESSAGE #3.
+		# This one is fixed forever, we could just initialize it when the
+		# conversation is started. --> NO, NOW IT VARIES BY USER.
+		chat_messages.append({
+			'role': CHAT_ROLE_SYSTEM,
+			'content': FUNCTION_USAGE_HEADER + \
+				"  activate_function(func_name:str, remark:str=None) -> status:str\n" + \
+				"  remember_item(text:str, is_private:bool=True, is_global:bool=False, remark:str=None) -> status:str\n" + \
+				f"  search_memory(query_phrase:str, max_results:int={DEFAULT_SEARCHMEM_NITEMS}, remark:str=None) -> results:list\n" + \
+				"  forget_item(text:str=None, item_id:str=None, remark:str=None) -> status:str\n" + \
+				"  analyze_image(filename:str, verbosity:str='medium', query:str=None, remark:str=None) -> result:str\n" + \
+				"  create_image(description:str, shape:str='square', style:str='vivid', caption:str=None, remark:str=None) -> status:str\n" + \
+				f"  block_user(user_name:str='{userTag}', remark:str=None) -> status:str\n" + \
+				"  unblock_user(user_name:str, remark:str=None) -> status:str\n" + \
+				"  search_web(query:str, locale:str='en-US', sections:list=['webPages'], remark:str=None) -> results:dict\n" + \
+				"  pass_turn() -> None\n"
+
+			#COMMAND_LIST_HEADER + \
+			#	"  /pass - Refrain from responding to the last user message.\n" + \
+			#	"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
+			#	"  /remember <text> - Adds <text> to my persistent context data.\n" + \
+			#	"  /forget <text> - Removes <text> from my persistent context data.\n" + \
+			#	"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
+			#	"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n"
+		})
+
+		# MESSAGE #4.
 		# OK, for a given conversation, this one only needs to change
 		# whenever a new user message is added to the conversation, since
 		# it only depends on the last user memory. It could also change if a
@@ -1692,34 +1719,9 @@ class BotConversation:
 					# ^ Note this only changes when a new user message is added to the convo.
 			})
 
-		# MESSAGE #4.
+		# MESSAGE #5.
 		# This one is fixed forever, we could just initialize it when the
 		# conversation is started.
-		chat_messages.append({
-			'role': CHAT_ROLE_SYSTEM,
-			'content': FUNCTION_USAGE_HEADER + \
-				"  activate_function(func_name:str, remark:str=None) -> status:str\n" + \
-				"  remember_item(text:str, is_private:bool=True, is_global:bool=False, remark:str=None) -> status:str\n" + \
-				"  search_memory(query_phrase:str, max_results:int=3, remark:str=None) -> results:list\n" + \
-				"  forget_item(text:str=None, item_id:str=None, remark:str=None) -> status:str\n" + \
-				"  analyze_image(filename:str, verbosity:str='medium', query:str=None, remark:str=None) -> result:str\n" + \
-				"  create_image(description:str, shape:str='square', style:str='vivid', caption:str=None, remark:str=None) -> status:str\n" + \
-				"  block_user(user_name:str={cur_user}, remark:str=None) -> status:str\n" + \
-				"  unblock_user(user_name:str={cur_user}, remark:str=None) -> status:str\n" + \
-				"  search_web(query:str, locale:str='en-US', sections:list=['webPages'], remark:str=None) -> results:dict\n" + \
-				"  pass_turn() -> None\n"
-
-			#COMMAND_LIST_HEADER + \
-			#	"  /pass - Refrain from responding to the last user message.\n" + \
-			#	"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
-			#	"  /remember <text> - Adds <text> to my persistent context data.\n" + \
-			#	"  /forget <text> - Removes <text> from my persistent context data.\n" + \
-			#	"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
-			#	"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n"
-		})
-
-		# MESSAGE #5.
-		# Ditto.
 		chat_messages.append({
 			'role': CHAT_ROLE_SYSTEM,
 			'content': RECENT_MESSAGES_HEADER
@@ -1757,8 +1759,9 @@ class BotConversation:
 		#response_prompt = f"Respond as {botName}. (Remember you can use an available " \
 		#	"function if there is one that is appropriate.)"
 
-		response_prompt = f"Respond below. (Remember you can also activate an available " \
-			"function and then call that function if appropriate.)"
+		response_prompt = f"Respond below; use the same language that the user "\
+			"used most recently, if appropriate. (Alternatively, you can activate "\
+			"an available function and then call that function, if appropriate.)"
 
 		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
 			# Only give this instruction in group chats:
@@ -3856,8 +3859,12 @@ async def ai_block(updateMsg:TgMsg, conversation:BotConversation,
 		matchingUsers = _lookup_user_by_tag(userToBlock)
 
 		if len(matchingUsers) > 1:
-			diagMsg = f"Can't block user by name tag '{userToBlock}' because it isn't unique."
-			return_msg = f"Error: User name tag {userToBlock} is not unique! To block the current user, call block_user() with no argument."
+			_logger.warn(f"\tCan't block user '{userToBlock}' because tag isn't unique.")
+			diagMsg = f"Can't block user by name tag '{userToBlock}' because "\
+					  "it isn't unique."
+			return_msg = f"Error: User name tag {userToBlock} is not unique! "\
+				"Try blocking by the user's unique username or numeric ID instead. "\
+				"Or, to block the current user, call block_user() with no argument."
 
 			# Send diagnostic message to AI and to user.
 			sendRes = await _send_diagnostic(message, conversation, diagMsg)
@@ -3865,24 +3872,43 @@ async def ai_block(updateMsg:TgMsg, conversation:BotConversation,
 
 			return return_msg
 
+		# If there are no matches, try searching by username instead.
 		if len(matchingUsers) == 0:
+		
+			matchingUsers = _lookup_user_by_username(userToBlock)
 
-			# We could also try searching by display name here, but we don't bother.
+			# If there are no matches, try searching by display name instead.
+			if len(matchingUsers) == 0:
 
-			diagMsg = f"Can't block user with name tag '{userToBlock}' because a user with that "\
-					  "tag wasn't found. Try blocking by the user's first name, username, or user "\
-					  "ID instead."
-			return_msg = f"Error: User name tag {userToBlock} was not found!"
+				matchingUsers = _lookup_user_by_dispname(userToUnblock)
 
-			# Send diagnostic message to AI and to user.
-			sendRes = await _send_diagnostic(message, conversation, diagMsg)
-			if sendRes != 'success': return sendRes
+				if len(matchingUsers) != 1:
+					_logger.warn(f"\tUser name '{userToBlock}' wasn't found or isn't unique.")
 
-			return return_msg
+					diagMsg = f"Can't block user named '{userToBlock}' because "\
+						  f"{len(matchingUsers)} with that name were found. "\
+						  "Try blocking by first name, username, or user ID "\
+						  "instead."
+
+					return_msg = f"Error: User name {userToBlock} was not found "\
+								 "or is not unique!"
+
+					# Send diagnostic message to AI and to user.
+					sendRes = await _send_diagnostic(message, conversation, diagMsg)
+					if sendRes != 'success': return sendRes
+					
+					return return_msg
 			
+				#__/
+			#__/
+		#__/
 
 		# Retrieve the user's ID.
 		userIDToBlock = matchingUsers[0]['userID']
+
+	#__/ End if ID not yet known.
+
+	# By the time we get here, we definitely know the ID of the user to block.
 
 	# Retrieve the user tag if we don't have it yet.
 	if userToBlock is None:
@@ -3891,7 +3917,8 @@ async def ai_block(updateMsg:TgMsg, conversation:BotConversation,
 		userToBlock = userData['userTag']
 
 	# Generate a warning-level log message to indicate that we're blocking the user.
-	_logger.warn(f"***ALERT*** The AI is blocking user '{userToBlock}' (ID={userIDToBlock}) in conversation {chat_id}.")
+	_logger.warn(f"***ALERT*** The AI is blocking user '{userToBlock}' "\
+				 f"(ID={userIDToBlock}) in conversation {chat_id}.")
 
 	# Check if they're already blocked; else block them.
 	if _isBlockedByID(userIDToBlock):
@@ -3906,7 +3933,8 @@ async def ai_block(updateMsg:TgMsg, conversation:BotConversation,
 		else:
 			error = _lastError	# Fetch the error message.
 			await _report_error(conversation, message, error)
-			return 'blocking the app developer is not allowed'
+			# No other diagnostics needed; just return.
+			return 'FAILED: blocking the app developer is not allowed'
 	
 	# Send diagnostic message to AI and to user.
 	sendRes = await _send_diagnostic(message, conversation, diagMsg)
@@ -4439,6 +4467,8 @@ async def ai_unblock(updateMsg:TgMsg, conversation:BotConversation,
 		(Note this case will normally never occur.)
 	"""
 	
+	_logger.normal(f"In ai_unblock() with userToUnblock={userToUnblock}, userIDToUnblock={userIDToUnblock}...")
+
 	# Put the message from the Telegram update in a convenient variable.
 	message = updateMsg
 
@@ -4453,23 +4483,31 @@ async def ai_unblock(updateMsg:TgMsg, conversation:BotConversation,
 	# moved it here to make it easier to call it from other places, such as the
 	# code to handle function-call responses from the AI.
 
-	# If no user was specified, then we'll unblock the current user.
-	if userToUnblock == None:
-		userToUnblock = user_name
-		userIDToBlock = cur_user_id
-
 	## If we don't have a user ID, complain and die.
 	#if userIDToUnblock is None:
 	#	await _report_error(conversation, message,
 	#						"Unblocking users by tag is no longer supported."))
 	#	return "internal error in ai_unblock()"
 
+	# If no user was specified, then we'll unblock the current user.
+	if userToUnblock == None and userIDToUnblock == None:
+		userToUnblock = user_name
+		userIDToBlock = cur_user_id
+		_logger.normal(f"\tDefaulting to current user {userToUnblock}, ID={userIDToUnblock}.")
+
+	# If we know the user tag to block, but not the user ID, we have to 
+	# try to guess the correct user ID.
+
 	if userIDToUnblock is None:
 
 		matchingUsers = _lookup_user_by_tag(userToUnblock)
 
 		if len(matchingUsers) > 1:
-			diagMsg = f"Can't unblock user by name tag '{userToUnblock}' because it isn't unique."
+
+			_logger.warn(f"\tCan't unblock user '{userToUnblock}' because tag isn't unique.")
+			diagMsg = f"Can't unblock user by name tag '{userToUnblock}' "\
+					  "because it isn't unique. Try unblocking by username "\
+					  "or user ID instead."
 			return_msg = f"Error: User name tag {userToUnblock} is not unique!"
 
 			# Send diagnostic message to AI and to user.
@@ -4478,38 +4516,52 @@ async def ai_unblock(updateMsg:TgMsg, conversation:BotConversation,
 
 			return return_msg
 
-		# If there are no matches, try searching by display name instead.
+		# If there are no matches, try searching by username instead.
 		if len(matchingUsers) == 0:
 
-			matchingUsers = _lookup_user_by_dispname(userToUnblock)
+			matchingUsers = _lookup_user_by_username(userToUnblock)
 
-			if len(matchingUsers) != 1:
-				diagMsg = f"Can't unblock user named '{userToUnblock}' because "\
-						  f"{len(matchingUsers)} with that name were found. "\
-						  "Try unblocking by first name, username, or user ID "\
-						  "instead."
-				return_msg = f"Error: User name {userToUnblock} was not found "\
-							 "or is not unique."
+			# If there are no matches, try searching by display name instead.
+			if len(matchingUsers) == 0:
 
-				# Send diagnostic message to AI and to user.
-				sendRes = await _send_diagnostic(message, conversation, diagMsg)
-				if sendRes != 'success': return sendRes
+				matchingUsers = _lookup_user_by_dispname(userToUnblock)
 
-				return return_msg
+				if len(matchingUsers) != 1:
+					_logger.warn(f"\tUser name '{userToUnblock}' wasn't found or isn't unique.")
 
+					diagMsg = f"Can't unblock user named '{userToUnblock}' because "\
+							  f"{len(matchingUsers)} with that name were found. "\
+							  "Try unblocking by first name, username, or user ID "\
+							  "instead."
+
+					return_msg = f"Error: User name {userToUnblock} was not found "\
+								 "or is not unique."
+
+					# Send diagnostic message to AI and to user.
+					sendRes = await _send_diagnostic(message, conversation, diagMsg)
+					if sendRes != 'success': return sendRes
+					
+					return return_msg
+
+				#__/
 			#__/
 		#__/
 
 		# Retrieve the user's ID.
 		userIDToUnblock = matchingUsers[0]['userID']
 
-	# Generate a warning-level log message to indicate that we're blocking the user.
-	_logger.warn(f"***ALERT*** The AI is unblocking user '{userToUnblock}' in conversation {chat_id}.")
+	#__/ End if ID not yet known.
+
+	# By the time we get here, we definitely know the ID of the user to unblock.
 
 	# Retrieve the user tag if we don't have it yet.
 	if userToUnblock is None:
 		userData = _lookup_user(userIDToUnblock)
 		userToUnblock = userData['userTag']
+
+	# Generate a warning-level log message to indicate that we're blocking the user.
+	_logger.warn(f"***ALERT*** The AI is unblocking user '{userToUnblock}' "\
+				 f"in conversation {chat_id}.")
 
 	# Check if they're already unblocked; else block them.
 	if not _isBlockedByID(userIDToUnblock):
@@ -4642,17 +4694,19 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 
 		# NOTE: Blocking users by tag may not always work, since tags are not unique.
 		userToBlock = funcArgs.get('user_name', None)
+		userIDToBlock = funcArgs.get('user_id', None)
 			# Defaulting to None will allow ai_block() to figure out the user to block.
 
 		# We can't uncomment this yet because AI can't retrieve ID yet.
 		#userIDToBlock = funcArgs.get('user_id', user_id)		# Specified by ID.
 
-		return await ai_block(message, conversation, userToBlock)
+		return await ai_block(message, conversation, userToBlock=userToBlock, userIDToBlock=userIDToBlock)
 
 	elif funcName == 'unblock_user':
 
 		# NOTE: Unblocking users by tag may not always work, since tags are not unique.
 		userToUnblock = funcArgs.get('user_name', user_name)		# Default to current user.
+		userIDToUnBlock = funcArgs.get('user_id', None)
 
 		return await ai_unblock(message, conversation, userToUnblock)
 
@@ -6875,7 +6929,7 @@ def _lookup_user(user_id):
 #__/
 
 
-def _lookup_user_by_dispname(user_tag):
+def _lookup_user_by_dispname(disp_name):
 
     # Path to the database file
     db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
@@ -6887,7 +6941,40 @@ def _lookup_user_by_dispname(user_tag):
     c = conn.cursor()
 
     # Execute a SQL command to select rows with the given user display name (first+last name).
-    c.execute("SELECT * FROM users WHERE displayName = ?", (user_tag,))
+    c.execute("SELECT * FROM users WHERE displayName = ?", (disp_name,))
+
+    # Fetch all rows
+    rows = c.fetchall()
+
+    results = []
+    for row in rows:
+        results.append({
+            'dispName': row[0],
+            'userName': row[1],
+            'userID':   row[2],
+            'blocked':  row[3],
+            'userTag':  row[4] or 'unknown'
+        })
+
+    # Close the connection
+    conn.close()
+
+    return results
+
+
+def _lookup_user_by_username(username):
+
+    # Path to the database file
+    db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
+
+    # Create a connection to the SQLite database
+    conn = sqlite3.connect(db_path)
+
+    # Create a cursor object
+    c = conn.cursor()
+
+    # Execute a SQL command to select rows with the given username.
+    c.execute("SELECT * FROM users WHERE username = ?", (username,))
 
     # Fetch all rows
     rows = c.fetchall()
@@ -8408,6 +8495,10 @@ BLOCK_USER_SCHEMA = {
 				"type":         "string",   # <user_name> argument has type string.
 				"description":  "Name of user to block; defaults to current user if not specified."
 			},
+			"user_id":		{
+				"type":			"integer",
+				"description":	"Optional: Numeric ID of user to block, if known."
+			},
 			"remark":	{
 				"type":			"string",	# <remark> argument has type string.
 				"description":	"A textual message to send to the user just " \
@@ -8433,7 +8524,11 @@ UNBLOCK_USER_SCHEMA = {
 		"properties":   {
 			"user_name":    {
 				"type":         "string",   # <user_name> argument has type string.
-				"description":  "Name of user to unblock; defaults to current user."
+				"description":  "Name of user to unblock."
+			},
+			"user_id":		{
+				"type":			"integer",
+				"description":	"Optional: Numeric ID of user to unblock, if known."
 			},
 			"remark":	{
 				"type":			"string",	# <remark> argument has type string.
