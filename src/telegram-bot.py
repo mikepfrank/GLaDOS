@@ -6142,7 +6142,7 @@ def _bing_search(query_string:str, market:str='en-US', count=3):
 		'Ocp-Apim-Subscription-Key': subscription_key
 	}
 
-	_logger.normal(f"\tDoing web search in {market} for [{query_string}]...")
+	_logger.normal(f"\tDoing web search in {market} for {count} results for [{query_string}]...")
 
 	try:
 		response = requests.get(endpoint, headers=headers, params=params)
