@@ -3377,16 +3377,18 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 	if not conversation:
 		_logger.error("Null conversation object in handle_message()!!")
 
-
 	# Add the message just received to the conversation.
 	if isNewMsg:
 		conversation.add_message(BotMessage(user_name, text))
-
 
 	# Get the current user object, stash it in convo temporarily.
 	# (This may be needed later if we decide to block the current user.)
 	cur_user = tgMsg.from_user
 	conversation.last_user = cur_user
+
+	# Make sure the user is listed in the user database.
+	if not _lookup_user(cur_user.id):
+		_addUser(cur_user)
 
 	# Check whether the user is in our access list.
 	if not _check_access(user_name, user_id=user_id):
@@ -6633,6 +6635,7 @@ def _get_user_tag(user) -> str:
 
 
 def _initBotDB():
+
 	"""Creates a database that's used to store relevant information
 		for the Telegram bot. So far this includes these tables:
 
@@ -6645,7 +6648,6 @@ def _initBotDB():
 				the remember_item() function.
 
 		"""
-
 
 	# Path to the 'telegram' subdirectory
 	dir_path = os.path.join(AI_DATADIR, 'telegram')
