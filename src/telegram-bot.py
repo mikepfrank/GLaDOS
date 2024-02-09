@@ -5972,10 +5972,19 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, style=
 	try:
 		await tgMsg.reply_photo(photo=image_data, caption=caption)
 	except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
+
 		_logger.error(f"Got a {type(e).__name__} exception from Telegram "
 					  "({e}) for conversation {chat_id}; aborting.")
 		conversation.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram " \
 			"exception {exType} ({e}) while sending to user {user_name}.]"))
+
+		if isinstance(e, BadRequest) and "Not enough rights to send" in e.message:
+			try:
+				await app.bot.leave_chat(chat_id)
+				_logger.normal(f"Left chat {chat_id} due to insufficient permissions.")
+			except Exception as leave_error:
+				_logger.error(f"Error leaving chat {chat_id}: {leave_error}")
+
 	#__/
 
 	# Update record of how many images have been generated today in this context.
@@ -7622,9 +7631,13 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 				convo.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram exception " \
 					f"{exType} ({e}) while sending to user {user_name}.]"))
 	
-			# Note: Eventually we need to do something smarter here -- like, if we've
-			# been banned from replying in a group chat or something, then leave it.
-	
+			if isinstance(e, BadRequest) and "Not enough rights to send" in e.message:
+				try:
+					await app.bot.leave_chat(chat_id)
+					_logger.normal(f"Left chat {chat_id} due to insufficient permissions.")
+				except Exception as leave_error:
+					_logger.error(f"Error leaving chat {chat_id}: {leave_error}")
+
 			return f"error: Telegram threw a {exType} exception while sending " \
 				"diagnostic output to the user"
 	
@@ -7660,9 +7673,13 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 					convo.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram exception " \
 						f"{exType} ({e}) while sending to user {user_name}.]"))
 	
-				# Note: Eventually we need to do something smarter here -- like, if we've
-				# been banned from replying in a group chat or something, then leave it.
-	
+				if isinstance(e, BadRequest) and "Not enough rights to send" in e.message:
+					try:
+						await app.bot.leave_chat(chat_id)
+						_logger.normal(f"Left chat {chat_id} due to insufficient permissions.")
+					except Exception as leave_error:
+						_logger.error(f"Error leaving chat {chat_id}: {leave_error}")
+
 				return f"error: Telegram threw a {exType} exception while sending " \
 					"diagnostic output to the user"
 	
