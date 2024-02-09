@@ -6464,9 +6464,9 @@ async def _ensure_convo_loaded(update:Update, context:Context) -> bool:
 	# Get the chat ID.
 	chat_id = message.chat.id
 
-	if chat_id == -1002063308162 or chat_id == -1001661701088:
-		_logger.warn(f"Ignoring message from stupid chat {chat_id}.")
-		return False
+	#if chat_id == -1002063308162 or chat_id == -1001661701088:
+	#	_logger.warn(f"Ignoring message from stupid chat {chat_id}.")
+	#	return False
 
 	# Get the user's name.
 	user_name = _get_user_tag(message.from_user)
