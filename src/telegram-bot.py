@@ -2289,10 +2289,14 @@ async def handle_image(update:Update, context:Context) -> None:
 					   f"[{imageDesc}] for user '{user_name}' in "
 					   f"conversation {chat_id}.")
 
-		(image_url, new_desc, save_filename) = await send_image(update, context, imageDesc)
+		send_result = await send_image(update, context, imageDesc)
+		if send_result is not None:
+			(image_url, new_desc, save_filename) = send_result
 
-		# Make a note in conversation archive to indicate that the image was sent.
-		conversation.add_message(BotMessage(SYS_NAME, f'[Generated image "{new_desc}" in file "{save_filename}" and sent it to the user.]'))
+			# Make a note in conversation archive to indicate that the image was sent.
+			conversation.add_message(BotMessage(SYS_NAME, f'[Generated image "{new_desc}" in file "{save_filename}" and sent it to the user.]'))
+		else:
+			conversation.add_message(BotMessage(SYS_NAME, f'[ERROR: Failed to send image to user.]'))
 
 		# Allow the AI to follow up (but without re-processing the message).
 		await handle_message(update, context, isNewMsg=False)
@@ -4169,7 +4173,13 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 	if caption:
 		_logger.normal(f"\tAn image caption [{caption}] was also specified.")
 
-	(image_url, new_desc, save_filename) = await send_image(update, context, imageDesc, dims=size, style=style, caption=caption)
+	# Attempt to actually generate and send the image.
+	send_result = await send_image(update, context, imageDesc, dims=size, style=style, caption=caption)
+
+	if send_result is None:
+		return f'Error: Failed to generate and send image to the user.'
+
+	(image_url, new_desc, save_filename) = send_result
 
 	# Make a note in conversation archive to indicate that the image was sent.
 	conversation.add_message(BotMessage(SYS_NAME, f'[Generated and sent image "{new_desc}" in filename "{save_filename}"]'))
@@ -5905,7 +5915,8 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, style=
 	"""Generates an image from the given description and sends it to the user.
 		Also archives a copy on the server unless save_copy=False is specified.
 		Returns a temporary URL for the image, if successful, and a revised
-		description of the generated image. And the image filename, if saved."""
+		description of the generated image. And the image filename, if saved.
+		If something goes wrong, None is returned instead."""
 
 	# Get the message, or edited message from the update.
 	(tgMsg, edited) = _get_update_msg(update)
@@ -5971,6 +5982,7 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, style=
 	# Send the image as a reply in Telegram
 	try:
 		await tgMsg.reply_photo(photo=image_data, caption=caption)
+
 	except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
 
 		_logger.error(f"Got a {type(e).__name__} exception from Telegram "
@@ -5984,6 +5996,8 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, style=
 				_logger.normal(f"Left chat {chat_id} due to insufficient permissions.")
 			except Exception as leave_error:
 				_logger.error(f"Error leaving chat {chat_id}: {leave_error}")
+
+		return None
 
 	#__/
 
@@ -6464,9 +6478,9 @@ async def _ensure_convo_loaded(update:Update, context:Context) -> bool:
 	# Get the chat ID.
 	chat_id = message.chat.id
 
-	if chat_id == -1002063308162 or chat_id == -1001661701088:
-		_logger.warn(f"Ignoring message from stupid chat {chat_id}.")
-		return False
+	#if chat_id == -1002063308162 or chat_id == -1001661701088:
+	#	_logger.warn(f"Ignoring message from stupid chat {chat_id}.")
+	#	return False
 
 	# Get the user's name.
 	user_name = _get_user_tag(message.from_user)
@@ -7639,7 +7653,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 					_logger.error(f"Error leaving chat {chat_id}: {leave_error}")
 
 			return f"error: Telegram threw a {exType} exception while sending " \
-				"diagnostic output to the user"
+				"output to the user"
 	
 	#__/
 
@@ -7681,7 +7695,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 						_logger.error(f"Error leaving chat {chat_id}: {leave_error}")
 
 				return f"error: Telegram threw a {exType} exception while sending " \
-					"diagnostic output to the user"
+					"voice message to the user"
 	
 
 	return 'success'
