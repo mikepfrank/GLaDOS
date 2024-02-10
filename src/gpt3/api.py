@@ -3702,6 +3702,12 @@ def describeImage(filename:str, verbosity:str='medium', query:str=None):
 	response_json = response.json()
 	#print(response.json())
 
+	_logger.info(f"Raw response from GPT-4V call: [{response_json}]")
+
+	if 'choices' not in response_json:
+		_logger.error("The preceding JSON object did not have a 'choices' field.")
+		return "[VISION ERROR: The expected 'choices' field was not included in the raw JSON response: [{response_json}]]"
+
 	description = response_json['choices'][0]['message']['content']
 	_logger.info(f"Got image description: [{description}]")
 

@@ -3329,6 +3329,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		#| Handling for photo messages. If the original message contained a
 		#| photo, then present its description using an appropriate text format.
 
+	got_image = False
 	if isNewMsg and 'image_filename' in context.user_data:	# We added this earlier (in handle_photo) if appropriate.
 		
 		# At this point, we just note the image filename and caption in the message text.
@@ -3350,6 +3351,8 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 
 		del context.user_data['image_filename']
 		#del context.user_data['image_text']
+
+		got_image = True
 
 	# If the message was an edited version of an earlier message,
 	# make a note of that.
@@ -3384,6 +3387,9 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 	# Add the message just received to the conversation.
 	if isNewMsg:
 		conversation.add_message(BotMessage(user_name, text))
+		if got_image:
+			conversation.add_message(BotMessage(SYS_NAME,
+				"[NOTE: Use analyze_image() to inspect the photo attachment]"))
 
 	# Get the current user object, stash it in convo temporarily.
 	# (This may be needed later if we decide to block the current user.)
