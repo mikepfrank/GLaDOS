@@ -3389,7 +3389,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		conversation.add_message(BotMessage(user_name, text))
 		if got_image:
 			conversation.add_message(BotMessage(SYS_NAME,
-				"[NOTE: Use analyze_image() to inspect the photo attachment]"))
+				f"[NOTE: {BOT_NAME}, please use analyze_image() to inspect the photo attachment]"))
 
 	# Get the current user object, stash it in convo temporarily.
 	# (This may be needed later if we decide to block the current user.)
@@ -4057,7 +4057,7 @@ async def ai_vision(update:Update, context:Context, filename:str,
 	else:
 		who_from = f"user {user_name}"
 
-	_logger.normal(f"\tConverting image {filename} from {who_from} in chat {chat_id} to a {verbosity} text description using GPT-4V.")
+	_logger.normal(f"\nConverting image {filename} from {who_from} in chat {chat_id} to a {verbosity} text description using GPT-4V.")
 	if query:
 		_logger.normal(f"\t(And also asking the question: {query})")
 
@@ -4345,6 +4345,13 @@ DEFAULT_BINGSEARCH_SECTIONS = ['webPages', 'relatedSearches']
 #DEFAULT_BINGSEARCH_SECTIONS = ['webPages']
 	# We made this smaller to increase the chance Turbo can handle it.
 
+def trim(s:str, n:int=30):
+	s = str(s)	# Force it to str
+	if len(s) <= n:
+		return s
+	else:
+		return s[:n] + "..."
+
 # Define a function to handle the AI's search_web() function.
 async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 					   queryPhrase:str, maxResults:int=None, locale:str="en-US",
@@ -4401,33 +4408,46 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 
 		# Strip out 'deepLinks' etc. out of the webPages value, it's TMI.
 		npages = 0
-		_logger.normal("Looking for webPages section...")
+		_logger.normal("\t\tLooking for webPages section...")
 		if 'webPages' in cleanResult:
 			#_logger.normal("Found webPages section...")
 			for result in cleanResult['webPages']['value']:
 
 				npages += 1
-				#_logger.normal(f"Examining web page result #{npages}...")
+				_logger.normal(f"\t\t\tExamining web page result #{npages}...")
 
 				if 'cachedPageUrl' in result:
-					#_logger.normal(f"In #{npages}, deleting cachedPageUrl: {result['cachedPageUrl']}")
+					_logger.normal(f"\t\t\t\tDeleting cachedPageUrl: {trim(result['cachedPageUrl'])}")
 					del result['cachedPageUrl']
 
 				if 'contractualRules' in result:
-					#_logger.normal(f"In #{npages}, deleting contractualRules: {result['contractualRules']}")
+					_logger.normal(f"\t\t\t\tDeleting contractualRules: {trim(result['contractualRules'])}")
 					del result['contractualRules']
 
 				if 'deepLinks' in result:
-					#_logger.normal(f"In #{npages}, deleting deepLinks: {result['deepLinks']}")
+					_logger.normal(f"\t\t\t\tDeleting deepLinks: {trim(result['deepLinks'])}")
 					del result['deepLinks']
 
 				if 'primaryImageOfPage' in result:
-					#_logger.normal(f"In #{npages}, deleting primaryImageOfPage: {result['primaryImageOfPage']}")
+					_logger.normal(f"\t\t\t\tDeleting primaryImageOfPage: {trim(result['primaryImageOfPage'])}")
 					del result['primaryImageOfPage']
 
 				if 'richFacts' in result:
-					#_logger.normal(f"In #{npages}, deleting richFacts: {result['richFacts']}")
+					_logger.normal(f"\t\t\t\tDeleting richFacts: {trim(result['richFacts'])}")
 					del result['richFacts']
+
+				if 'video' in result:
+					_logger.normal(f"\t\t\t\tDeleting video: {trim(result['video'])}")
+					del result['video']
+
+				if 'about' in result:
+					_logger.normal(f"\t\t\t\tDeleting about: {trim(result['about'])}")
+					del result['about']
+
+				if 'isNavigational' in result:
+					_logger.normal(f"\t\t\t\tDeleting isNavigational: {trim(result['isNavigational'])}")
+					del result['isNavigational']
+
 
 		# Strip a bunch of useless fields out of news values.
 		if 'news' in cleanResult:
