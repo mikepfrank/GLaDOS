@@ -780,14 +780,14 @@ class BotMessage:
 				
 				text = json_encoded_arglist_dict_str	# Just the arglist!
 
-				_logger.info(f"I found a new-style '{func_name}' function call and parsed the args as: [\n{pformat(arglist_dict)}]\n")
+				_logger.debug(f"I found a new-style '{func_name}' function call and parsed the args as: [\n{pformat(arglist_dict)}]\n")
 			
 		# Look for function returns. (We don't actually have to reformat these here,
 		# but at least we log some appropriate info for them.)
 		if sender[0] == '@':	# Assume any sender name starting with '@' is a function return. (I think this is a good assumption.)
 			func_id = sender[1:]
 			ret_res = text
-			_logger.info(f"I found a new-style '{func_id}' function return with result [{ret_res}].")
+			_logger.debug(f"I found a new-style '{func_id}' function return with result [{ret_res}].")
 
 		# This is perhaps a good place to parse legacy-format function
 		# call/return messages, because we'll catch them both when we
@@ -809,7 +809,7 @@ class BotMessage:
 				# Encoding the kwargs into a JSON string
 				text = json.dumps(kwargs)
 
-				_logger.info(f"I found a legacy '{func_name}' function call and parsed the args as: [\n{pformat(kwargs)}]\n")
+				_logger.debug(f"I found a legacy '{func_name}' function call and parsed the args as: [\n{pformat(kwargs)}]\n")
 
 		# Try to parse legacy function return notes.
 		if sender == SYS_NAME:
@@ -821,7 +821,7 @@ class BotMessage:
 				sender = f"@{func_id}"
 				text = ret_res
         
-				_logger.info(f"I found a legacy '{func_id}' function return with result [{ret_res}].")
+				_logger.debug(f"I found a legacy '{func_id}' function return with result [{ret_res}].")
 
 		newMessage.sender = sender
 		newMessage.func_name = func_name
