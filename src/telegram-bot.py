@@ -548,6 +548,7 @@ from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF
 	CHAT_ROLE_SYSTEM,		# The name of the system's chat role.
 	CHAT_ROLE_USER,			# The name of the user's chat role.
 	CHAT_ROLE_AI,			# The name of the AI's chat role.
+	CHAT_ROLE_FUNCRET,		# A special chat role for a function returning a value.
 
 		#--------------
 		# Class names:
@@ -700,12 +701,130 @@ class BotMessage:
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# New instance initializer (called automatically by class constructor).
-	def __init__(newMessage:BotMessage, sender:str, text:str):
+	def __init__(newMessage:BotMessage, sender:str, text:str, func_name:str=None):
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# NOTE: The new argument 'func_name' above is for use in
+		# representing messages that are intended to record the fact
+		# that, at this point in the conversation, the AI invoked a
+		# function call.  We need to formalize this so that the AI
+		# won't get confused by the format in which its function calls
+		# are represented in the message history it's given. The
+		# format that the OpenAI LLMs are expecting to see in their
+		# message objects is:
+		#
+		#		openaiMessage.role = 'assistant'
+		#		openaiMessage.content = None
+		#		openaiMessage.function_call.name = {function_identifier}
+		#		openaiMessage.function_call.arguments = {json_string_encoding_arglist}
+		#
+		# We'll represent this in our own BotMessage objects as follows:
+		#
+		#		botMessage.sender = {bot_name}
+		#		botMessage.text = {json_string_encoding_arglist}
+		#		botMessage.func_name = {function_identifier}
+		#
+		# whereas, the .func_name attribute will be None if this is not a
+		# function call. Our new on-disk representation for these messages
+		# will be as follows:
+		#
+		#		{bot_name}> @{function_identifier}({json_string_encoding_arglist})
+		#
+		# with our usual method for escaping any newlines or backslashes.
+		# However, we also need to be able to read the legacy format from disk:
+		#
+		#		BotServer> [NOTE: {bot_name} is doing function call {function_identifier}({kwargs}).]
+		#
+		# where {kwargs} is an arglist string in the format used for Python keyword arguments,
+		# that is, a comma-separated list of "{arg_name}={arg_value}" substrings.
+		#
+		# Meanwhile, function return values are represented in OpenAI
+		# messages as follows:
+		#
+		#		openaiMessage.role = 'function' (or CHAT_ROLE_FUNCRET)
+		#		openaiMessage.name = {function_identifier}
+		#		openaiMessage.content = {returned_result_string}
+		#
+		# We'll represent them in BotMessages as:
+		#
+		#		botMessage.sender = f"@{function_identifier}"
+		#		botMessage.text = {returned_result_string}
+		#
+		# And on-disk as:
+		#
+		#		@{function_identifier}> {returned_result_string}
+		#
+		# escaped as usual. However, we also need to be able to read the legacy format
+		# from disk, namely:
+		#
+		#		BotServer> [NOTE: {function_identifier}() call returned value: [{returned_result_string}]]
+		#
+		#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 		# Print diagnostic information.
 		#_logger.debug(f"Creating message object for: {sender}> {text}")
 
+		# First, let's see if this looks like a new-format function-call/return
+		# message, and if so, parse it appropriately.
+
+		# Look for function calls.
+		if sender == BOT_NAME:
+			pattern = r'@(\w+)\((.*)\)'
+			match = re.search(pattern, text)
+			if match:
+				func_name, json_encoded_arglist_dict_str = match.groups()
+
+				# Go ahead and try parsing the argument list (should work if this is a real function call)
+				arglist_dict = json.loads(json_encoded_arglist_dict_str)
+				# (We should really check for exceptions here...)
+				
+				text = json_encoded_arglist_dict_str	# Just the arglist!
+
+				_logger.info(f"I found a new-style '{func_name}' function call and parsed the args as: [\n{pformat(arglist_dict)}]\n")
+			
+		# Look for function returns. (We don't actually have to reformat these here,
+		# but at least we log some appropriate info for them.)
+		if sender[0] == '@':	# Assume any sender name starting with '@' is a function return. (I think this is a good assumption.)
+			func_id = sender[1:]
+			ret_res = text
+			_logger.info(f"I found a new-style '{func_id}' function return with result [{ret_res}].")
+
+		# This is perhaps a good place to parse legacy-format function
+		# call/return messages, because we'll catch them both when we
+		# read from the archive file and when we try to create new
+		# ones.
+
+		# Try to parse legacy function call notes.
+		if sender == SYS_NAME:
+			pattern = r"\[NOTE: (\w+) is doing function call (\w+)\((.*?)\).\]"
+			match = re.search(pattern, text, re.DOTALL)	# Need DOTALL in case args contain literal newlines.
+			if match:
+				sender, func_name, arg_list = match.groups()
+
+				# Now, find all {identifier}="{arb_text}" within the arg_list
+				arg_pattern = r'(\w+)="([^"]*)"'
+					# ^ Note this only works properly if value string doesn't contain double quotes
+				kwargs = dict(re.findall(arg_pattern, arg_list))
+
+				# Encoding the kwargs into a JSON string
+				text = json.dumps(kwargs)
+
+				_logger.info(f"I found a legacy '{func_name}' function call and parsed the args as: [\n{pformat(kwargs)}]\n")
+
+		# Try to parse legacy function return notes.
+		if sender == SYS_NAME:
+			pattern = r"\[NOTE: (\w+)\(\) call returned value: \[(.*)\]\]"
+			match = re.search(pattern, text, re.DOTALL)
+			if match:
+				func_id, ret_res = match.groups()
+
+				sender = f"@{func_id}"
+				text = ret_res
+        
+				_logger.info(f"I found a legacy '{func_id}' function return with result [{ret_res}].")
+
 		newMessage.sender = sender
+		newMessage.func_name = func_name
 
 		if text is None:
 			_logger.warn(f"Can't initialize Message from {sender} with text "
@@ -818,6 +937,16 @@ class BotMessage:
 			# Note this is a string; it may be SYS_NAME,
 			# BOT_NAME, or the userTag of a Telegram user
 			# (as returned by the _get_user_tag() function.
+			# It may also be "@{func_name}" if this is a
+			# message representing a function's return result
+			# in new-style format.
+
+		func_name = thisBotMsg.func_name
+			# This will be None unless this message represents
+			# a function call by the bot, in which case it's the
+			# identifier for the function.
+
+		text = thisBotMsg.text
 
 		# The following is to support old conversation archive
 		# files in which SYS_NAME used to be rendered as 'SYSTEM'
@@ -825,33 +954,64 @@ class BotMessage:
 		if sender == 'SYSTEM':	# Backwards-compatible to legacy SYS_NAME value.
 			sender = SYS_NAME	# Map to new name.
 
+		# Initialize both of these to False until we learn otherwise.
+		isFunCall = False
+		isFuncRet = False
+
 		# Calculate the 'role' property of the message based on
 		# the sender. Note this MUST be one of OpenAI's supported
 		# roles, or it will produce an API error.
 		
+
 		if sender == SYS_NAME:
 			role = CHAT_ROLE_SYSTEM
 
 		elif sender == BOT_NAME:
 			role = CHAT_ROLE_AI
 
+		elif sender[0] == '@':		# Function-return senders start with this.
+			role = CHAT_ROLE_FUNCRET	# This should just be 'function'.
+			sender = sender[1:]		# Everything after the '@' is the function name.
+			isFuncRet = True
+
 		else:
 			role = CHAT_ROLE_USER
 
 		#__/
 
-		# TODO: Add another case above, to check a new boolean property
-		# .isFunCall of the BotMessage object (not yet defined), and if it's
-		# True, then set the role to CHAT_ROLE_FUNCALL, and we'll also need
-		# to set 'name' and 'arguments' properties as well.  And similarly
-		# for .isFuncRet, CHAT_ROLE_FUNCRET, and alternate use of the 'name'
-		# and 'content' properties.
+		
+		# We'll begin constructing the OpenAI message dictionary from scratch here.
+		_oaiMsgDict = dict()
 
-		# Now contruct the message dict.
-		_oaiMsgDict = {
-			'role':		role,			# Note: The role field is always required.
-			'content':	str(thisBotMsg)	# The content field is also expected.
-				#       ^^^^^^^^^^^^^^^
+		# Now check to see if this is a function-call message. If so,
+		# then We need to create a sub-dictionary 'function_call' with
+		# keys 'name' and 'arguments' set appropriately. We also get
+		# rid of the text.
+		if func_name:	# If not None, this is a function call.
+			isFunCall = True
+			funcall_dict = {
+				'name':			func_name,
+				'arguments':	text,
+			}
+			_oaiMsgDict['function_call'] = funcall_dict
+			text = None
+
+		# Now set the role and content fields appropriately.
+		_oaiMsgDict['role'] = role
+
+		# There are a few cases to consider for 'content'.
+		# For a function call message, there is simply no content field (or if required, it's None).
+		# For a function return message, the content field is the text (which is the function return string).
+		# Otherwise, we'll set the content to be our "{sender}> text" thingy to help the AI keep track
+		# of who is speaking in a Telegram chat.
+
+		if isFunCall:
+			pass
+		elif isFuncRet:
+			_oaiMsgDict['content'] = text	# Plain and simple.
+		else:
+			_oaiMsgDict['content'] = str(thisBotMsg)
+				#                    ^^^^^^^^^^^^^^^
 				# This deserves some discussion. Note that this is now using
 				# the BotMessage.__str__() method defined above, which includes
 				# not just the text of the message but also the sender, in the
@@ -864,15 +1024,19 @@ class BotMessage:
 				# presenting Telegram messages in this way means that the AI
 				# will likely give its response in the same format, so we have
 				# to be prepared for that. See the _trim_prompt() function.
+				#
+				# NOTE: role='assistant' non-function-call messages
+				#	will have content that starts with "{BOT_NAME}> ".
+				# 
+				# NOTE: role='system' messages
+				#	will have content that starts with "{SYS_NAME}> ". (I.e., BotServer.)
 
-			# Previously, we just sent the message text, like this:
+			# NOTE: Previously, we just sent the message text, like this:
 			#'content':	message.text	# The content field is also expected.
 
-		}
-
-		# To reduce API errors, we set the 'name'
-		# property only for the 'user' role.
-		if role == CHAT_ROLE_USER:
+		# To reduce API errors, we set the 'name' property only for
+		# the 'user' role, and the 'function' role.
+		if role == CHAT_ROLE_USER or role == CHAT_ROLE_FUNCRET:
 			_oaiMsgDict['name'] = sender
 				# Note: When 'name' is present, we believe that the AI sees it
 				# in addition to the role.
@@ -909,9 +1073,13 @@ class BotMessage:
 			(except for TAB) are escaped using their '\\xHH'
 			(hexadecimal) codes."""
 
-		text = thisBotMsg.text
-		if text is None:	# Null text? (Shouldn't happen, but...)
-			text = "[null message]"		# Message is this placeholder. (Was empty string.)
+		# Function calls are treated specially. This is our new format:
+		if thisBotMsg.func_name:
+			text = f"@{thisBotMsg.func_name}({thisBotMsg.text})"
+		else:
+			text = thisBotMsg.text
+			if text is None:	# Null text? (Shouldn't happen, but...)
+				text = "[null message]"		# Message is this placeholder. (Was empty string.)
 
 		# NOTE: The message text could contain newlines, which we need to
 		#	replace with a literal '\n' encoding. But, in case the message
@@ -4168,6 +4336,8 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 	# Process the "style" parameter.
 	if style is None:
 		style = 'vivid'
+	if style == 'photorealistic':
+		style = 'natural'
 	if style != 'vivid' and style != 'natural':
 		_logger.warn(f"\tUnknown style '{style}'; reverting to 'natural'.")
 		style = 'natural'
@@ -4188,7 +4358,8 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 	(image_url, new_desc, save_filename) = send_result
 
 	# Make a note in conversation archive to indicate that the image was sent.
-	conversation.add_message(BotMessage(SYS_NAME, f'[Generated and sent image "{new_desc}" in filename "{save_filename}"]'))
+	#conversation.add_message(BotMessage(SYS_NAME, f'[Generated and sent image "{new_desc}" in filename "{save_filename}"]'))
+	# ^^^ The above isn't really necessary any more...
 
 	## NOTE: This is now done in process_command() more generically.
 	# Send the remaining text after the command line, if any, as a normal message.
@@ -5473,8 +5644,11 @@ async def process_function_call(
 
 	# Have the bot server make a note in the conversation to help the AI
 	# remember that it did the function call.
-	fcall_note = f"[NOTE: {BOT_NAME} is doing function call {call_desc}.]"
-	botConvo.add_message(BotMessage(SYS_NAME, fcall_note))
+	#fcall_note = f"[NOTE: {BOT_NAME} is doing function call {call_desc}.]"
+	#botConvo.add_message(BotMessage(SYS_NAME, fcall_note))
+	# ^^^ The above is obsolet now, given new-style function call formatting.
+
+	botConvo.add_message(BotMessage(BOT_NAME, function_argStr, func_name=function_name))
 
 	# Extract the optional remark argument from the argument list.
 	if 'remark' in function_args:
@@ -5550,8 +5724,11 @@ async def process_function_call(
 	# of longer-term notes while it is still processing the *present*
 	# function call and return.
 
-	fret_note = f'[NOTE: {function_name}() call returned value: [{resultStr}]]'
-	botConvo.add_message(BotMessage(SYS_NAME, fret_note))
+	#fret_note = f'[NOTE: {function_name}() call returned value: [{resultStr}]]'
+	#botConvo.add_message(BotMessage(SYS_NAME, fret_note))
+	# ^^ This is obsolete now that we have new-style message formats for function returns.
+
+	botConvo.add_message(BotMessage(f"@{function_name}", resultStr))
 
 	# Back when our functions just never returned a result, we would just skip
 	# everything below here. But they do return results now.
@@ -5593,7 +5770,7 @@ async def process_function_call(
 	# function.
 
 	funcret_oaiMsg = {
-		'role':		'function',
+		'role':		CHAT_ROLE_FUNCRET,	# This is just 'function'
 		'name':		function_name,
 		'content':	resultStr
 	}
