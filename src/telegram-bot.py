@@ -8161,8 +8161,8 @@ def _strToList(vec_str):
 
 
 def _trim_prompt(response_text:str) -> str:
-    """Trims the prompt portion off the front of the given
-        response text, if present."""
+	"""Trims the prompt portion off the front of the given
+		response text, if present."""
 
 	doTrim = True
 	while doTrim:
@@ -8173,7 +8173,7 @@ def _trim_prompt(response_text:str) -> str:
 		#
 		#		MESSAGE_DELIMITER + " (sender)> (text)"
 		#
-		# or (if delimiter is null) "(sender)> (text)".  If so,
+		# or (if delimiter is null) "(sender)> (text)".	 If so,
 		# and if the sender is the bot itself (as expected),
 		# trim the prompt part off the front.
 
@@ -8219,7 +8219,7 @@ def _trim_prompt(response_text:str) -> str:
 		#__/
 	#__/
 
-    return response_text
+	return response_text
 
 
 # def _trim_prompt(response_text:str) -> str:
