@@ -3585,7 +3585,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 	# then don't respond.
 	
 	if conversation.quiet_mode and (BOT_NAME.lower() not in text.lower()) and text[0]!='/':
-		_logger.warning(f"Ignoring a message from user {user_name} in chat {chat_id} because we're in quiet mode.")
+		_logger.info(f"Ignoring a message from user {user_name} in chat {chat_id} because we're in quiet mode.")
 		return
 
 
