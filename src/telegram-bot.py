@@ -8163,42 +8163,48 @@ def _trim_prompt(response_text:str) -> str:
 	"""Trims the prompt portion off the front of the given
 		response text, if present."""
 
-	# Check to see if text response starts with a line that's
-	# formatted like
-	#
-	#		MESSAGE_DELIMITER + " (sender)> (text)"
-	#
-	# or (if delimiter is null) "(sender)> (text)".  If so,
-	# and if the sender is the bot itself (as expected),
-	# trim the prompt part off the front.
+	doTrim = True
+	while doTrim:
+		doTrim = False
 
-	# Regex to match the prompt portion at the start of a message string.
-	if MESSAGE_DELIMITER != "":
-		regex = f"({MESSAGE_DELIMITER} ?)" + r"([a-zA-Z0-9_-]{1,64})> "
-	else:
-		regex = r"([a-zA-Z0-9_-]{1,64})> "
-	# Note we don't need to start the regex with '^' because re.match()
-	# only matches at the start of a string anyway.
+		# Check to see if text response starts with a line that's
+		# formatted like
+		#
+		#		MESSAGE_DELIMITER + " (sender)> (text)"
+		#
+		# or (if delimiter is null) "(sender)> (text)".  If so,
+		# and if the sender is the bot itself (as expected),
+		# trim the prompt part off the front.
 
-	#_logger.normal("Using regex: [" + regex + "]")
-
-	firstline = response_text.split('\n')[0]
-
-	_logger.debug(f"Matching regex against: [{firstline}]")
-	
-	match = re.match(regex, firstline)
-
-	if match:
-
+		# Regex to match the prompt portion at the start of a message string.
 		if MESSAGE_DELIMITER != "":
-			prefix = match.group(1)
-			sender = match.group(2)
+			regex = f"({MESSAGE_DELIMITER} ?)" + r"([a-zA-Z0-9_-]{1,64})> "
 		else:
-			prefix = ""
-			sender = match.group(1)
+			regex = r"([a-zA-Z0-9_-]{1,64})> "
+		# Note we don't need to start the regex with '^' because re.match()
+		# only matches at the start of a string anyway.
 
-		_logger.debug(f"AI output a message from [{sender}]...")
-		if sender == BOT_NAME:
+		#_logger.normal("Using regex: [" + regex + "]")
+
+		firstline = response_text.split('\n')[0]
+
+		_logger.debug(f"Matching regex against: [{firstline}]")
+	
+		match = re.match(regex, firstline)
+
+		if match:
+
+			if MESSAGE_DELIMITER != "":
+				prefix = match.group(1)
+				sender = match.group(2)
+			else:
+				prefix = ""
+				sender = match.group(1)
+
+			_logger.debug(f"AI output a message from [{sender}]...")
+
+			if sender == BOT_NAME:
+				doTrim = True			# See if there are any more names to trim
 
 			# Trim the sender and prompt part off of the front of the message text.
 			toTrim = prefix + sender + '> '
@@ -8208,6 +8214,7 @@ def _trim_prompt(response_text:str) -> str:
 			
 			_logger.debug(f"Now we are left with [{response_text}]...")
 			
+
 		#__/
 	#__/
 
