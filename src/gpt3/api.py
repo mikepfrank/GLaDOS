@@ -619,7 +619,7 @@ CHAT_ROLE_AI		= 'assistant'
 global				CHAT_ROLE_FUNCALL
 CHAT_ROLE_FUNCALL	= 'function_call'
 
-global				CHAT_ROLE_FRET
+global				CHAT_ROLE_FUNCRET
 CHAT_ROLE_FUNCRET	= 'function'
 
 	# TODO: Implement explicit support for function calling in this interface.
@@ -4179,7 +4179,10 @@ def _msg_repr(msg:dict) -> str:
 		role += msg['name'] + ':'
 
 	# Get the message content.
-	content = msg['content']
+	if 'content' in msg:
+		content = msg['content']
+	else:
+		content = None
 
 	# Get the 'function_call' value, if present.
 	fcall = msg.get('function_call', None)
