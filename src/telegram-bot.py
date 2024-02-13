@@ -5648,6 +5648,7 @@ async def process_function_call(
 	#botConvo.add_message(BotMessage(SYS_NAME, fcall_note))
 	# ^^^ The above is obsolet now, given new-style function call formatting.
 
+	# This generates a new-format bot message for the function call action.
 	botConvo.add_message(BotMessage(BOT_NAME, function_argStr, func_name=function_name))
 
 	# Extract the optional remark argument from the argument list.
@@ -5727,7 +5728,7 @@ async def process_function_call(
 	#fret_note = f'[NOTE: {function_name}() call returned value: [{resultStr}]]'
 	#botConvo.add_message(BotMessage(SYS_NAME, fret_note))
 	# ^^ This is obsolete now that we have new-style message formats for function returns.
-
+	# The following generates a new-format bot message for the function return.
 	botConvo.add_message(BotMessage(f"@{function_name}", resultStr))
 
 	# Back when our functions just never returned a result, we would just skip
@@ -5796,9 +5797,12 @@ async def process_function_call(
 	#   function:	(function return description)
 	#	system:		(prompt AI to respond)
 
-	temp_chat_oaiMsgs += [funcall_oaiMsg]
-	temp_chat_oaiMsgs += trailing_oaiMsgs
+	# v Below is now obsolete now that function call/return messages are integrated into convo.
+	#temp_chat_oaiMsgs += [funcall_oaiMsg]
+	#temp_chat_oaiMsgs += trailing_oaiMsgs
+
 	temp_chat_oaiMsgs += [funcret_oaiMsg]
+		# ^ We really wouldn't need to do this either if we hadn't skipped this earlier.
 	temp_chat_oaiMsgs += [{
 		'role':		'system',
 		'content':	f"Instructions from bot server: {BOT_NAME}, you " \
@@ -7109,6 +7113,7 @@ def _logOaiMsgs(oaiMsgList:list, basename="latest-messages") -> None:
 	# Open the file for writing.
 	with open(f"{LOG_DIR}/{basename}.txt", "w") as f:
 		for oaiMessage in oaiMsgList:
+			f.write('~'*70 + '\n')
 			f.write(messageRepr(oaiMessage))
 				# Our text representation of OpenAI messages.
 	
