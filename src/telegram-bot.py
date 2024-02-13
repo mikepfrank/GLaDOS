@@ -3216,6 +3216,89 @@ async def handle_forget(update:Update, context:Context) -> None:
 #__/ End definition of /forget command handler.
 
 
+async def handle_memory(update:Update, context:Context) -> None:
+	"""Show a list of all memory items accessible to the given user."""
+
+	# NOTE: Although most user commands are handled by the AI,
+	# this one is more directly invoked by the user.
+
+	# Get the message, or edited message from the update.
+	(tgMsg, edited) = _get_update_msg(update)
+
+	if tgMsg is None:
+		_logger.warning("In handle_memory() with no message? Aborting.")
+		return
+
+	chat_id = tgMsg.chat.id
+	user_id = tgMsg.from_user.id
+
+	# Make sure the thread component is set to this application (for logging).
+	logmaster.setComponent(_appName)
+
+	# Assume we're in a thread associated with a conversation.
+	# Set the thread role to be "Conv" followed by the last 4 digits of the chat_id.
+	logmaster.setThreadRole("Conv" + str(chat_id)[-4:])
+
+	# Get the name that we'll use for the user.
+	user_name = _get_user_tag(tgMsg.from_user)
+
+	_logger.normal(f"\nUser {user_name} entered a /memory command for chat {chat_id}.")
+
+	# Attempt to ensure the conversation is loaded; if we failed, bail.
+	if not await _ensure_convo_loaded(update, context):
+		_logger.error("Couldn't load conversation in handle_memory(); aborting.")
+		return 
+
+	# Retrieve the Conversation object from the Telegram context.
+	if not 'conversation' in context.chat_data:
+		_logger.error(f"Ignoring /memory command for conversation {chat_id} because conversation not loaded.")
+
+	conversation = context.chat_data['conversation']
+
+	# First, we'll add the whole /memory command line to the conversation, so that the AI can see it.
+	conversation.add_message(BotMessage(user_name, tgMsg.text))
+
+	# Check whether the user is in our access list.
+	if not _check_access(user_name, user_id):
+		_logger.normal(f"\nUser {user_name} tried to access chat {chat_id}, "
+					   "but is not in the access list. Denying access.")
+
+		errMsgStr = f"Sorry, but user {user_name} is not authorized to access {BOT_NAME} bot."
+		#errMsgStr = f"Sorry, but {BOT_NAME} bot is offline for now due to cost reasons."
+
+		await _report_error(conversation, tgMsg, errMsgStr, logIt=False)
+			# Note we already did a log entry above.
+
+		return
+
+	# Now we can finally actually do the real work of the /memory command.
+	memories = _list_memories(user_id, chat_id)
+		# Note this is a generator function that we will iterate over.
+	
+	for memory in memories:
+		
+		itemID = memory['itemID']
+		userTag = memory['userTag']
+		isPublic = not memory['is_private']
+		isGlobal = memory['is_global']
+		itemText = memory['itemText']
+
+		privacy = "public" if isPublic else "private"
+		locality = "global" if isGlobal else "local"
+
+		# We'll do a separate reply for each memory item, to keep them short.
+		memString = f"ID={itemID} (user:{userTag} {privacy} {locality}) {itemText}"
+
+		# Add the memory string to the conversation context.
+		conversation.add_message(BotMessage(SYS_NAME, memString))
+
+		# Send it to the user.
+		await _reply_user(tgMsg, conversation, memString)
+			# Note if there are errors, we ignore them and proceed anyway.
+
+#__/
+
+
 	#/==========================================================================
 	#| 3.2. Update handler group 1 -- Multimedia input processing handlers.
 	#|
@@ -7990,6 +8073,7 @@ async def _report_error(convo:BotConversation, telegramMessage,
 
 def _searchMemories(userID, chatID, searchPhrase,
 					nItems=DEFAULT_SEARCHMEM_NITEMS):
+	"""Semantic search of accessible memories for closest matches."""
 
 	_logger.info(f"\n_searchMemories(): Searching for userID={userID}, "
 				 f"chatID={chatID} to find the top {nItems} closest "
@@ -8084,6 +8168,81 @@ def _searchMemories(userID, chatID, searchPhrase,
 		_logger.info(f"Got item at distance {itemDict['distance']}: [{itemDict['itemText']}]")
 
 	return results
+
+
+def _list_memories(userID:int, chatID:int):
+	"""Generates a list of all accessible memories (in the context of the current
+		user and chat). Yields item dictionaries in the following format:
+
+			'itemID'		(string) Hexadecimal identifier for this memory item.
+			'userTag'		(string) Name of user who created this memory.
+			'is_private'	(boolean) If true, other users can't retrieve it.
+			'is_global'		(boolean) If true, memory can be accessed from chats
+								other than the one in which it was created.
+			'itemText'		(string) Text of the memory item.
+
+	"""
+
+	_logger.info("\n_list_memories(): Listing all accessible "
+				 f"memories for userID={userID}, chatID={chatID}...")
+
+	# Path to the database file
+	db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
+
+	# Create a connection to the SQLite database
+	conn = sqlite3.connect(db_path)
+
+	# Create a cursor object
+	c = conn.cursor()
+
+	# Query to fetch items that satisfy one or more of the criteria
+	c.execute('''
+		SELECT * FROM remembered_items 
+		WHERE global = 1 OR public = 1 OR chatID = ? OR userID = ?
+	''', (chatID, userID))
+
+	# Fetch all the satisfying items
+	items = c.fetchall()
+		# NOTE: It might be smarter not to load them all into memory
+		# here, but instead do a loop here with yield
+
+	# Close the connection
+	conn.close()
+
+	# Iterate through all the satisfying items
+	for item in items:
+
+		# Convert the item to a dictionary
+		itemDict = {"itemID": item[0], "userID": item[1], "chatID": item[2],
+					"public": item[3], "global": item[4], "itemText": item[5]}
+			# NOTE: We don't bother retrieving the embeddings here.
+
+		# We now have a stricter privacy policy than before: We will
+		# only include an item if BOTH of the following conditions are true:
+		#
+		#	(1) The item is public OR the user IDs match.
+		#	(2) The item is global OR the chat IDs match.
+
+		if (itemDict['public'] == 1 or itemDict['userID'] == userID) and \
+		   (itemDict['global'] == 1 or itemDict['chatID'] == chatID):
+
+			# Show the user's tag and not just his ID.
+			userData = _lookup_user(itemDict['userID'])
+			if userData:
+				userTag = userData['userTag']		# Could sometimes be "(unknown)"
+			else:	# Not sure why this happens, but it does.
+				userTag = '(null)'
+			itemDict['userTag'] = userTag
+
+			# Change the 'public' and 'global' numeric flags to 'is_private' and 'is_global' booleans.
+			itemDict['is_private'] = not itemDict['public'];    del itemDict['public']
+			itemDict['is_global'] = not not itemDict['global']; del itemDict['global']
+
+			yield itemDict
+			
+		#__/
+	#__/
+#__/
 
 
 def _semanticDistance(em1:list, em2:list):
@@ -9303,15 +9462,16 @@ app.add_handler(CommandHandler('reset',		handle_reset),		group = 0)	# Clear conv
 app.add_handler(CommandHandler('quiet',		handle_quiet),		group = 0)	# Only speak when spoken to.
 app.add_handler(CommandHandler('noisy',		handle_noisy),		group = 0)	# Back to normal mode.
 app.add_handler(CommandHandler('speech',	handle_speech),		group = 0)	# Toggle spoken voice audio output.
-app.add_handler(CommandHandler('remember',	handle_remember),	group = 0)	# Remember a new memory item.
+app.add_handler(CommandHandler('remember',	handle_remember),	group = 0)	# Add a new item to memory.
 app.add_handler(CommandHandler('search',	handle_search),		group = 0)	# Search for a memory item.
-app.add_handler(CommandHandler('forget',	handle_forget),		group = 0)	# Not available to most users.
+app.add_handler(CommandHandler('forget',	handle_forget),		group = 0)	# Remove an item from memory.
 
 # These commands are not for general users; they are undocumented.
 app.add_handler(CommandHandler('delmem',	handle_delmem),		group = 0)	# Used for table cleanup.
-app.add_handler(CommandHandler('showmem',	handle_showmem),	group = 0)	# Used for debugging.
+app.add_handler(CommandHandler('listmem',	handle_memory),		group = 0)	# Show all accessible memory items.
+app.add_handler(CommandHandler('showmem',	handle_showmem),	group = 0)	# Used for debugging. Dumps the full contents of the users and memories tables to the system console.
 
-# The following two commands are not really needed at all. They're just here for testing purposes.
+# The following two commands are not really even needed at all. They're just here for testing purposes.
 app.add_handler(CommandHandler('echo',	handle_echo),	group = 0)
 app.add_handler(CommandHandler('greet',	handle_greet),	group = 0)
 
