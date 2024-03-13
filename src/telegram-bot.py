@@ -1288,7 +1288,10 @@ class BotConversation:
 	# after conversations are restarted repeatedly.
 	def __del__(thisConv:BotConversation):
 		# Close our open files to recycle their file descriptors.
-		thisConv.archive_file.close()
+
+		if hasattr(thisConv, "archive_file"):
+			thisConv.archive_file.close()
+
 		#thisConv.memory_file.close()
 	#__/ End destructor method for class Conversation.
 
@@ -1910,6 +1913,20 @@ class BotConversation:
 
 			chat_messages.append(botMessage.oaiMsgDict())
 
+			# Here, we need to consolidate consecutive assistant content messages
+			# so that the AI doesn't get confused about how to format them for output.
+			if len(chat_messages) >= 2:
+				if chat_messages[-2]['role'] == CHAT_ROLE_AI and \
+				   		chat_messages[-1]['role'] == CHAT_ROLE_AI and \
+				   		'content' in chat_messages[-2] and \
+						'content' in chat_messages[-1]:
+
+					# Append last message content to second-to-last.
+					chat_messages[-2]['content'] += '\n' + \
+						chat_messages[-1]['content']
+
+					# Trim off the last message.
+					chat_messages = chat_messages[:-1]
 		#__/
 
 		# We'll add one more system message to the list of chat messages,
@@ -1927,9 +1944,25 @@ class BotConversation:
 		#response_prompt = f"Respond as {botName}. (Remember you can use an available " \
 		#	"function if there is one that is appropriate.)"
 
-		response_prompt = f"Respond below; use the same language that the user "\
-			"used most recently, if appropriate. (Alternatively, you can activate "\
+		#f"Your responses should begin with '{botName}>' to trigger the Telegram " \
+		#	"bot server to send the subsequent text to the chat as a message from your " \
+		#	"bot. You may include multiple such messages in your response, but each one " \
+		#	"should begin on a new line. " \
+
+		response_prompt = (
+			"Respond below; use the same language that the user used most recently, if appropriate. "
+			#f"Your responses should begin with '{botName}>' to trigger the Telegram "
+			#"bot server to send the subsequent text to the chat as a message from your "
+			#"bot. You may include multiple such messages in your response, but each one "
+			#"should begin on a new line. "
+			"You may include multiple Telegram messages in your response, but each one "
+			f"must begin on a new line starting with '{botName}>'"
+			"(Or, alternatively to just sending messages, you can activate "
 			"an available function and then call that function, if appropriate.)"
+		)
+
+		#"You can send additional Telegram "\
+		#"messages to follow up by starting each one with '\\n{botName}>'. "\
 
 		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
 			# Only give this instruction in group chats:
@@ -6097,50 +6130,73 @@ async def process_raw_response(
 	_logger.debug("Creating new ordinary (non-function-call) response from "
 				  f"{botConvo.bot_name} with text: [{response_text}].")
 
-	# Create a new Message object and add it to the conversation.
-	response_botMsg = BotMessage(botConvo.bot_name, response_text)
-	botConvo.add_message(response_botMsg)
+	# At this point, according to our new protocol for allowing the AI to send multiple
+	# messages, we check for additional instances of "\n{BOT_NAME}>" in the response, and
+	# if they exist, we split the response on those, and process each one as if it were 
+	# a separate response.
 
-	# Update the message object, and the context.
-	response_botMsg.text = response_text
-	botConvo.expand_context()	 
+	split_str = f"\n{botConvo.bot_name}> "
+	if split_str in response_text:
+		response_msgs = response_text.split(split_str)
+		_logger.normal("Detected multiple Telegram messages in response:")
+		i=1
+		for msg in response_msgs:
+			_logger.normal(f"\tMessage #{i}: [{msg}]")
+			i += 1
+	else:
+		response_msgs = [response_text]
 
-	# If this message is already in the conversation, then we'll suppress it, so
-	# as not to exacerbate the AI's tendency to repeat itself.  (So, as a user,
-	# if you see that the AI isn't responding to a message, this may mean that
-	# it has the urge to just repeat something that it already said earlier, but
-	# is holding its tongue.)
-
-	if response_text.lower() != '/pass' and \
-	   botConvo.is_repeated_message(response_botMsg):
-
-		# Generate an info-level log message to indicate that we're suppressing
-		# the response.
-		_logger.info(f"Suppressing response [{response_text}]; it's a repeat.")
-
-		# Delete the last message from the conversation.
-		botConvo.delete_last_message()
-
-		## Send the user a diagnostic message (doing this temporarily during development).
-		#diagMsg = f"Suppressing response [{response_text}]; it's a repeat."
-		#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
+	for response_msg in response_msgs:
+		response_msg = response_msg.strip()		# Trim leading/trailing whitespace.
 		
-		return		# This means the bot is simply not responding to the message
+		# Create a new Message object.
+		response_botMsg = BotMessage(botConvo.bot_name, response_msg)
 
-	#__/ End check for repeated messages.
+		# If this message is already in the conversation, then we'll suppress it, so
+		# as not to exacerbate the AI's tendency to repeat itself.  (So, as a user,
+		# if you see that the AI isn't responding to a message, this may mean that
+		# it has the urge to just repeat something that it already said earlier, but
+		# is holding its tongue.)
 
-	# If we get here, then we have a non-empty message that's also not a repeat.
-	# It's finally OK at this point to archive the message and send it to the user.
+		if response_msg.lower() != '/pass' and \
+		   botConvo.is_repeated_message(response_botMsg):
 
-	# Make sure the response message has been finalized (this also archives it).
-	botConvo.finalize_message(response_botMsg)
+			# Generate an info-level log message to indicate that we're suppressing
+			# the response.
+			_logger.normal(f"Suppressing response [{response_text}]; it's a repeat.")
 
-	# If we get here, we have finally obtained a non-empty, non-repeat,
-	# already-archived message that we can go ahead and send to the user. This
-	# function will also check to see if the message is a textual command line,
-	# and will process the command if so.
+			# Delete the last message from the conversation.
+			#botConvo.delete_last_message()
 
-	await process_response(tgUpdate, tgContext, response_botMsg)	   # Defined below.
+			## Send the user a diagnostic message (doing this temporarily during development).
+			#diagMsg = f"Suppressing response [{response_text}]; it's a repeat."
+			#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
+		
+			continue		# This means the bot is simply not responding to the message
+
+		#__/ End check for repeated messages.
+
+		# It isn't a repeat, so we'll add it to the conversation.
+		botConvo.add_message(response_botMsg)
+
+		# Update the message object, and the context.
+		response_botMsg.text = response_msg
+		botConvo.expand_context()	 
+
+		# If we get here, then we have a non-empty message that's also not a repeat.
+		# It's finally OK at this point to archive the message and send it to the user.
+
+		# Make sure the response message has been finalized (this also archives it).
+		botConvo.finalize_message(response_botMsg)
+
+		# If we get here, we have finally obtained a non-empty, non-repeat,
+		# already-archived message that we can go ahead and send to the user. This
+		# function will also check to see if the message is a textual command line,
+		# and will process the command if so.
+
+		await process_response(tgUpdate, tgContext, response_botMsg)	   # Defined below.
+
+	#__/ End for loop over Telegram messages in the response.
 
 	# If we get here, then we have finished processing the AI's text response,
 	# and we can just return.
@@ -6194,7 +6250,7 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 	   response_text.endswith("(more)") or response_botMsg.text.endswith("..."):
 
 		contTxt = "[If you want me to continue my response, type '/continue'.]"
-		await _reply_user(tgMsg, conversation, contTxt, toAI=False, ignore=True)
+		await _reply_user(tgMsg, conversation, contTxt, ignore=True)
 	#__/
 
 	# Processed AI's response successfully.
@@ -8454,12 +8510,15 @@ def _unblockUser(user:str) -> bool:
 		with open(bcl_file, 'r') as f:
 			block_list = json.load(f)
 	
+	_logger.normal(f"\tUnblocking user {user} (by legacy method)...")
+
 	if user not in block_list:
 		_logger.warn(f"_unblockUser(): User {user} is not blocked. Ignoring.")
 		_lastError = f"User {user} is already not on the block list."
 		return True
 
 	block_list.remove(user)
+
 	with open(bcl_file, 'w') as f:
 		json.dump(block_list, f)
 
