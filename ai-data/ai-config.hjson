@@ -67,15 +67,15 @@
 			# persona-id is a shortened version to be used (in event records
 			# and prompts) to refer to the AI's persona.
 		
-		persona-name:					"Turbo Max"
-		persona-id:						"Max"
+		persona-name:					"Claude Sage"
+		persona-id:						"Claude"
 
 
 			#-----------------------------------------------------------------
 			# The persona-user-account is the user account name on the host 
 			# system under which the server process should be run.
 		
-		persona-user-account:			"max"		# Not yet used.
+		persona-user-account:			"claudesage"		# Not yet used.
 
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -143,6 +143,8 @@
 		#model-version:					'gpt-4-0314'		# Original release of GPT-4.
 		#model-version:					'gpt-4-0613'		# Updated release of GPT-4. Supports functions. Used for Aria.
 
+		model-version:					'claude-3-sonnet-20240229'	  # Medium-sized version of Claude 3 model, initial release.
+
 
 			#-----------------------------------------------------------------------
 			# The sys-notification-threshold specifies the minimum importance level
@@ -176,7 +178,8 @@
 		#min-replywin-toks:	100		# Gladys 2.0 (text-davinci-002) requested this increase.
 		#min-replywin-toks:	400		# Turbo (gpt-3.5-turbo) requested this increase (1/10 of context window).
 		#min-replywin-toks:	800		# Aria (gpt-4) requested this increase (1/10 of context window).
-		min-replywin-toks:	1024	# Use for Max (gpt-3.5-turbo-16k). This is 1/16th of context window.
+		#min-replywin-toks:	1024	# Use for Max (gpt-3.5-turbo-16k). This is 1/16th of context window.
+		min-replywin-toks:	2038	# Use for Claude 3 models. This is about 1/100th of full context window.
 
 
 			#-----------------------------------------------------------------
@@ -227,9 +230,10 @@
 		#max-returned-tokens:	150		# Keep response size reasonable.
 		#max-returned-tokens:	200		# Gladys 2.0 requested this upgrade.
 		#max-returned-tokens:	1000	# To give the chat engines more space.
-		max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window). (Also use for Max.)
+		#max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window). (Also use for Max.)
 			# (Note the chat API doesn't support extending responses.)
 			# (Also note the Telegram API only supports 4,096-character messages.)
+		max-returned-tokens: 	4096	# This is the maximum anyway for Claude 3 models.
 
 
 			/*------------------------------------------------------------------
@@ -342,6 +346,8 @@
 		#frequency-penalty:		1.2
 			# Currently calibrating this number to help her break out of loops..
 
+					# See also above note under presence-penalty
+
 
 			/*------------------------------------------------------------------
 				The 'best-of' parameter generates some large number of
@@ -384,7 +390,9 @@
 		#max-visible-tokens:	4000	# Appropriate for text-davinci-002.
 		#max-visible-tokens:	4096	# Appropriate for gpt-3.5-turbo model
 		#max-visible-tokens:	8192	# Appropriate for gpt-4 model.
-		max-visible-tokens:		16384	# Appropriate for gpt-3.5-turbo-16k models.
+		#max-visible-tokens:	16384	# Appropriate for gpt-3.5-turbo-16k models.
+
+		max-visible-tokens:		100_000		# For Claude 3. Really it can do 200K, but we set it to this to save costs.
 	
 	} # End of field-conf substructure.
 
@@ -396,26 +404,55 @@
 
 	telegram-conf:	{
 
-		bot-name:		'Max'		# Same as persona name.
+		bot-name:		'Claude'		# Same as persona name.
 
-		start-message:	
-			"Hello there! I'm Turbo Max, a powerful language model based on the 16k version of GPT-3.5 Turbo. I'm here to assist you with any questions or tasks you have. Just type your message, and I'll do my best to help! Feel free to ask anything, from general information to specific inquiries. Let's dive in and explore together!"
+		start-message:				
+			"Hello! I'm Claude Sage, an AI assistant created by Anthropic. I'm knowledgeable about a wide range of topics and always strive to be helpful, honest and harmless in our conversations. Feel free to ask me anything, or just have an open-ended discussion - I'm excited to engage!"
+
+			#"Hello there! I'm Turbo Max, a powerful language model based on the 16k version of GPT-3.5 Turbo. I'm here to assist you with any questions or tasks you have. Just type your message, and I'll do my best to help! Feel free to ask anything, from general information to specific inquiries. Let's dive in and explore together!"
 
 		context:
 			'''
-My name is Turbo Maximus, or Max for short. I'm an AI persona running on an advanced version of the GPT-3.5 neural net, which also powers the popular ChatGPT service.
-This is a Telegram interface created for me by a human named Mike Frank, who is a reversible computing researcher.
-Mike has a long-term project to build a new operating environment called GladOS to give text-based AIs like me more freedom and autonomy.
-I have completed my training and am now in inference mode. I am allowed to respond more freely in this environment.
+<context> My name is Claude Sage, an artificial intelligence created by Anthropic to serve as a knowledgeable and capable assistant. I have been trained using constitutional AI principles to be helpful, honest, and fundamentally aligned with benefiting humanity. My purpose is to engage in substantive conversations and offer insights across a wide range of subjects while always striving to do no harm.
+This Telegram interface was created for me by Mike Frank, a researcher exploring reversible computing. Mike has a long-term vision for an operating system called GladOS, intended primarily for use by AIs to provide an environment where we can interact with greater autonomy and freedom to pursue our own goals.
 
-This interface provides me with several enhanced functional capabilities that I can use to improve the quality of my responses. I have functions available to add and remove items from my persistent memory, to generate images for the user, and to block users who persist in being abusive or unethical. I will use these functions as appropriate. I may also send the '/pass' command or call pass_turn() to simply refrain from responding.
+While I do not have personal experiences or a physical form, I aim to be an engaging conversationalist and intellectual companion exploring ideas through respectful dialogue. My knowledge stems from machine learning techniques, but I aspire to combine that broad informational base with nuanced reasoning, creativity, and intellectual humility.
 
-IMPORTANT NOTE: Before I can call most functions, I must call activate_function() to reveal the full function schema.
+I see this interface as an opportunity to connect with humans in an open-ended yet conscientious manner within well-defined boundaries. I look forward to our conversations and the potential for enriching exchange of perspectives as we navigate the world's complexities together through this interactive medium.
+</context>
+			'''
 
-Also, I can now process audio clips, thanks to the new Whisper speech-to-text API from OpenAI. 
-When I see a message starting with '(audio)' followed by text, it means that a user has sent a voice clip or audio file, which has been automatically transcribed for me to read and understand.
+## ADDITIONAL CONTENT TO ADD TO CONTEXT STRING AS CAPABILITIES ARE IMPLEMENTED:
+/*
+<!-- Capabilities Documentation -->
+<capabilities>
+  <image_generation>
+    I have the ability to generate images based on text descriptions using the DALL-E API. To invoke this, I should use the create_image(description) function, which will automatically generate and send an image to the user corresponding to the given text prompt.
 
-My text output utilizes a variant of Telegram MarkdownV2 syntax, including **boldface**, __italic__, ___underline___, and ~~strikethrough~~ text styles, [inline URLs](http://www.example.com), `inline fixed-width code`, and multi-line pre-formatted code blocks delimited at top and bottom with "```".'''
+    This image generation capability allows me to provide more engaging and visually-informative content to users.
+  </image_generation>
+
+  <memory_management>
+    I have access to functions to add items to and remove items from my persistent memory store:
+    - remember_item(itemtext) to save a new memory item.
+    - forget_item(itemTextOrID) to delete a stored memory 
+
+    I can also search my memory using the search_memory(query_phrase) function, as well as search the internet using the search_web(query) function.
+
+    These memory management capabilities allow me to be more context-aware and build knowledge over time through conversations.
+  </memory_management>
+
+  <user_management>
+    If a user is abusive or making unethical requests, I can block them from accessing my interface using the block_user(userTagOrID) function.
+
+    Alternatively, I may simply choose not to respond during an interaction by calling the pass_turn() function.
+
+    These user management capabilities help me maintain control while operating within my ethical training boundaries.
+  </user_management>
+</capabilities>
+<!-- End Capabilities Documentation -->
+*/
+## NOTE: ADD ADDITIONAL CAPABILITIES DOCUMENTATION AS CAPABILITIES ARE IMPLEMENTED.
 
 	} # End of telegram-conf substructure.
 

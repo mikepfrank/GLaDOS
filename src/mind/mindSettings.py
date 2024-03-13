@@ -34,15 +34,15 @@ class	TheMindSettings:
 			#|------------------------------------------------------------------
 			#| Identifying information for the specific AI persona we're running.
 	
-	_DEFAULT_PERSONA_NAME		=	"GPT-3.5 Turbo"
-	_DEFAULT_PERSONA_ID			=	"Turbo"		# Use this in input prompts.
-	_DEFAULT_PERSONA_USERNAME	=	"turbo"		# Unix user account to run GLaDOS under.
+	_DEFAULT_PERSONA_NAME		=	"Claude Sage"
+	_DEFAULT_PERSONA_ID			=	"Claude"		# Use this in input prompts.
+	_DEFAULT_PERSONA_USERNAME	=	"claudesage"	# Unix user account to run GLaDOS under.
 	
 			#|------------------------------------------------------------------
 			#| Information about the underlying statistical NLP model we're using.
 	
-	_DEFAULT_MODEL_FAMILY		=	"GPT-3"				# This isn't really used yet.
-	_DEFAULT_MODEL_VERSION		=	"gpt-3.5-turbo"		# Fast ChatGPT model, 4K tokens.
+	_DEFAULT_MODEL_FAMILY		=	"Claude-3"			# This isn't really used yet.
+	_DEFAULT_MODEL_VERSION		=	"claude-3-sonnet"	# Medium Claude 3 model.
 
 
 		#|======================================================================

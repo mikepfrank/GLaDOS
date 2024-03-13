@@ -412,6 +412,16 @@ from	telegram.error	import	BadRequest, Forbidden, ChatMigrated, TimedOut
 
 
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+		#	Anthropic API library, for accessing Claude.
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
+
+from anthropic import Anthropic		# Main class for accessing Anthropic API.
+
+_anthropic_client	= Anthropic()
+	# Note this expects the Anthropic API key to be in ANTHROPIC_API_KEY.
+
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
 		#	The following packages are from the openai API library.
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
@@ -462,7 +472,7 @@ def cosine_similarity(a, b):
 		#-------------------------------------------------------------------
 		# NOTE: Copilot also wanted to import the following libraries, but
 		#	we aren't directly using them yet:
-		#		sys, time, logging, pickle, datetime, pytz, subprocess
+		#		sys, time, logging, datetime, pytz, subprocess
 		#-------------------------------------------------------------------
 
 
@@ -513,6 +523,7 @@ from	infrastructure.time		import	(
 	tzAbbr,		# Returns an abbreviation for the given time zone offset,
 				#	which defaults to the user's time zone preference.
 	get_current_date	# Gets current date in YYYY-MM-DD in system timezone.
+
 )
 		# Time-zone related functions we use in the AI's date/time display.
 

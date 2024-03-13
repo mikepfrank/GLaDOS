@@ -458,15 +458,24 @@ _ENGINES = [
 	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-32k-0613',	'field-size': 32768, 'price': 0.12,	'prompt-price': 0.06,	'is-chat': True,	'encoding': 'p50k_base'},
 
 		# 128k GPT-4 models. (Context window size increased to 128,000 tokens; data through Apr. 2023.)
-	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-turbo-preview',  'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
-	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-1106-preview',   'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-turbo-preview',  'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-1106-preview',   'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
 	#{'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',   'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	# -------- NOTE: Artificially cutting this down from 128K to 96K to reduce costs.
-	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',   'field-size': 96000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',   'field-size': 96_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	
 		# 128k GPT-4V models. (Vision capability added.)
-	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-vision-preview',      'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
-	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-1106-vision-preview', 'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-vision-preview',      'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-1106-vision-preview', 'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+
+		# Anthropic Claude models.
+	{'model-family': 'Claude-1',	'engine-name': 'claude-instant-1.2',	'field-size': 100_000,	'prompt-price': 0.8e-3,	'price': 2.4e-3,	'is-chat':	'either',	'has-vision': False,	'encoding': 'non-tiktoken'},
+	{'model-family': 'Claude-2',	'engine-name': 'claude-2.0',			'field-size': 100_000,	'prompt-price': 8e-3,	'price': 24e-3,		'is-chat':	'either',	'has-vision': False,	'encoding': 'non-tiktoken'},
+	{'model-family': 'Claude-2',	'engine-name': 'claude-2.1',			'field-size': 100_000,	'prompt-price': 8e-3,	'price': 24e-3,		'is-chat':	'either',	'has-vision': False,	'encoding': 'non-tiktoken'},
+		# Claude 3 models.
+	{'model-family': 'Claude-3',	'engine-name': 'claude-3-haiku-tbd'			'field-size': 200_000,	'prompt-price': 0.25e-3,	'price': 1.25e-3,	'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+	{'model-family': 'Claude-3',	'engine-name': 'claude-3-sonnet-20240229'	'field-size': 200_000,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+	{'model-family': 'Claude-3',	'engine-name': 'claude-3-opus-20240229'		'field-size': 200_000,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 
 ] # End _ENGINES constant module global data structure.
 
