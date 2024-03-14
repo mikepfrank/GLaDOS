@@ -231,6 +231,8 @@ from	curses.ascii	import	RS #, STX, ETX	# We use these to delimit messages.
 import	openai		# OpenAI's Python bindings for their REST API to GPT-3.
 from	openai	import	OpenAI	# Client constructor.
 
+from	anthropic	import	Anthropic
+
 import	tiktoken	# A fast standalone tokenizer module for GPT-3.
 import	backoff		# Utility module for exponential backoff on failures.
 
@@ -473,9 +475,9 @@ _ENGINES = [
 	{'model-family': 'Claude-2',	'engine-name': 'claude-2.0',			'field-size': 100_000,	'prompt-price': 8e-3,	'price': 24e-3,		'is-chat':	'either',	'has-vision': False,	'encoding': 'non-tiktoken'},
 	{'model-family': 'Claude-2',	'engine-name': 'claude-2.1',			'field-size': 100_000,	'prompt-price': 8e-3,	'price': 24e-3,		'is-chat':	'either',	'has-vision': False,	'encoding': 'non-tiktoken'},
 		# Claude 3 models.
-	{'model-family': 'Claude-3',	'engine-name': 'claude-3-haiku-tbd'			'field-size': 200_000,	'prompt-price': 0.25e-3,	'price': 1.25e-3,	'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
-	{'model-family': 'Claude-3',	'engine-name': 'claude-3-sonnet-20240229'	'field-size': 200_000,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
-	{'model-family': 'Claude-3',	'engine-name': 'claude-3-opus-20240229'		'field-size': 200_000,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+	{'model-family': 'Claude-3',	'engine-name': 'claude-3-haiku-tbd',		'field-size': 200_000,	'prompt-price': 0.25e-3,	'price': 1.25e-3,	'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+	{'model-family': 'Claude-3',	'engine-name': 'claude-3-sonnet-20240229',	'field-size': 200_000,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+	{'model-family': 'Claude-3',	'engine-name': 'claude-3-opus-20240229',	'field-size': 200_000,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'}
 
 ] # End _ENGINES constant module global data structure.
 
@@ -1345,7 +1347,7 @@ class Completion:
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	def __init__(inst, *args, **kwargs):
+	def __init__(inst, *args, client=None, **kwargs):
 		
 		"""Instance initializer for class Completion."""
 		
@@ -1409,7 +1411,7 @@ class Completion:
 			apiArgs = core.genArgs(prompt)
 			
 				# This actually calls the API, with any needed retries.
-			complStruct = inst._createComplStruct(apiArgs)
+			complStruct = inst._createComplStruct(apiArgs, client)
 
 		#__/ End if we will generate the completion structure.
 		
@@ -1565,7 +1567,7 @@ class Completion:
 		# This decorator performs automatic exponential backoff on certain REST failures.
 
 	@backoff.on_exception(backoff.expo, (openai.APIError), max_tries=6)
-	def _createComplStruct(thisCompletion:Completion, apiArgs, minRepWin:int=DEF_TOKENS):
+	def _createComplStruct(thisCompletion:Completion, apiArgs, minRepWin:int=DEF_TOKENS, client=None):
 			# By default, don't accept shortening the space for the response to less than 100 tokens.
 	
 		"""Private instance method to retrieve a completion from the
@@ -1592,7 +1594,7 @@ class Completion:
 
 			# This measures the length of the prompt in tokens, and updates
 			# the global record of API usage statistics accordingly.
-			compl._accountForInput(apiArgs)
+			compl._accountForInput(apiArgs, client)
 				# Note: The global variable _inputLength is updated by this method.
 
 			# Retrieve the engine's receptive field size; this is the maximum number
@@ -1662,7 +1664,7 @@ class Completion:
 	# Make these regular functions? 
 	# 	-- No, because they're different for the chat API.
 	
-	def _accountForInput(self, apiArgs):
+	def _accountForInput(self, apiArgs, client=None): 
 
 		"""This method measures the number of tokens in the prompt, and
 			updates the global record of input tokens processed by the API."""
@@ -1680,7 +1682,7 @@ class Completion:
 
 			# This function counts the number of tokens in the prompt
 			# without having to do an API call (since calls cost $$).
-		nToks = tiktokenCount(prompt, model=engine)
+		nToks = tiktokenCount(prompt, model=engine, client=client)
 
 		_inputLength = nToks
 
@@ -1698,7 +1700,7 @@ class Completion:
 	#__/ End of class gpt3.api.Completion's ._accountForInput method.
 
 
-	def _accountForOutput(self, engine, complStruct):
+	def _accountForOutput(self, engine, complStruct, client=None):
 
 		"""This method measures the number of tokens in the response, and
 			updates the global record of output tokens processed by the API."""
@@ -1713,7 +1715,7 @@ class Completion:
 
 			# This function counts the number of tokens in the response
 			# without having to do an API call (since calls cost $$).
-		nToks = tiktokenCount(text, model=engine)
+		nToks = tiktokenCount(text, model=engine, client=client)
 
 		_logger.debug(f"Counted {nToks} tokens in output text [{text}].")
 
@@ -1834,7 +1836,7 @@ class ChatMessages:
 		return msgList
 	
 
-	def totalTokens(self, model=None):
+	def totalTokens(self, model=None, client=None):
 		
 		"""Return the total number of tokens in all messages. Note that
 			we include the tokens in the 'role' and 'content' fields of
@@ -1843,11 +1845,13 @@ class ChatMessages:
 			to represent the messages before passing them to the 
 			underlying language model."""
 		
+		print(f"*** IN totalTokens WITH CLIENT = {client} ***")
+
 		totalToks = 0	# Accumulates the total number of tokens in all messages.
 
 		for msg in self.messageList:
 
-			msgToks = _msg_tokens(msg, model=model)	
+			msgToks = _msg_tokens(msg, model=model, client=client)	
 				# This function counts the number of tokens in the message.
 
 				# This is too verbose for normal operation. Comment it out after testing.
@@ -2027,7 +2031,7 @@ class ChatCompletion(Completion):
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	def __init__(newChatCompletion:ChatCompletion, *args, **kwargs):
+	def __init__(newChatCompletion:ChatCompletion, *args, client=None, **kwargs):
 		
 		"""Instance initializer for class ChatCompletion."""
 		
@@ -2035,6 +2039,7 @@ class ChatCompletion(Completion):
 		#	_logger.info(f"In ChatCompletion.__init__() with messages=[list of {len(kwargs['messages'])} messages]")
 
 		chatCompl = newChatCompletion	# For convenience.
+		chatCompl.client = client
 
 			# These are things we are going to try to find in our arguments,
 			# or generate ourselves.
@@ -2104,7 +2109,7 @@ class ChatCompletion(Completion):
 
 				# This actually calls the API, with any needed retries.
 			chatComplStruct = chatCompl._createChatComplStruct(apiArgs, 
-				minRepWin=minRepWin) # Pass this thru to set min reply window.
+				minRepWin=minRepWin, client=client) # Pass this thru to set min reply window.
 		
 		#__/ End if we will generate the completion structure.
 		
@@ -2148,14 +2153,44 @@ class ChatCompletion(Completion):
 	@property
 	def firstChoice(thisChatCompletion:ChatCompletion):
 		"""Returns the first choice dict of this chat completion."""
-		return thisChatCompletion.chatComplStruct.choices[0]
+
+		tcc = thisChatCompletion
+		ccs = tcc.chatComplStruct
+		client = tcc.client
+
+		if isinstance(client, Anthropic):
+			first_one = ccs.content[0]
+		else:
+			first_one = ccs.choices[0]
+
+		return first_one
+
 
 	@property
 	def message(thisChatCompletion:ChatCompletion):
 
 		"""Returns the result message dict of this chat completion."""
 
-		return thisChatCompletion.firstChoice.message
+		tcc = thisChatCompletion
+		ccs = tcc.chatComplStruct
+		client = tcc.client
+		resultObj = tcc.firstChoice
+
+		if isinstance(client, Anthropic):
+
+			# Sooo stupid...
+			class DummyMsgClass: pass
+
+			msgObj = DummyMsgClass()
+
+			msgObj.role = CHAT_ROLE_AI
+			msgObj.content = resultObj.text
+
+		else: # Assume OpenAI
+			msgObj = resultObj.message
+
+		return msgObj
+
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| chatCompletion.text						  [public instance property]
@@ -2177,15 +2212,30 @@ class ChatCompletion(Completion):
 		# Note the following code differs from the code in the Completion class.
 		return thisChatCompletion.message.content
 
+
 	@text.setter
 	def text(thisChatCompletion:ChatCompletion, newText:str):
 		"""Sets the value of the chat completion text content."""
 		thisChatCompletion.message.content = newText
 
+
 	@property
 	def finishReason(thisChatCompletion:ChatCompletion):
 		"""Returns the value of the finish_reason field of the result."""
-		return thisChatCompletion.firstChoice.finish_reason
+
+		tcc = thisChatCompletion
+		ccs = tcc.chatComplStruct
+		client = tcc.client
+
+		if isinstance(client, Anthropic):
+			stop_reason = ccs.stop_reason
+
+		else:	# Assume OpenAI
+			fc = tcc.firstChoice
+			stop_reason = fc.finish_reason
+
+		return stop_reason
+
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| chatCompletion.nTokens					  [public instance property]
@@ -2221,8 +2271,17 @@ class ChatCompletion(Completion):
 	
 		"""Returns the length of the prompt in tokens."""
 		
-		return thisChatCompletion.chatComplStruct\
-				.usage.prompt_tokens
+		tcc = thisChatCompletion
+		usage = tcc.chatComplStruct.usage
+
+		# Annoying how OpenAI and Anthropic have these slight field-name differernces.
+
+		if isinstance(tcc.client, Anthropic):
+			input_tokens = usage.input_tokens
+		else:
+			input_tokens = usage.prompt_tokens
+
+		return input_tokens
 	
 	#__/ End of class gpt3.api.ChatCompletion's .promptLen property.
 
@@ -2240,8 +2299,17 @@ class ChatCompletion(Completion):
 	
 		"""Returns the length of the result in tokens."""
 		
-		return thisChatCompletion.chatComplStruct \
-				['usage']['completion_tokens']
+		tcc = thisChatCompletion
+		usage = tcc.chatComplStruct.usage
+
+		# Annoying how OpenAI and Anthropic have these slight field-name differernces.
+
+		if isinstance(tcc.client, Anthropic):
+			output_tokens = usage.output_tokens
+		else:
+			output_tokens = usage.completion_tokens
+
+		return output_tokens
 	
 	#__/ End of class gpt3.api.ChatCompletion's .promptLen property.
 
@@ -2337,7 +2405,7 @@ class ChatCompletion(Completion):
 	#					  (openai.error.APIError))
 						  
 	def _createChatComplStruct(thisChatCompletion:ChatCompletion, apiArgs:dict, 
-				minRepWin:int=DEF_TOKENS):
+							   minRepWin:int=DEF_TOKENS, client=None):
 			# By default, we'll throw an exception if the estimated result space
 			# is less than 100 tokens.  This can be overridden by the caller
 			# by explicitly setting the minRepWin argument to a different value.
@@ -2367,7 +2435,7 @@ class ChatCompletion(Completion):
 			# Estimate the length in tokens of the input prompt -
 			# but don't actually update our usage statistics yet!
 
-		estInputLen = chatCompl._estimateInputLen(apiArgs)
+		estInputLen = chatCompl._estimateInputLen(apiArgs, client=client)
 
 		#_logger.debug(f"In ._createChatComplStruct(), estInputLen={estInputLen}.")
 
@@ -2469,55 +2537,84 @@ class ChatCompletion(Completion):
 			# If we get here, we know we have enough space for our query + result,
 			# so we can proceed with the request to the actual underlying API.
 
+		# If no client was specified, default to using this module's OpenAI client.
+		if not client:
+			client = _client
+
 		#try:
 
 		# New style chat completion call:
-		chatComplObj = _client.chat.completions.create(**apiArgs)
+		if isinstance(client, Anthropic):
+
+			# Anthropic doesn't understand this argument
+			if 'function_call' in apiArgs:		# This would typically be 'auto'
+				del apiArgs['function_call']
+
+			# Anthropic doesn't understand this argument
+			if 'user' in apiArgs:
+				# Convert to Anthropic style
+				apiArgs['metadata'] = {
+						'user_id': apiArgs['user']
+					}
+				del apiArgs['user']
+
+			# Anthropic style chat completion.
+			chatComplObj = client.messages.create(**apiArgs)
+
+		else:
+			# OpenAI style chat completion.
+			chatComplObj = client.chat.completions.create(**apiArgs)
+
+		# Go ahead and add the result to our chat-completion
+		# object so that our other methods can access it.
+
+		chatCompl.chatComplStruct = chatComplObj
 
 		# Old style:
 		#chatComplStruct = openai.ChatCompletion.create(**apiArgs)
-
+		#
 		# This exception type seems to have disappeared in 1.x
 		# except openai.InvalidRequestError as e:
 		# 	errStr = str(e)		# Get the error as a string.
-
+		#
 		# 	_logger.error(f"Got an OpenAI InvalidRequestError: [{errStr}].")
-
+		#
 		# 	# Example error string format:
 		# 	#	"This model's maximum context length is 8192 tokens.
 		# 	#	 However, you requested 8194 tokens (7244 in the
 		# 	#	 messages, 950 in the completion). Please reduce the
 		# 	#	 length of the messages or completion."
-
+		#
 		# 	# Extract the substrings that are numbers.
 		# 	numStrs = re.findall(r'\d+', errStr)
-
+		#
 		# 	# Convert them to actual numbers.
 		# 	numbers = [int(n) for n in numStrs]
-
+		#
 		# 	_logger.error(f"Extracted the following numbers: {numbers}")
-
+		#
 		# 	if len(numbers) == 4:
 		# 		maxConLen, reqToks, msgsLen, compLen = numbers
-			
+		#
 		# 		maxPrompt = maxConLen - reqToks
-
+		#
 		# 		e = PromptTooLargeException(msgsLen, maxPrompt)
-
+		#
 		# 		raise e
-
+		#
 		# 	elif len(numbers) == 5:
 		# 		maxConLen, reqToks, msgsLen, funcsLen, compLen = numbers
-			
-		# 		_logger.error(f"maxConLen={maxConLen}, reqToks={reqToks}, msgsLen={msgsLen}, funcsLen={funcsLen}, compLen={compLen}")
+		#
+		# 		_logger.error(f"maxConLen={maxConLen}, reqToks={reqToks}, "\
+		#			"msgsLen={msgsLen}, funcsLen={funcsLen}, compLen={compLen}")
 		# 		_logger.error(f"NOTE: msgsLen+funcsLen = {msgsLen+funcsLen}, but we estimated {estInputLen}.")
-
+		#
 		# 		maxPrompt = maxConLen - reqToks
-
+		#
 		# 		e = PromptTooLargeException(msgsLen, maxPrompt)
-
+		#
 		# 		raise e
-
+		#
 		# 	else:	# Maybe this isn't a length issue at all?
 		# 		_logger.error("I don't know what to do with that.")
 		# 		raise e
@@ -2565,7 +2662,7 @@ class ChatCompletion(Completion):
 	#__/ End of class gpt3.api.ChatCompletion's ._createChatComplStruct method.
 
 
-	def _estimateInputLen(thisChatCompl:ChatCompletion, apiArgs):
+	def _estimateInputLen(thisChatCompl:ChatCompletion, apiArgs, client=None):
 
 		"""This method estimates the number of tokens in the input messages,
 			and returns the estimate. This may be done prior to calling the
@@ -2586,20 +2683,20 @@ class ChatCompletion(Completion):
 		messages = ChatMessages(apiArgs['messages'])
 
 		if _has_functions(engine) and 'functions' in apiArgs:
-			funcToks = tiktokenCount(json.dumps(apiArgs['functions']), model=engine)
+			funcToks = tiktokenCount(json.dumps(apiArgs['functions']), model=engine, client=client)
 		else:
 			funcToks = 0
 
 			# This function counts the number of tokens in the prompt
 			# without having to do an API call (since calls cost $$).
-		inToks = messages.totalTokens(model=engine) + funcToks
+		inToks = messages.totalTokens(model=engine, client=client) + funcToks
 
 		_logger.debug(f"Counted {inToks} tokens in input text [{messages}]")
 
 		return inToks
 
 
-	def _accountForChatInput(thisChatCompl:ChatCompletion, engine:str, chatComplObj:openai.ChatCompletion):
+	def _accountForChatInput(thisChatCompl:ChatCompletion, engine:str, chatComplObj:openai.ChatCompletion, client=None):
 
 		"""This method measures the number of tokens in the input messages, and
 			updates the global record of input tokens processed by the API.
@@ -2620,7 +2717,7 @@ class ChatCompletion(Completion):
 			# This gets the "official" count of tokens in the prompt
 			# (what we'll be charged for).
 
-		inToks = usage.prompt_tokens
+		inToks = chatCompl.promptLen
 
 		_logger.debug(f"Accounting for {inToks} tokens in input text.")
 
@@ -2643,16 +2740,22 @@ class ChatCompletion(Completion):
 			updates the global record of output tokens processed by the API."""
 
 		chatCompl = thisChatCompl		# For convenience.
+		client = chatCompl.client
 		usage = chatComplObj.usage		# Sub-dict of usage data.
 
 			# This gets the "official" count of tokens in the result
 			# (what we'll be charged for).
 
-		outToks = usage.completion_tokens
+		outToks = chatCompl.resultLen
 
 			# Extract the message from the raw chat compl struct (for debugging).
 
-		result_msg = chatComplObj.choices[0].message.content
+		if isinstance(client, Anthropic):
+			result_msg = chatComplObj.content[0].text
+
+		else:	# Assume OpenAI
+			result_msg = chatComplObj.choices[0].message.content
+
 		_logger.debug(f"Accounting for {outToks} tokens in output message [{result_msg}].")
 
 			# Update the global record of API usage statistics.
@@ -3025,6 +3128,16 @@ class GPT3ChatCore(GPT3Core):
 
 		chatCore = newGPT3ChatCore	# For convenience.
 
+			# If keyword arg 'client=' is present, extract and remember it.
+		if 'client' in kwargs:
+			client = kwargs['client']
+			del kwargs['client']
+		else:
+			client = None
+
+		print(f"*** GPT3ChatCore: INITIALIZING CLIENT TO {client}. ***")
+		chatCore.client = client
+
 			# If keyword arg 'chatConf=' is present, use that as the chatConf.
 		
 		if 'chatConf' in kwargs:
@@ -3168,6 +3281,7 @@ class GPT3ChatCore(GPT3Core):
 		#	_logger.info(f"In genChatArgs() with messages=[list of {len(kwargs['messages'])} messages]")
 
 		chatCore = thisChatCore		# For convenience.
+		aiClient = chatCore.client
 
 		apiargs = {} 	# Initially empty dict for building up API argument list.
 		
@@ -3193,6 +3307,10 @@ class GPT3ChatCore(GPT3Core):
 		#| Select the parameter values to use from either the chat configuration
 		#| or the keyword arguments provided to this method, as appropriate.
 
+		# This one is just for Anthropic models.
+		if isinstance(aiClient, Anthropic):
+			sysPrompt		= kwargs.get('system',				None)
+
 		maxTokens 			= kwargs.get('maxTokens',			chatConf.maxTokens)
 		temperature 		= kwargs.get('temperature',			chatConf.temperature)
 		topP 				= kwargs.get('topP',				chatConf.topP)
@@ -3217,7 +3335,10 @@ class GPT3ChatCore(GPT3Core):
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| Now, add the selected (non-None) parameter values to the argument list.
 		#| (Note below we have to match the exact keyword argument names supported 
-		#| by OpenAI's API.
+		#| by OpenAI's API. (Or Anthropic's.)
+
+		# This one is just for Anthropic models.
+		if sysPrompt		!= None:	apiargs['system']				= sysPrompt
 
 		if maxTokens		!= None:	apiargs['max_tokens']			= maxTokens
 		if temperature		!= None:	apiargs['temperature']			= temperature
@@ -3245,7 +3366,8 @@ class GPT3ChatCore(GPT3Core):
 			# Make sure we don't set both temperature and top_p.		
 		if temperature != None and topP != None:
 			# Do some better error handling here. Warning and/or exception.
-			_logger.warn(f"WARNING: temp={temperature}, topP={topP}: Setting both temperature and top_p is not recommended.")
+			_logger.warn(f"WARNING: temp={temperature}, topP={topP}: Setting "
+						 "both temperature and top_p is not recommended.")
 
 		return apiargs
 
@@ -3279,7 +3401,9 @@ class GPT3ChatCore(GPT3Core):
 		#if 'messages' in kwargs:
 		#	_logger.info(f"In genChatCompletion() with messages=[list of {len(kwargs['messages'])} messages]")
 
-		return ChatCompletion(self, *args, **kwargs)
+		#print(f"*** IN GPT3Core.genChatCompletion() WITH CLIENT = {self.client} ***")
+
+		return ChatCompletion(self, *args, client=self.client, **kwargs)
 			# Calls the ChatCompletion constructor; this does all the real work 
 			# of calling the API.
 		
@@ -3431,7 +3555,11 @@ def createAPIConfig(engineId:str=None, **kwargs):
 
 	# If the engine ID is for a chat engine, create a GPT3ChatAPIConfig object;
 	# otherwise create a GPT3APIConfig object.
-	if _is_chat(engineId):
+	is_chat = _is_chat(engineId)
+
+	#print(f"*** IN createAPIConfig(), NOTICING THAT {engineID}'s is_chat STATUS IS {is_chat} ***")
+
+	if is_chat:
 		return GPT3ChatAPIConfig(engineId=engineId, **kwargs)
 	else:
 		return GPT3APIConfig(engineId=engineId, **kwargs)
@@ -3439,7 +3567,7 @@ def createAPIConfig(engineId:str=None, **kwargs):
 #__/ End module public function createAPIConfig().
 
 
-def createCoreConnection(engineId:str=None, conf:GPT3APIConfig=None, **kwargs):
+def createCoreConnection(engineId:str=None, conf:GPT3APIConfig=None, client=None, **kwargs):
 
 	"""Creates a new GPT3Core object and returns it.  We need to define 
 		this factory function because the choice of which class to 
@@ -3463,23 +3591,35 @@ def createCoreConnection(engineId:str=None, conf:GPT3APIConfig=None, **kwargs):
 		engineId = DEF_ENGINE
 		_logger.warning("[GPT-3/API] No engine ID specified; using default engine ID [" + engineId + "].")
 
+	#print(f"*** IN createCoreConnection() WITH CLIENT = {client} ***")
+
 	# Instantiate the appropriate type of core object.
-	if _is_chat(engineId):
-		newCore = GPT3ChatCore(engineId=engineId, chatConf=conf, **kwargs)
+	is_chat = _is_chat(engineId)
+
+	#print(f"*** IN createCoreConnection(), NOTICING THAT {engineId}'s is_chat STATUS IS {is_chat} ***")
+
+	if is_chat:
+		newCore = GPT3ChatCore(engineId=engineId, chatConf=conf, client=client, **kwargs)
 	else:
-		newCore = GPT3Core(engineId=engineId, config=conf, **kwargs)
+		newCore = GPT3Core(engineId=engineId, config=conf, client=client, **kwargs)
+
+	#print(f"*** IN createCoreConnection(), newCore's .client field is set to {newCore.client} ***")
 
 	return newCore
 
 #__/ End module public function createCoreConnection().
 
 
-def tiktokenCount(text:str=None, encoding:str='gpt2', model:str=None):
+def tiktokenCount(text:str=None, encoding:str='gpt2', model:str=None, client=None):
 
 	"""Counts tokens in the given text using the tiktoken library.
 		This is our currently preferred token-counting function
 		due to its low cost (free), its speed, its accuracy, and
 		its lack of dependence on GPT-2 having been installed."""
+
+	# If the client argument is provided, use its token_count() function.
+	if client:
+		return client.count_tokens(text)
 
 	# If the model argument is provided, use it to get the encoding.
 
@@ -4239,7 +4379,7 @@ def messageRepr(message:dict) -> str:
 	return _msg_repr(message)
 
 
-def _msg_tokens(msg:dict, model:str=None) -> int:
+def _msg_tokens(msg:dict, model:str=None, client=None) -> int:
 	"""Return the number of tokens in the given message dict. Note that
 		we include the tokens in the 'role' and 'content' fields of
 		the message dict, as well as an estimate of the tokens in
@@ -4262,7 +4402,14 @@ def _msg_tokens(msg:dict, model:str=None) -> int:
 	#| ASCII Record Separator control character (ctrl-^, 0x1e).
 	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	msgToks = tiktokenCount(_msg_repr(msg), model=model)
+	repr_text = _msg_repr(msg)
+
+	#print(f"*** IN _msg_tokens() WITH CLIENT = {client} ***")
+
+	if client:
+		return client.count_tokens(repr_text)
+		
+	msgToks = tiktokenCount(repr_text, model=model)
 
 	# This is too verbose for normal operation. Comment it out after testing.
 	#if logmaster.doDebug: _logger.debug(f"Message {msg} has {msgToks} tokens.")
