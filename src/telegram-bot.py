@@ -314,8 +314,8 @@
 
 # Set these global flags to configure diagnostic output.
 
-CONS_INFO = True	# True shows info-level messages on the console.
-LOG_DEBUG = True	# True shows debug-level messages in the log file.
+CONS_INFO = False	# True shows info-level messages on the console.
+LOG_DEBUG = False	# True shows debug-level messages in the log file.
 
 
 #/=============================================================================|
@@ -658,6 +658,61 @@ logmaster.configLogMaster(
 #|										commands.							   |
 #|																			   |
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
+
+def _anthropize(msgDict):
+	"""Convert an OpenAI-style message dictionary to Anthropic format."""
+	
+	# No system messages allowed.
+	if msgDict['role'] == CHAT_ROLE_SYSTEM:
+		msgDict['role'] = CHAT_ROLE_USER
+		msgDict['content'] = f"{SYS_NAME}> " + msgDict['content']
+
+	# If we created a function_call field, we need to rearrange it.
+	if 'function_call' in msgDict:
+		funcall_dict = msgDict['function_call']
+		func_name = funcall_dict['name']
+		arguments = json.loads(funcall_dict['arguments'])
+		xml_funcall = (
+			"<function_calls>\n"
+			"<invoke>\n"
+			f"<tool_name>{func_name}</tool_name>\n"
+			"<parameters>\n")
+		#print("=================== GOT ARGUMENT LIST ==================")
+		#pprint(arguments)
+		for key, val in arguments.items():
+			xml_funcall += f"<{key}>{val}</{key}>\n"
+			xml_funcall += (
+				"</parameters>\n"
+				"</invoke>\n"
+				"</function_calls>")
+			msgDict['content'] = f"{BOT_NAME}> " + xml_funcall
+		del msgDict['function_call']
+
+	# Anthropic doesn't understand the special role for function return values.
+	if msgDict['role'] == CHAT_ROLE_FUNCRET:
+		msgDict['role'] = CHAT_ROLE_USER
+
+		func_name = msgDict['name']
+		content = msgDict['content']
+
+		xml_result = (
+			"<function_results>\n"
+			"  <result>\n"
+			f"   <tool_name>{func_name}</tool_name>\n"
+			"   <stdout>\n"
+			f"	  {content}\n"
+			"	</stdout>\n"
+			"  </result>\n"
+			"</function_results>")
+			
+		msgDict['content'] = f"{SYS_NAME}> " + xml_result
+
+	# If there's a 'name' field, delete it.
+	if 'name' in msgDict:
+		del msgDict['name']
+
+	return msgDict		# Return the dict we just constructed.
+
 
 	#/=========================================================================|
 	#|	2.1. First, let's define a class "BotMessage" for messages that
@@ -1053,10 +1108,58 @@ class BotMessage:
 		# To reduce API errors, we set the 'name' property only for
 		# the 'user' role, and the 'function' role.
 		if role == CHAT_ROLE_USER or role == CHAT_ROLE_FUNCRET:
-			if not isinstance(_main_client, Anthropic):
-				_oaiMsgDict['name'] = sender
-					# Note: When 'name' is present, we believe that the AI sees it
-					# in addition to the role.
+			_oaiMsgDict['name'] = sender
+				# Note: When 'name' is present, we believe that the AI sees it
+				# in addition to the role.
+
+		# Here we do some surgery on the message dict in the case where 
+		# we're targeting the Anthropic API, since it can't handle some things.
+		if isinstance(_main_client, Anthropic):
+
+			_oaiMsgDict = _anthropize(_oaiMsgDict)
+
+			# # If we created a function_call field, we need to rearrange it.
+			# if 'function_call' in _oaiMsgDict:
+			# 	func_name = funcall_dict['name']
+			# 	arguments = json.loads(funcall_dict['arguments'])
+			# 	xml_funcall = (
+			# 		"<function_calls>\n"
+			# 		"<invoke>\n"
+			# 		f"<tool_name>{func_name}</tool_name>\n"
+			# 		"<parameters>\n")
+			# 	print("=================== GOT ARGUMENT LIST ==================")
+			# 	pprint(arguments)
+			# 	for key, val in arguments.items():
+			# 		xml_funcall += f"<{key}>{val}</{key}>\n"
+			# 	xml_funcall += (
+			# 		"</parameters>\n"
+			# 		"</invoke>\n"
+			# 		"</function_calls>")
+			# 	_oaiMsgDict['content'] = f"{BOT_NAME}> " + xml_funcall
+			# 	del _oaiMsgDict['function_call']
+
+			# # Anthropic doesn't understand the special role for function return values.
+			# if role == CHAT_ROLE_FUNCRET:
+			# 	_oaiMsgDict['role'] = CHAT_ROLE_USER
+
+			# 	func_name = _oaiMsgDict['name']
+			# 	content = _oaiMsgDict['content']
+
+			# 	xml_result = (
+			# 		"<function_results>\n"
+			# 		"  <result>\n"
+			# 	   f"   <tool_name>{func_name}</tool_name>\n"
+			# 		"   <stdout>\n"
+			# 	   f"	  {content}\n"
+			# 		"	</stdout>\n"
+			# 		"  </result>\n"
+			# 		"</function_results>")
+
+			# 	_oaiMsgDict['content'] = f"{SYS_NAME}> " + xml_result
+
+			# # If there's still a 'name' field, delete it.
+			# if 'name' in _oaiMsgDict:
+			# 	del _oaiMsgDict['name']
 
 		return _oaiMsgDict		# Return the dict we just constructed.
 
@@ -1209,6 +1312,36 @@ class BotConversation:
 	"""An object instantiating this class stores the recent messages
 		in an individual Telegram conversation."""
 
+	def nix_init_assts(bc):
+
+		"""Make sure the message list doesn't start with bot messages."""
+
+		while len(bc.messages) > 1 and bc.messages[0].sender == BOT_NAME:
+			bc.messages = bc.messages[1:]
+
+		while len(bc.raw_oaiMsgs) > 1 and bc.raw_oaiMsgs[0]['role'] == CHAT_ROLE_AI:
+			bc.raw_oaiMsgs = bc.raw_oaiMsgs[1:]
+
+
+	def _init_funcs_list(bc:BotConversation):
+		
+		# Does this engine support the functions interface? If so, then we'll
+		# pass it our list of function descriptions.
+		if hasFunctions(ENGINE_NAME):
+			# Retrieve our current functions list...
+			functions = bc.cur_funcs + \
+						[ACTIVATE_FUNCTION_SCHEMA, PASS_TURN_SCHEMA]
+				# Plus always include these two.
+
+			func_names = [func['name'] for func in functions if 'name' in func]
+			_logger.info(f"\tIn chat {bc.chat_id}, current function list is: {func_names}.")
+
+		else:
+			functions = None
+
+		bc.cur_func_schemas = json.dumps(functions, indent=2, sort_keys=True)
+
+
 	#/==========================================================================
 	#| Special instance methods for class BptConversation. 	[class code section]
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -1277,6 +1410,7 @@ class BotConversation:
 		# The initial function list. Typically only the last function used will appear,
 		# along with (always) the activate_function and pass_turn schemas.
 		newConv.cur_funcs = []
+		newConv._init_funcs_list()	# Initializes .cur_func_schemas
 
 	#__/ End of conversation instance initializer.
 
@@ -2057,15 +2191,16 @@ class BotConversation:
 			# Ask the bot message to give us its OpenAI dictionary form,
 			# and add it onto the end of the chat message list.
 
-			chat_messages.append(botMessage.oaiMsgDict())
+			msg_dict = botMessage.oaiMsgDict()
+			chat_messages.append(msg_dict)
 
 			# Here, we need to consolidate consecutive assistant content messages
 			# so that the AI doesn't get confused about how to format them for output.
-			if len(chat_messages) >= 2:
+			if is_anthropic and len(chat_messages) >= 2:
 				if chat_messages[-2]['role'] == CHAT_ROLE_AI and \
-				   		chat_messages[-1]['role'] == CHAT_ROLE_AI and \
-				   		'content' in chat_messages[-2] and \
-						'content' in chat_messages[-1]:
+				   chat_messages[-1]['role'] == CHAT_ROLE_AI and \
+				   'content' in chat_messages[-2] and \
+				   'content' in chat_messages[-1]:
 
 					# Append last message content to second-to-last.
 					chat_messages[-2]['content'] += '\n' + \
@@ -2105,7 +2240,7 @@ class BotConversation:
 
 		thisConv.sys_prompt = sys_prompt
 
-		_logger.info('='*70 + "\nSYSTEM PROMPT WAS SET TO:\n" + sys_prompt)
+		#_logger.info('='*70 + "\nSYSTEM PROMPT WAS SET TO:\n" + sys_prompt)
 
 		# Also, archive it to a log file.
 		with open(f"{LOG_DIR}/last-system-prompt.txt", 'w') as f:
@@ -4211,6 +4346,8 @@ async def ai_activateFunction(
 	func_names = [func['name'] for func in cur_funcs if 'name' in func]
 	_logger.normal(f"\tCurrent function list is: {func_names}.")
 
+	botConvo._init_funcs_list()
+
 	return f"Success: Function {funcName} has been activated."
 
 #__/
@@ -5184,6 +5321,30 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 #__/ End definition of private function ai_call_function().
 
 
+def _sanitize_msgs(oaiMsgList):
+	"""The purpose of this is just to make sure that the given
+		message list is Anthropic API compatible, if we're 
+		using an Anthropic client."""
+
+	if isinstance(_main_client, Anthropic):
+
+		newOaiMsgs = []
+		for oaiMsgDict in oaiMsgList:
+			newDict = _anthropize(oaiMsgDict)
+			newOaiMsgs.append(newDict)
+
+			# Consolidate consecutive user messages.
+			if len(newOaiMsgs) >= 2 and \
+			   		newOaiMsgs[-2]['role'] == CHAT_ROLE_USER and \
+					newOaiMsgs[-1]['role'] == CHAT_ROLE_USER:
+				newOaiMsgs[-2]['content'] += '\n' + newOaiMsgs[-1]['content']
+				newOaiMsgs = newOaiMsgs[:-1]
+
+		oaiMsgList = newOaiMsgs
+	
+	return oaiMsgList
+
+
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	get_ai_response()							[public async function]
 		#|
@@ -5265,18 +5426,6 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 	botConvo	= context.chat_data['conversation']
 	chat_id		= botConvo.chat_id
 	
-	# If a message list wasn't specifically supplied, then
-	# derive it from the convo.
-	if oaiMsgList is None:
-		oaiMsgList = botConvo.get_chat_messages()
-		usingRawMsgs = False	# Our input wasn't a raw messsage list.
-	else:
-		usingRawMsgs = True		# Our input *was* a raw message list.
-
-	# Also, stash it in the convo structure so we don't have to keep passing it
-	# around everywhere.
-	botConvo.raw_oaiMsgs = oaiMsgList
-	
 	# Does this engine support the functions interface? If so, then we'll
 	# pass it our list of function descriptions.
 	if hasFunctions(ENGINE_NAME):
@@ -5291,8 +5440,21 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 	else:
 		functions = None
 
-	botConvo.cur_func_schemas = json.dump(functions)
+	botConvo.cur_func_schemas = json.dumps(functions, indent=2, sort_keys=True)
 
+	# If a message list wasn't specifically supplied, then
+	# derive it from the convo.
+	if oaiMsgList is None:
+		oaiMsgList = botConvo.get_chat_messages()
+		usingRawMsgs = False	# Our input wasn't a raw messsage list.
+	else:
+		oaiMsgList = _sanitize_msgs(oaiMsgList)
+		usingRawMsgs = True		# Our input *was* a raw message list.
+
+	# Also, stash it in the convo structure so we don't have to keep passing it
+	# around everywhere.
+	botConvo.raw_oaiMsgs = oaiMsgList
+	
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#| Here's our main loop, which calls the API with exception handling as
 	#| needed to recover from situations where our prompt data is too long.
@@ -5365,7 +5527,7 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 		# of the functions structure. (Note that this is just a guesstimate
 		# since we don't know how it's formatted at the back end exactly.)
 		if functions is not None:
-			funcsSize = tiktokenCount(json.dumps(functions), model=ENGINE_NAME)
+			funcsSize = tiktokenCount(json.dumps(functions), model=ENGINE_NAME, client=_main_client)
 			#_logger.info(f"Estimating size of FUNCTIONS_LIST is {funcsSize}.)")
 			msgsSizeToks += funcsSize
 
@@ -5477,7 +5639,7 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 				maxTokens = maxTokens,		# Max. number of tokens to return.
 					# We went to a lot of trouble to set this up properly above!
 
-				messages=oaiMsgList,		# Current message list for chat API.
+				messages = oaiMsgList,		# Current message list for chat API.
 					# Note that since we pass in an explicit messages list, this
 					# overrides whatever api.Messages object is being maintained
 					# in the GPT3ChatCore object.
@@ -5624,7 +5786,8 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 	# At this point, we're done with the final system prompt, so we throw it
 	# away and update our concept of the oaiMsgList in the botConvo.
 
-	oaiMsgList = botConvo._trimLastRaw()
+	if not isinstance(_main_client, Anthropic):		# Doesn't have a final system prompt!
+		oaiMsgList = botConvo._trimLastRaw()
 
 	# Call this coroutine to process that raw response.
 	await process_raw_response(chatCompletion, update, context)
@@ -5817,6 +5980,11 @@ async def process_chat_message(update:Update, context:Context) -> None:
 	func_names = [func['name'] for func in cur_funcs if 'name' in func]
 	_logger.info(f"Current function list in chat {chat_id} is {func_names}.")
 
+	# If this is an Anthropic client, make sure the first message in the convo
+	# isn't from the assistant.
+
+	botConvo.nix_init_assts()
+
 	# Now everything is handled by this new implementation, which has been
 	# rewritten so that it can also handle cases where the AI is responding from
 	# a result that's been returned from a function that it previously called.
@@ -5848,7 +6016,8 @@ async def process_function_call(
 	chat_id = botConvo.chat_id
 
 	# Retrieve the function call object from the OpenAI message containing it.
-	funCall = funcall_oaiMsg.function_call
+	if not funCall:
+		funCall = funcall_oaiMsg.function_call
 
 	# Retrieve the function name and arguments from the function call object.
 	function_name = funCall.name
@@ -5884,7 +6053,8 @@ async def process_function_call(
 	# ^^^ The above is obsolet now, given new-style function call formatting.
 
 	# This generates a new-format bot message for the function call action.
-	botConvo.add_message(BotMessage(BOT_NAME, function_argStr, func_name=function_name))
+	if not isinstance(_main_client, Anthropic):
+		botConvo.add_message(BotMessage(BOT_NAME, function_argStr, func_name=function_name))
 
 	# Extract the optional remark argument from the argument list.
 	if 'remark' in function_args:
@@ -5908,23 +6078,40 @@ async def process_function_call(
 	# Generate a description of the function call, for diagnostic purposes.
 	call_desc = _call_desc(function_name, function_args)
 
-	# The original response text, followed by the remark. This probably is just
-	# the remark, since the original response text should have been null. But in
-	# any case, we'll use it as our response text below.
-	response_text = (response_text + '\n' + remark).strip()
+	# For Anthropic models, we want to add the raw message to the conversation
+	# archive, while just sending the remark to the user. For other models,
+	# we want to add the remark to the content, and archive that and send it
+	# to the user.
 
-	# Before calling the function, we'll send the response_text, if non-empty.
-	# (which at this point probably just contents of a remark argument, if
-	# anything)'
-	if response_text != "":
+	if isinstance(_main_client, Anthropic):
 
-		# Append the response text to the conversation.
-		botConvo.add_message(BotMessage(BOT_NAME, response_text))
+		if response_text != "":
+			# Append the response text to the conversation.
+			botConvo.add_message(BotMessage(BOT_NAME, response_text))
 					
-		# Try sending the response text to the user. (But ignore send errors here.)
-		await send_response(tgUpdate, tgContext, response_text)
-			# (We ignore them because presumably it's more important to
-			# still go ahead and try calling the function if we can.)
+		# Send just the remark to the user, if non-empty.
+		if remark != "":
+			await send_response(tgUpdate, tgContext, remark)
+
+	else:	# For OpenAI models...
+
+		# The original response text, followed by the remark. This probably is just
+		# the remark, since the original response text should have been null. But in
+		# any case, we'll use it as our response text below.
+		response_text = (response_text + '\n' + remark).strip()
+
+		# Before calling the function, we'll send the response_text, if non-empty.
+		# (which at this point probably just contents of a remark argument, if
+		# anything)'
+		if response_text != "":
+
+			# Append the response text to the conversation.
+			botConvo.add_message(BotMessage(BOT_NAME, response_text))
+					
+			# Try sending the response text to the user. (But ignore send errors here.)
+			await send_response(tgUpdate, tgContext, response_text)
+				# (We ignore them because presumably it's more important to
+				# still go ahead and try calling the function if we can.)
 	#__/
 
 	# Actually do the call here, and assemble appropriate result text.
@@ -5997,11 +6184,12 @@ async def process_function_call(
 	# argument. But, we need to make sure that we didn't add a 'content' field
 	# to this message at some point, because if we did and we try sending it
 	# back to the API, the API will choke on it.
-
-	if 'content' in funcall_oaiMsg and funcall_oaiMsg['content'] is not None:
-		_logger.info("Oops, our funcall message has text content?? "
-					 f"[\n{pformat(funcall_oaiMsg)}\n]")
-		funcall_oaiMsg['content'] = None
+	# (NOTE: This is no longer needed I think.)
+	#
+	#if 'content' in funcall_oaiMsg and funcall_oaiMsg['content'] is not None:
+	#	_logger.info("Oops, our funcall message has text content?? "
+	#				 f"[\n{pformat(funcall_oaiMsg)}\n]")
+	#	funcall_oaiMsg['content'] = None
 	
 	# This new raw-format message represents the actual return value of the
 	# function.
@@ -6045,11 +6233,17 @@ async def process_function_call(
 					"function's return value above.",
 	}]
 
+	# Make sure messages are Anthropic-compatible, if needed.
+	temp_chat_oaiMsgs = _sanitize_msgs(temp_chat_oaiMsgs)
+
 	# Diagnostic: Display the most recent 10 chat messages from temp list.
 	_logger.info(f"Last few chat messages are [\n{pformat(temp_chat_oaiMsgs[-10:])}\n].")
 
 	# Log this, the last function call/return, in .json/.txt formats.
 	_logOaiMsgs(temp_chat_oaiMsgs, basename="last-function")
+
+	# We do this just to regenerate the system message. Wasteful!
+	newMsgList = botConvo.get_chat_messages()
 
 	# At this point, we want to get a response from the AI to our temporary list
 	# of raw OpenAI chat messages, which (note) includes raw descriptions of the
@@ -6091,7 +6285,7 @@ def _is_function_call(xml_string):
         return False
 
 def _parse_function_call(xml_string):
-    if not is_function_call(xml_string):
+    if not _is_function_call(xml_string):
         return
 
     root = ET.fromstring(xml_string)
@@ -6191,11 +6385,12 @@ async def process_raw_response(
 	# a function.  If it is, we'll dispatch out to the process_function_call()
 	# function to handle this case.
 
+	funCall = None
 	if isinstance(global_gptCore.client, Anthropic):
 		# For anthropic models, parsing function calls is a bit more involved.
 		# We use some helper functions defined earlier.
-		if is_function_call(response_text):
-			function_calls = list(parse_function_call(response_text))
+		if _is_function_call(response_text):
+			function_calls = list(_parse_function_call(response_text))
 			if len(function_calls) >= 1:
 				for funcname, params in function_calls:
 
@@ -6203,13 +6398,13 @@ async def process_raw_response(
 					class DummyFunCall: pass
 					funCall_obj = DummyFunCall()
 					funCall_obj.name = funcname
-					funCall_obj.arguments = json.dumps(params)
+					funCall_obj.arguments = args = json.dumps(params)
+
+					print(f"========= FOUND A {funcname} FUNCTION CALL WITH ARGUMENTS: ===========")
+					print(args)
 
 					await process_function_call(response_oaiMsg, tgUpdate, tgContext, funCall=funCall_obj)
-			else:
-				funCall = None	# In case there are no invokes in the block.
-		else:
-			funCall = None
+				return
 	else:
 		funCall = response_oaiMsg.function_call
 		
@@ -6314,6 +6509,27 @@ async def process_raw_response(
 	for response_msg in response_msgs:
 		response_msg = response_msg.strip()		# Trim leading/trailing whitespace.
 		
+		# This sub-message could be a function call! Check for that.
+		if isinstance(global_gptCore.client, Anthropic):
+			if _is_function_call(response_msg):
+				function_calls = list(_parse_function_call(response_msg))
+				if len(function_calls) >= 1:
+					for funcname, params in function_calls:
+
+						# This just wraps the data into an object with the interface we're expecting.
+						class DummyFunCall: pass
+						funCall_obj = DummyFunCall()
+						funCall_obj.name = funcname
+						funCall_obj.arguments = args = json.dumps(params)
+
+						print(f"========= FOUND A {funcname} FUNCTION CALL WITH ARGUMENTS: ===========")
+						print(args)
+
+						await process_function_call(response_oaiMsg, tgUpdate, tgContext, funCall=funCall_obj)
+					#__/ End loop over function calls.
+
+					continue	# Go to next sub-message
+
 		# Create a new Message object.
 		response_botMsg = BotMessage(botConvo.bot_name, response_msg)
 
@@ -8895,7 +9111,7 @@ PERMANENT_CONTEXT_HEADER = " ~~~ Permanent context data: ~~~\n"
 FUNCTION_USAGE_HEADER	 = " ~~~ Usage summary for functions available to AI: ~~~\n"
 
 	# System section #3.5:
-FUNCTION_SCHEMAS_HEADER	 = " ~~~ Full schemas for all available functions: ~~~\n"
+FUNCTION_SCHEMAS_HEADER	 = " ~~~ Full schemas for all currently activated functions: ~~~\n"
 
 	# System section #4:
 DYNAMIC_MEMORY_HEADER	 = " ~~~ Contextually relevant memories: ~~~\n"

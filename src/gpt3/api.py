@@ -498,7 +498,10 @@ _FUNCTION_MODELS = [
 	'gpt-4-0125-preview',
 	'gpt-4-vision-preview',
 	'gpt-4-1106-vision-preview',
+	'claude-3-sonnet-20240229',
+	'claude-3-opus-20240229'
 ]
+
 def _has_functions(engine_name):
 	"""Return True if the named engine supports the functions interface."""
 	return engine_name in _FUNCTION_MODELS
@@ -1845,7 +1848,7 @@ class ChatMessages:
 			to represent the messages before passing them to the 
 			underlying language model."""
 		
-		print(f"*** IN totalTokens WITH CLIENT = {client} ***")
+		#print(f"*** IN totalTokens WITH CLIENT = {client} ***")
 
 		totalToks = 0	# Accumulates the total number of tokens in all messages.
 
@@ -2558,6 +2561,10 @@ class ChatCompletion(Completion):
 					}
 				del apiArgs['user']
 
+			# Anthropic doesn't understand this argument
+			if 'functions' in apiArgs:
+				del apiArgs['functions']
+
 			# Anthropic style chat completion.
 			chatComplObj = client.messages.create(**apiArgs)
 
@@ -3135,7 +3142,7 @@ class GPT3ChatCore(GPT3Core):
 		else:
 			client = None
 
-		print(f"*** GPT3ChatCore: INITIALIZING CLIENT TO {client}. ***")
+		#print(f"*** GPT3ChatCore: INITIALIZING CLIENT TO {client}. ***")
 		chatCore.client = client
 
 			# If keyword arg 'chatConf=' is present, use that as the chatConf.
@@ -4143,10 +4150,10 @@ def _displayStats(doWrite:bool=True):
 		#  if the contents start to overflow.
 
 		_statLine(doWrite, "")
-		_statLine(doWrite, "                       |         Token Counts          |")
-		_statLine(doWrite, "                       | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ |")
-		_statLine(doWrite, "Engine Name            |    Input |  Output |    Total |  USD Cost")
-		_statLine(doWrite, "=======================|==========|=========|==========|==========")
+		_statLine(doWrite, "                          |         Token Counts          |")
+		_statLine(doWrite, "                          | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ |")
+		_statLine(doWrite, "Engine Name               |    Input |  Output |    Total |  USD Cost")
+		_statLine(doWrite, "==========================|==========|=========|==========|==========")
 		
 		# Cumulative input, output, and total token counts.
 		cumIn = cumOut = cumTot = 0
@@ -4154,7 +4161,7 @@ def _displayStats(doWrite:bool=True):
 		# Generate a table row for each engine.
 		for engine in _ENGINE_NAMES:
 			
-			engStr 	= "%22s" % engine
+			engStr 	= "%25s" % engine
 
 			# If stats structures are out of date, expand them as needed.
 			if not engine in _inputToks:
@@ -4187,8 +4194,8 @@ def _displayStats(doWrite:bool=True):
 	
 		totStr = "$%8.4f" % _totalCost
 	
-		_statLine(doWrite,  "~~~~~~~~~~~~~~~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~~")
-		_statLine(doWrite, f"TOTALS:                | {cumInStr} | {cumOutStr} | {cumTotStr} | {totStr}")
+		_statLine(doWrite,  "~~~~~~~~~~~~~~~~~~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~~")
+		_statLine(doWrite, f"TOTALS:                   | {cumInStr} | {cumOutStr} | {cumTotStr} | {totStr}")
 		_statLine(doWrite, "")
 	
 		# If doWrite=True, then we were writing to the file, and we need to close it.
