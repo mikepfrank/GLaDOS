@@ -416,6 +416,7 @@ from	telegram.error	import	BadRequest, Forbidden, ChatMigrated, TimedOut
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 from anthropic import Anthropic		# Main class for accessing Anthropic API.
+from anthropic import RateLimitError as AnthroRateLimitError
 
 _anthropic_client	= Anthropic()
 	# Note this expects the Anthropic API key to be in ANTHROPIC_API_KEY.
@@ -1327,6 +1328,7 @@ class BotConversation:
 		
 		# Does this engine support the functions interface? If so, then we'll
 		# pass it our list of function descriptions.
+
 		if hasFunctions(ENGINE_NAME):
 			# Retrieve our current functions list...
 			functions = bc.cur_funcs + \
@@ -1771,6 +1773,11 @@ class BotConversation:
 
 		#print("Oldest message was:", thisConv.messages[0])
 		thisConv.messages.pop(0)
+
+		# Make sure oldest message isn't from the AI now.
+		while thisConv.messages[0].sender == BOT_NAME:
+			thisConv.messages.pop(0)
+
 		thisConv.expand_context()	# Update the context string.
 
 	#__/ End instance method conversation.expunge_oldest_message().
@@ -1833,6 +1840,13 @@ class BotConversation:
 			try:
 				thisConv.dynamicMem = _getDynamicMemory(thisConv)
 
+			except AnthroRateLimitError as e:
+
+				_logger.error(f"Got a {type(e).__name__} from Anthropic ({e}) for "
+							  f"conversation {thisConv.chat_id}.")
+				
+				return	# Skip the dynamic memory updating.
+
 			except RateLimitError as e:
 
 				_logger.error(f"Got a {type(e).__name__} from OpenAI ({e}) for "
@@ -1854,7 +1868,7 @@ class BotConversation:
 
 		# First, make sure the message has not already been finalized.
 		if message.archived:
-			print("ERROR: Tried to extend an already-archived message.")
+			_logger.error("Tried to extend an already-archived message.")
 			return
 
 		# Add the extra text onto the end of the message.
@@ -2046,8 +2060,10 @@ class BotConversation:
 			 "  forget_item(text:str=None, item_id:str=None, remark:str=None) -> status:str\n"
 			 "  analyze_image(filename:str, verbosity:str='medium', query:str=None, remark:str=None) -> result:str\n"
 			 "  create_image(description:str, shape:str='square', style:str='vivid', caption:str=None, remark:str=None) -> status:str\n"
-			 f"  block_user(user_name:str='{userTag}', remark:str=None) -> status:str\n"
-			 "  unblock_user(user_name:str, remark:str=None) -> status:str\n"
+			 f"  block_user(user_name:str='{userTag}', user_id=None, remark:str=None) -> status:str\n"
+			 #f"  show_user(user_name:str='{userTag}', user_id=None, remark:str=None) -> result:str)\n"
+			 #"  list_blocked_users() -> result:str\n"
+			 "  unblock_user(user_name:str=None, user_id=None, remark:str=None) -> status:str\n"
 			 "  search_web(query:str, locale:str='en-US', sections:list=['webPages'], remark:str=None) -> results:dict\n"
 			 "  pass_turn() -> None\n")
 			
@@ -2060,18 +2076,53 @@ class BotConversation:
 			thisConv.cur_func_schemas
 		)
 
+		# SYSTEM SECTION #3.75.
+		add_system_section(
+			USER_COMMANDS_HEADER,
+			'user_commands',
+			(
+				"Commands that may be invoked by users include:\n"
+				"\n"
+				"\t/start - Starts bot; reloads conversation history.\n"
+				"\t/help - Displays general help and command help.\n"
+				"\t/image - Generates an image from a description. (This is a command you should handle yourself.)\n"
+				"\t/quiet - Tell bot not to respond unless addressed by name.\n"
+				"\t/noisy - Tell bot it can respond to any message.\n"
+				"\t/speech - Toggle speech output mode.\n"
+				"\t/remember - Adds an item to the bot's persistent memory. (You should handle this command.)\n"
+				"\t/search - Search bot's memory or the web for a phrase. (You should handle this command.)\n"
+				"\t/forget - Removes an item from the bot's persistent memory. (You should handle this command.)\n"
+				"\t/reset - Clears the bot's conversation memory.\n"
+				"\t/echo - Echoes back the given text.\n"
+				"\t/greet - Make server send a greeting.\n"
+				"\n"
+				"For commands like /start, /help, /quiet, /noisy, /speech, /reset, /echo, and /greet - the BotServer automation will handle the user's request directly, so you do not need to provide any additional response.\n"
+				"\n"
+				"If users have questions about how to use the available commands, please inform them that they can obtain more details by entering the /help command.\n"
+			)
+		)
 
-		# We used to include a section for the slash-commands available
-		# to the AI, but that seems more confusing than helpful to models
-		# that are used to the function-calling interface.
-			#COMMAND_LIST_HEADER + \
-			#	"  /pass - Refrain from responding to the last user message.\n" + \
-			#	"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
-			#	"  /remember <text> - Adds <text> to my persistent context data.\n" + \
-			#	"  /forget <text> - Removes <text> from my persistent context data.\n" + \
-			#	"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
-			#	"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n"
-
+		# SYSTEM SECTION #3.875.
+		add_system_section(
+			AI_COMMANDS_HEADER,
+			'ai_commands',
+			(
+				"As an alternative to using the XML-based function-calling "
+				"interface, you may also simply send the following legacy "
+				"commands to the bot server directly. The command line must "
+				"be the first (and possibly only) line of your message. Any "
+				"text in your response after the command line will be sent to "
+				"the user as a normal message.  All commands except for /pass "
+				"are visible to the user.\n"
+				"\n"
+				"\t/pass - Refrain from responding to the last user message.\n"
+				"\t/image <desc> - Generate an image with description <desc> and send it to the user.\n"
+				"\t/remember <text> - Adds <text> to your persistent context data.\n"
+				"\t/forget <text> - Removes <text> from your persistent context data.\n"
+				"\t/block [<user>] - Adds the user to your block list. Defaults to current user.\n"
+				"\t/unblock [<user>] - Removes the user from your block list. Defaults to current user.\n"
+			)
+		)
 
 		# MESSAGE #4.
 		# OK, for a given conversation, this one only needs to change
@@ -2116,7 +2167,7 @@ class BotConversation:
 			#"bot. You may include multiple such messages in your response, but each one "
 			#"should begin on a new line. "
 			"You may include multiple Telegram messages in your response, but each one "
-			f"must begin on a new line starting with '{botName}>'"
+			f"must begin on a new line starting with '{botName}>'. "
 			"(Or, alternatively to just sending messages, you can activate "
 			"an available function and then call that function, if appropriate.)"
 		)
@@ -2127,9 +2178,9 @@ class BotConversation:
 		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
 			# Only give this instruction in group chats:
 			response_prompt += " However, if the user is not addressing you, " \
-							   "type '/pass' to remain silent."
+							   "send '/pass' or an empty message to remain silent."
 		else:
-			response_prompt += " You may also send '/pass' to refrain from responding."
+			response_prompt += " You may also send '/pass' or an empty message to refrain from responding."
 
 		# Note this one will appear at the bottom of OpenAI messages, but as
 		# part of the overall system prompt for Anthropic models.
@@ -2175,7 +2226,7 @@ class BotConversation:
 		add_system_section(
 			RECENT_MESSAGES_HEADER,
 			'telegram_msglist_header',
-			"The recent messages in the Telegram chat can be found below."
+			"A transcript of recent messages in the Telegram chat and other events (function calls, BotServer diagnostics) can be found below."
 		)
 
 		# Remember how many header messages we just created.
@@ -2246,6 +2297,11 @@ class BotConversation:
 		with open(f"{LOG_DIR}/last-system-prompt.txt", 'w') as f:
 			f.write(sys_prompt)
 
+		# For Anthropic, make sure the first chat message isn't from the AI.
+		if is_anthropic:
+			while chat_messages[0]['role'] == CHAT_ROLE_AI:
+				chat_messages = chat_messages[1:]
+
 		return chat_messages
 	
 	#__/ End conversation.get_chat_messages() instance method definition.
@@ -2286,7 +2342,11 @@ class _UnknownCommandFilter(filters.BaseFilter):
 			return False
 
 		text = message.text
-		defined_commands = ['/start', '/help', '/image', '/remember', '/forget', '/reset', '/echo', '/greet']
+
+		defined_commands = ['/start', '/help', '/image', '/remember', '/forget',
+							'/reset', '/echo', '/greet', '/quiet', '/noisy',
+							'/speech', '/search', '/delmem', '/listmem',
+							'/showmem']
 		
 		if text is None:
 			return False
@@ -3745,7 +3805,7 @@ async def handle_photo(update:Update, context:Context) -> None:
 	# Pick a shorter ID for the file (collisions will be fairly rare).
 	short_file_id = f"{random.randint(1,1000000)-1:06d}"
 
-	# Save the audio as a JPEG file
+	# Save the photo as a JPEG file
 	short_filename = f'{user_name}-{short_file_id}.jpg'
 	jpg_file_path = os.path.join(photo_dir, short_filename)
 	_logger.normal(f"\tDownloading photo from user {user_name} in chat {chat_id} to JPG file {jpg_file_path}.")
@@ -4047,14 +4107,16 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 				# We've successfully expunged the oldest message.  We need to try again.
 				continue
 
-			except RateLimitError as e:
+			except (RateLimitError, AnthroRateLimitError) as e:
 				# This also may indicate that the server is overloaded
 				# or our monthly quota was exceeded.
+
+				who = "OpenAI" if isinstance(e, RateLimitError) else "Anthropic"
 
 				# We exceeded our OpenAI API quota or rate limit, or the server was overloaded.
 				# There isn't really anything we can do here except send a diagnostic message to the user.
 
-				_logger.error(f"Got a {type(e).__name__} from OpenAI ({e}) for "
+				_logger.error(f"Got a {type(e).__name__} from {who} ({e}) for "
 							  f"conversation {chat_id}.")
 
 				diagMsgStr = "AI model is overloaded, or monthly quota has "\
@@ -4914,9 +4976,11 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 	if maxResults and maxResults < howMany:
 		howMany = maxResults
 
+	print(f"SECTION LIST IS: {sections}")
+
 	try:
 		# This actually does the search.
-		searchResult = _bing_search(queryPhrase, market=locale, count=howMany)
+		searchResult = _bing_search(queryPhrase, market=locale, count=howMany, sections=sections)
 
 		#_logger.debug(f"Raw search result:\n{pformat(searchResult)}")
 
@@ -4926,13 +4990,16 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 		# Keep only the fields we care about in our "cleaned" result.
 		for (key, val) in searchResult.items():
 			if key in sections:
+				print(f"FOUND A {key} SECTION...")
 				cleanResult[key] = val
 
 		# If we found nothing, retry with the default section list.
 		if not cleanResult:
+			print("RETRYING WITH DEFAULT SECTION LIST")
 			sections = DEFAULT_BINGSEARCH_SECTIONS
 			for (key, val) in searchResult.items():
 				if key in sections:
+					print(f"FOUND A {key} SECTION...")
 					cleanResult[key] = val
 
 		# Strip out 'deepLinks' etc. out of the webPages value, it's TMI.
@@ -5286,6 +5353,7 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 		if isinstance(resultSections, str):
 			try:
 				resultSections = json.loads(resultSections)
+				print(f"SECTION LIST: {resultSections}")
 			except json.JSONDecodeError:
 				pass
 		
@@ -5328,7 +5396,13 @@ def _sanitize_msgs(oaiMsgList):
 
 	if isinstance(_main_client, Anthropic):
 
+		# Skip initial assistant messages.
+		while oaiMsgList[0]['role'] == CHAT_ROLE_AI:
+			print(f"Skipping initial assistant message: {oaiMsgList[0]['content'][0:40]}...")
+			oaiMsgList = oaiMsgList[1:]
+
 		newOaiMsgs = []
+
 		for oaiMsgDict in oaiMsgList:
 			newDict = _anthropize(oaiMsgDict)
 			newOaiMsgs.append(newDict)
@@ -5337,6 +5411,13 @@ def _sanitize_msgs(oaiMsgList):
 			if len(newOaiMsgs) >= 2 and \
 			   		newOaiMsgs[-2]['role'] == CHAT_ROLE_USER and \
 					newOaiMsgs[-1]['role'] == CHAT_ROLE_USER:
+				newOaiMsgs[-2]['content'] += '\n' + newOaiMsgs[-1]['content']
+				newOaiMsgs = newOaiMsgs[:-1]
+
+			# Consolidate consecutive assistant messages.
+			if len(newOaiMsgs) >= 2 and \
+			   		newOaiMsgs[-2]['role'] == CHAT_ROLE_AI and \
+					newOaiMsgs[-1]['role'] == CHAT_ROLE_AI:
 				newOaiMsgs[-2]['content'] += '\n' + newOaiMsgs[-1]['content']
 				newOaiMsgs = newOaiMsgs[:-1]
 
@@ -5359,6 +5440,9 @@ def _sanitize_msgs(oaiMsgList):
 		#|		tion but are only "inside the AI's head," so to	speak. Al-
 		#|		so, we don't currently have any support for	storing and se-
 		#|		rializing these alternative types of messages.
+		#|
+		#|		*** NOTE: That last sentence is no longer true, so, the
+		#|			code structure could be simplified. ***		
 		#|
 		#|		NOTE: We assume the following preconditions have all been
 		#|		ensured to be true by the time that the get_ai_response()
@@ -5528,7 +5612,7 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 		# since we don't know how it's formatted at the back end exactly.)
 		if functions is not None:
 			funcsSize = tiktokenCount(json.dumps(functions), model=ENGINE_NAME, client=_main_client)
-			#_logger.info(f"Estimating size of FUNCTIONS_LIST is {funcsSize}.)")
+			_logger.info(f"Estimating size of FUNCTIONS_LIST is {funcsSize}.)")
 			msgsSizeToks += funcsSize
 
 		## Detailed diagnostic; comment out until needed.
@@ -5589,8 +5673,13 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 		if globalMinReplWinToks <= availSpaceToks and \
 		   availSpaceToks <= absMaxRetToks:
 
-			maxTokens = None	# No maximum; i.e., infinity; i.e.,
-				# use up to all of the available space.
+			# Don't do this for Anthropic models, cuz they can't handle it.
+			if not isinstance(_main_client, Anthropic):
+				maxTokens = None	# No maximum; i.e., infinity; i.e.,
+					# use up to all of the available space.
+			else:
+				# This is the appropriate thing for Anthropic
+				maxTokens = availSpaceToks
 
 		else:
 			# Calculate the actual maximum length of the returned reponse in
@@ -5735,16 +5824,18 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 
 
 		# Handle various types of rate-limit errors.
-		except RateLimitError as e:
+		except (RateLimitError, AnthroRateLimitError) as e:
 			# Receiving this may alternatively indicate that the server is
 			# overloaded or that our monthly quota was exceeded.
+
+			who = "OpenAI" if isinstance(e, RateLimitError) else "Anthropic"
 
 			# We exceeded our OpenAI API quota, or we've exceeded the rate limit
 			# for this model, or the server's just overloaded. There isn't
 			# really much of anything we can do here except send a diagnostic
 			# message to the user.
 
-			_logger.error(f"Got a {type(e).__name__} from OpenAI ({e}) for "
+			_logger.error(f"Got a {type(e).__name__} from {who} ({e}) for "
 						  f"conversation {chat_id}; aborting.")
 
 			# Send a diagnostic message to the AI and to the user.
@@ -5863,7 +5954,8 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 	## Now, we'll process the command.
 
 	# First, let's go ahead and show the command line to the user... (Ignoring send errors.)
-	await _reply_user(message, conversation, first_line, ignore=True)
+	if command_name != 'pass':
+		await _reply_user(message, conversation, first_line, ignore=True)
 
 	# NOTE: We can't just call the normal command handlers
 	# directly, because they are designed for commands issued by
@@ -5941,6 +6033,11 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 		# NOTE: We could have passed remaining_text as the 4th argument (caption),
 		# but it's perhaps better to just send it as an ordinary text message.
 
+	elif command_name == 'pass':
+		# Same as pass_turn function.
+
+		_logger.normal(f"\nNOTE: AI {BOT_NAME} entered a /pass command in chat {chat_id}.")
+
 	else:
 		# This is a command type that we don't recognize.
 		_logger.warn(f"\nAI {BOT_NAME} entered an unknown command [/{command_name}] in chat {chat_id}.")
@@ -5972,11 +6069,23 @@ async def process_chat_message(update:Update, context:Context) -> None:
 	botConvo	= context.chat_data['conversation']
 	chat_id		= botConvo.chat_id
 	cur_funcs	= botConvo.cur_funcs
-	HOWMANY_FUNCS = 1
+
+	# The modern models have more context space, so let's keep 
+	# around more of the function schemas than we did previously.
+
+	fieldSize = getFieldSize(ENGINE_NAME)
+	if fieldSize > 50000:
+		HOWMANY_FUNCS = 3		# Could do more, but would it be too confusing?
+	elif fieldSize > 10000:
+		HOWMANY_FUNCS = 2		# This should easily fit in this size models?
+	else:
+		HOWMANY_FUNCS = 1		# Trying to keep things simple for the smaller models.
+
 	if len(cur_funcs) > HOWMANY_FUNCS:
 		cur_funcs = cur_funcs[-(HOWMANY_FUNCS):]
 		botConvo.cur_funcs = cur_funcs
 	#__/
+
 	func_names = [func['name'] for func in cur_funcs if 'name' in func]
 	_logger.info(f"Current function list in chat {chat_id} is {func_names}.")
 
@@ -6009,6 +6118,7 @@ async def process_function_call(
 		function result to the AI, and gets the AI's response to that."""
 
 	# Get the text of the response, if any (should be None).
+	# (Except, for Anthropic models it will contain the XML block for the function invocation.)
 	response_text = funcall_oaiMsg.content
 
 	# Get the bot's conversation object.
@@ -6085,9 +6195,10 @@ async def process_function_call(
 
 	if isinstance(_main_client, Anthropic):
 
-		if response_text != "":
-			# Append the response text to the conversation.
-			botConvo.add_message(BotMessage(BOT_NAME, response_text))
+		## We don't do this now because we sent the entire function-calls sequence earlier
+		#if response_text != "":
+		#	# Append the response text to the conversation.
+		#	botConvo.add_message(BotMessage(BOT_NAME, response_text))
 					
 		# Send just the remark to the user, if non-empty.
 		if remark != "":
@@ -6274,8 +6385,9 @@ async def process_function_call(
 
 #__/ End definition of function process_function_call().
 
-
 import xml.etree.ElementTree as ET
+
+class FunctionCallError(Exception): pass
 
 def _is_function_call(xml_string):
     try:
@@ -6285,19 +6397,36 @@ def _is_function_call(xml_string):
         return False
 
 def _parse_function_call(xml_string):
-    if not _is_function_call(xml_string):
-        return
 
-    root = ET.fromstring(xml_string)
-    
-    for invoke in root.findall('invoke'):
-        tool_name = invoke.find('tool_name').text
-        parameters = {}
-        
-        for param in invoke.find('parameters'):
-            parameters[param.tag] = param.text
-        
-        yield tool_name, parameters
+	if not _is_function_call(xml_string):
+		raise FunctionCallError("The provided XML does not contain a valid <function_calls> element.")
+
+	root = ET.fromstring(xml_string)
+	
+	for invoke in root.findall('invoke'):
+
+		tool_name = invoke.find('tool_name')
+		if tool_name is None:
+			raise FunctionCallError("Missing <tool_name> element in the function call.")
+
+		parameters = invoke.find('parameters')
+		if parameters is None:
+			raise FunctionCallError("Missing <parameters> element in the function call.")
+		
+		param_dict = {}
+		for param in parameters:
+			param_dict[param.tag] = param.text
+		
+		yield (tool_name.text, param_dict,
+			   ET.tostring(invoke, encoding='unicode', method='xml'))
+
+
+# This dummy class is just a stand-in for OpenAI's function call class,
+# to support the only parts of its interface that we need -- namely, that
+# we can give it .name and .arguments attributes. We'll also give it an
+# .invocation attribute that remembers the raw XML <invoke> element that
+# it came from (for Anthropic models).
+class DummyFunCall: pass
 
 
 # Another new function, to process a raw response from the AI, which (for chat
@@ -6339,6 +6468,10 @@ async def process_raw_response(
 
 	"""Process a raw response from the AI."""
 
+	# Get the message, or edited message from the update.
+	(tgMsg, edited) = _get_update_msg(tgUpdate)
+		# NOTE: We only do this to get the user data.
+		
 	# Get the bot's conversation object.
 	botConvo = tgContext.chat_data['conversation']
 
@@ -6351,11 +6484,42 @@ async def process_raw_response(
 	# In case there's a function call in the response, display it.
 	_logger.debug(f"RETURNED MESSAGE = [{pformat(response_oaiMsg)}]")
 
+	# This shouldn't happen, but check for it anyway.
+	if tgMsg is None:
+		_logger.error("In process_raw_response() with no Telegram message! Aborting.")
+		return
+
 	# Get the text field of the response. (Could be None, if function call.)
 	response_text = chatCompletion.text
 
 	# Diagnostic for debugging.
 	_logger.debug(f"Got response text: [{response_text}]")
+
+	#~~~~~~~~~~~~~~~~~~~~~~~ CHECK CONTENT FILTER ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	# Get user data.
+	user_obj	= tgMsg.from_user
+	user_tag	= _get_user_tag(user_obj)
+	user_id		= user_obj.id
+	chat_id		= botConvo.chat_id
+
+	# Also check for finish_reason == 'content_filter' and log/send a warning.
+	finish_reason = chatCompletion.finishReason
+	if finish_reason == 'content_filter':
+				
+		_logger.warn(f"OpenAI content filter triggered by user {user_name} " \
+					 "(ID {user_id}) in chat {chat_id}. Response was:\n" + \
+					 pformat(chatCompletion.chatComplStruct))
+
+		WARNING_MSG = "WARNING: User {user_name} triggered OpenAI's content " + \
+					  "filter. Repeated violations could result in a ban."
+
+		# This allows the AI to see this warning message too.
+		botConvo.add_message(BotMessage(SYS_NAME, WARNING_MSG))
+
+		repRes = await _reply_user(tgMsg, botConvo, "[SYSTEM {WARNING_MSG}]")
+		if repRes != 'success': return
+
+	#__/ End if content filter triggered.
 
 	# Here, we make sure that the response does not begin with a message
 	# prompt like "{BOT_NAME}> ". If it does, we trim it off the front.
@@ -6384,30 +6548,303 @@ async def process_raw_response(
 	# 'function_call' property, in which case it means the AI is trying to call
 	# a function.  If it is, we'll dispatch out to the process_function_call()
 	# function to handle this case.
+	#
+	# NOTE: This is now more complicated due to the need to handle Anthropic-
+	# style function calls as well.
 
-	funCall = None
-	if isinstance(global_gptCore.client, Anthropic):
+	funCall = None		# For OpenAI models -- only one function call object.
+	funCall_list = []	# For Anthropic models -- list of function-call objects.
+
+	if not isinstance(global_gptCore.client, Anthropic):	# Assume OpenAI
+		funCall = response_oaiMsg.function_call
+	else:
 		# For anthropic models, parsing function calls is a bit more involved.
 		# We use some helper functions defined earlier.
 		if _is_function_call(response_text):
-			function_calls = list(_parse_function_call(response_text))
-			if len(function_calls) >= 1:
-				for funcname, params in function_calls:
 
-					# This just wraps the data into an object with the interface we're expecting.
-					class DummyFunCall: pass
-					funCall_obj = DummyFunCall()
-					funCall_obj.name = funcname
-					funCall_obj.arguments = args = json.dumps(params)
+			try:
+				# We'll parse all the sub-elements before executing any.
+				function_calls = list(_parse_function_call(response_text))
 
-					print(f"========= FOUND A {funcname} FUNCTION CALL WITH ARGUMENTS: ===========")
-					print(args)
+				# Show the AI the correct function_calls block that it issued.
+				botConvo.add_message(BotMessage(BOT_NAME, response_text))
 
-					await process_function_call(response_oaiMsg, tgUpdate, tgContext, funCall=funCall_obj)
-				return
-	else:
-		funCall = response_oaiMsg.function_call
-		
+				if len(function_calls) >= 1:
+					for funcname, params, invocation in function_calls:
+
+						# This just wraps the data into an object with the interface we're expecting.
+						funCall_obj = DummyFunCall()
+						funCall_obj.name = funcname
+						funCall_obj.arguments = args = json.dumps(params)
+
+						print(f"========= FOUND A {funcname} FUNCTION CALL WITH ARGUMENTS: ===========")
+						print(args)
+
+						response_oaiMsg.content = (
+							"<function_calls>\n"
+							f"{invocation}"
+							"</function_calls>")
+
+						await process_function_call(response_oaiMsg, tgUpdate, tgContext, funCall=funCall_obj)
+					return
+
+				else:
+
+					_logger.warn("No <invoke> elements in <function_calls> block.")
+				
+					## Let's not try this till more basic functionality is working.
+					#await _report_error(botConvo, tgMsg, "Malformed `<function_calls>` "
+					#	"element; no `<invoke>` sub-elements were found, so "
+					#	"no functions were executed.", showUser=False)
+					#
+					## Give the AI a chance to respond to the error, e.g., by
+					## reissuing the function calls with corrections.
+					#await get_ai_response(tgUpdate, tgContext)
+					#
+					#return
+
+			except FunctionCallError as e:	# Parse error.
+
+				_logger.warn("Parse error in <function_calls> element.")
+
+				### Let's not get this fancy yet.
+				## This is necessary so that the AI can see what it tried to do.
+				#botConvo.add_message(BotMessage(BOT_NAME, response_text))
+				#
+				## Report this as an error to the AI, but don't show the user.
+				#await _report_error(botConvo, tgMsg, "Malformed `<function_calls>` "
+				#	  f"element: {e} No functions were executed.", showUser=False)
+				#
+				## Give the AI a chance to respond to the error, e.g., by
+				## reissuing the function calls with corrections.
+				#await get_ai_response(tgUpdate, tgContext)
+				#
+				#return
+				
+		# The response_text isn't entirely just a <function_calls> element tree,
+		# but it could still contain such embedded within it. We check for such
+		# cases and interpret them as meaning that the AI's intent is as follows:
+		#
+		#	(1) Any text appearing before the <function_calls> element tree
+		#		is text that the AI intends to send as a Telegram message
+		#		prior to calling the function;
+		#
+		#	(2) Then the AI intends for the function-call invocation(s) to
+		#		be done;
+		#
+		#	(3) Then the AI intends for the text following the function-call
+		#		invocation(s) to be sent as another Telegram message.
+		#
+		# Also, just in case the AI tries to include multiple <function_calls>
+		# element trees interspersed with text, we try to handle that as well
+		# by iterating (1) and (2) as needed.
+
+		elif "<function_calls>" in response_text:
+			
+			# We're going to handle this in a loop where we repeatedly pull
+			# regular text and <function_calls> blocks off the front of the
+			# response_text, and then process the remaining reponse_text in
+			# the same way. The starting point is to make sure we haven't
+			# finished processing all the function calls.
+
+			# Our new algorithm for this is as follows: Scan through the 
+			# response_text, first sending all the normal text blocks while
+			# accumulating all the <function_calls> blocks in a list; then
+			# attempting to execute all the <function_calls> blocks in a
+			# sequence.
+
+			while "<function_calls>" in response_text:
+
+				parts = response_text.split("<function_calls>", maxsplit=1)
+
+				before_text = parts[0].strip()	# Text before 1st func. calls.
+
+				# OK, now we don't actually print the before_text until we're sure
+				# we have a properly formatted function_calls block.
+
+				#if before_text:
+
+					## NEW WAY
+					# Process the before_text as if it was the whole response.
+					# Checks for submessages, repeats, command lines.
+					#await process_text_response(chatCompletion, before_text, tgUpdate, tgContext)
+
+					## OLD WAY
+					## Go ahead and record the first part as a message from the
+					## AI and send it to the user as a Telegram message.
+					#
+					#botConvo.add_message(BotMessage(BOT_NAME, before_text))
+					#
+					#result = await _reply_user(tgMsg, botConvo, before_text)
+					#if result != 'success':
+					#	await _report_error(botConvo, tgMsg, "Message send failure: {result}",
+					#		  showUser=False)
+					#	return	# Connection broken; failure; abort.
+
+				if len(parts) < 2:	# There was no <function_calls> element.
+					_logger.warn("I thought I saw a <function_calls> tag, but now I can't find it.")
+					break	# We finished everything.
+
+				# Extract the rest of the </function_calls> block.
+				# (Anything after it is also extracted, but we'll throw it away.)
+				rest = parts[1].split("</function_calls>", maxsplit=1)
+
+				if len(rest) < 2:	# This implies closing tag was missing.
+
+					## NEW METHOD: This means we'll just handle the whole
+					## response as plain text, not as a function call.
+
+					_logger.warn("Treating <function_calls> with no matching </function_calls> as normal text.")
+					function_calls_xml = None
+					break
+
+					## Show the AI what it tried to do that was a no-no.
+					#botConvo.add_message(BotMessage(BOT_NAME, rest[0]))
+					#
+					## Report this as an error to the AI, but don't show the user.
+					#await _report_error(botConvo, tgMsg, "Malformed `<function_calls>` "
+					#	"element; matching closing tag `</function_calls>` is "
+					#	"missing. No functions were executed.", showUser=False)
+					#
+					## Give the AI a chance to respond to the error, e.g., by
+					## reissuing the function call with corrections.
+					#await get_ai_response(tgUpdate, tgContext)
+					#
+					#return
+
+				function_calls_xml = "<function_calls>" + rest[0] + "</function_calls>"
+				_logger.normal("========== FOUND AN APPARENT <function_calls> ELEMENT: ============")
+				_logger.normal(function_calls_xml + "\n\n")
+
+				after_text = rest[1].strip()	# Go ahead and grab this.
+
+				# OK, now we're ready to try fully parsing the embedded function_calls_xml.
+
+				try:
+					# We'll parse all the sub-elements before executing any.
+					function_calls = list(_parse_function_call(function_calls_xml))
+
+				except FunctionCallError as e:	# Parse error.
+
+					_logger.warn(f"Got a parse error in <function_calls> element: {e}")
+					break
+
+					## This is necessary so that the AI can see what it tried to do.
+					#botConvo.add_message(BotMessage(BOT_NAME, function_calls_xml))
+					#
+					## Report this as an error to the AI, but don't show the user.
+					#await _report_error(botConvo, tgMsg, "Malformed `<function_calls>` "
+					#	f"element: {e} No functions were executed.", showUser=False)
+					#
+					## Give the AI a chance to respond to the error, e.g., by
+					## reissuing the function calls with corrections.
+					#await get_ai_response(tgUpdate, tgContext)
+					#
+					#return
+				
+				if len(function_calls) >= 1:
+					for funcname, params, invocation in function_calls:
+					
+						# This just wraps the data into an object with
+						# the interface we're expecting.
+
+						funCall_obj = DummyFunCall()
+						funCall_obj.name = funcname
+						funCall_obj.arguments = args = json.dumps(params)
+						funCall_obj.invocation = invocation
+
+						_logger.normal(f"========= FOUND A {funcname} FUNCTION CALL WITH ARGUMENTS: ===========")
+						_logger.normal('\t' + args + '\n')
+
+						funCall_list.append(funCall_obj)
+
+				else:	# There were no <invoke> sub-elements to execute.
+
+					_logger.warn("Empty <function_calls> element.")
+					break
+
+					## This is necessary so that the AI can see what it tried to do.
+					#botConvo.add_message(BotMessage(BOT_NAME, function_calls_xml))
+					#
+					## Report this as an error to the AI, but don't show the user.
+					#await _report_error(botConvo, tgMsg, "Malformed `<function_calls>` "
+					#	  "element; no `<invoke>` sub-elements were found, so "
+					#	  "no functions were executed.", showUser=False)
+					#
+					## Give the AI a chance to respond to the error, e.g., by
+					## reissuing the function calls with corrections.
+					#await get_ai_response(tgUpdate, tgContext)
+					#
+					#return
+
+				#__/ End if nonzero # of invokes... else...
+
+				# OK, at this point, we know we definitely had a properly-parsed function-calls
+				# block, so we go ahead and send the before-text to the user now.
+				if before_text:
+					# Process the before_text as if it was the whole response.
+					# Checks for submessages, repeats, command lines.
+					await process_text_response(chatCompletion, before_text, tgUpdate, tgContext)
+
+				## NEW METHOD:
+				# To avoid confusion, we're going to cut off the AI's output after
+				# the first <function_calls> block, and null out the rest of the
+				# response_text. This will give the system+AI a chance to respond to
+				# the initial sequence of invocations before we proceed. It also keeps
+				# the AI from imagining fake <function_return> blocks.
+
+				response_text = ""		# Pretend there's nothing after the 1st <function_calls> block.
+				break					# Quit out of the while loop, and proceed with function processing.
+				
+				## OLD METHOD BELOW:		
+				# Now, if there was after_text, we'll handle that by just continuing
+				# the while loop to process it as possible additional sequences of
+				# normal text alternating with <function_calls> elements.
+
+				response_text = after_text
+
+			#__/ End while loop processing
+
+			# If we get here, that means the remaining response_text has no more
+			# <function_calls> blocks in it, and thus we can continue with normal
+			# response processing. Need to send response_text.
+
+			if response_text:
+
+				# Go ahead and record the first part as a message from the
+				# AI and send it to the user as a Telegram message.
+
+				botConvo.add_message(BotMessage(BOT_NAME, response_text))
+
+				result = await _reply_user(tgMsg, botConvo, response_text)
+				if result != 'success':
+					await _report_error(botConvo, tgMsg, "Message send failure: {result}",
+						showUser=False)
+					return	# Connection broken; failure; abort.
+
+			if function_calls_xml:
+				botConvo.add_message(BotMessage(BOT_NAME, function_calls_xml))
+
+			# Now actually try calling all the functions:
+			for funCall_obj in funCall_list:
+
+				print(f"CALLING {funCall_obj.name}({funCall_obj.arguments})...")
+
+				response_oaiMsg.content = (
+					"<function_calls>\n"
+					f"{funCall_obj.invocation}"
+					"</function_calls>")
+
+				await process_function_call(response_oaiMsg, tgUpdate, tgContext, funCall=funCall_obj)
+
+			return
+
+		#__/ End elif <function_calls> in response_text.
+
+	#__/ End huge 'else' block for Anthropic models.
+
+	# If the above processing resulted in a bare function call that needs calling...
+	# (Note this is only relevant for OpenAI clients; Antrhopic was handled above.)
 	if funCall:
 		
 		await process_function_call(response_oaiMsg, tgUpdate, tgContext)
@@ -6428,39 +6865,13 @@ async def process_raw_response(
 	#__/ End if funCall is truthy.
 	
 	# If we get here, it isn't a function-call response, it's a normal response.
+	# Process it as such -- this checks for sub-messages and repeated messages,
+	# and /-command lines invocable by the AI.
 
-	# Get the message, or edited message from the update.
-	(tgMsg, edited) = _get_update_msg(tgUpdate)
-		# NOTE: We only do this to get the user data.
-		
-	if tgMsg is None:
-		_logger.error("In get_ai_response() with no message! Aborting.")
-		return
+	await process_text_response(chatCompletion, response_text, tgUpdate, tgContext)
+	return
 
-	# Get user data.
-	user_obj	= tgMsg.from_user
-	user_tag	= _get_user_tag(user_obj)
-	user_id		= user_obj.id
-	chat_id		= botConvo.chat_id
-
-	# Also check for finish_reason == 'content_filter' and log/send a warning.
-	finish_reason = chatCompletion.finishReason
-	if finish_reason == 'content_filter':
-				
-		_logger.warn(f"OpenAI content filter triggered by user {user_name} " \
-					 "(ID {user_id}) in chat {chat_id}. Response was:\n" + \
-					 pformat(chatCompletion.chatComplStruct))
-
-		WARNING_MSG = "WARNING: User {user_name} triggered OpenAI's content " + \
-					  "filter. Repeated violations could result in a ban."
-
-		# This allows the AI to see this warning message too.
-		botConvo.add_message(BotMessage(SYS_NAME, WARNING_MSG))
-
-		repRes = await _reply_user(tgMsg, botConvo, "[SYSTEM {WARNING_MSG}]")
-		if repRes != 'success': return
-
-	#__/ End if content filter triggered.
+	## BELOW CODE HAS BEEN MOVED OUT TO process_text_response().
 
 	# Strip off any leading or trailing whitespace (Telegram won't display it
 	# anyway.).
@@ -6517,7 +6928,7 @@ async def process_raw_response(
 					for funcname, params in function_calls:
 
 						# This just wraps the data into an object with the interface we're expecting.
-						class DummyFunCall: pass
+
 						funCall_obj = DummyFunCall()
 						funCall_obj.name = funcname
 						funCall_obj.arguments = args = json.dumps(params)
@@ -6639,6 +7050,175 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 #__/ End of process_response() function definition.
 
 
+################################################################################
+# The following function is for processing a response (or part of a response)
+# that has already been determined to contain only ordinary text, that is, with
+# no embedded function calls.
+
+async def process_text_response(
+			chatCompletion:ChatCompletion,
+				# The full chat completion that this specific text response is a part of.
+			text_response:str,
+				# The *specific* text response that we are processing (all or part of the above).
+			tgUpdate:Update,	# The update from Telegram that the AI is responding to.
+			tgContext:Context	# The Telegram context object.
+		) -> None:
+
+	"""Process a plain text response from the AI (no embedded functions)."""
+
+	# Get the message, or edited message from the update.
+	(tgMsg, edited) = _get_update_msg(tgUpdate)
+		# NOTE: We only do this to get the user data.
+		
+	# Get the bot's conversation object.
+	botConvo = tgContext.chat_data['conversation']
+
+	# Get the current *raw* OpenAI message list from the bot convo object.
+	oaiMsgs = botConvo.raw_oaiMsgs
+
+	# Get the full dict-like response message object.
+	response_oaiMsg = chatCompletion.message
+
+	# This shouldn't happen, but check for it anyway.
+	if tgMsg is None:
+		_logger.error("In process_text_response() with no Telegram message! Aborting.")
+		return
+
+	# Get the full text of the response.
+	response_text = chatCompletion.text
+
+	# Diagnostic for debugging.
+	_logger.debug(f"Processing text response: [{text_response}]")
+
+	# We don't need to check for content filter violations, since that was done earlier.
+
+	# Here, we make sure that the response does not begin with a message
+	# prompt like "{BOT_NAME}> ". If it does, we trim it off the front.
+	if text_response is not None:
+
+		# Trim prompt off start of response.
+		new_text_response = _trim_prompt(text_response)
+
+		if new_text_response != text_response:
+			text_response = new_text_response
+
+			# Do surgery on the chat message object to fix it there also.
+			# (This is handled by our gpt3.api.ChatCompletion class.)
+			chatCompletion.text = text_response
+				# NOTE: Setting the '.text' property ('content' field) here
+				# could invalidate the chat message if it contains a function
+				# object too. But we made sure .text wasn't None already.
+
+			_logger.debug(f"Modified response message text is: [{chatCompletion.text}]")
+
+	# We don't need to check for function calls because that was done earlier.
+
+	# Strip off any leading or trailing whitespace from the text response
+	# (Telegram won't display it anyway.).
+	text_response = text_response.strip()
+
+	# If the response is empty, then return early. (Because, like, we can't even
+	# send an empty message anyway.)
+	if text_response == "":
+
+		_logger.warn("In process_text_response(): AI's text response was null. Ignoring...")
+
+		## Commenting this out for production.
+		# # Send the user a diagnostic message indicating that the response was empty.
+		# # (Doing this temporarily during development.)
+		#diagMsg = "Response was empty."
+		#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
+		
+		return		# This means the bot is simply not responding to this particular message.
+	
+	# Generate a debug-level log message to indicate that we're starting a new response.
+	_logger.debug("Creating new ordinary (non-function-call) response from "
+				  f"{botConvo.bot_name} with text: [{text_response}].")
+
+	# At this point, according to our new protocol for allowing the AI to send multiple
+	# messages, we check for additional instances of "\n{BOT_NAME}>" in the response, and
+	# if they exist, we split the response on those, and process each one as if it were 
+	# a separate response.
+
+	split_str = f"\n{botConvo.bot_name}>"
+	if split_str in text_response:
+		response_msgs = text_response.split(split_str)
+		_logger.normal("Detected multiple Telegram messages in response:")
+		i=1
+		for msg in response_msgs:
+			_logger.normal(f"\tMessage #{i}: [{msg}]")
+			i += 1
+	else:
+		response_msgs = [text_response]
+
+	for response_msg in response_msgs:
+		response_msg = response_msg.strip()		# Trim leading/trailing whitespace.
+		
+		if response_msg == "":	# Skip empty messages.
+			continue
+
+		# We don't need to check for function calls here because we already determined
+		# that there are none in this text_response.
+
+		# Create a new Message object.
+		response_botMsg = BotMessage(botConvo.bot_name, response_msg)
+
+		# If this message is already in the conversation, then we'll suppress it, so
+		# as not to exacerbate the AI's tendency to repeat itself.  (So, as a user,
+		# if you see that the AI isn't responding to a message, this may mean that
+		# it has the urge to just repeat something that it already said earlier, but
+		# is holding its tongue.)
+
+		if response_msg.lower() != '/pass' and \
+		   botConvo.is_repeated_message(response_botMsg):
+
+			# Generate an info-level log message to indicate that we're suppressing
+			# the response.
+			_logger.normal(f"Suppressing response [{response_msg}]; it's a repeat.")
+
+
+			## Send the user a diagnostic message (doing this temporarily during development).
+			#diagMsg = f"Suppressing response [{response_text}]; it's a repeat."
+			#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
+		
+			continue		# This means the bot is simply not responding to the message
+
+		#__/ End check for repeated messages.
+
+		# It isn't a repeat, so we'll add it to the conversation.
+		botConvo.add_message(response_botMsg)
+
+		# Update the message object.
+		response_botMsg.text = response_msg
+
+		# If we get here, then we have a non-empty message that's also not a repeat,
+		# and doesn't contain sub-messages.
+		# It's finally OK at this point to archive the message and send it to the user.
+
+		# Make sure the response message has been finalized (this also archives it).
+		botConvo.finalize_message(response_botMsg)
+
+		# If we get here, we have finally obtained a non-empty,
+		# no-function, non-repeat, already-archived message with no
+		# sub-messages that we can go ahead and send to the user. This
+		# function will also check to see if the message is a textual
+		# command line, and will process the command if so.
+
+		await process_response(tgUpdate, tgContext, response_botMsg)	   # Defined below.
+
+	#__/ End for loop over Telegram messages in the response.
+
+	# Update the conversation's context information (system message).
+	# Note we only need to do this once, not for every sub-message.
+	botConvo.expand_context()	 
+
+	# If we get here, then we have finished processing the AI's text response,
+	# and we can just return.
+
+#__/ End function process_text_response().
+
+
+@backoff.on_exception(backoff.expo, TimedOut, max_tries=4)	# If this doesn't work, try Exception
 async def send_image(update:Update, context:Context, desc:str, dims=None, style=None, caption=None, save_copy=True) -> (str, str, str):
 	"""Generates an image from the given description and sends it to the user.
 		Also archives a copy on the server unless save_copy=False is specified.
@@ -6709,7 +7289,10 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, style=
 	
 	# Send the image as a reply in Telegram
 	try:
-		await tgMsg.reply_photo(photo=image_data, caption=caption)
+		timeout=30	# Try longer timeouts
+		await tgMsg.reply_photo(photo=image_data, caption=caption,
+				read_timeout=timeout, write_timeout=timeout,
+				connect_timeout=timeout, pool_timeout=timeout)
 
 	except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
 
@@ -6918,7 +7501,7 @@ class BingQuotaExceeded(SearchError):
 
 # This function will be used internally by the WebAssistant when
 # doing web searches.
-def _bing_search(query_string:str, market:str='en-US', count=3):
+def _bing_search(query_string:str, market:str='en-US', count=3, sections=None):
 	# The caller should fill in the market parameter based on the
 	# user's locale (if known), or on an alternate market for this
 	# particular search (if specified by the user).
@@ -6945,6 +7528,10 @@ def _bing_search(query_string:str, market:str='en-US', count=3):
 		'mkt':		market,
 		'count':	count
 	}
+
+	if sections:
+		params['responseFilter'] = ','.join(sections)
+		
 	headers = {
 		'Ocp-Apim-Subscription-Key': subscription_key
 	}
@@ -8472,9 +9059,10 @@ async def _reply_asSpeech(userTgMessage:TgMsg, convo:BotConversation, text):
 
 	# We should probably delete the .ogg file here, since it's big.
 
-
 	# NOTE: Caller needs to take care of any needed
 	# exception handling.
+
+#__/ End function _reply_asSpeech().
 
 
 async def _report_error(convo:BotConversation, telegramMessage,
@@ -8490,11 +9078,11 @@ async def _report_error(convo:BotConversation, telegramMessage,
 	if logIt:
 		# Record the error in the log file.
 
-		_logger.error(errMsg, exc_info=True)	# Use this version to include stack trace.
+		#_logger.error(errMsg, exc_info=True)	# Use this version to include stack trace.
 
 		#_logger.error(errMsg)	# use This version to be less verbose.
 
-		#_logger.error(errMsg, exc_info=logmaster.doDebug)
+		_logger.error(errMsg, exc_info=logmaster.doDebug)
 			# The exc_info option includes a stack trace if we're in debug mode.
 
 	# Compose formatted error message.
@@ -8502,6 +9090,10 @@ async def _report_error(convo:BotConversation, telegramMessage,
 
 	if showAI:
 		# Add the error message to the conversation.
+
+		if not showUser:	# Make sure AI knows user can't see it.
+			msg = "[Private message to {BOT_NAME}: " + msg + "]"
+
 		convo.add_message(BotMessage(SYS_NAME, msg))
 
 	if showUser:
@@ -9098,38 +9690,44 @@ AI_VOICE = aiConf.personaVoice	# The name of the voice used for text-to-speech.
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # These are the section headers of the AI's persistent context.
 
+SEPARATOR_BAR = "="*30
+
 	# System section #0:
-CURRENT_TIME_HEADER		 = " ~~~ Current date and time: ~~~\n"
+CURRENT_TIME_HEADER			= f" {SEPARATOR_BAR} CURRENT DATE AND TIME: {SEPARATOR_BAR}\n"
 
 	# System section #1:
-TOPLEV_INSTRUCT_HEADER	 = " ~~~ Top-level instruction: ~~~\n"
+TOPLEV_INSTRUCT_HEADER		= f" {SEPARATOR_BAR} TOP-LEVEL INSTRUCTION: {SEPARATOR_BAR}\n"
 
 	# System section #2:
-PERMANENT_CONTEXT_HEADER = " ~~~ Permanent context data: ~~~\n"
+PERMANENT_CONTEXT_HEADER	= f" {SEPARATOR_BAR} PERMANENT CONTEXT DATA: {SEPARATOR_BAR}\n"
 
 	# System section #3:
-FUNCTION_USAGE_HEADER	 = " ~~~ Usage summary for functions available to AI: ~~~\n"
+FUNCTION_USAGE_HEADER		= f" {SEPARATOR_BAR} USAGE SUMMARY FOR FUNCTIONS AVAILABLE TO AI: {SEPARATOR_BAR}\n"
 
 	# System section #3.5:
-FUNCTION_SCHEMAS_HEADER	 = " ~~~ Full schemas for all currently activated functions: ~~~\n"
+FUNCTION_SCHEMAS_HEADER		= f" {SEPARATOR_BAR} FULL SCHEMAS FOR ALL CURRENTLY ACTIVATED FUNCTIONS: {SEPARATOR_BAR}\n"
+
+	# System section #3.75:
+USER_COMMANDS_HEADER		= f" {SEPARATOR_BAR} COMMANDS AVAILABLE TO USERS: {SEPARATOR_BAR}\n"
+
+	# System section #3.875
+	# This section used to appear inside the globalPersistentContext string.
+AI_COMMANDS_HEADER = COMMAND_LIST_HEADER			= f" {SEPARATOR_BAR} COMMANDS AVAILABLE FOR {BOT_NAME} TO USE: {SEPARATOR_BAR}\n"
 
 	# System section #4:
-DYNAMIC_MEMORY_HEADER	 = " ~~~ Contextually relevant memories: ~~~\n"
+DYNAMIC_MEMORY_HEADER	 	= f" {SEPARATOR_BAR} CONTEXTUALLY RELEVANT MEMORIES: {SEPARATOR_BAR}\n"
 
 	# System section #5:
-RECENT_MESSAGES_HEADER	 = " ~~~ Recent Telegram messages: ~~~\n"
+RECENT_MESSAGES_HEADER		= f" {SEPARATOR_BAR} RECENT TELEGRAM MESSAGES: {SEPARATOR_BAR}\n"
 
 	# System section #N-1:
-FINAL_PROMPT_HEADER		 = " ~~~ Final system prompt: ~~~\n"
-
-# This section now appears inside the globalPersistentContext string.
-COMMAND_LIST_HEADER		 = f" ~~~ Commands available for {BOT_NAME} to use: ~~~\n"
+FINAL_PROMPT_HEADER			= f" {SEPARATOR_BAR} FINAL SYSTEM PROMPT: {SEPARATOR_BAR}\n"
 
 # This section now appears inside the globalPersistentData string.
-PERSISTENT_MEMORY_HEADER = " ~~~ Important persistent memories: ~~~\n"
+PERSISTENT_MEMORY_HEADER	= f" {SEPARATOR_BAR} IMPORTANT PERSISTENT MEMORIES: {SEPARATOR_BAR}\n"
 
 # Old obsolete versions of headers.
-#PERSISTENT_MEMORY_HEADER = " ~~~ Dynamically added persistent memories: ~~~\n"
+#PERSISTENT_MEMORY_HEADER	= f" {SEPARATOR_BAR} DYNAMICALLY ADDED PERSISTENT MEMORIES: {SEPARATOR_BAR}\n"
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -9446,6 +10044,11 @@ BLOCK_USER_SCHEMA = {
 }
 
 
+# Function schema for command: /showuser (<user_name>|<user_id>)
+SHOW_USER_SCHEMA = {
+	# TODO: Write this schema.
+}
+
 # Function schema for command: /unblock [<user_name>]
 UNBLOCK_USER_SCHEMA = {
 	"name":         "unblock_user",
@@ -9508,14 +10111,16 @@ SEARCH_WEB_SCHEMA = {
 			"sections": {
 				"type":			"array",
 				"description":	"List of sections to return in the search results. "
+									"This should be a JSON-formatted list. "
 									f"(Default is {DEFAULT_BINGSEARCH_SECTIONS}).",
 									#f"(Default is ['webPages', 'relatedSearches']).",
 				"minLength":	1,
 				"uniqueItems":	True,
 				"items": {
 					"type":	"string",
-					"enum": ["entities", "images", "news", "rankingResponse",
-							 "relatedSearches", "webPages"]
+					"enum": ["computation", "entities", "images", "news",
+							 "places", "relatedSearches", "spellSuggestions",
+							 "timeZone", "translations", "videos", "webPages"]
 				}
 			},
 			"remark":	{

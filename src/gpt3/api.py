@@ -476,7 +476,9 @@ _ENGINES = [
 	{'model-family': 'Claude-2',	'engine-name': 'claude-2.1',			'field-size': 100_000,	'prompt-price': 8e-3,	'price': 24e-3,		'is-chat':	'either',	'has-vision': False,	'encoding': 'non-tiktoken'},
 		# Claude 3 models.
 	{'model-family': 'Claude-3',	'engine-name': 'claude-3-haiku-tbd',		'field-size': 200_000,	'prompt-price': 0.25e-3,	'price': 1.25e-3,	'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
-	{'model-family': 'Claude-3',	'engine-name': 'claude-3-sonnet-20240229',	'field-size': 200_000,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+	#{'model-family': 'Claude-3',	'engine-name': 'claude-3-sonnet-20240229',	'field-size': 200_000,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+	#{'model-family': 'Claude-3',	'engine-name': 'claude-3-sonnet-20240229',	'field-size': 45_000,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+	{'model-family': 'Claude-3',	'engine-name': 'claude-3-sonnet-20240229',	'field-size': 16_384,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 	{'model-family': 'Claude-3',	'engine-name': 'claude-3-opus-20240229',	'field-size': 200_000,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'}
 
 ] # End _ENGINES constant module global data structure.
@@ -1647,10 +1649,12 @@ class Completion:
 
 			# If we get here, we know we have enough space for our query + result,
 			# so we can proceed with the request to the actual underlying API.
+
 			complStruct = openai.Completion.create(**apiArgs)
 
 			# This measures the length of the response in tokens, and updates
 			# the global record of API usage statistics accordingly.			
+
 			compl._accountForOutput(apiArgs['model'], complStruct)
 
 			# This updates the cost data and the human-readable table of API
@@ -2471,7 +2475,7 @@ class ChatCompletion(Completion):
 		else:
 			maxToks = apiArgs['max_tokens']
 
-		#_logger.debug(f"In ._createChatComplStruct(), maxToks={maxToks}.")
+		_logger.debug(f"In ._createChatComplStruct(), maxToks={maxToks}.")
 
 
 			# Check to make sure that input+result window is not greater than
@@ -2531,11 +2535,9 @@ class ChatCompletion(Completion):
 
 			_logger.debug(f"[GPT chat API] Requesting up to {apiArgs['max_tokens']} tokens.")
 
-			if apiArgs['max_tokens'] == float('inf'):
+			if apiArgs['max_tokens'] == float('inf') and not isinstance(client, Anthropic):
+				# Can't do this for Anthropic because it's always required.
 				del apiArgs['max_tokens']	# Equivalent to float('inf')?
-
-		prettyArgs = pformat(apiArgs)
-		_logger.debug("Calling openai.ChatCompleton.create() with these keyword args:\n" + prettyArgs)
 
 			# If we get here, we know we have enough space for our query + result,
 			# so we can proceed with the request to the actual underlying API.
@@ -2565,10 +2567,23 @@ class ChatCompletion(Completion):
 			if 'functions' in apiArgs:
 				del apiArgs['functions']
 
+			# Do some sanitization of the messages list:
+			# (1) Make sure first message isn't from the AI
+			messages = apiArgs['messages']
+			while messages[0]['role'] == CHAT_ROLE_AI:
+				messages.pop(0)
+			apiArgs['messages'] = messages
+
+			prettyArgs = pformat(apiArgs)
+			_logger.debug("Calling anthropicClient.messages.create() with these keyword args:\n" + prettyArgs)
+
 			# Anthropic style chat completion.
 			chatComplObj = client.messages.create(**apiArgs)
 
 		else:
+			prettyArgs = pformat(apiArgs)
+			_logger.debug("Calling openai.ChatCompleton.create() with these keyword args:\n" + prettyArgs)
+
 			# OpenAI style chat completion.
 			chatComplObj = client.chat.completions.create(**apiArgs)
 
