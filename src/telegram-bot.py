@@ -2134,6 +2134,14 @@ class BotConversation:
 			add_system_section(
 				DYNAMIC_MEMORY_HEADER,
 				'relevant_memories',
+				("The memory items listed below represent the top 5 most "
+				 "semantically relevant matches to the user's most recent "
+				 "message, filtered based on privacy and access permissions. "
+				 "These contextually relevant memories are automatically "
+				 "surfaced to assist you in providing accurate, context-aware "
+				 "responses. You can reference these memories in your replies "
+				 "or use the search_memory() function to perform more targeted "
+				 "searches if needed.\n\n") + \
 				thisConv.dynamicMem
 					# ^ Note this only changes when a new user message is added to the convo.
 			)
@@ -4572,7 +4580,7 @@ async def ai_forget(updateMsg:TgMsg, conversation:BotConversation,
 		return "error: missing required argument"
 	#__/
 
-	_logger.normal("Deleting a memory item in chat #{chat_id}.")
+	_logger.normal(f"Deleting a memory item in chat #{chat_id}.")
 	_deleteMemoryItem(item_id=itemToDel, text=textToDel)
 	# For now we assume it always succeeds.
 
@@ -4835,7 +4843,11 @@ async def ai_remember(updateMsg:TgMsg, conversation:BotConversation, textToAdd:s
 					f"{textToAdd}].")
 
 	newItemID = _addMemoryItem(user.id, chat_id, textToAdd, isPublic, isGlobal)
-	return f"Success: created new memory item {newItemID}"
+
+	privacy = "public" if isPublic else "private"
+	locality = "global" if isGlobal else "local"
+
+	return f"Success: Created new {privacy} {locality} memory item {newItemID} with text: [{textToAdd}]."
 
 	# Obsolete code below.
 
@@ -5252,13 +5264,22 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 
 		textToAdd = funcArgs.get('text', None)
 
-		isPrivate = funcArgs.get('is_private', True)
-			# Is this information considered private
-			# to the specific user or group chat?
 
-		isGlobal = funcArgs.get('is_global', False)
-			# Is this information available for the
-			# AI to see in any context?
+		if isinstance(_main_client, Anthropic):
+
+			isPrivate = bool(funcArgs.get('is_private', 'true').lower() == 'true')
+
+			isGlobal = bool(funcArgs.get('is_global', 'false').lower() == 'true')
+
+		else:
+
+			isPrivate = funcArgs.get('is_private', True)
+				# Is this information considered private
+				# to the specific user or group chat?
+
+			isGlobal = funcArgs.get('is_global', False)
+				# Is this information available for the
+				# AI to see in any context?
 
 		if textToAdd:
 			return await ai_remember(message, conversation, textToAdd,
@@ -5273,7 +5294,8 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 			# Get the arguments.
 
 		queryPhrase = funcArgs.get('query_phrase', None)
-		maxResults = funcArgs.get('max_results', DEFAULT_SEARCHMEM_NITEMS)
+
+		maxResults = int(funcArgs.get('max_results', DEFAULT_SEARCHMEM_NITEMS))
 
 		if queryPhrase:
 			return await ai_search(message, conversation, queryPhrase,
@@ -5330,6 +5352,8 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 		userToBlock = funcArgs.get('user_name', None)
 		userIDToBlock = funcArgs.get('user_id', None)
 			# Defaulting to None will allow ai_block() to figure out the user to block.
+		if userIDToBlock is not None:
+			userIDToBlock = int(userIDToBlock)
 
 		# We can't uncomment this yet because AI can't retrieve ID yet.
 		#userIDToBlock = funcArgs.get('user_id', user_id)		# Specified by ID.
@@ -5341,6 +5365,8 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 		# NOTE: Unblocking users by tag may not always work, since tags are not unique.
 		userToUnblock = funcArgs.get('user_name', user_name)		# Default to current user.
 		userIDToUnBlock = funcArgs.get('user_id', None)
+		if userIDToUnBlock is not None:
+			userIDToUnBlock = int(userIDToUnBlock)
 
 		return await ai_unblock(message, conversation, userToUnblock)
 
