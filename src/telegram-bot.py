@@ -4361,7 +4361,11 @@ async def ai_vision(update:Update, context:Context, filename:str,
 #__/ End async function ai_vision().
 
 
-DAILY_IMAGE_LIMIT = 5
+## Limit on number of images that can be generated per day per chat.
+
+#DAILY_IMAGE_LIMIT = 5
+DAILY_IMAGE_LIMIT = 10
+
 
 # Define a function to handle the /image command, when issued by the AI.
 async def ai_image(update:Update, context:Context, imageDesc:str,
