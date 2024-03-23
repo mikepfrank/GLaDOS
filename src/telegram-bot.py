@@ -7061,15 +7061,16 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 		# Just send our response to the user as a normal message.
 		await send_response(update, context, response_text)
 
-	# One more thing to do here: If the AI's response ends with the string "(cont)" or "(cont.)"
-	# or "(more)" or "...", then we'll send a message to the user asking them to continue the 
-	# conversation.
-	if response_text.endswith("(cont)") or response_botMsg.text.endswith("(cont.)") or \
-	   response_text.endswith("(more)") or response_botMsg.text.endswith("..."):
-
-		contTxt = "[If you want me to continue my response, type '/continue'.]"
-		await _reply_user(tgMsg, conversation, contTxt, ignore=True)
-	#__/
+	### NOTE: Commenting this out for now because we don't currently support this.
+	## One more thing to do here: If the AI's response ends with the string "(cont)" or "(cont.)"
+	## or "(more)" or "...", then we'll send a message to the user asking them to continue the 
+	## conversation.
+	#if response_text.endswith("(cont)") or response_botMsg.text.endswith("(cont.)") or \
+	#   response_text.endswith("(more)") or response_botMsg.text.endswith("..."):
+	#
+	#	contTxt = "[If you want me to continue my response, type '/continue'.]"
+	#	await _reply_user(tgMsg, conversation, contTxt, ignore=True)
+	##__/
 
 	# Processed AI's response successfully.
 
@@ -7169,7 +7170,7 @@ async def process_text_response(
 	split_str = f"\n{botConvo.bot_name}>"
 	if split_str in text_response:
 		response_msgs = text_response.split(split_str)
-		_logger.normal("Detected multiple Telegram messages in response:")
+		_logger.normal("\nDetected multiple Telegram messages in response:")
 		i=1
 		for msg in response_msgs:
 			_logger.normal(f"\tMessage #{i}: [{msg}]")
@@ -8942,6 +8943,12 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 		chat_id = message.chat.id
 	else:
 		chat_id = convo.chat_id
+
+	# If the message begins with "*thinks*", don't bother sending it
+	# to the user.
+	if msgToSend.startswith("*thinks*"):
+		_logger.normal(f"\nSuppressing private thought from being sent to the chat {chat_id}:\n\t[{msgToSend}].\n")
+		return 'success'
 
 	# If our caller requested we utilize markup to style our message,
 	# then turn on the 'MarkdownV2' parse mode supported by Telegram,
