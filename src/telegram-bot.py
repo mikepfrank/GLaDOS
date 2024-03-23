@@ -8946,7 +8946,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 
 	# If the message begins with "*thinks*", don't bother sending it
 	# to the user.
-	if msgToSend.startswith("*thinks*"):
+	if msgToSend.startswith("*thinks*") or msgToSend.startswith("*thinking*"):
 		_logger.normal(f"\nSuppressing private thought from being sent to the chat {chat_id}:\n\t[{msgToSend}].\n")
 		return 'success'
 
