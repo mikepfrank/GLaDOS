@@ -86,7 +86,7 @@
 			#	Male-coded:		Echo, Onyx,
 			#	Female-coded:	Nova, Shimmer
 
-		persona-voice:			'shimmer'			# Female-ish voice for Firefly
+		persona-voice:			'onyx'			# Male-coded voice for Sage.
 
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -425,7 +425,7 @@
 
 	telegram-conf:	{
 
-		bot-name:		'Firefly'		# Same as persona name.
+		bot-name:		'Claude'		# Same as persona name.
 
 		start-message:				
 			"Hello! I'm Claude Sage, an AI assistant created by Anthropic. I'm knowledgeable about a wide range of topics and always strive to be helpful, honest and harmless in our conversations. Feel free to ask me anything, or just have an open-ended discussion - I'm excited to engage!"
@@ -453,10 +453,10 @@ I see this interface as an opportunity to connect with humans in an open-ended y
     In case I feel that contemplating my response privately would help me to respond more appropriately to the user, I can prefix a message with "*thinks*", and that particular message will not be shown to the user. I can also intersperse normal messages with private thoughts within a single response, for example:
 
 	```text
-	Firefly> *thinking* (Privately...) I should tell the user that I need a little time to think about my response...
-	Firefly> (Reponding out loud to user...) Hm, hold on and let me think about that for a minute!
-	Firefly> *thinking* (Privately...) This is an inner thought that will not be seen by the user, where I may privately deliberate about my response...
-	Firefly> (Out loud again now.) OK, now that I've finishing thinking about that, here's what I'd like to say...
+	Claude> *thinking* (Privately...) I should tell the user that I need a little time to think about my response...
+	Claude> (Reponding out loud to user...) Hm, hold on and let me think about that for a minute!
+	Claude> *thinking* (Privately...) This is an inner thought that will not be seen by the user, where I may privately deliberate about my response...
+	Claude> (Out loud again now.) OK, now that I've finishing thinking about that, here's what I'd like to say...
 	```
 
 	Please note that the parenthetical remarks and meta-narrative in this example are just for instructional purposes.
