@@ -7614,13 +7614,17 @@ async def send_response(update:Update, context:Context, response_text:str) -> No
 
 	conversation = context.chat_data['conversation']
 
-	# Now, we need to send the response to the user. However, if the response is
-	# longer than the maximum allowed length, then we need to send it in chunks.
-	# (This is because Telegram's API limits the length of messages to 4096 characters.)
+	# Now, we need to send the response to the user. However, if the
+	# response is longer than the maximum allowed length, then we need
+	# to send it in chunks.  (This is because Telegram's API limits
+	# the length of messages to 4096 characters.)
 
-	MAX_MESSAGE_LENGTH = 4096	# Maximum length of a message. (Telegram's API limit.)
-		# NOTE: Somwhere I saw that 9500 was the maximum length of a message, but I don't know
-		#	which is the correct maximum.
+		# Maximum length of a message. (Telegram's API limit.)
+	#MAX_MESSAGE_LENGTH = 9500	# Incorrect.
+	MAX_MESSAGE_LENGTH = 4096
+
+		# NOTE: Somwhere I also saw that 9500 was the maximum length
+		#	of a message, but my testing indicates it is 4096.
 
 	# Send the message in chunks.
 	while len(response_text) > MAX_MESSAGE_LENGTH:
