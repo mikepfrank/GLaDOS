@@ -2088,7 +2088,8 @@ class BotConversation:
 			("Attention, assistant: You are taking the role of a very "
 			 f"humanlike AI persona named {botName} in a Telegram chat. "
 			 "Below are the context headers for the persona, followed by "
-			 "recent messages in the chat:\n")
+			 "recent messages in the chat. Please try to keep your responses "
+			 "concise except when asked to respond in detail.\n")
 		)
 
 		# MESSAGE #2.
@@ -2224,13 +2225,14 @@ class BotConversation:
 
 		response_prompt = (
 			"In your response, use the same language that the user used most "
-			"recently, if appropriate. "
+			"recently, if appropriate. Be concise unless asked for detail. "
 			#f"Your responses should begin with '{botName}>' to trigger the Telegram "
 			#"bot server to send the subsequent text to the chat as a message from your "
 			#"bot. You may include multiple such messages in your response, but each one "
 			#"should begin on a new line. "
-			"You may include multiple Telegram messages in your response, but each one "
-			f"must begin on a new line starting with '{botName}>'. "
+			"You may include multiple Telegram messages in your response. "
+			#"You may include multiple Telegram messages in your response, but each one "
+			#f"must begin on a new line starting with '{botName}>'. "
 			"(Or, alternatively to just sending messages, you can activate "
 			"an available function and then call that function, if appropriate.)"
 		)
@@ -4182,9 +4184,13 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 				_logger.error(f"Got a {type(e).__name__} from {who} ({e}) for "
 							  f"conversation {chat_id}.")
 
-				diagMsgStr = "AI model is overloaded, or monthly quota has "\
-					"been reached; please try again later. Quotas reset on "\
-					"the 1st of the month."
+				if isinstance(_main_client, Anthropic):
+					diagMsgStr = "AI model is overloaded, or daily rate limit has "\
+								 "been reached; please try again later."
+				else:
+					diagMsgStr = "AI model is overloaded, or monthly quota has "\
+								 "been reached; please try again later. Quotas reset on "\
+								 "the 1st of the month."
 
 				await _send_diagnostic(tgMsg, conversation, diagMsgStr, ignore=True)
 				return	# That's all she wrote.
@@ -5924,9 +5930,13 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 
 			# Send a diagnostic message to the AI and to the user.
 
-			diagMsgStr = "AI model is overloaded, or monthly quota has "\
-					"been reached; please try again later. Quotas reset on "\
-					"the 1st of the month."
+			if isinstance(_main_client, Anthropic):
+				diagMsgStr = "AI model is overloaded, or daily rate limit has "\
+							 "been reached; please try again later."
+			else:
+				diagMsgStr = "AI model is overloaded, or monthly quota has "\
+							 "been reached; please try again later. Quotas reset on "\
+							 "the 1st of the month."
 
 			await _send_diagnostic(tgMsg, botConvo, diagMsgStr)
 
