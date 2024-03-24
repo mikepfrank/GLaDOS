@@ -2234,7 +2234,7 @@ class BotConversation:
 		add_system_section(
 			RECENT_MESSAGES_HEADER,
 			'telegram_msglist_header',
-			"A transcript of recent messages in the Telegram chat and other events (function calls, BotServer diagnostics) can be found below."
+			"A transcript of recent messages in the Telegram chat and other events (thoughts, function calls, BotServer outputs) can be found below."
 		)
 
 		# Remember how many header messages we just created.
@@ -7372,8 +7372,11 @@ async def send_response(update:Update, context:Context, response_text:str) -> No
 	# (This is because Telegram's API limits the length of messages to 4096 characters.)
 
 	MAX_MESSAGE_LENGTH = 4096	# Maximum length of a message. (Telegram's API limit.)
-		# NOTE: Somwhere I saw that 9500 was the maximum length of a message, but I don't know
-		#	which is the correct maximum.
+	
+	#MAX_MESSAGE_LENGTH = 9500
+		# NOTE: Somwhere I saw that 9,500 was the maximum length of a
+		# Telegram message, but I don't know which is the correct
+		# maximum. But based on my tests, it seems to be 4,096.
 
 	# Send the message in chunks.
 	while len(response_text) > MAX_MESSAGE_LENGTH:
@@ -8927,6 +8930,7 @@ def _cleanup_markdown(text, inside_mask=0):
 # Returns 'success' if the send succeeded, or an error string if it failed.
 # If ignore=True, then the error string indicates that the error is being
 # ignored by the program.
+
 async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 					  msgToSend:str, ignore:bool=False, markup:bool=False) -> str:
 
