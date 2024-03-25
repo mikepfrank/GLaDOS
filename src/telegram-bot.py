@@ -2185,11 +2185,13 @@ class BotConversation:
 
 		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
 			# Only give this instruction in group chats:
-			response_prompt += " However, if the user is not addressing you, " \
-							   "send '/pass' or an empty message to remain silent."
+			response_prompt += (" However, if the user is not addressing you, "
+								"call pass_turn() or send '/pass' or an empty "
+								"message to remain silent."
 		else:
-			response_prompt += " You may also send '/pass' or an empty message to refrain from responding."
-
+			response_prompt += (" You may also call pass_turn() or send '/pass' "
+								"or an empty message to refrain from responding.")
+								
 		# Note this one will appear at the bottom of OpenAI messages, but as
 		# part of the overall system prompt for Anthropic models.
 		if is_anthropic:
