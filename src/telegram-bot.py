@@ -5596,12 +5596,12 @@ def _sanitize_msgs(oaiMsgList):
 #IMAGE_PATTERN = r'[([A-Z ]+); type="([\w/]+)", filename="([\w/-]+)"]'
 #	Doesn't match file extensions
 
-IMAGE_PATTERN = r'\[([A-Z ]+); type="([\w/]+)", filename="([\w/-]+\.\w+)"\]'
+IMAGE_PATTERN = r'\[([A-Z ]+)[:;] type="([\w/]+)", filename="([\w/-]+\.\w+)"\]'
 	# 1st group (in all caps): REMARK
 	# 2nd group: media_type
 	# 3rd group: filename
 
-#IMAGE_PATTERN = r'\[{(REMARK);}\ type=\"({media_type})\",\ filename=\"({filename})\"\]'
+#IMAGE_PATTERN = r'\[{(REMARK);}\ type=\"({media_type})\",\ filename=\"({filename})\".*\]'
 
 import base64
 
@@ -5609,28 +5609,38 @@ def _retrieve_image_data(media_type, filename):
 
 	"""Retrieve base64-encoded image data from the given filename."""
 
-	fullpath = os.path.join(AI_DATADIR, filename)
-	size = os.path.getsize(fullpath)
-	_logger.normal(f'\tImage file {fullpath} has size = {size} bytes.')
+	try:
+		fullpath = os.path.join(AI_DATADIR, filename)
+		size = os.path.getsize(fullpath)
+		_logger.normal(f'\tImage file {fullpath} has size = {size} bytes.')
 
-	if size > 5_000_000:		# More than 5 MB?
-		return f'[ERROR: image file "{filename}" is too large ({size} > 5MB) to include in messages]'
+		if size > 5_000_000:		# More than 5 MB?
+			return f'[ERROR: image file "{filename}" is too large ({size} > 5MB) to include in messages]'
 
-	with open(fullpath, 'rb') as image_file:
-		return base64.b64encode(image_file.read()).decode('utf-8')
+		with open(fullpath, 'rb') as image_file:
+			return base64.b64encode(image_file.read()).decode('utf-8')
+
+	# Generically catch any filesystem errors.
+	except Exception as e:
+		return f'[ERROR: exception "{e}" while retrieving image data]'
 #__/
 
 
-def _process_text_message(text_content):
-	"""
-	Processes text content, extracting embedded inline images into message_content structure.
+def _process_text_message(text_content, alt_imageAction_hook=None):
+	"""Processes text content, extracting embedded inline images into message_content structure.
 	
 	Args:
 		text_content (str): The input text content string.
+
+		alt_imageAction_hook (callable): An alternate action to be
+			done with each inline image, instead of expanding it
+			into the message list. This will be passed the image
+			filename.
 		
 	Returns:
 		list: A list of dictionaries representing the message content, with embedded
 			  image data extracted into an image source structure.
+
 	"""
 	message_content = []
 	
@@ -5640,6 +5650,7 @@ def _process_text_message(text_content):
 			message_content.append({"type": "text", "text": text})
 			
 	def add_image(media_type, filename):
+
 		# Retrieve base64 encoded image data based on media_type and filename 
 		image_data = _retrieve_image_data(media_type, filename)
 		
@@ -5647,7 +5658,9 @@ def _process_text_message(text_content):
 			message_content.append({"type": "text", "text": image_data})
 
 		else:
-			_logger.normal(f"\tAppending {media_type} image data of length {len(image_data)} to message content list...")
+			_logger.normal(f"\tAppending {media_type} image data of length "
+						   f"{len(image_data)} to message content list...")
+
 			message_content.append({
 				"type": "image",
 				"source": {
@@ -5656,23 +5669,38 @@ def _process_text_message(text_content):
 					"data": image_data
 				}
 			})
-		
+	
 	# Process text_content recursively
 	def process_text(text):
 		match = re.search(IMAGE_PATTERN, text)
 		if match:
 			remark, media_type, filename = match.groups()
 			
-			_logger.normal(f'\nFound embedded image: [{remark}; type={media_type}, filename={filename}]')
+			if alt_imageAction_hook:
 
-			# Add text before match
-			add_text(text[:match.start()] + f"[{remark}: type={media_type}, filename={filename}, image_data=")
+				# If an extra image-action hook was supplied, call it with
+				# the image filename.
+
+				caption = f'Previously shared {remark.lower()} "{filename}"'
+				alt_imageAction_hook(filename, caption)
+				
+			else:
+				# If no hooks, this is just the normal kind of image expansion.
+
+				_logger.normal(f'\nFound embedded image: [{remark}; '
+							   f'type={media_type}, filename={filename}]')
+				
+				# Add text before match
+				add_text(text[:match.start()] + (f'[{remark}; type="{media_type}",'
+												 f'filename="{filename}", image_data="'))
 			
-			# Add matched image
-			add_image(media_type, filename)
+				# Add matched image
+				add_image(media_type, filename)
 			
+			#__/ End if alt. image action hook ... else ...
+
 			# Process remaining text recursively
-			process_text("]" + text[match.end():])
+			process_text('"]' + text[match.end():])
 			
 		else:
 			# No more matches, add remaining text
@@ -5982,7 +6010,7 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 
 			if isinstance(global_gptCore.client, Anthropic):
 				for msgDict in oaiMsgList:
-					# Assistant isn't allowed to have non-text content.
+					# Assistant isn't allowed to have non-text content, 
 					if msgDict['role'] == CHAT_ROLE_USER:
 						orig_content = msgDict['content']
 
@@ -7299,6 +7327,7 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 	
 	# Get the chat_id, user_name, and conversation object.
 	chat_id = tgMsg.chat.id
+
 	#user_name = _get_user_tag(tgMsg.from_user)
 	conversation = context.chat_data['conversation']
 	response_text = response_botMsg.text
@@ -7324,8 +7353,66 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 
 	else: # Response was not a command. Treat it normally.
 
+		# This gets set to True later if we want the AI to be
+		# able to respond to its own response (could make sense
+		# if BotServer expands some images).
+
+		chain_responses = False
+
+		# This is a hack to allow the AI to resurrect expired images
+		# even though assistant messages can't contain image content.
+		if isinstance(_main_client, Anthropic):
+
+			# Is there an embedded image block in the assistant's text?
+			match = re.search(IMAGE_PATTERN, response_text)
+			if match:
+
+				# First, resend all of the embedded images to the user.
+
+				def _resend_image(filename, caption):
+					"""Hook function to send an image file as a reply to the user."""
+
+					with open(filename, 'rb') as fh:
+						caption = f'Previously shared image "{filename}"'
+						_send_imagedata(fh, tgMsg, caption)
+
+				# This is the same function we would normally use to
+				# expand a text message with embedded images into a
+				# full message content list including embedded image
+				# data. However, instead we supply the _resend_image()
+				# function above as the alternative image action, and
+				# ignore its normal return value.
+
+				_process_text_message(response_text, alt_imageAction_hook=_resend_image)
+
+				# Generate the BotMessage that will allow the AI to see the images.
+
+				sys_text = (f"{BOT_NAME}, for your reference, below is a copy "
+							"of your last message with embedded images expanded "
+							"(if possible; and they will also have been resent to "
+							"the Telegram chat): ") + response_text
+
+				conversation.add_message(BotMessage(SYS_NAME, sys_text))
+
+				chain_response = True
+
+			#__/ End if inline images found.
+
+		#__/ End if Anthropic.
+
+
 		# Just send our response to the user as a normal message.
 		await send_response(update, context, response_text)
+
+		# If chain_responses = True here, that means we want to give 
+		# the AI another opportunity to respond.
+
+		if chain_responses:
+			await get_ai_response(update, context)
+
+	#__/ End if command ... else ...
+
+	
 
 	### NOTE: Commenting this out for now because we don't currently support this.
 	## One more thing to do here: If the AI's response ends with the string "(cont)" or "(cont.)"
@@ -7436,11 +7523,11 @@ async def process_text_response(
 	split_str = f"\n{botConvo.bot_name}>"
 	if split_str in text_response:
 		response_msgs = text_response.split(split_str)
-		_logger.normal("\nDetected multiple Telegram messages in response:")
-		i=1
-		for msg in response_msgs:
-			_logger.normal(f"\tMessage #{i}: [{msg}]")
-			i += 1
+		#_logger.normal("\nDetected multiple Telegram messages in response:")
+		#i=1
+		#for msg in response_msgs:
+		#	_logger.normal(f"\tMessage #{i}: [{msg}]")
+		#	i += 1
 	else:
 		response_msgs = [text_response]
 
@@ -7519,6 +7606,50 @@ async def process_text_response(
 #__/ End function process_text_response().
 
 
+async def _send_imagedata(content, tgMsg:TgMsg, caption:str=None, ):
+	# content is image data as file handle, bytes, or string
+	# tgMsg is the user message we're replying to
+	# caption is an optional string to use as the message caption
+	
+	# Get the message's chat ID.
+	chat_id = tgMsg.chat.id
+
+	# Get our preferred name for the user.
+	username = _get_user_tag(tgMsg.from_user)
+
+	# Prepare the image to be sent via Telegram
+	image_data = InputFile(content)
+	
+	# Send the image as a reply in Telegram
+	try:
+		timeout=30	# Try longer timeouts
+		await tgMsg.reply_photo(photo=image_data, caption=caption,
+				read_timeout=timeout, write_timeout=timeout,
+				connect_timeout=timeout, pool_timeout=timeout)
+
+	except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
+
+		exType = type(e).__name__
+	
+		_logger.error(f"Got a {type(e).__name__} exception from Telegram "
+					  "({e}) for conversation {chat_id}; aborting.")
+		conversation.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram " \
+			"exception {exType} ({e}) while sending to user {user_name}.]"))
+
+		if isinstance(e, BadRequest) and "Not enough rights to send" in e.message:
+			try:
+				await app.bot.leave_chat(chat_id)
+				_logger.normal(f"Left chat {chat_id} due to insufficient permissions.")
+			except Exception as leave_error:
+				_logger.error(f"Error leaving chat {chat_id}: {leave_error}")
+
+		return None
+
+	#__/
+
+#__/ End private function _send_imagedata
+
+
 @backoff.on_exception(backoff.expo, TimedOut, max_tries=4)	# If this doesn't work, try Exception
 async def send_image(update:Update, context:Context, desc:str, dims=None, style=None, caption=None, save_copy=True) -> (str, str, str):
 	"""Generates an image from the given description and sends it to the user.
@@ -7585,39 +7716,14 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, style=
 
 	_logger.normal(f"\tSending generated image to user {username}...")
 
-	# Prepare the image to be sent via Telegram
-	image_data = InputFile(response.content)
-	
 	# Also log the image in the transcript.
 	extension = _extract_extension(short_filename)	# Get the file extension, e.g., '.png'.
 	media_type = _get_image_media_type(extension)	# Get the IANA media type, e.g., 'image/png'.
 	image_msg = f'''[GENERATED IMAGE; type="{media_type}", filename="{save_filename}"]'''
 	conversation.add_message(BotMessage(SYS_NAME, image_msg))
 
-	# Send the image as a reply in Telegram
-	try:
-		timeout=30	# Try longer timeouts
-		await tgMsg.reply_photo(photo=image_data, caption=caption,
-				read_timeout=timeout, write_timeout=timeout,
-				connect_timeout=timeout, pool_timeout=timeout)
-
-	except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
-
-		_logger.error(f"Got a {type(e).__name__} exception from Telegram "
-					  "({e}) for conversation {chat_id}; aborting.")
-		conversation.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram " \
-			"exception {exType} ({e}) while sending to user {user_name}.]"))
-
-		if isinstance(e, BadRequest) and "Not enough rights to send" in e.message:
-			try:
-				await app.bot.leave_chat(chat_id)
-				_logger.normal(f"Left chat {chat_id} due to insufficient permissions.")
-			except Exception as leave_error:
-				_logger.error(f"Error leaving chat {chat_id}: {leave_error}")
-
-		return None
-
-	#__/
+	# This actually sends the image to the user as a photo reply (or tries to).
+	await _send_imagedata(response.content, tgMsg, caption=caption)
 
 	# Update record of how many images have been generated today in this context.
 
