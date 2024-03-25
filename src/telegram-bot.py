@@ -3842,6 +3842,126 @@ async def handle_photo(update:Update, context:Context) -> None:
 #__/ End async function handle_photo().
 
 
+# Map from file extensions to IANA media types.
+
+_EXTENSION_MAPPINGS = {
+    # Common image types
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg", 
+    "png": "image/png",
+    "gif": "image/gif",
+    "bmp": "image/bmp",
+    "tif": "image/tiff",
+    "tiff": "image/tiff",
+    
+    # Common document types
+    "pdf": "application/pdf", 
+    "doc": "application/msword",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "xls": "application/vnd.ms-excel",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+    "ppt": "application/vnd.ms-powerpoint",
+    "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    
+    # Audio/video types
+    "mp3": "audio/mpeg",
+    "wav": "audio/wav", 
+    "m4a": "audio/x-m4a",
+    "mp4": "video/mp4",
+    "mov": "video/quicktime",
+    
+    # Archive/compression types
+    "zip": "application/zip",
+    "gz": "application/gzip",
+    "tar": "application/x-tar",
+    
+    # Catch-all for unrecognized extensions
+    "": "application/octet-stream"
+}
+
+
+_IMAGE_EXTENSION_MAPPINGS = {
+	"jpg": "image/jpeg",
+	"jpeg": "image/jpeg",
+    "png": "image/png", 
+    "gif": "image/gif",
+    "bmp": "image/bmp",
+    "tif": "image/tiff",
+    "tiff": "image/tiff",
+    "svg": "image/svg+xml",
+    "webp": "image/webp",
+    "ico": "image/x-icon",
+    "heic": "image/heic",
+    "heif": "image/heif",
+
+    # Catch-all for unrecognized extensions
+    "": "application/octet-stream"
+}
+
+
+def _get_media_type(file_extension):
+    """
+    Maps a file extension string to its corresponding IANA media type.
+    
+    Args:
+        file_extension (str): The file extension string (e.g. '.jpg', 'docx')
+        
+    Returns:
+        str: The IANA media type string (e.g. 'image/jpeg', 'application/msword')
+    """
+
+    # Remove leading period if present
+    ext = file_extension.lower().lstrip(".")
+    
+    # Perform lookup in extension mappings
+    media_type = _EXTENSION_MAPPINGS.get(ext, _EXTENSION_MAPPINGS[""])
+    
+    return media_type
+#__/
+
+
+def _get_image_media_type(file_extension):
+    """
+    Maps a file extension string to its corresponding IANA image media type.
+    
+    Args:
+        file_extension (str): The image file extension string (e.g. '.jpg', 'png')
+        
+    Returns:
+        str: The IANA media type string (e.g. 'image/jpeg', 'image/png')
+    """
+
+    # Remove leading period if present
+    ext = file_extension.lower().lstrip(".")
+    
+    # Perform lookup in extension mappings
+    media_type = _IMAGE_EXTENSION_MAPPINGS.get(ext, _IMAGE_EXTENSION_MAPPINGS[""])
+    
+    return media_type
+#__/
+
+
+def _extract_extension(filename):
+    """
+    Extracts the file extension from a filename string.
+    
+    Args:
+        filename (str): The filename string (e.g. 'image.jpg', 'data.txt.gz')
+        
+    Returns:
+        str: The file extension string including the leading period (e.g. '.jpg', '.gz')
+             Or an empty string if no extension is found.
+    """
+    # Use regex to extract extension part from filename
+    extension = re.search(r'\.\w+$', filename)
+    
+    # If match, return the extracted extension 
+    if extension:
+        return extension.group(0)
+    else:
+        return ''
+
+
 	#/==========================================================================
 	#| 3.3. Update handler group 2 -- Normal message handlers.
 	#|
@@ -3927,7 +4047,11 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		# At this point, we just note the image filename and caption in the message text.
 		# We hope that the AI is smart enough to then call the analyze_image() function as needed.
 
-		text = f'''[PHOTO ATTACHMENT; filename="{context.user_data['image_filename']}"]'''
+		filename = context.user_data['image_filename']	# Get the file name.
+		extension = _extract_extension(filename)		# Get the file extension, e.g., '.jpg'.
+		media_type = _get_image_media_type(extension)	# Get the IANA media type, e.g., 'image/jpeg'.
+
+		text = f'''[PHOTO ATTACHMENT; type="{media_type}", filename="{filename}"]'''
 
 		## Utilize the description created by handle_photo() above.
 		#text = f"[PHOTO ATTACHMENT; {BOT_NAME} running visual analysis... detailed_result=```{context.user_data['image_text']}```]"	
@@ -3981,7 +4105,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		conversation.add_message(BotMessage(user_name, text))
 		if got_image:
 			conversation.add_message(BotMessage(SYS_NAME,
-				f"[NOTE: {BOT_NAME}, please use analyze_image() to inspect the photo attachment]"))
+				f"[NOTE: {BOT_NAME}, you may use analyze_image() to inspect the photo attachment]"))
 
 	# Get the current user object, stash it in convo temporarily.
 	# (This may be needed later if we decide to block the current user.)
@@ -5452,6 +5576,97 @@ def _sanitize_msgs(oaiMsgList):
 	return oaiMsgList
 
 
+#IMAGE_PATTERN = r'[([A-Z ]+); type="([\w/]+)", filename="([\w/-]+)"]'
+#	Doesn't match file extensions
+
+IMAGE_PATTERN = r'\[([A-Z ]+); type="([\w/]+)", filename="([\w/-]+\.\w+)"\]'
+	# 1st group (in all caps): REMARK
+	# 2nd group: media_type
+	# 3rd group: filename
+
+#IMAGE_PATTERN = r'\[{(REMARK);}\ type=\"({media_type})\",\ filename=\"({filename})\"\]'
+
+import base64
+
+def _retrieve_image_data(media_type, filename):
+
+	"""Retrieve base64-encoded image data from the given filename."""
+
+	fullpath = os.path.join(AI_DATADIR, filename)
+	size = os.path.getsize(fullpath)
+	_logger.normal(f'\tImage file {fullpath} has size = {size} bytes.')
+
+	if size > 5_000_000:		# More than 5 MB?
+		return f'[ERROR: image file "{filename}" is too large ({size} > 5MB) to include in messages]'
+
+	with open(fullpath, 'rb') as image_file:
+		return base64.b64encode(image_file.read()).decode('utf-8')
+#__/
+
+
+def _process_text_message(text_content):
+	"""
+	Processes text content, extracting embedded inline images into message_content structure.
+	
+	Args:
+		text_content (str): The input text content string.
+		
+	Returns:
+		list: A list of dictionaries representing the message content, with embedded
+			  image data extracted into an image source structure.
+	"""
+	message_content = []
+	
+	# Define regex match processing functions
+	def add_text(text):
+		if text.strip():
+			message_content.append({"type": "text", "text": text})
+			
+	def add_image(media_type, filename):
+		# Retrieve base64 encoded image data based on media_type and filename 
+		image_data = _retrieve_image_data(media_type, filename)
+		
+		if image_data.startswith('[ERROR:'):
+			message_content.append({"type": "text", "text": image_data})
+
+		else:
+			_logger.normal(f"\tAppending {media_type} image data of length {len(image_data)} to message content list...")
+			message_content.append({
+				"type": "image",
+				"source": {
+					"type": "base64",
+					"media_type": media_type,
+					"data": image_data
+				}
+			})
+		
+	# Process text_content recursively
+	def process_text(text):
+		match = re.search(IMAGE_PATTERN, text)
+		if match:
+			remark, media_type, filename = match.groups()
+			
+			_logger.normal(f'Found embedded image: [{remark}; type={media_type}, filename={filename}]')
+
+			# Add text before match
+			add_text(text[:match.start()] + f"[{remark}: ")
+			
+			# Add matched image
+			add_image(media_type, filename)
+			
+			# Process remaining text recursively
+			process_text("]" + text[match.end():])
+			
+		else:
+			# No more matches, add remaining text
+			add_text(text)
+			
+	# Initialize recursive processing
+	process_text(text_content)
+	
+	return message_content
+
+
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	get_ai_response()							[public async function]
 		#|
@@ -5565,6 +5780,19 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 	# around everywhere.
 	botConvo.raw_oaiMsgs = oaiMsgList
 	
+	# Here we process the message list to expand out embedded images.
+
+	if isinstance(global_gptCore.client, Anthropic):
+		for msgDict in oaiMsgList:
+			# Assistant isn't allowed to have non-text content.
+			if msgDict['role'] == CHAT_ROLE_USER:
+				orig_content = msgDict['content']
+				# If the content is a string, turn it into a list:
+				if isinstance(orig_content, str):
+					message_content = _process_text_message(orig_content)
+					# This is a list including text and images.
+					msgDict['content'] = message_content
+
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#| Here's our main loop, which calls the API with exception handling as
 	#| needed to recover from situations where our prompt data is too long.
@@ -5740,7 +5968,7 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 
 			#print(f"*** IN get_ai_response(), WE HAVE global_gptCore.client = {global_gptCore.client} ***")
 
-			# Only set this argument for Anthropic systems.
+			# Only set the 'system' argument for Anthropic systems.
 			if isinstance(global_gptCore.client, Anthropic):
 				system = botConvo.sys_prompt
 			else:
@@ -7179,16 +7407,20 @@ async def process_text_response(
 		response_msgs = [text_response]
 
 	for response_msg in response_msgs:
+
 		response_msg = response_msg.strip()		# Trim leading/trailing whitespace.
 		
+		_logger.normal('\n' + '~'*80 + f"\nProcessing individual response sub-message: [{response_msg[:30]}...]")
+
 		if response_msg == "":	# Skip empty messages.
 			continue
 
 		# We don't need to check for function calls here because we already determined
 		# that there are none in this text_response.
 
-		# Create a new Message object.
+		# Create a new BotMessage object.
 		response_botMsg = BotMessage(botConvo.bot_name, response_msg)
+		_logger.normal(f"\tConstructed BotMessage: [{str(response_botMsg)[:30]}...]")
 
 		# If this message is already in the conversation, then we'll suppress it, so
 		# as not to exacerbate the AI's tendency to repeat itself.  (So, as a user,
@@ -7212,11 +7444,13 @@ async def process_text_response(
 
 		#__/ End check for repeated messages.
 
+		_logger.normal("\tAdding BotMessage to BotConvo...")
+
 		# It isn't a repeat, so we'll add it to the conversation.
 		botConvo.add_message(response_botMsg)
 
-		# Update the message object.
-		response_botMsg.text = response_msg
+		# Update the message object (why?)
+		#response_botMsg.text = response_msg
 
 		# If we get here, then we have a non-empty message that's also not a repeat,
 		# and doesn't contain sub-messages.
@@ -7231,13 +7465,15 @@ async def process_text_response(
 		# function will also check to see if the message is a textual
 		# command line, and will process the command if so.
 
+		_logger.normal("\tProcessing the BotMessage...")
+
 		await process_response(tgUpdate, tgContext, response_botMsg)	   # Defined below.
 
 	#__/ End for loop over Telegram messages in the response.
 
 	# Update the conversation's context information (system message).
 	# Note we only need to do this once, not for every sub-message.
-	botConvo.expand_context()	 
+	#botConvo.expand_context()	 
 
 	# If we get here, then we have finished processing the AI's text response,
 	# and we can just return.
@@ -7314,6 +7550,12 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, style=
 	# Prepare the image to be sent via Telegram
 	image_data = InputFile(response.content)
 	
+	# Also log the image in the transcript.
+	extension = _extract_extension(short_filename)	# Get the file extension, e.g., '.png'.
+	media_type = _get_image_media_type(extension)	# Get the IANA media type, e.g., 'image/png'.
+	image_msg = f'''[GENERATED IMAGE; type="{media_type}", filename="{save_filename}"]'''
+	conversation.add_message(BotMessage(SYS_NAME, image_msg))
+
 	# Send the image as a reply in Telegram
 	try:
 		timeout=30	# Try longer timeouts
@@ -9115,11 +9357,11 @@ async def _report_error(convo:BotConversation, telegramMessage,
 	if logIt:
 		# Record the error in the log file.
 
-		#_logger.error(errMsg, exc_info=True)	# Use this version to include stack trace.
+		_logger.error(errMsg, exc_info=True)	# Use this version to include stack trace.
 
 		#_logger.error(errMsg)	# use This version to be less verbose.
 
-		_logger.error(errMsg, exc_info=logmaster.doDebug)
+		#_logger.error(errMsg, exc_info=logmaster.doDebug)
 			# The exc_info option includes a stack trace if we're in debug mode.
 
 	# Compose formatted error message.
@@ -9984,7 +10226,7 @@ ANALYZE_IMAGE_SCHEMA = {
 			},
 			"verbosity":	{
 				"type":			"string",
-				"description":	"How verbose a description of the image do we want?",
+				"description":	"How verbose a description of the image do we want? Use 'detailed' to maximize text extraction.",
 				"default":		'medium',
 				"enum":			['none', 'concise', 'medium', 'detailed']
 			},

@@ -4372,6 +4372,22 @@ def _msg_repr(msg:dict) -> str:
 					  "are both None; this is unexpected.")
 
 	if content is not None:
+		
+		# If the content is a list, we have to reformat it as a string.
+		if isinstance(content, list):
+			content_str = ""
+			for content_item in content:
+				content_type = content_item['type']
+				if content_type == 'text':
+					content_str += content_item['text']
+				elif content_type == 'image':
+					media_type = content_item['source']['media_type']
+					content_str += f' type={media_type}, data=[...]'
+						# Don't show the actual data, of course; it will generally be huge.
+						# Note this may mess up our token accounting...
+			content = content_str
+		#__/
+
 		rep = role + '\n' + \
 			  content + chr(RS) + '\n'
 
