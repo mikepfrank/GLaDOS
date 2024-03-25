@@ -902,6 +902,12 @@ class BotMessage:
 		newMessage.archived = False		# Not archived initially.
 			# Has this message been written to the archive file yet?
 
+		# This will hold an "expanded" version of the message content,
+		# which includes raw image data, once the message has been expanded.
+
+		newMessage.expanded_content = None
+			# No expanded content initially.
+
 	#__/ End definition of instance initializer for class Message.
 
 
@@ -2187,7 +2193,7 @@ class BotConversation:
 			# Only give this instruction in group chats:
 			response_prompt += (" However, if the user is not addressing you, "
 								"call pass_turn() or send '/pass' or an empty "
-								"message to remain silent."
+								"message to remain silent.")
 		else:
 			response_prompt += (" You may also call pass_turn() or send '/pass' "
 								"or an empty message to refrain from responding.")
@@ -2254,6 +2260,10 @@ class BotConversation:
 
 			msg_dict = botMessage.oaiMsgDict()
 			chat_messages.append(msg_dict)
+
+			# Also store a link back to the full BotMessage object from the dict.
+			# This will allow us to avoid re-expanding image contents repeatedly.
+			msg_dict['bot-msg-obj'] = botMessage
 
 			# Here, we need to consolidate consecutive assistant content messages
 			# so that the AI doesn't get confused about how to format them for output.
@@ -4253,9 +4263,14 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 				_logger.error(f"Got a {type(e).__name__} from {who} ({e}) for "
 							  f"conversation {chat_id}.")
 
-				diagMsgStr = "AI model is overloaded, or monthly quota has "\
-					"been reached; please try again later. Quotas reset on "\
-					"the 1st of the month."
+
+				if isinstance(_main_client, Anthropic):
+					diagMsgStr = "AI model is overloaded, or daily rate limit has "\
+								 "been reached; please try again later."
+				else:
+					diagMsgStr = "AI model is overloaded, or monthly quota has "\
+								 "been reached; please try again later. Quotas reset on "\
+								 "the 1st of the month."
 
 				await _send_diagnostic(tgMsg, conversation, diagMsgStr, ignore=True)
 				return	# That's all she wrote.
@@ -5648,10 +5663,10 @@ def _process_text_message(text_content):
 		if match:
 			remark, media_type, filename = match.groups()
 			
-			_logger.normal(f'Found embedded image: [{remark}; type={media_type}, filename={filename}]')
+			_logger.normal(f'\nFound embedded image: [{remark}; type={media_type}, filename={filename}]')
 
 			# Add text before match
-			add_text(text[:match.start()] + f"[{remark}: ")
+			add_text(text[:match.start()] + f"[{remark}: type={media_type}, filename={filename}, image_data=")
 			
 			# Add matched image
 			add_image(media_type, filename)
@@ -5782,19 +5797,6 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 	# around everywhere.
 	botConvo.raw_oaiMsgs = oaiMsgList
 	
-	# Here we process the message list to expand out embedded images.
-
-	if isinstance(global_gptCore.client, Anthropic):
-		for msgDict in oaiMsgList:
-			# Assistant isn't allowed to have non-text content.
-			if msgDict['role'] == CHAT_ROLE_USER:
-				orig_content = msgDict['content']
-				# If the content is a string, turn it into a list:
-				if isinstance(orig_content, str):
-					message_content = _process_text_message(orig_content)
-					# This is a list including text and images.
-					msgDict['content'] = message_content
-
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#| Here's our main loop, which calls the API with exception handling as
 	#| needed to recover from situations where our prompt data is too long.
@@ -5976,6 +5978,35 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 			else:
 				system = None
 
+			# Here we process the message list to expand out embedded images.
+
+			if isinstance(global_gptCore.client, Anthropic):
+				for msgDict in oaiMsgList:
+					# Assistant isn't allowed to have non-text content.
+					if msgDict['role'] == CHAT_ROLE_USER:
+						orig_content = msgDict['content']
+
+						# First, check to see if this is a message that
+						# we've already expanded previously. This will save
+						# us time reloading image files.
+
+						if 'bot-msg-obj' in msgDict:
+							botMsg = msgDict['bot-msg-obj']
+							if botMsg.expanded_content:
+								msgDict['content'] = botMsg.expanded_content
+								continue	# Proceed to next message.
+						
+						# If the content is a string, turn it into a list:
+						if isinstance(orig_content, str):
+							message_content = _process_text_message(orig_content)
+							# This is a list including text and images.
+							msgDict['content'] = message_content
+
+							# Make sure the original botMsg remembers our expanded form.
+							if 'bot-msg-obj' in msgDict:
+								botMsg = msgDict['bot-msg-obj']
+								botMsg.expanded_content = message_content
+
 			# Get the response from the GPT, as a gpt3.api.ChatCompletion object.
 			chatCompletion = global_gptCore.genChatCompletion(	# Call the API.
 				
@@ -6096,9 +6127,14 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 
 			# Send a diagnostic message to the AI and to the user.
 
-			diagMsgStr = "AI model is overloaded, or monthly quota has "\
-					"been reached; please try again later. Quotas reset on "\
-					"the 1st of the month."
+
+			if isinstance(_main_client, Anthropic):
+				diagMsgStr = "AI model is overloaded, or daily rate limit has "\
+							 "been reached; please try again later."
+			else:
+				diagMsgStr = "AI model is overloaded, or monthly quota has "\
+							 "been reached; please try again later. Quotas reset on "\
+							 "the 1st of the month."
 
 			await _send_diagnostic(tgMsg, botConvo, diagMsgStr)
 
@@ -7165,11 +7201,11 @@ async def process_raw_response(
 	split_str = f"\n{botConvo.bot_name}> "
 	if split_str in response_text:
 		response_msgs = response_text.split(split_str)
-		_logger.normal("Detected multiple Telegram messages in response:")
-		i=1
-		for msg in response_msgs:
-			_logger.normal(f"\tMessage #{i}: [{msg}]")
-			i += 1
+		#_logger.normal("Detected multiple Telegram messages in response:")
+		#i=1
+		#for msg in response_msgs:
+		#	_logger.normal(f"\tMessage #{i}: [{msg}]")
+		#	i += 1
 	else:
 		response_msgs = [response_text]
 

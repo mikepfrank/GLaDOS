@@ -475,11 +475,15 @@ _ENGINES = [
 	{'model-family': 'Claude-2',	'engine-name': 'claude-2.0',			'field-size': 100_000,	'prompt-price': 8e-3,	'price': 24e-3,		'is-chat':	'either',	'has-vision': False,	'encoding': 'non-tiktoken'},
 	{'model-family': 'Claude-2',	'engine-name': 'claude-2.1',			'field-size': 100_000,	'prompt-price': 8e-3,	'price': 24e-3,		'is-chat':	'either',	'has-vision': False,	'encoding': 'non-tiktoken'},
 		# Claude 3 models.
-	#{'model-family': 'Claude-3',	'engine-name': 'claude-3-haiku-20240307',	'field-size': 200_000,	'prompt-price': 0.25e-3,	'price': 1.25e-3,	'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+
 	{'model-family': 'Claude-3',	'engine-name': 'claude-3-haiku-20240307',	'field-size': 16_384,	'prompt-price': 0.25e-3,	'price': 1.25e-3,	'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+	#{'model-family': 'Claude-3',	'engine-name': 'claude-3-haiku-20240307',	'field-size': 32_768,	'prompt-price': 0.25e-3,	'price': 1.25e-3,	'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+	#{'model-family': 'Claude-3',	'engine-name': 'claude-3-haiku-20240307',	'field-size': 200_000,	'prompt-price': 0.25e-3,	'price': 1.25e-3,	'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+
 	#{'model-family': 'Claude-3',	'engine-name': 'claude-3-sonnet-20240229',	'field-size': 200_000,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 	#{'model-family': 'Claude-3',	'engine-name': 'claude-3-sonnet-20240229',	'field-size': 45_000,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 	{'model-family': 'Claude-3',	'engine-name': 'claude-3-sonnet-20240229',	'field-size': 16_384,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+
 	#{'model-family': 'Claude-3',	'engine-name': 'claude-3-opus-20240229',	'field-size': 200_000,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'}
 	{'model-family': 'Claude-3',	'engine-name': 'claude-3-opus-20240229',	'field-size': 16_3840,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'}
 
@@ -2423,8 +2427,8 @@ class ChatCompletion(Completion):
 			chat API, with automatic exponential backoff and retry."""
 		
 		if 'messages' in apiArgs:
-			_logger.debug(f"In _createChatComplStruct(), apiArgs['messages']="
-						  f"[list of {len(apiArgs['messages'])} messages]")
+			_logger.info(f"In _createChatComplStruct(), apiArgs['messages']="
+						   f"[list of {len(apiArgs['messages'])} messages]")
 
 		chatCompl = thisChatCompletion	# For convenience.
 
@@ -2578,6 +2582,36 @@ class ChatCompletion(Completion):
 
 			prettyArgs = pformat(apiArgs)
 			_logger.debug("Calling anthropicClient.messages.create() with these keyword args:\n" + prettyArgs)
+
+			_logger.normal("\nDoing last-minute scan for embedded image content:")
+
+			n_images = 0
+
+			for msg in reversed(messages):
+				## Commenting out these diagnostics for now
+				contents = msg['content']
+				if isinstance(contents, list):
+					#_logger.normal(f"\tFound a message containing {len(contents)} content items...")
+					for content_item in contents:
+						#if content_item['type'] == 'text':
+						#	_logger.normal(f'\t\tFound a text item: "{content_item['text'][:30]}...".')
+						if content_item['type'] == 'image':
+							n_images += 1
+							_logger.normal(f"\tFound #{n_images} most-recent "
+								f"image with {len(content_item['source']['data'])} "
+								"characters of base64 image data.")
+							if n_images > 20:
+								_logger.normal("\t\tExpiring that one due to 20-image limit.")
+								# Do surgery on the item to change it to a text placeholder.
+								content_item['type'] = 'text'		# Changes type
+								del content_item['source']			# Unlinks image data
+								content_item['text'] = '[EXPIRED]'	# Notes that the image data is too old
+
+				# This is a hack to clean out back-references to Telegram-bot message objects.
+				if 'bot-msg-obj' in msg:
+					del msg['bot-msg-obj']
+
+			#__/ End loop thru messages in reverse order.
 
 			# Anthropic style chat completion.
 			chatComplObj = client.messages.create(**apiArgs)
