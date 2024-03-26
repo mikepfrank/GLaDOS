@@ -5626,7 +5626,7 @@ def _retrieve_image_data(media_type, filename):
 #__/
 
 
-def _process_text_message(text_content, alt_imageAction_hook=None):
+async def _process_text_message(text_content:str, alt_imageAction_hook=None) -> list:
 	"""Processes text content, extracting embedded inline images into message_content structure.
 	
 	Args:
@@ -5645,11 +5645,11 @@ def _process_text_message(text_content, alt_imageAction_hook=None):
 	message_content = []
 	
 	# Define regex match processing functions
-	def add_text(text):
+	def add_text(text) -> None:
 		if text.strip():
 			message_content.append({"type": "text", "text": text})
 			
-	def add_image(media_type, filename):
+	def add_image(media_type, filename) -> None:
 
 		# Retrieve base64 encoded image data based on media_type and filename 
 		image_data = _retrieve_image_data(media_type, filename)
@@ -5671,18 +5671,18 @@ def _process_text_message(text_content, alt_imageAction_hook=None):
 			})
 	
 	# Process text_content recursively
-	def process_text(text):
+	async def process_text(text) -> None:
 		match = re.search(IMAGE_PATTERN, text)
 		if match:
 			remark, media_type, filename = match.groups()
 			
-			if alt_imageAction_hook:
+			if alt_imageAction_hook is not None:
 
 				# If an extra image-action hook was supplied, call it with
 				# the image filename.
 
 				caption = f'Previously shared {remark.lower()} "{filename}"'
-				alt_imageAction_hook(filename, caption)
+				await alt_imageAction_hook(filename, caption)
 				
 			else:
 				# If no hooks, this is just the normal kind of image expansion.
@@ -5700,14 +5700,14 @@ def _process_text_message(text_content, alt_imageAction_hook=None):
 			#__/ End if alt. image action hook ... else ...
 
 			# Process remaining text recursively
-			process_text('"]' + text[match.end():])
+			await process_text('"]' + text[match.end():])
 			
 		else:
 			# No more matches, add remaining text
 			add_text(text)
 			
 	# Initialize recursive processing
-	process_text(text_content)
+	await process_text(text_content)
 	
 	return message_content
 
@@ -6026,7 +6026,7 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 						
 						# If the content is a string, turn it into a list:
 						if isinstance(orig_content, str):
-							message_content = _process_text_message(orig_content)
+							message_content = await _process_text_message(orig_content)
 							# This is a list including text and images.
 							msgDict['content'] = message_content
 
@@ -7353,11 +7353,20 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 
 	else: # Response was not a command. Treat it normally.
 
-		# This gets set to True later if we want the AI to be
-		# able to respond to its own response (could make sense
-		# if BotServer expands some images).
+		# Just send our response to the user as a normal message.
+		await send_response(update, context, response_text)
 
-		chain_responses = False
+		# The below is all to handle the case there the AI called
+		# out some inline images in its response. We want to handle
+		# this as follows:
+		#
+		#	(1) Resend all the mentioned images to the chat.
+		#
+		#	(2) Expand out the images so that the AI can see them.
+		#			(Useful if they were expired.)
+		#
+		#	(3) Give the AI a chance to respond to the images
+		#			being refreshed.
 
 		# This is a hack to allow the AI to resurrect expired images
 		# even though assistant messages can't contain image content.
@@ -7369,12 +7378,14 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 
 				# First, resend all of the embedded images to the user.
 
-				def _resend_image(filename, caption):
+				async def _resend_image(filename, caption):
 					"""Hook function to send an image file as a reply to the user."""
 
-					with open(filename, 'rb') as fh:
+					full_path = os.path.join(AI_DATADIR, filename)
+
+					with open(full_path, 'rb') as fh:
 						caption = f'Previously shared image "{filename}"'
-						_send_imagedata(fh, tgMsg, caption)
+						await _send_imagedata(fh, tgMsg, caption)
 
 				# This is the same function we would normally use to
 				# expand a text message with embedded images into a
@@ -7383,7 +7394,7 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 				# function above as the alternative image action, and
 				# ignore its normal return value.
 
-				_process_text_message(response_text, alt_imageAction_hook=_resend_image)
+				await _process_text_message(response_text, alt_imageAction_hook=_resend_image)
 
 				# Generate the BotMessage that will allow the AI to see the images.
 
@@ -7394,24 +7405,16 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 
 				conversation.add_message(BotMessage(SYS_NAME, sys_text))
 
-				chain_response = True
+				# Now give the AI another opportunity to respond.
+				await get_ai_response(update, context)
+
 
 			#__/ End if inline images found.
 
-		#__/ End if Anthropic.
+		#__/ End if Anthropic
 
-
-		# Just send our response to the user as a normal message.
-		await send_response(update, context, response_text)
-
-		# If chain_responses = True here, that means we want to give 
-		# the AI another opportunity to respond.
-
-		if chain_responses:
-			await get_ai_response(update, context)
 
 	#__/ End if command ... else ...
-
 	
 
 	### NOTE: Commenting this out for now because we don't currently support this.
@@ -7606,8 +7609,8 @@ async def process_text_response(
 #__/ End function process_text_response().
 
 
-async def _send_imagedata(content, tgMsg:TgMsg, caption:str=None, ):
-	# content is image data as file handle, bytes, or string
+async def _send_imagedata(img_data, tgMsg:TgMsg, caption:str=None, ):
+	# img_data is image data as file handle, bytes, or string
 	# tgMsg is the user message we're replying to
 	# caption is an optional string to use as the message caption
 	
@@ -7618,7 +7621,7 @@ async def _send_imagedata(content, tgMsg:TgMsg, caption:str=None, ):
 	username = _get_user_tag(tgMsg.from_user)
 
 	# Prepare the image to be sent via Telegram
-	image_data = InputFile(content)
+	image_data = InputFile(img_data)
 	
 	# Send the image as a reply in Telegram
 	try:
