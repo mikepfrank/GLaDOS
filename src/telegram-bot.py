@@ -5595,15 +5595,23 @@ def _sanitize_msgs(oaiMsgList):
 	return oaiMsgList
 
 
-#IMAGE_PATTERN = r'[([A-Z ]+); type="([\w/]+)", filename="([\w/-]+)"]'
-#	Doesn't match file extensions
-
-IMAGE_PATTERN = r'\[([A-Z ]+)[:;] type="([\w/]+)", filename="([\w/-]+\.\w+)"\]'
-	# 1st group (in all caps): REMARK
-	# 2nd group: media_type
-	# 3rd group: filename
-
-#IMAGE_PATTERN = r'\[{(REMARK);}\ type=\"({media_type})\",\ filename=\"({filename})\".*\]'
+# Match image callouts of the general form exemplified by:
+#
+# 	[PHOTO ATTACHMENT; type="image/jpeg", filename="photos/Usertag-012345.jpg" ... ]
+#
+IMAGE_PATTERN = r'\[([A-Z ]+)[:;]\s*type="([\w/]+)"[;,]\s*filename="([\w/-]+.\w+)".*\]'
+	#
+	# - 1st group (words in all caps):
+	#
+	#		{REMARK} 		(typically either "PHOTO ATTACHMENT" or "GENERATED IMAGE")
+	#
+	# - 2nd group:
+	#
+	#		{media_type} 	(in IANA format)
+	#
+	# - 3rd group:				
+	#
+	#		{filename} 		(relative to AI_DATADIR, including file extension)
 
 import base64
 
@@ -7398,14 +7406,23 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 				# function above as the alternative image action, and
 				# ignore its normal return value.
 
-				await _process_text_message(response_text, alt_imageAction_hook=_resend_image)
+				try:
+					await _process_text_message(response_text, alt_imageAction_hook=_resend_image)
 
-				# Generate the BotMessage that will allow the AI to see the images.
+					# Generate the BotMessage that will allow the AI to see the images.
 
-				sys_text = (f"{BOT_NAME}, for your reference, below is a copy "
-							"of your last message with embedded images expanded "
-							"(if possible; and they will also have been resent to "
-							"the Telegram chat): ") + response_text
+					sys_text = (f"{BOT_NAME}, for your reference, below is a copy "
+								"of your last message with embedded images expanded "
+								"(if possible; and they will also have been resent to "
+								"the Telegram chat): ") + response_text
+
+				except Exception as e:
+					
+					# Alternate text for the BotMessage to report the error to the AI.
+
+					sys_text = (f"{BOT_NAME}, the attempt to process inline image "
+								"callouts in your last message resulted in an "
+								f"exception, with error message: [{e}]")
 
 				conversation.add_message(BotMessage(SYS_NAME, sys_text))
 

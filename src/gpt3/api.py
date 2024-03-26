@@ -474,6 +474,7 @@ _ENGINES = [
 	{'model-family': 'Claude-1',	'engine-name': 'claude-instant-1.2',	'field-size': 100_000,	'prompt-price': 0.8e-3,	'price': 2.4e-3,	'is-chat':	'either',	'has-vision': False,	'encoding': 'non-tiktoken'},
 	{'model-family': 'Claude-2',	'engine-name': 'claude-2.0',			'field-size': 100_000,	'prompt-price': 8e-3,	'price': 24e-3,		'is-chat':	'either',	'has-vision': False,	'encoding': 'non-tiktoken'},
 	{'model-family': 'Claude-2',	'engine-name': 'claude-2.1',			'field-size': 100_000,	'prompt-price': 8e-3,	'price': 24e-3,		'is-chat':	'either',	'has-vision': False,	'encoding': 'non-tiktoken'},
+
 		# Claude 3 models.
 
 	{'model-family': 'Claude-3',	'engine-name': 'claude-3-haiku-20240307',	'field-size': 16_384,	'prompt-price': 0.25e-3,	'price': 1.25e-3,	'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
