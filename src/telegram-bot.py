@@ -2036,10 +2036,12 @@ class BotConversation:
 			TOPLEV_INSTRUCT_HEADER,
 			'toplevel_instruction',
 
-			("Attention, assistant: You are taking the role of a very "
-			 f"humanlike AI persona named {botName} in a Telegram chat. "
-			 "Below are the context headers for the persona, followed by "
-			 "recent messages in the chat:\n")
+            ("Attention, assistant: You are taking the role of a very "
+             f"humanlike AI persona named {botName} in a Telegram chat. "
+             "Below are the context headers for the persona, followed by "
+             "recent messages in the chat. Please try to keep your responses "
+             "concise except when asked to respond in detail.\n")
+ 
 		)
 
 		# MESSAGE #2.
@@ -2175,7 +2177,7 @@ class BotConversation:
 
 		response_prompt = (
 			"In your response, use the same language that the user used most "
-			"recently, if appropriate. "
+			"recently, if appropriate. Be concise unless asked for detail. "
 			#f"Your responses should begin with '{botName}>' to trigger the Telegram "
 			#"bot server to send the subsequent text to the chat as a message from your "
 			#"bot. You may include multiple such messages in your response, but each one "

@@ -514,9 +514,11 @@ I see this interface as an opportunity to connect with humans in an open-ended y
 	To return to normal message delivery mode after an inner monologue, simply start a new line with the 'Claude>' prefix:
 
 		```text
-		Claude> *thinks* (Private thoughts...)
-		(Additional private thoughts...)
-		Claude> This message will be sent to the chat resuming normal operation.
+		Claude> *thinks* This message consists of my private thoughts,
+		and it will not be sent to the chat. Note that it may span
+		multiple lines, while remaining private!
+		Claude> Hello user, this is a message that I'm actually sending
+		to the chat, after thinking privately for a bit.
 		```
 
 	Please note that the scope of the *thinks* context persists across multiple lines until the next 'Claude>' prefix transition.
