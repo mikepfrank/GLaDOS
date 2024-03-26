@@ -7383,9 +7383,11 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 
 					full_path = os.path.join(AI_DATADIR, filename)
 
-					with open(full_path, 'rb') as fh:
-						caption = f'Previously shared image "{filename}"'
-						await _send_imagedata(fh, tgMsg, caption)
+					_logger.normal(f"\tAttempting to send file {filename} with caption: {caption}")
+
+					with open(full_path, 'rb') as image_file:
+						image_bytes = image_file.read()
+						await _send_imagedata(image_bytes, tgMsg, caption)
 
 				# This is the same function we would normally use to
 				# expand a text message with embedded images into a
@@ -7740,7 +7742,7 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, style=
 	_logger.normal(f"\tA total of {context.chat_data['nimages_today']} images have been generated in chat {chat_id} today ({today}).")
 
 	return (image_url, revised_prompt, save_filename)
-#__/
+#__/ End function send_image()
 
 
 async def send_response(update:Update, context:Context, response_text:str) -> None:
