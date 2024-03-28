@@ -1974,18 +1974,27 @@ class BotConversation:
 		#|	Message list format:
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|
-		#|	#0:			system:		[[Current time]]
-		#|	#1:			system:		Pre-prompt.
-		#|	#2:			system:		Persistent context (includes persistent data from TelegramBot.memories.txt)
-		#|	#3:			system:		[[DYNAMIC MEMORY]]
-		#|	#4:			system:		Command list.
-		#|	#5:			system:		Recent messages header.
-		#|	#6-(N-2):	(various):	...[RECENT TELEGRAM MESSAGES]...
-		#|	#N-1:		system:		Response prompt.
+		#|	The system prompt / initial system message(s) are organized like so:
 		#|
-		#|	NOTE: Anthropic models require us to roll all the system prompts
-		#|	into one (preferably XML-structured); whereas OpenAI allows us to
-		#|	have multiple system messages.
+		#|		#1:			system:		[[Current time]]
+		#|		#2:			system:		Pre-prompt.
+		#|		#3:			system:		Persistent context (from config file).
+		#|		#4:			system:		Function usage hints.
+		#|		#5:			system:		Full function schemas (Anthropic only.)
+		#|		#6:			system:		User command list.
+		#|  	#7:			system:		AI command list.
+		#|		#8:			system:		[[Content-sensitive memories.]]
+		#|		#9:			system:		Response instructions.
+		#|		#10:		system:		Telegram message-list header.
+		#|
+		#|		#11-(N-2):	(various):	...[RECENT TELEGRAM MESSAGES]...
+		#|
+		#|		#N-1:		system:		Response prompt (non-Anthropic only).
+		#|
+		#| 	NOTE: Anthropic models require us to roll all the system
+		#|	  messages into one string (preferably XML-structured);
+		#|	  whereas OpenAI allows us to have multiple system
+		#|	  messages.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -1997,13 +2006,20 @@ class BotConversation:
 			nonlocal is_anthropic, sys_prompt, chat_messages
 
 			if is_anthropic:
+
 				# Include the header line as an XML comment.
 				sys_prompt += f"<!-- {header.strip()} -->\n"
+
 				# Open the XML tag for this section.
 				sys_prompt += f"<{tag}>\n"
+
+				# Incorporate the content of this section.
+				# (Should we XML-escape this?)
 				sys_prompt += content
+
 				# Close the XML tag for this section.
 				sys_prompt += f"</{tag}>\n"
+
 			else:
 				chat_messages.append({
 					'role':		CHAT_ROLE_SYSTEM,
@@ -2013,10 +2029,16 @@ class BotConversation:
 					'content':	header + content
 				})
 
-		# The first message will always be a system message showing the current time.
 
-		# MESSAGE #0.
-		# This message needs to be updated before *every* new completion attempt.
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #1.	Current time.
+		#
+		# 	The first message will always just be a system message
+		# 	showing the current time (and server time zone).
+		#
+		# 	NOTE: This message needs to be updated before *every* new
+		# 	completion attempt.
+
 		add_system_section(
 			CURRENT_TIME_HEADER,
 			'current_time',
@@ -2024,14 +2046,19 @@ class BotConversation:
 			f"The current time is: {timeString()}."
 		)
 		
+
 		# The next message will show the persistent context header block.
 		# Note this header includes several subsections, delimited by
 		# message delimiters [these used to be record separators, (ASCII
 		# code 30), but now are just nothing] and section headings.
 
-		# MESSAGE #1.
-		# This message is fixed for the lifetime of the application.
-		# We can just set it once each time a conversation is started.
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #2.	Top-level instruction.
+		#
+		# 	This message is fixed for the lifetime of the application.
+		# 	We can just set it once each time a conversation is started.
+		
 		add_system_section(
 			TOPLEV_INSTRUCT_HEADER,
 			'toplevel_instruction',
@@ -2040,121 +2067,224 @@ class BotConversation:
              f"humanlike AI persona named {botName} in a Telegram chat. "
              "Below are the context headers for the persona, followed by "
              "recent messages in the chat. Please try to keep your responses "
-             "concise except when asked to respond in detail.\n")
+             "concise unless asked to respond in detail.\n")
  
 		)
 
-		# MESSAGE #2.
-		# With the new memory system, this is initialized once at the
-		# start of the application, and does not change further. We
-		# can set it when the conversation is started.
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #3.	Persistent context information.
+		#
+		# 	With the new memory system, this is initialized once at
+		# 	the start of the application from the 'conf' field in the
+		# 	'telegram-conf' object in ai-config.hjson, and does not
+		# 	change further. We can set it once when the conversation
+		# 	is started.
+
 		add_system_section(
 			PERMANENT_CONTEXT_HEADER,
 			'permanent_context',
 
-			globalPersistentData
+			globalPersistentData	# This is set in _initPersistentData().
 		)
 
-		# MESSAGE #3.
-		# This one is fixed forever, we could just initialize it when the
-		# conversation is started. --> NO, NOW IT VARIES BY USER, ETC.
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #4.	Function usage hints.
+		#
+		# 	This used to be fixed forever, but now it varies by user.
+
 		add_system_section(
 			FUNCTION_USAGE_HEADER,
 			'function_usage',
+			
+			( "  activate_function(func_name:str, remark:str=None) " \
+			  		"-> status:str\n"
 
-			("  activate_function(func_name:str, remark:str=None) -> status:str\n"
-			 "  remember_item(text:str, is_private:bool=True, is_global:bool=False, remark:str=None) -> status:str\n"
-			 f"  search_memory(query_phrase:str, max_results:int={DEFAULT_SEARCHMEM_NITEMS}, remark:str=None) -> results:list\n"
-			 "  forget_item(text:str=None, item_id:str=None, remark:str=None) -> status:str\n"
-			 "  analyze_image(filename:str, verbosity:str='medium', query:str=None, remark:str=None) -> result:str\n"
-			 "  create_image(description:str, shape:str='square', style:str='vivid', caption:str=None, remark:str=None) -> status:str\n"
-			 f"  block_user(user_name:str='{userTag}', user_id=None, remark:str=None) -> status:str\n"
+			  "  remember_item(text:str, is_private:bool=True, " \
+			  		"is_global:bool=False, remark:str=None) -> status:str\n"
+
+			 f"  search_memory(query_phrase:str, max_results:int = " \
+			  		"{DEFAULT_SEARCHMEM_NITEMS}, remark:str=None) " \
+			  		"-> results:list\n"
+
+			  "  forget_item(text:str=None, item_id:str=None, remark:str=None) " \
+			  		"-> status:str\n"
+
+
+			  "  analyze_image(filename:str, verbosity:str='medium', " \
+			  		"query:str=None, remark:str=None) -> result:str\n"
+
+			  "  create_image(description:str, shape:str='square', " \
+			  		"style:str='vivid', caption:str=None, remark:str=None) " \
+			  		"-> status:str\n"
+			  
+			 f"  block_user(user_name:str='{userTag}', user_id=None, " \
+			  		"remark:str=None) -> status:str\n"
+
+			 ## Not yet implemented.
 			 #f"  show_user(user_name:str='{userTag}', user_id=None, remark:str=None) -> result:str)\n"
 			 #"  list_blocked_users() -> result:str\n"
-			 "  unblock_user(user_name:str=None, user_id=None, remark:str=None) -> status:str\n"
-			 "  search_web(query:str, locale:str='en-US', sections:list=['webPages'], remark:str=None) -> results:dict\n"
-			 "  pass_turn() -> None\n")
+
+			  "  unblock_user(user_name:str=None, user_id=None, " \
+			  		"remark:str=None) -> status:str\n"
+
+			  "  search_web(query:str, locale:str='en-US', " \
+			  		"sections:list=['webPages'], remark:str=None) " \
+			  		"-> results:dict\n"
+			  
+			  "  pass_turn() -> None\n"
+		  	)
 			
 		)
 
-		# SYSTEM SECTION #3.5.
-		add_system_section(
-			FUNCTION_SCHEMAS_HEADER,
-			'function_schemas',
-			thisConv.cur_func_schemas
-		)
 
-		# SYSTEM SECTION #3.75.
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #5.	Currently active function schemas.
+		#
+		# 	These only need to be explicitly included here for Anthropic
+		#	models; for OpenAI models, they are provided separately.
+
+		if is_anthropic:
+			add_system_section(
+				FUNCTION_SCHEMAS_HEADER,
+				'function_schemas',
+
+				thisConv.cur_func_schemas
+			)
+
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #6.	User command list.
+		#
+		#	Note this is just intended as brief guidance for the AI to
+		#	relay to users, and users should type /help to get further
+		#	details.
+
 		add_system_section(
 			USER_COMMANDS_HEADER,
 			'user_commands',
 			(
-				"Commands that may be invoked by users include:\n"
+				"You may remind users that they may enter the following " \
+					"commands:\n"
+
 				"\n"
+
 				"\t/start - Starts bot; reloads conversation history.\n"
+
 				"\t/help - Displays general help and command help.\n"
-				"\t/image - Generates an image from a description. (This is a command you should handle yourself.)\n"
+
+				"\t/image - Generates an image from a description. " \
+					"(This is a command you should handle yourself.)\n"
+
 				"\t/quiet - Tell bot not to respond unless addressed by name.\n"
+
 				"\t/noisy - Tell bot it can respond to any message.\n"
+
 				"\t/speech - Toggle speech output mode.\n"
-				"\t/remember - Adds an item to the bot's persistent memory. (You should handle this command.)\n"
-				"\t/search - Search bot's memory or the web for a phrase. (You should handle this command.)\n"
-				"\t/forget - Removes an item from the bot's persistent memory. (You should handle this command.)\n"
+
+				"\t/remember - Adds an item to the bot's persistent memory. " \
+					"(You should handle this command.)\n"
+
+				"\t/search - Search bot's memory or the web for a phrase. " \
+					"(You should handle this command.)\n"
+
+				"\t/forget - Removes an item from the bot's persistent memory. " \
+					"(You should handle this command.)\n"
+				
 				"\t/reset - Clears the bot's conversation memory.\n"
+
 				"\t/echo - Echoes back the given text.\n"
+
 				"\t/greet - Make server send a greeting.\n"
+
 				"\n"
-				"For commands like /start, /help, /quiet, /noisy, /speech, /reset, /echo, and /greet - the BotServer automation will handle the user's request directly, so you do not need to provide any additional response.\n"
+
+				"For commands like /start, /help, /quiet, /noisy, /speech, "\
+					"/reset, /echo, and /greet - the BotServer automation will "\
+					"handle the user's request directly, so you do not need to "\
+					"provide any additional response.\n"
+
 				"\n"
-				"If users have questions about how to use the available commands, please inform them that they can obtain more details by entering the /help command.\n"
+
+				"If users have questions about how to use the available " \
+					"commands, please inform them that they can obtain more "
+					"detailed guidance by entering the /help command.\n"
 			)
 		)
 
-		# SYSTEM SECTION #3.875.
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #7.	AI command list.
+		#
+
 		add_system_section(
 			AI_COMMANDS_HEADER,
 			'ai_commands',
 			(
-				"As an alternative to using the XML-based function-calling "
-				"interface, you may also simply send the following legacy "
-				"commands to the bot server directly. The command line must "
-				"be the first (and possibly only) line of your message. Any "
-				"text in your response after the command line will be sent to "
-				"the user as a normal message.  All commands except for /pass "
-				"are visible to the user.\n"
+				"As an alternative to using the XML-based function-calling "   \
+					"interface, you may also simply send the following "       \
+					"legacy commands to the bot server directly. The command " \
+					"line must be the first (and possibly only) line of your " \
+					"message. Any text in your response after the command "    \
+					"line will be sent to the user as a normal message. All "  \
+					"commands entered except for /pass will be visible to "    \
+					"the user.\n"
+
 				"\n"
+
 				"\t/pass - Refrain from responding to the last user message.\n"
-				"\t/image <desc> - Generate an image with description <desc> and send it to the user.\n"
-				"\t/remember <text> - Adds <text> to your persistent context data.\n"
-				"\t/forget <text> - Removes <text> from your persistent context data.\n"
-				"\t/block [<user>] - Adds the user to your block list. Defaults to current user.\n"
-				"\t/unblock [<user>] - Removes the user from your block list. Defaults to current user.\n"
+
+				"\t/image <desc> - Generate an image with description <desc> " \
+					"and send it to the user.\n"
+
+				"\t/remember <text> - Adds <text> to your persistent context " \
+					"data.\n"
+
+				"\t/forget <text> - Removes <text> from your persistent "	   \
+					"context data.\n"
+
+				"\t/block [<user>] - Adds the user to your block list. "       \
+					"Defaults to current user.\n"
+
+				"\t/unblock [<user>] - Removes the user from your block "	   \
+					"list. Defaults to current user.\n"
 			)
 		)
 
-		# MESSAGE #4.
-		# OK, for a given conversation, this one only needs to change
-		# whenever a new user message is added to the conversation, since
-		# it only depends on the last user message. It could also change if a
-		# new memory is added by a different user, but that shouldn't happen
-		# very often
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #8.	Dynamic context-sensitive memories.
+		#
+		#	OK, for a given conversation, this one only needs to
+		#	change whenever a new user message is added to the
+		#	conversation, since it only depends on the last user
+		#	message. It could theoretically also change if a new
+		#	public/global memory is added by a different user, but
+		#	that shouldn't happen very often.
+
 		if hasattr(thisConv, 'dynamicMem') and thisConv.dynamicMem:
 			add_system_section(
 				DYNAMIC_MEMORY_HEADER,
 				'relevant_memories',
-				("The memory items listed below represent the top 5 most "
-				 "semantically relevant matches to the user's most recent "
-				 "message, filtered based on privacy and access permissions. "
-				 "These contextually relevant memories are automatically "
-				 "surfaced to assist you in providing accurate, context-aware "
-				 "responses. You can reference these memories in your replies "
-				 "or use the search_memory() function to perform more targeted "
-				 "searches if needed.\n\n") + \
+				(
+					"The memory items listed below represent the top 5 most "
+					"semantically relevant matches to the user's most recent "
+					"message, filtered based on privacy and access permis"
+					"sions. These contextually relevant memories are automati"
+					"cally surfaced to assist you in providing accurate, con"
+					"text-aware responses. You can reference these memories in "
+					"your replies or use the search_memory() function to per"
+					"form more targeted searches if needed.\n"
+					"\n"
+				) + \
 				thisConv.dynamicMem
-					# ^ Note this only changes when a new user message is added to the convo.
+					# ^ Note this only changes when a new user message
+					# 	is added to the convo.
 			)
 
+
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #9.	Final system prompt.
+		#
 		# We'll add one more system message to the list of chat messages,
 		# to make sure it's clear to the AI that it is responding in the 
 		# role of the message sender whose 'role' matches our .bot_name
@@ -2164,32 +2294,14 @@ class BotConversation:
 		# something like "assistant\n", which is why we need to make sure
 		# it knows that it's responding as the named bot persona.)
 
-		#response_prompt = f"Respond as {botName}. (If you want to include an " \
-		#	"image in your response, you must put the command ‘/image <desc>’ at the " \
-		#	"very start of your response.)"
-		#response_prompt = f"Respond as {botName}. (Remember you can use an available " \
-		#	"function if there is one that is appropriate.)"
-
-		#f"Your responses should begin with '{botName}>' to trigger the Telegram " \
-		#	"bot server to send the subsequent text to the chat as a message from your " \
-		#	"bot. You may include multiple such messages in your response, but each one " \
-		#	"should begin on a new line. " \
-
 		response_prompt = (
 			"In your response, use the same language that the user used most "
 			"recently, if appropriate. Be concise unless asked for detail. "
-			#f"Your responses should begin with '{botName}>' to trigger the Telegram "
-			#"bot server to send the subsequent text to the chat as a message from your "
-			#"bot. You may include multiple such messages in your response, but each one "
-			#"should begin on a new line. "
 			"You may include multiple Telegram messages in your response, but each one "
 			f"must begin on a new line starting with '{botName}>'. "
 			"(Or, alternatively to just sending messages, you can activate "
 			"an available function and then call that function, if appropriate.)"
 		)
-
-		#"You can send additional Telegram "\
-		#"messages to follow up by starting each one with '\\n{botName}>'. "\
 
 		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
 			# Only give this instruction in group chats:
@@ -2200,52 +2312,37 @@ class BotConversation:
 			response_prompt += (" You may also call pass_turn() or send '/pass' "
 								"or an empty message to refrain from responding.")
 								
+
 		# Note this one will appear at the bottom of OpenAI messages, but as
 		# part of the overall system prompt for Anthropic models.
 		if is_anthropic:
 			add_system_section(
 				FINAL_PROMPT_HEADER,
-				'final_prompt',
+				'response_instructions',
 				response_prompt
 			)
 
-		# Old versions of response prompt:
-		
-			#'content': f"Respond as {botName}, in the user's language if " \
-			#	"possible. (However, if the user is not addressing you, type " \
-			#	"'/pass' to remain silent.)"
-				
-			# 'content': f"Respond as {thisConv.bot_name}."
-			# # This is simple and seems to work pretty well.
 
-			#'content': f"Assistant, your role in this chat is '{thisConv.bot_name}'; " \
-			#	"enter your next message below.",
-			#	# This was my initial wording, but it seemed to cause some confusion.
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #10.	Telegram message-list header.
+		#
+		# 	This one is fixed forever; we could just initialize it when the
+		# 	conversation is started.
 
-			#'content': f"{thisConv.bot_name}, please enter your response below at " \
-			#	"the 'assistant' prompt:"
-			#	# The above wording was agreed upon by me & Turbo (model 'gpt-3.5-turbo').
-
-			# Trying this now:
-			#'content': f"Please now generate {thisConv.bot_name}'s response, in the " \
-			#	"format:\n" \
-			#	 r"%%%\n" \
-			#	 "Commentary as assistant:\n"
-			#	 "{assistant_commentary}\n"
-			#	 r"%%%\n" \
-			#	 f"{thisConv.bot_name}'s response:\n"
-			#	 "{persona_response}\n"
-			#	 r"%%%\n"
-
-
-		# MESSAGE #5.
-		# This one is fixed forever, we could just initialize it when the
-		# conversation is started.
 		add_system_section(
 			RECENT_MESSAGES_HEADER,
 			'telegram_msglist_header',
-			"A transcript of recent messages in the Telegram chat and other events (thoughts, function calls, BotServer outputs) can be found below."
+
+			"A transcript of recent messages in the Telegram chat and other "
+			"events in your cognitive stream (thoughts, function calls, "
+			"BotServer outputs) can be found below."
 		)
+
+
+		#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+		# End of system instruction / messages.
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 		# Remember how many header messages we just created.
 		N_HEADER_MSGS = len(chat_messages)
@@ -2270,6 +2367,10 @@ class BotConversation:
 			# Here, we need to consolidate consecutive assistant content messages
 			# so that the AI doesn't get confused about how to format them for output.
 			if is_anthropic and len(chat_messages) >= 2:
+
+				# See if the last two messages added are both AI messages,
+				# and have content fields (should be true).
+
 				if chat_messages[-2]['role'] == CHAT_ROLE_AI and \
 				   chat_messages[-1]['role'] == CHAT_ROLE_AI and \
 				   'content' in chat_messages[-2] and \
@@ -2279,25 +2380,35 @@ class BotConversation:
 					chat_messages[-2]['content'] += '\n' + \
 						chat_messages[-1]['content']
 
-					# Trim off the last message.
+					# Trim off the last message; it's been absorbed.
 					chat_messages = chat_messages[:-1]
-		#__/
+
+				#__/ End if most recent 2 messages are assistant.
+
+			#__/ End if we might need to merge assistant messages.
+
+		#__/ End loop over botMessages in convo.
 
 		# Anthropic is picky about alternating user and assistant messages.
 		# Here, we consolidate consecutive user messages.
+
 		if is_anthropic:
 			new_msglist = []
 			for msg in chat_messages:
 				if (len(new_msglist) >= 1 and 
-					new_msglist[-1]['role'] == CHAT_ROLE_USER and 
-					msg['role'] == CHAT_ROLE_USER):
+						new_msglist[-1]['role'] == CHAT_ROLE_USER and 
+						msg['role'] == CHAT_ROLE_USER):
 
 					# Just add the new user content onto the end of the last one.
 					new_msglist[-1]['content'] += '\n' + msg['content']
 						
+
 				else:
 					new_msglist.append(msg)
+
 			chat_messages = new_msglist
+
+		#__/ End if Anthropic.
 
 		# Note this one will appear at the bottom of OpenAI messages, but as
 		# part of the overall system prompt for Anthropic models.
@@ -7969,8 +8080,8 @@ def _bing_search(query_string:str, market:str='en-US', count=3, sections=None):
 		'count':	count
 	}
 
-	if sections:
-		params['responseFilter'] = ','.join(sections)
+	#if sections:
+	#	params['responseFilter'] = ','.join(sections)
 		
 	headers = {
 		'Ocp-Apim-Subscription-Key': subscription_key
@@ -9362,6 +9473,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 	# to the user.
 	if msgToSend.startswith("*thinks*") or msgToSend.startswith("*thinking*"):
 		_logger.normal(f"\nSuppressing private thought from being sent to the chat {chat_id}:\n\t[{msgToSend}].\n")
+		convo.add_message(BotMessage(SYS_NAME, "REMINDER: Your private thoughts won't be sent to the chat."))
 		return 'success'
 
 	# If our caller requested we utilize markup to style our message,
@@ -10168,7 +10280,7 @@ DYNAMIC_MEMORY_HEADER	 	= f" {SEPARATOR_BAR} CONTEXTUALLY RELEVANT MEMORIES: {SE
 RECENT_MESSAGES_HEADER		= f" {SEPARATOR_BAR} RECENT TELEGRAM MESSAGES: {SEPARATOR_BAR}\n"
 
 	# System section #N-1:
-FINAL_PROMPT_HEADER			= f" {SEPARATOR_BAR} FINAL SYSTEM PROMPT: {SEPARATOR_BAR}\n"
+FINAL_PROMPT_HEADER			= f" {SEPARATOR_BAR} RESPONSE INSTRUCTIONS: {SEPARATOR_BAR}\n"
 
 # This section now appears inside the globalPersistentData string.
 PERSISTENT_MEMORY_HEADER	= f" {SEPARATOR_BAR} IMPORTANT PERSISTENT MEMORIES: {SEPARATOR_BAR}\n"
