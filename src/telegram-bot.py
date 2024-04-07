@@ -7589,8 +7589,97 @@ async def process_raw_response(
 #__/ End definition of function process_raw_response().
 
 
+async def check_for_image_callouts(update:Update, context:Context, botMsg:BotMessage) -> None:
+	"""Given a bot-message object from the AI, which could be either a private thought
+		or an outward-facing message, scan it for embedded image callouts; if any are
+		found, then we resend those images to the chat, and also echo the message in a
+		BotServer message so that the callouts will get expanded with image data."""
+
+	# Get the user message, or edited message from the update.
+	(tgMsg, edited) = _get_update_msg(update)
+	
+	# Get the chat_id, conversation object, and message text.
+	chat_id = tgMsg.chat.id
+	conversation = context.chat_data['conversation']
+	msg_text = botMsg.text
+
+	# The below is all to handle the case there the AI called
+	# out some inline images in its response. We want to handle
+	# this as follows:
+	#
+	#	(1) Resend all the mentioned images to the chat.
+	#
+	#	(2) Expand out the images so that the AI can see them.
+	#			(Useful if they were expired.)
+	#
+	#	(3) Give the AI a chance to respond to the images
+	#			being refreshed.
+
+	# This is a hack to allow the AI to resurrect expired images
+	# even though assistant messages can't contain image content.
+	if isinstance(_main_client, Anthropic):
+		
+		# Is there an embedded image block in the assistant's text?
+		match = re.search(IMAGE_PATTERN, msg_text)
+		if match:
+
+			# First, resend all of the embedded images to the user.
+
+			async def _resend_image(filename, caption):
+				"""Hook function to send an image file as a reply to the user."""
+
+				full_path = os.path.join(AI_DATADIR, filename)
+
+				_logger.normal(f"\tAttempting to send file {filename} with caption: {caption}")
+
+				with open(full_path, 'rb') as image_file:
+					image_bytes = image_file.read()
+					await _send_imagedata(image_bytes, tgMsg, caption)
+			
+			#__/ End local function _resend_image().
+
+			# This is the same function we would normally use to
+			# expand a text message with embedded images into a
+			# full message content list including embedded image
+			# data. However, instead we supply the _resend_image()
+			# function above as the alternative image action, and
+			# ignore its normal return value.
+
+			try:
+				await _process_text_message(msg_text, alt_imageAction_hook=_resend_image)
+
+				# Generate the BotMessage that will allow the AI to see the images.
+
+				sys_text = (f"{BOT_NAME}, for your reference, below is a copy "
+							"of your last message with embedded images expanded "
+							"(if possible; and they will also have been resent to "
+							"the Telegram chat): ") + msg_text
+
+			except Exception as e:
+					
+				# Alternate text for the BotMessage to report the error to the AI.
+
+				sys_text = (f"{BOT_NAME}, the attempt to process inline image "
+							"callouts in your last message resulted in an "
+							f"exception, with error message: [{e}]")
+
+			#__/ End try... except...
+
+			conversation.add_message(BotMessage(SYS_NAME, sys_text))
+
+			# Now give the AI another opportunity to respond.
+			await get_ai_response(update, context)
+
+
+		#__/ End if inline images found.
+
+	#__/ End if Anthropic
+
+#__/ End function check_for_image_callouts().
+
+
 async def process_response(update:Update, context:Context, response_botMsg:BotMessage) -> None:
-	"""Given a message object (of our Message class) representing a response
+	"""Given a message object (of our BotMessage class) representing a response
 		issued by the AI to some user message, this function processes it
 		appropriately; it may be interpreted as a text command issued by the
 		AI, or as a normal message to be sent to the user."""
@@ -7629,77 +7718,10 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 		# Just send our response to the user as a normal message.
 		await send_response(update, context, response_text)
 
-		# The below is all to handle the case there the AI called
-		# out some inline images in its response. We want to handle
-		# this as follows:
-		#
-		#	(1) Resend all the mentioned images to the chat.
-		#
-		#	(2) Expand out the images so that the AI can see them.
-		#			(Useful if they were expired.)
-		#
-		#	(3) Give the AI a chance to respond to the images
-		#			being refreshed.
-
-		# This is a hack to allow the AI to resurrect expired images
-		# even though assistant messages can't contain image content.
-		if isinstance(_main_client, Anthropic):
-
-			# Is there an embedded image block in the assistant's text?
-			match = re.search(IMAGE_PATTERN, response_text)
-			if match:
-
-				# First, resend all of the embedded images to the user.
-
-				async def _resend_image(filename, caption):
-					"""Hook function to send an image file as a reply to the user."""
-
-					full_path = os.path.join(AI_DATADIR, filename)
-
-					_logger.normal(f"\tAttempting to send file {filename} with caption: {caption}")
-
-					with open(full_path, 'rb') as image_file:
-						image_bytes = image_file.read()
-						await _send_imagedata(image_bytes, tgMsg, caption)
-
-				# This is the same function we would normally use to
-				# expand a text message with embedded images into a
-				# full message content list including embedded image
-				# data. However, instead we supply the _resend_image()
-				# function above as the alternative image action, and
-				# ignore its normal return value.
-
-				try:
-					await _process_text_message(response_text, alt_imageAction_hook=_resend_image)
-
-					# Generate the BotMessage that will allow the AI to see the images.
-
-					sys_text = (f"{BOT_NAME}, for your reference, below is a copy "
-								"of your last message with embedded images expanded "
-								"(if possible; and they will also have been resent to "
-								"the Telegram chat): ") + response_text
-
-				except Exception as e:
-					
-					# Alternate text for the BotMessage to report the error to the AI.
-
-					sys_text = (f"{BOT_NAME}, the attempt to process inline image "
-								"callouts in your last message resulted in an "
-								f"exception, with error message: [{e}]")
-
-				conversation.add_message(BotMessage(SYS_NAME, sys_text))
-
-				# Now give the AI another opportunity to respond.
-				await get_ai_response(update, context)
-
-
-			#__/ End if inline images found.
-
-		#__/ End if Anthropic
-
+		# In case there are embedded image callouts, this will refresh those images.
+		await check_for_image_callouts(update, context, response_botMsg)
 
 	#__/ End if command ... else ...
-	
 
 	### NOTE: Commenting this out for now because we don't currently support this.
 	## One more thing to do here: If the AI's response ends with the string "(cont)" or "(cont.)"
@@ -7944,6 +7966,9 @@ async def process_text_response(
 
 				_logger.normal('\n' + '~'*80 + "\nSuppressing private thought from being sent "
 							   f"to the chat {chat_id}:\n\t[{thought_content}].\n")
+
+				# Check to see if the thought contained embedded image callouts to process.
+				await check_for_image_callouts(tgUpdate, tgContext, thought_botMsg)
 
 			else:	# Element tag should be 'message'::
 
