@@ -9473,8 +9473,14 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 	# to the user.
 	if msgToSend.startswith("*thinks*") or msgToSend.startswith("*thinking*"):
 		_logger.normal(f"\nSuppressing private thought from being sent to the chat {chat_id}:\n\t[{msgToSend}].\n")
-		convo.add_message(BotMessage(SYS_NAME, "REMINDER: Your private thoughts won't be sent to the chat."))
+		convo.add_message(BotMessage(SYS_NAME,
+			f"[REMINDER, {BOT_NAME}: Your private thoughts won't be sent to the chat.]"))
 		return 'success'
+
+	# If the message begins with "*says*", strip that off the front
+	# before sending it to the user.
+	if msgToSend.startswith("*says*"):
+		msgToSend = msgToSend[len("*says*"):].strip()
 
 	# If our caller requested we utilize markup to style our message,
 	# then turn on the 'MarkdownV2' parse mode supported by Telegram,
