@@ -6336,8 +6336,15 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 				# Just trim off the oldest message after the first
 				# N_HEADER_MSGS.
 
-				_logger.info(f"NOTE: Expunging oldest chat message:\n" +
-							 pformat(oaiMsgList[N_HEADER_MSGS]))
+				msg = oaiMsgList[N_HEADER_MSGS]
+
+				# Delete any message data so it doesn't fill up debug log
+				if 'source' in msg:
+					if 'data' in msg['source']:
+						del msg['source']['data']
+
+				_logger.debug(f"NOTE: Expunging oldest chat message:\n" +
+							  pformat(msg))
 
 				oaiMsgList = oaiMsgList[0:N_HEADER_MSGS] + \
 							 oaiMsgList[N_HEADER_MSGS+1:]
@@ -7235,7 +7242,7 @@ async def process_raw_response(
 					#
 					#result = await _reply_user(tgMsg, botConvo, before_text)
 					#if result != 'success':
-					#	await _report_error(botConvo, tgMsg, "Message send failure: {result}",
+					#	await _report_error(botConvo, tgMsg, f"Message send failure: {result}",
 					#		  showUser=False)
 					#	return	# Connection broken; failure; abort.
 
@@ -7376,7 +7383,7 @@ async def process_raw_response(
 
 				result = await _reply_user(tgMsg, botConvo, response_text)
 				if result != 'success':
-					await _report_error(botConvo, tgMsg, "Message send failure: {result}",
+					await _report_error(botConvo, tgMsg, f"Message send failure: {result}",
 						showUser=False)
 					return	# Connection broken; failure; abort.
 
