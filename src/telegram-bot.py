@@ -649,6 +649,28 @@ def _msg_to_xml(msg:str, sender:str) -> str:
 	return xml
 #__/
 
+def _thought_to_xml(content:str, sender:str) -> str:
+	
+	"""Given a message string (general text) that is supposed to be a
+		private thought, and a sender tag, this function returns an
+		XML string representation of the message as a `<thought>`
+		element. Any XML special characters inside of the message are
+		automatically escaped so that they won't interfere with
+		parsing of the message element.
+	"""
+
+	# Strip any *thinks* or *thinking* tag off the front.
+	if content.startswith("*thinks*"):
+		content = content[len("*thinks*"):].strip()
+	elif content.startswith("*thinking*"):
+		content = content[len("*thinks*"):].strip()
+
+	elem = ET.Element('thought', {'origin': sender})
+	elem.text = content
+	xml = ET.tostring(elem).decode('utf-8')
+
+	return xml
+#__/
 
 #/=============================================================================|
 #|	2. Class definitions.						 [python module code section]  |
@@ -723,9 +745,14 @@ def _anthropize(msgDict):
 			or looks_like_a_funcall
 
 		# If doesn't look OK at a glance, then we wrap it so it
-		# appears to be a normal formatted message.
+		# appears to be a normal formatted message, or a thought.
 		if not ok:
-			msgDict['content'] = _msg_to_xml(msgDict['content'], BOT_NAME)
+
+			msg_content = msgDict['content']
+			if msg_content.startswith("*thinks*") or msg_content.startswith("*thinking*"):
+				msgDict['content'] = _thought_to_xml(msg_content, BOT_NAME)
+			else:
+				msgDict['content'] = _msg_to_xml(msg_content, BOT_NAME)
 
 			#msgDict['content'] = f'<message sender="{BOT_NAME}">\n' \
 			#					 + msgDict['content'] + '\n' \
@@ -9770,9 +9797,9 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 	# If the message begins with "*thinks*", don't bother sending it
 	# to the user.
 	if msgToSend.startswith("*thinks*") or msgToSend.startswith("*thinking*"):
-		_logger.normal(f"\nSuppressing private thought from being sent to the chat {chat_id}:\n\t[{msgToSend}].\n")
-		convo.add_message(BotMessage(SYS_NAME, "REMINDER: Your private thoughts won't be sent to the chat."))
-		return 'success'
+		_logger.warn(f"Ignoring legacy *thinks* tag in chat {chat_id}:\n\t[{msgToSend}].\n")
+		convo.add_message(BotMessage(SYS_NAME, "NOTE: Legacy *thinks* tag ignored. You must now enclose your private thoughts in a `<thought>...</thought>` element to prevent them from being sent to the chat."))
+		#return 'success'
 
 	# If the message begins with "*says*", strip that off the front
 	# before sending it to the user.
