@@ -6940,7 +6940,8 @@ async def process_function_call(
 	temp_chat_oaiMsgs = _sanitize_msgs(temp_chat_oaiMsgs)
 
 	# Diagnostic: Display the most recent 10 chat messages from temp list.
-	_logger.info(f"Last few chat messages are [\n{pformat(temp_chat_oaiMsgs[-10:])}\n].")
+	_logger.debug(f"Last few chat messages are [\n{pformat(temp_chat_oaiMsgs[-10:])}\n].")
+		# NOTE: Need to filter out message data here.
 
 	# Log this, the last function call/return, in .json/.txt formats.
 	_logOaiMsgs(temp_chat_oaiMsgs, basename="last-function")
