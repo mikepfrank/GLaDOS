@@ -634,6 +634,22 @@ logmaster.configLogMaster(
 # save disk space.
 
 
+def _msg_to_xml(msg:str, sender:str) -> str:
+	
+	"""Given a message string (general text), and a sender tag, this
+		function returns an XML string representation of the
+		message. Any XML special characters inside of the message are
+		automatically escaped so that they won't interfere with
+		parsing of the message element."""
+
+	elem = ET.Element('message', {'sender': sender})
+	elem.text = msg
+	xml = ET.tostring(elem).decode('utf-8')
+
+	return xml
+#__/
+
+
 #/=============================================================================|
 #|	2. Class definitions.						 [python module code section]  |
 #|																			   |
@@ -661,12 +677,59 @@ logmaster.configLogMaster(
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 def _anthropize(msgDict):
+
 	"""Convert an OpenAI-style message dictionary to Anthropic format."""
 	
-	# No system messages allowed.
+	# No system messages allowed -- convert to BotServer user messages.
 	if msgDict['role'] == CHAT_ROLE_SYSTEM:
 		msgDict['role'] = CHAT_ROLE_USER
-		msgDict['content'] = f"{SYS_NAME}> " + msgDict['content']
+		msgDict['content'] = _msg_to_xml(msgDict['content'], SYS_NAME)
+
+		# msgDict['content'] = f'<message sender="{SYS_NAME}">\n' \
+		#	 + msgDict['content'] + '\n' \
+		#	 + '</message>'
+
+	# Meanwhile, actual user messages draw the sender from the 'name' field.
+	elif msgDict['role'] == CHAT_ROLE_USER:
+		if 'name' in msgDict:
+			user_tag = msgDict['name']
+			msgDict['content'] = _msg_to_xml(msgDict['content'], user_tag)
+
+			#msgDict['content'] = f'<message sender="{user_tag}">\n' \
+			#					 + msgDict['content'] + '\n' \
+			#					 + '</message>'
+		
+	# And messages from the AI that aren't function calls get formatted similarly.
+	elif msgDict['role'] == CHAT_ROLE_AI and not 'function_call' in msgDict:
+
+		# First, let's check whether the message body is already properly formatted. If so,
+		# then we don't need to wrap it in anything.
+
+		## The following is too slow and brittle.
+		#content = msgDict['content']
+		#ok, elems = _parse_response(content, verbose=False)
+		
+		# Here we are just doing a quick-and-dirty check.
+
+		content = msgDict['content'].strip()
+
+		# See if it superficially appears like the content is already formatted.
+		looks_like_a_message = content.startswith('<message')
+		looks_like_a_thought = content.startswith('<thought')
+		looks_like_a_funcall = content.startswith('<function_calls>')
+
+		ok = looks_like_a_message \
+			or looks_like_a_thought \
+			or looks_like_a_funcall
+
+		# If doesn't look OK at a glance, then we wrap it so it
+		# appears to be a normal formatted message.
+		if not ok:
+			msgDict['content'] = _msg_to_xml(msgDict['content'], BOT_NAME)
+
+			#msgDict['content'] = f'<message sender="{BOT_NAME}">\n' \
+			#					 + msgDict['content'] + '\n' \
+			#					 + '</message>'
 
 	# If we created a function_call field, we need to rearrange it.
 	if 'function_call' in msgDict:
@@ -674,19 +737,27 @@ def _anthropize(msgDict):
 		func_name = funcall_dict['name']
 		arguments = json.loads(funcall_dict['arguments'])
 		xml_funcall = (
-			"<function_calls>\n"
-			"<invoke>\n"
-			f"<tool_name>{func_name}</tool_name>\n"
-			"<parameters>\n")
+			 "<function_calls>\n"
+			 "  <invoke>\n"
+			f"    <tool_name>{func_name}</tool_name>\n"
+			 "    <parameters>\n")
 		#print("=================== GOT ARGUMENT LIST ==================")
 		#pprint(arguments)
+
+		# Loop over arguments
 		for key, val in arguments.items():
-			xml_funcall += f"<{key}>{val}</{key}>\n"
-			xml_funcall += (
-				"</parameters>\n"
-				"</invoke>\n"
-				"</function_calls>")
-			msgDict['content'] = f"{BOT_NAME}> " + xml_funcall
+			xml_funcall += f"      <{key}>{val}</{key}>\n"
+		#__/
+
+		# Close out the <function_calls> element.
+		xml_funcall += (
+			 "    </parameters>\n"
+			 "  </invoke>\n"
+			 "</function_calls>")
+
+		#msgDict['content'] = f"{BOT_NAME}> " + xml_funcall
+		msgDict['content'] = xml_funcall
+
 		del msgDict['function_call']
 
 	# Anthropic doesn't understand the special role for function return values.
@@ -696,19 +767,21 @@ def _anthropize(msgDict):
 		func_name = msgDict['name']
 		content = msgDict['content']
 
-		xml_result = (
-			"<function_results>\n"
-			"  <result>\n"
-			f"   <tool_name>{func_name}</tool_name>\n"
-			"   <stdout>\n"
-			f"	  {content}\n"
-			"	</stdout>\n"
-			"  </result>\n"
-			"</function_results>")
-			
-		msgDict['content'] = f"{SYS_NAME}> " + xml_result
+		indented_content = _indent(content)
 
-	# If there's a 'name' field, delete it.
+		xml_result = (
+			 "<function_results>\n"
+			 "  <result>\n"
+			f"    <tool_name>{func_name}</tool_name>\n"
+			 "    <stdout>\n"
+			f"{indented_content}\n"		# Already multi-line indented above
+			 "    </stdout>\n"
+			 "  </result>\n"
+			 "</function_results>")
+			
+		msgDict['content'] = f"{SYS_NAME}> " + '\n' + xml_result
+
+	# If there's a 'name' field, delete it at this point -- Anthropic can't take it.
 	if 'name' in msgDict:
 		del msgDict['name']
 
@@ -1083,11 +1156,19 @@ class BotMessage:
 		# Otherwise, we'll set the content to be our "{sender}> text" thingy to help the AI keep track
 		# of who is speaking in a Telegram chat.
 
-		if isFunCall:
-			pass
-		elif isFuncRet:
+		if isFunCall:		# Is it a function call message?
+			pass			# 	If so, don't set the 'content' field.
+
+		elif isFuncRet:		# Is it a function return message?
 			_oaiMsgDict['content'] = text	# Plain and simple.
-		else:
+
+		# Cases below here are for normal messages (not function calls or returns).
+
+		elif isinstance(_main_client, Anthropic):
+			_oaiMsgDict['content'] = text
+				# This will get reformatted into XML in the _anthropize() call later on.
+
+		else:	# Normal message, for OpenAI clients.
 			_oaiMsgDict['content'] = str(thisBotMsg)
 				#                    ^^^^^^^^^^^^^^^
 				# This deserves some discussion. Note that this is now using
@@ -1252,11 +1333,9 @@ class BotMessage:
 			literally). Returns a new Message object representing the message."""
 
 		# Split the line into the sender and the text.
-		parts = line.split('> ')
+		parts = line.split('> ', 2)		# Set maxsplits=2 in case '> ' appears in text.
 		sender = parts[0]
-			# The following is necessary to correctly handle the case where
-			# the string '> ' happens to appear in the text.
-		text = '> '.join(parts[1:])
+		text = parts[1]
 
 		# Remove the trailing newline, if present (it should be, though).
 		text = text.rstrip('\n')
@@ -2063,12 +2142,11 @@ class BotConversation:
 			TOPLEV_INSTRUCT_HEADER,
 			'toplevel_instruction',
 
-            ("Attention, assistant: You are taking the role of a very "
-             f"humanlike AI persona named {botName} in a Telegram chat. "
-             "Below are the context headers for the persona, followed by "
-             "recent messages in the chat. Please try to keep your responses "
-             "concise unless asked to respond in detail.\n")
- 
+			("Attention, assistant: You are taking the role of a very "
+			 f"humanlike AI persona named {botName} in a Telegram chat. "
+			 "Below are the context headers for the persona, followed by "
+			 "recent messages in the chat. Please try to keep your responses "
+			 "concise except when asked to respond in detail.\n")
 		)
 
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2311,7 +2389,7 @@ class BotConversation:
 		else:
 			response_prompt += (" You may also call pass_turn() or send '/pass' "
 								"or an empty message to refrain from responding.")
-								
+
 
 		# Note this one will appear at the bottom of OpenAI messages, but as
 		# part of the overall system prompt for Anthropic models.
@@ -4376,7 +4454,6 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 				_logger.error(f"Got a {type(e).__name__} from {who} ({e}) for "
 							  f"conversation {chat_id}.")
 
-
 				if isinstance(_main_client, Anthropic):
 					diagMsgStr = "AI model is overloaded, or daily rate limit has "\
 								 "been reached; please try again later."
@@ -5164,6 +5241,26 @@ def _adjust_searchmem_defaults():
 		DEFAULT_SEARCHMEM_NITEMS = 5
 
 	# ^ NOTE: Reasonable defaults. Do not recommend setting this higher than 10.
+#__/
+
+
+def _indent(text:str, num_spaces:int=6):
+	# Default is 6 for testing within <function_results><result>...<stdout>
+	
+	"""Indent a given (generally multi-line) string by the given number of
+		spaces."""
+
+	# Split the string into lines
+	lines = text.split('\n')
+
+	# Prefix each line with additional indentation
+	indented_lines = [' '*num_spaces + line for line in lines]
+
+	# Join the indented lines back together
+	indented_text = '\n'.join(indented_lines)
+
+	return indented_text
+#__/
 
 
 async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
@@ -5202,16 +5299,19 @@ async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
 	_logger.normal(f"In chat {chatID}, for user #{userID}, AI is searching for the top {nItems} memories matching the search query: [{queryPhrase}].")
 	matchList = _searchMemories(userID, chatID, queryPhrase, nItems=nItems)
 
-	_logger.normal(f"Found the following matches: [\n{matchList}\n].")
+	pretty_matches = json.dumps(matchList, indent=2, separators=(', ', ': '),
+								sort_keys=True)
 
-	return matchList
+	_logger.normal(f"Found the following matches:\n{_indent(pretty_matches, 4)}\n.")
+
+	return pretty_matches
 
 #__/
 
 
 # Default list of sections that should be returned by a Bing search.
-DEFAULT_BINGSEARCH_SECTIONS = ['webPages', 'relatedSearches']
-#DEFAULT_BINGSEARCH_SECTIONS = ['webPages']
+#DEFAULT_BINGSEARCH_SECTIONS = ['webPages', 'relatedSearches']
+DEFAULT_BINGSEARCH_SECTIONS = ['webPages']
 	# We made this smaller to increase the chance Turbo can handle it.
 
 def trim(s:str, n:int=30):
@@ -5348,7 +5448,9 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 		# Format the result with tabs to make it easier for Turbo/Max to parse.
 		pp_result = json.dumps(cleanResult, indent=4)
 		#pp_result = pformat(cleanResult, indent=4)		# Maybe too much indents
+
 		tabbed_result = pp_result.replace(' '*8, '\t')
+
 		return tabbed_result
 
 	except SearchError as e:
@@ -5512,7 +5614,8 @@ async def ai_unblock(updateMsg:TgMsg, conversation:BotConversation,
 
 async def ai_call_function(update:Update, context:Context, funcName:str, funcArgs:dict) -> str:
 
-	"""Call the named AI-available function with the given argument dict. Returns a result string."""
+	"""Call the named AI-available function with the given argument dict.
+		Returns a result string."""
 
 	# Get the user message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
@@ -5682,6 +5785,7 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 
 
 def _sanitize_msgs(oaiMsgList):
+
 	"""The purpose of this is just to make sure that the given
 		message list is Anthropic API compatible, if we're 
 		using an Anthropic client."""
@@ -5696,7 +5800,9 @@ def _sanitize_msgs(oaiMsgList):
 		newOaiMsgs = []
 
 		for oaiMsgDict in oaiMsgList:
+
 			newDict = _anthropize(oaiMsgDict)
+
 			newOaiMsgs.append(newDict)
 
 			# Consolidate consecutive user messages.
@@ -6287,7 +6393,6 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 						  f"conversation {chat_id}; aborting.")
 
 			# Send a diagnostic message to the AI and to the user.
-
 
 			if isinstance(_main_client, Anthropic):
 				diagMsgStr = "AI model is overloaded, or daily rate limit has "\
@@ -7244,7 +7349,7 @@ async def process_raw_response(
 				# the first <function_calls> block, and null out the rest of the
 				# response_text. This will give the system+AI a chance to respond to
 				# the initial sequence of invocations before we proceed. It also keeps
-				# the AI from imagining fake <function_return> blocks.
+				# the AI from imagining fake <function_results> blocks.
 
 				response_text = ""		# Pretend there's nothing after the 1st <function_calls> block.
 				break					# Quit out of the while loop, and proceed with function processing.
@@ -7351,8 +7456,8 @@ async def process_raw_response(
 		return		# This means the bot is simply not responding to this particular message.
 	
 	# Generate a debug-level log message to indicate that we're starting a new response.
-	_logger.debug("Creating new ordinary (non-function-call) response from "
-				  f"{botConvo.bot_name} with text: [{response_text}].")
+	_logger.debug('='*80 + "\nCreating new ordinary (non-function-call) response from "
+				  f"{botConvo.bot_name} with text:\n[{response_text}].")
 
 	# At this point, according to our new protocol for allowing the AI to send multiple
 	# messages, we check for additional instances of "\n{BOT_NAME}>" in the response, and
@@ -7577,6 +7682,103 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 #__/ End of process_response() function definition.
 
 
+## Helper function to parse properly-formatted responses.
+def _parse_response(text_response:str, verbose=True):
+
+	"""This helper function determines whether a text response from the
+		AI, in `text_response`, is properly formatted as a sequence of
+		one or more XML elements like:
+
+			```xml
+			<message sender="Claude">Message to send to the user.</message>
+			<thought>Private internal monologue by the AI...</thought>
+			```
+
+		If not, the entire response is wrapped in the
+		`<message sender="Claude">` form. The return value is a pair
+
+			`properly_formatted, elements`
+
+		where `properly_formatted` is a boolean indicating whether the
+		original response was properly formatted, and `elements` is a
+		list of XML elements making up the response.
+	"""
+
+	properly_formatted = True
+	elements = []
+
+	try:
+		root = ET.fromstring(f'<response>{text_response}</response>')
+
+		text_before_1st_subelement = root.text.strip() if root.text else None
+
+		# If there's any text before the first subelement, that's no good.
+		if text_before_1st_subelement:
+			if verbose:
+				_logger.error(f"NON-EMPTY TEXT [{text_before_1st_subelement:20}...] FOUND BEFORE FIRST SUB-ELEMENT.")
+			properly_formatted = False
+
+		else:
+		
+			i = 0
+			for child in root:
+
+				i += 1
+
+				# If it's a tag we don't recognize; this is no good.
+				if child.tag not in ['message', 'thought']:
+					if verbose:
+						_logger.error(f"UNRECOGNIZED SUB-ELEMENT TAG {child.tag}")
+					properly_formatted = False
+					break
+
+				# If there's any text after the subelement, that's no good either.
+				text_after_this_subelement = child.tail.strip() if child.tail else None
+				if text_after_this_subelement:
+					if verbose:
+						_logger.error(f"NON-EMPTY TEXT [{text_before_1st_subelement:20}...] FOUND AFTER #{i} SUB-ELEMENT.")
+					properly_formatted = False
+					break
+
+				elements.append(child)
+
+			#__/ End loop through child elements.
+
+			# Finally, if we get here and no subelements were found, that's no good.
+			# (This shouldn't happen if we already made sure text_response was non-
+			# empty earlier, but just in case...)
+
+			if not elements:
+				if verbose:
+					_logger.error(f"NO SUB-ELEMENTS FOUND IN RESPONSE")
+				properly_formatted = False
+
+		#__/ End if text before 1st sub-element ... else ...
+
+	except ET.ParseError as e:
+		if verbose:
+			_logger.error(f"ELEMENT TREE PARSING ERROR [{e}] IN RESPONSE")
+		properly_formatted = False
+
+	if not properly_formatted:
+		# Handle unadorned blocks of text as normal messages
+		elements = [ET.Element('message', {'sender': 'Claude'})]
+		elements[0].text = text_response.strip()
+
+	return properly_formatted, elements
+
+#__/ End private function _parse_response().
+
+
+# Function to extract all text, recursively, within an element tree.
+def _element_text(element):
+    text = element.text or ""
+    for sub_element in element:
+        text += _element_text(sub_element)
+        text += sub_element.tail or ""
+    return text
+
+
 ################################################################################
 # The following function is for processing a response (or part of a response)
 # that has already been determined to contain only ordinary text, that is, with
@@ -7597,6 +7799,9 @@ async def process_text_response(
 	(tgMsg, edited) = _get_update_msg(tgUpdate)
 		# NOTE: We only do this to get the user data.
 		
+	# Get the message's chat ID.
+	chat_id = tgMsg.chat.id
+
 	# Get the bot's conversation object.
 	botConvo = tgContext.chat_data['conversation']
 
@@ -7659,10 +7864,79 @@ async def process_text_response(
 		return		# This means the bot is simply not responding to this particular message.
 	
 	# Generate a debug-level log message to indicate that we're starting a new response.
-	_logger.debug("Creating new ordinary (non-function-call) response from "
-				  f"{botConvo.bot_name} with text: [{text_response}].")
+	_logger.normal('\n' + '='*80 + "\nCreating new ordinary (non-function-call) response from "
+				  f"{botConvo.bot_name} with text:\n[{text_response}].")
 
-	# At this point, according to our new protocol for allowing the AI to send multiple
+	# At this point, according to our new protocol for allowing the AI to send
+	# multiple messages, in the case of Anthropic clients, we check whether the
+	# message is properly formatted as a sequence of <message> and <thought>
+	# elements, and process each one as if it were a separate response.
+
+	if isinstance(_main_client, Anthropic):
+		
+		properly_formatted, elements = _parse_response(text_response)
+
+		_logger.normal(f"Was text response properly formatted? --> {properly_formatted}")
+		_logger.normal(f"\tThere were {len(elements)} elements in the response.")
+
+		# Go through all the elements in the response, processing them individually.
+		for element in elements:
+
+			if element.tag == 'thought':	# Got an internal monologue (thought) message.
+				
+				# Extract the content of the thought (sans leading/trailing whitespace).
+				thought_content = element.text.strip()
+
+				# Skip empty thoughts; no need to archive them.
+				if thought_content == "": continue
+
+				# Reconstruct the standardized XML form of the private thought.
+				thought_msg = ET.tostring(element).decode('utf-8')
+
+				## This was broken because it doesn't re-escape the thought_content.
+				#thought_msg = (
+				#	'<thought origin="Claude">\n'
+				#	f"{thought_content}\n"
+				#	"</thought>"
+				#)
+
+				# Add it to the conversation transcript in memory (so AI will remember it).
+				thought_botMsg = BotMessage(botConvo.bot_name, thought_msg)
+				botConvo.add_message(thought_botMsg)
+
+				# Make sure the thought message has been finalized (this also archives it).
+				botConvo.finalize_message(thought_botMsg)
+
+				_logger.normal('\n' + '~'*80 + "\nSuppressing private thought from being sent "
+							   f"to the chat {chat_id}:\n\t[{thought_content}].\n")
+
+			else:	# Element tag should be 'message'::
+
+				# Sender should always be BOT_NAME, but we don't bother to check...
+
+				tag		= element.tag
+				sender	= element.get('sender')
+				text	= element.text
+
+				text_str = text or "None"
+
+				_logger.normal(f"\nElement tag: {tag}, "
+							   f"sender: {sender}, "
+							   f"text: [{text_str[:30].strip()}...]")
+
+				response_msg = text
+
+				await process_single_response_msg(tgUpdate, tgContext, botConvo, response_msg)
+
+			#__/ End if 'thought' else...
+
+		#__/ End loop through elements in response.
+
+		return
+
+	#__/ End if for handling new-format message sequences for Anthropic.
+				
+	# At this point, according to our new protocol for allowing the AI to send
 	# messages, we check for additional instances of "\n{BOT_NAME}>" in the response, and
 	# if they exist, we split the response on those, and process each one as if it were 
 	# a separate response.
@@ -7679,67 +7953,7 @@ async def process_text_response(
 		response_msgs = [text_response]
 
 	for response_msg in response_msgs:
-
-		response_msg = response_msg.strip()		# Trim leading/trailing whitespace.
-		
-		_logger.normal('\n' + '~'*80 + f"\nProcessing individual response sub-message: [{response_msg[:30]}...]")
-
-		if response_msg == "":	# Skip empty messages.
-			continue
-
-		# We don't need to check for function calls here because we already determined
-		# that there are none in this text_response.
-
-		# Create a new BotMessage object.
-		response_botMsg = BotMessage(botConvo.bot_name, response_msg)
-		_logger.normal(f"\tConstructed BotMessage: [{str(response_botMsg)[:30]}...]")
-
-		# If this message is already in the conversation, then we'll suppress it, so
-		# as not to exacerbate the AI's tendency to repeat itself.  (So, as a user,
-		# if you see that the AI isn't responding to a message, this may mean that
-		# it has the urge to just repeat something that it already said earlier, but
-		# is holding its tongue.)
-
-		if response_msg.lower() != '/pass' and \
-		   botConvo.is_repeated_message(response_botMsg):
-
-			# Generate an info-level log message to indicate that we're suppressing
-			# the response.
-			_logger.normal(f"Suppressing response [{response_msg}]; it's a repeat.")
-
-
-			## Send the user a diagnostic message (doing this temporarily during development).
-			#diagMsg = f"Suppressing response [{response_text}]; it's a repeat."
-			#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
-		
-			continue		# This means the bot is simply not responding to the message
-
-		#__/ End check for repeated messages.
-
-		_logger.normal("\tAdding BotMessage to BotConvo...")
-
-		# It isn't a repeat, so we'll add it to the conversation.
-		botConvo.add_message(response_botMsg)
-
-		# Update the message object (why?)
-		#response_botMsg.text = response_msg
-
-		# If we get here, then we have a non-empty message that's also not a repeat,
-		# and doesn't contain sub-messages.
-		# It's finally OK at this point to archive the message and send it to the user.
-
-		# Make sure the response message has been finalized (this also archives it).
-		botConvo.finalize_message(response_botMsg)
-
-		# If we get here, we have finally obtained a non-empty,
-		# no-function, non-repeat, already-archived message with no
-		# sub-messages that we can go ahead and send to the user. This
-		# function will also check to see if the message is a textual
-		# command line, and will process the command if so.
-
-		_logger.normal("\tProcessing the BotMessage...")
-
-		await process_response(tgUpdate, tgContext, response_botMsg)	   # Defined below.
+		await process_single_response_msg(tgUpdate, tgContext, botConvo, response_msg)
 
 	#__/ End for loop over Telegram messages in the response.
 
@@ -7795,6 +8009,67 @@ async def _send_imagedata(img_data, tgMsg:TgMsg, caption:str=None, ):
 	#__/
 
 #__/ End private function _send_imagedata
+
+async def process_single_response_msg(tgUpdate, tgContext, botConvo, response_msg:str):
+
+	"""Process a single textual response message from the AI to the chat."""
+
+	response_msg = response_msg.strip()		# Trim leading/trailing whitespace.
+		
+	if response_msg == "":	# Skip empty messages.
+		return
+	
+	# Note we don't need to check for function calls here because we already
+	# determined that there are none in this normal text response.
+
+	# Create a new BotMessage object.
+	response_botMsg = BotMessage(botConvo.bot_name, response_msg)
+
+	# If this message is already in the conversation, then we'll suppress it, so
+	# as not to exacerbate the AI's tendency to repeat itself.  (So, as a user,
+	# if you see that the AI isn't responding to a message, this may mean that
+	# it has the urge to just repeat something that it already said earlier, but
+	# is holding its tongue.)
+	
+	if response_msg.lower() != '/pass' and \
+	   		botConvo.is_repeated_message(response_botMsg):
+
+		# Generate an info-level log message to indicate that we're suppressing
+		# the response.
+		_logger.normal(f"Suppressing response [{response_msg}]; it's a repeat.")
+
+
+		## Send the user a diagnostic message (doing this temporarily during development).
+		#diagMsg = f"Suppressing response [{response_text}]; it's a repeat."
+		#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
+		
+		return		# This means the bot is simply not responding to the message
+
+	#__/ End check for repeated messages.
+
+	# It isn't a repeat, so we'll add it to the conversation.
+	botConvo.add_message(response_botMsg)
+
+	## Is this still needed?
+	# Update the message object.
+	response_botMsg.text = response_msg
+
+	# If we get here, then we have a non-empty message that's also not a repeat,
+	# and doesn't contain sub-messages.
+	# It's finally OK at this point to archive the message and send it to the user.
+
+	# Make sure the response message has been finalized (this also archives it).
+	botConvo.finalize_message(response_botMsg)
+
+	# If we get here, we have finally obtained a non-empty,
+	# no-function, non-repeat, already-archived message with no
+	# sub-messages that we can go ahead and send to the user. This
+	# function will also check to see if the message is a textual
+	# command line, and will process the command if so.
+	
+	await process_response(tgUpdate, tgContext, response_botMsg)	   # Defined below.
+
+#__/ End function process_single_response_msg().
 
 
 @backoff.on_exception(backoff.expo, TimedOut, max_tries=4)	# If this doesn't work, try Exception
@@ -7900,16 +8175,16 @@ async def send_response(update:Update, context:Context, response_text:str) -> No
 
 	conversation = context.chat_data['conversation']
 
-	# Now, we need to send the response to the user. However, if the response is
-	# longer than the maximum allowed length, then we need to send it in chunks.
-	# (This is because Telegram's API limits the length of messages to 4096 characters.)
+	# Now, we need to send the response to the user. However, if the
+	# response is longer than the maximum allowed length, then we need
+	# to send it in chunks.  (This is because Telegram's API limits
+	# the length of messages to 4096 characters.)
 
-	MAX_MESSAGE_LENGTH = 4096	# Maximum length of a message. (Telegram's API limit.)
-	
-	#MAX_MESSAGE_LENGTH = 9500
-		# NOTE: Somwhere I saw that 9,500 was the maximum length of a
-		# Telegram message, but I don't know which is the correct
-		# maximum. But based on my tests, it seems to be 4,096.
+		# Maximum length of a message. (Telegram's API limit.)
+	#MAX_MESSAGE_LENGTH = 9500	# Incorrect.
+	MAX_MESSAGE_LENGTH = 4096
+		# NOTE: Somwhere I also saw that 9500 was the maximum length
+		#	of a message, but my testing indicates it is 4096.
 
 	# Send the message in chunks.
 	while len(response_text) > MAX_MESSAGE_LENGTH:
@@ -9480,6 +9755,10 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 		chat_id = message.chat.id
 	else:
 		chat_id = convo.chat_id
+
+	## NOTE: The following is the legacy implementation of the internal
+	## monologue feature. It is still implemented, but is no longer 
+	## documented in the system prompt.
 
 	# If the message begins with "*thinks*", don't bother sending it
 	# to the user.
