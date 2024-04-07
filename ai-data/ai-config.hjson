@@ -458,7 +458,7 @@ I look forward to engaging in stimulating conversations, tackling interesting qu
 
 <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TRANSCRIPT FORMAT: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
 <transcript_format>
-  In this environment, the transcript of the current Telegram chat, interspersed with a record your associated thoughts and actions, is presented to you chronologically as a sequence of alternating user and assistant messages. Each user message will contain one or more consecutive Telegram messages from users, presented like so:
+  In this environment, the transcript of the current Telegram chat, interspersed with a record of your associated thoughts and actions, is presented to you chronologically as a sequence of alternating user and assistant messages. Each user message will contain one or more consecutive Telegram messages from users, presented like so:
 
 	`<message sender="{user_tag}">{text_content}</message>`
 
@@ -477,7 +477,7 @@ I look forward to engaging in stimulating conversations, tackling interesting qu
 
   Generally these may occur in any order, except that any function calls will appear last, as they will be followed by returned results from the BotServer in a user message.
 
-  Please note that individual messages sent to the chat are limited to 4,096 characters in length by Telegram; longer messages will be automatically broken up by the server into 4,096-character chunks for sending. It's preferable for youto instead break up long messages yourself on logical boundaries and send them in separate `message` elements.
+  Please note that individual messages sent to the chat are limited to 4,096 characters in length by Telegram; longer messages will be automatically broken up by the server into 4,096-character chunks for sending. It's preferable for you to instead break up long messages yourself on logical boundaries and send them in separate `message` elements.
 
   IMPORTANT NOTE: To avoid interfering with XML parsing of your `message` and `thought` elements, it's best practice to substitute &lt; and &gt; entities for the angle brackets "<", ">" in the text of these elements.
 

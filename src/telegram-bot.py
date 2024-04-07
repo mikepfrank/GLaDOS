@@ -634,11 +634,21 @@ logmaster.configLogMaster(
 # save disk space.
 
 
-def _msg_to_xml(msg:str, sender:str):
+def _msg_to_xml(msg:str, sender:str) -> str:
+	
+	"""Given a message string (general text), and a sender tag, this
+		function returns an XML string representation of the
+		message. Any XML special characters inside of the message are
+		automatically escaped so that they won't interfere with
+		parsing of the message element."""
+
 	elem = ET.Element('message', {'sender': sender})
 	elem.text = msg
 	xml = ET.tostring(elem).decode('utf-8')
+
 	return xml
+#__/
+
 
 #/=============================================================================|
 #|	2. Class definitions.						 [python module code section]  |
@@ -667,6 +677,7 @@ def _msg_to_xml(msg:str, sender:str):
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 def _anthropize(msgDict):
+
 	"""Convert an OpenAI-style message dictionary to Anthropic format."""
 	
 	# No system messages allowed -- convert to BotServer user messages.
@@ -705,8 +716,11 @@ def _anthropize(msgDict):
 		# See if it superficially appears like the content is already formatted.
 		looks_like_a_message = content.startswith('<message')
 		looks_like_a_thought = content.startswith('<thought')
+		looks_like_a_funcall = content.startswith('<function_calls>')
 
-		ok = looks_like_a_message or looks_like_a_thought
+		ok = looks_like_a_message \
+			or looks_like_a_thought \
+			or looks_like_a_funcall
 
 		# If doesn't look OK at a glance, then we wrap it so it
 		# appears to be a normal formatted message.
@@ -723,19 +737,27 @@ def _anthropize(msgDict):
 		func_name = funcall_dict['name']
 		arguments = json.loads(funcall_dict['arguments'])
 		xml_funcall = (
-			"<function_calls>\n"
-			"<invoke>\n"
-			f"<tool_name>{func_name}</tool_name>\n"
-			"<parameters>\n")
+			 "<function_calls>\n"
+			 "  <invoke>\n"
+			f"    <tool_name>{func_name}</tool_name>\n"
+			 "    <parameters>\n")
 		#print("=================== GOT ARGUMENT LIST ==================")
 		#pprint(arguments)
+
+		# Loop over arguments
 		for key, val in arguments.items():
-			xml_funcall += f"<{key}>{val}</{key}>\n"
-			xml_funcall += (
-				"</parameters>\n"
-				"</invoke>\n"
-				"</function_calls>")
-			msgDict['content'] = f"{BOT_NAME}> " + xml_funcall
+			xml_funcall += f"      <{key}>{val}</{key}>\n"
+		#__/
+
+		# Close out the <function_calls> element.
+		xml_funcall += (
+			 "    </parameters>\n"
+			 "  </invoke>\n"
+			 "</function_calls>")
+
+		#msgDict['content'] = f"{BOT_NAME}> " + xml_funcall
+		msgDict['content'] = xml_funcall
+
 		del msgDict['function_call']
 
 	# Anthropic doesn't understand the special role for function return values.
@@ -745,17 +767,19 @@ def _anthropize(msgDict):
 		func_name = msgDict['name']
 		content = msgDict['content']
 
+		indented_content = _indent(content)
+
 		xml_result = (
-			"<function_results>\n"
-			"  <result>\n"
-			f"   <tool_name>{func_name}</tool_name>\n"
-			"   <stdout>\n"
-			f"	  {content}\n"
-			"	</stdout>\n"
-			"  </result>\n"
-			"</function_results>")
+			 "<function_results>\n"
+			 "  <result>\n"
+			f"    <tool_name>{func_name}</tool_name>\n"
+			 "    <stdout>\n"
+			f"{indented_content}\n"		# Already multi-line indented above
+			 "    </stdout>\n"
+			 "  </result>\n"
+			 "</function_results>")
 			
-		msgDict['content'] = f"{SYS_NAME}> " + xml_result
+		msgDict['content'] = f"{SYS_NAME}> " + '\n' + xml_result
 
 	# If there's a 'name' field, delete it at this point -- Anthropic can't take it.
 	if 'name' in msgDict:
@@ -2223,16 +2247,16 @@ class BotConversation:
 		#	"bot. You may include multiple such messages in your response, but each one " \
 		#	"should begin on a new line. " \
 
+
 		response_prompt = (
 			"In your response, use the same language that the user used most "
-			"recently, if appropriate. Be concise unless asked for detail. "
+			"recently, if appropriate. "
 			#f"Your responses should begin with '{botName}>' to trigger the Telegram "
 			#"bot server to send the subsequent text to the chat as a message from your "
 			#"bot. You may include multiple such messages in your response, but each one "
 			#"should begin on a new line. "
-			"You may include multiple Telegram messages in your response. "
-			#"You may include multiple Telegram messages in your response, but each one "
-			#f"must begin on a new line starting with '{botName}>'. "
+			"You may include multiple Telegram messages in your response, but each one "
+			f"must begin on a new line starting with '{botName}>'. "
 			"(Or, alternatively to just sending messages, you can activate "
 			"an available function and then call that function, if appropriate.)"
 		)
@@ -2242,10 +2266,13 @@ class BotConversation:
 
 		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
 			# Only give this instruction in group chats:
-			response_prompt += " However, if the user is not addressing you, " \
-							   "send '/pass' or an empty message to remain silent."
+			response_prompt += (" However, if the user is not addressing you, "
+								"call pass_turn() or send '/pass' or an empty "
+								"message to remain silent.")
 		else:
-			response_prompt += " You may also send '/pass' or an empty message to refrain from responding."
+			response_prompt += (" You may also call pass_turn() or send '/pass' "
+								"or an empty message to refrain from responding.")
+
 
 		# Note this one will appear at the bottom of OpenAI messages, but as
 		# part of the overall system prompt for Anthropic models.
@@ -4959,6 +4986,26 @@ def _adjust_searchmem_defaults():
 		DEFAULT_SEARCHMEM_NITEMS = 5
 
 	# ^ NOTE: Reasonable defaults. Do not recommend setting this higher than 10.
+#__/
+
+
+def _indent(text:str, num_spaces:int=6):
+	# Default is 6 for testing within <function_results><result>...<stdout>
+	
+	"""Indent a given (generally multi-line) string by the given number of
+		spaces."""
+
+	# Split the string into lines
+	lines = text.split('\n')
+
+	# Prefix each line with additional indentation
+	indented_lines = [' '*num_spaces + line for line in lines]
+
+	# Join the indented lines back together
+	indented_text = '\n'.join(indented_lines)
+
+	return indented_text
+#__/
 
 
 async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
@@ -4997,16 +5044,19 @@ async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
 	_logger.normal(f"In chat {chatID}, for user #{userID}, AI is searching for the top {nItems} memories matching the search query: [{queryPhrase}].")
 	matchList = _searchMemories(userID, chatID, queryPhrase, nItems=nItems)
 
-	_logger.normal(f"Found the following matches: [\n{matchList}\n].")
+	pretty_matches = json.dumps(matchList, indent=2, separators=(', ', ': '),
+								sort_keys=True)
 
-	return matchList
+	_logger.normal(f"Found the following matches:\n{_indent(pretty_matches, 4)}\n.")
+
+	return pretty_matches
 
 #__/
 
 
 # Default list of sections that should be returned by a Bing search.
-DEFAULT_BINGSEARCH_SECTIONS = ['webPages', 'relatedSearches']
-#DEFAULT_BINGSEARCH_SECTIONS = ['webPages']
+#DEFAULT_BINGSEARCH_SECTIONS = ['webPages', 'relatedSearches']
+DEFAULT_BINGSEARCH_SECTIONS = ['webPages']
 	# We made this smaller to increase the chance Turbo can handle it.
 
 def trim(s:str, n:int=30):
@@ -5143,7 +5193,9 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 		# Format the result with tabs to make it easier for Turbo/Max to parse.
 		pp_result = json.dumps(cleanResult, indent=4)
 		#pp_result = pformat(cleanResult, indent=4)		# Maybe too much indents
+
 		tabbed_result = pp_result.replace(' '*8, '\t')
+
 		return tabbed_result
 
 	except SearchError as e:
@@ -5307,7 +5359,8 @@ async def ai_unblock(updateMsg:TgMsg, conversation:BotConversation,
 
 async def ai_call_function(update:Update, context:Context, funcName:str, funcArgs:dict) -> str:
 
-	"""Call the named AI-available function with the given argument dict. Returns a result string."""
+	"""Call the named AI-available function with the given argument dict.
+		Returns a result string."""
 
 	# Get the user message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
@@ -6885,7 +6938,7 @@ async def process_raw_response(
 				# the first <function_calls> block, and null out the rest of the
 				# response_text. This will give the system+AI a chance to respond to
 				# the initial sequence of invocations before we proceed. It also keeps
-				# the AI from imagining fake <function_return> blocks.
+				# the AI from imagining fake <function_results> blocks.
 
 				response_text = ""		# Pretend there's nothing after the 1st <function_calls> block.
 				break					# Quit out of the while loop, and proceed with function processing.
@@ -7807,8 +7860,8 @@ def _bing_search(query_string:str, market:str='en-US', count=3, sections=None):
 		'count':	count
 	}
 
-	if sections:
-		params['responseFilter'] = ','.join(sections)
+	#if sections:
+	#	params['responseFilter'] = ','.join(sections)
 		
 	headers = {
 		'Ocp-Apim-Subscription-Key': subscription_key
