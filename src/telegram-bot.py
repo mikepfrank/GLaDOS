@@ -2403,7 +2403,7 @@ class BotConversation:
 			"In your response, use the same language that the user used most "
 			"recently, if appropriate. Be concise unless asked for detail. "
 			"You may include multiple Telegram messages in your response, but each one "
-			f"must begin on a new line starting with '{botName}>'. "
+			f"must be contained in a new &lt;message&gt; element. "
 			"(Or, alternatively to just sending messages, you can activate "
 			"an available function and then call that function, if appropriate.)"
 		)
@@ -9010,7 +9010,9 @@ def _initPersistentData() -> None:
 	# This function initializes the AI's persistent context data.
 
 	# Initialize the main data for the AI's persistent context.
-	globalPersistentData = aiConf.context 
+	#   Replace [BOT_NAME] with the actual bot name in the context.
+	
+	globalPersistentData = aiConf.context.replace("[BOT_NAME]", BOT_NAME)
 		# NOTE: This should end with a newline. But if it doesn't, we'll add one.
 
 	# Ensure that PERSISTENT_DATA ends with a newline.
