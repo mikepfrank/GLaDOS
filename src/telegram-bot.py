@@ -5000,8 +5000,11 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 		return "error: null image description"
 
 	# Process the "shape" parameter.
+
 	if shape is None:
-		shape = "square"	# Default
+		shape = "square"			# Default image shape.
+	elif shape == "panoramic":		# AI might try this.
+		shape = "landscape"
 
 	if shape == "square":
 		size = "1024x1024"
@@ -5011,17 +5014,26 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 		size = "1792x1024"
 	else:
 		_logger.warn(f"\tUnknown shape name '{shape}'; reverting to 'square'.")
+		shape = "square"
+
 		# Show the AI the warning too.
 		conversation.add_message(BotMessage(SYS_NAME, f"Warning: Shape '{shape}' is invalid; defaulting to 'square'."))
+
 		size = "1024x1024"
 
 	# Process the "style" parameter.
+
 	if style is None:
 		style = 'vivid'
-	if style == 'photorealistic':
+	elif style == 'photorealistic':
 		style = 'natural'
+
 	if style != 'vivid' and style != 'natural':
 		_logger.warn(f"\tUnknown style '{style}'; reverting to 'natural'.")
+
+		# Show the AI the warning too.
+		conversation.add_message(BotMessage(SYS_NAME, f"Warning: Style '{style}' is invalid; defaulting to 'natural'."))
+
 		style = 'natural'
 
 	# Generate and send an image described by the /image command argument string.
@@ -9475,6 +9487,11 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 		_logger.normal(f"\nSuppressing private thought from being sent to the chat {chat_id}:\n\t[{msgToSend}].\n")
 		convo.add_message(BotMessage(SYS_NAME, "REMINDER: Your private thoughts won't be sent to the chat."))
 		return 'success'
+
+	# If the message begins with "*says*", strip that off the front
+	# before sending it to the user.
+	if msgToSend.startswith("*says*"):
+		msgToSend = msgToSend[len("*says*"):].strip()
 
 	# If our caller requested we utilize markup to style our message,
 	# then turn on the 'MarkdownV2' parse mode supported by Telegram,
