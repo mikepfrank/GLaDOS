@@ -406,19 +406,19 @@
 		#max-visible-tokens:	16384	# Appropriate for gpt-3.5-turbo-16k models.
 
 		#max-visible-tokens:		16_384	# Should let me do 61 queries/day?
-			# Doing this because of the dumb 50K TPM rate limit.
+			# Doing this (16K) because of the dumb 50K TPM rate limit.
 			
 		#max-visible-tokens:		24_576
-			# Trying this now in Firefly.
+			# Trying this now (24K) in Firefly.
 
 		#max-visible-tokens:		32_768
-			# Trying this now in Sage bot.
-
-		max-visible-tokens:			49_152
-			# Trying this now in Opus bot.
+			# Trying this now (32K) in Sage bot.
 
 		#max-visible-tokens:		45_000
 			# Doing this because of the dumb 50K TPM rate limit.
+
+		max-visible-tokens:			49_152
+			# Trying this now (48K) in Opus bot.
 
 		#max-visible-tokens:		100_000
 			# For Claude 3. Really it can do 200K, but we set it to this to save costs.
