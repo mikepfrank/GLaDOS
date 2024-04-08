@@ -417,6 +417,7 @@ from	telegram.error	import	BadRequest, Forbidden, ChatMigrated, TimedOut
 
 from anthropic import Anthropic		# Main class for accessing Anthropic API.
 from anthropic import RateLimitError as AnthroRateLimitError
+from anthropic import APIStatusError
 
 _anthropic_client	= Anthropic()
 	# Note this expects the Anthropic API key to be in ANTHROPIC_API_KEY.
@@ -6351,7 +6352,9 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 			break
 		#__/ End main body of 'try' clause for getting results from GPT.
 
-		except PromptTooLargeException:				# Imported from gpt3.api module.
+		except (PromptTooLargeException, APIStatusError):
+			# PromptTooLargeException is from gpt3.api module
+			# APIStatusError is from anthropic library
 
 			# Are we using a raw message list that was passed in to us from
 			# process_function_call()? If so, then we need to trim that one;
