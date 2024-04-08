@@ -405,12 +405,16 @@
 		#max-visible-tokens:	8192	# Appropriate for gpt-4 model.
 		#max-visible-tokens:	16384	# Appropriate for gpt-3.5-turbo-16k models.
 
-		#max-visible-tokens:		100_000
-			# For Claude 3. Really it can do 200K, but we set it to this to save costs.
+		#max-visible-tokens:			16_384	# Should let me do 61 queries/day?
+			# Doing this because of the dumb 50K TPM rate limit.
+			
+		max-visible-tokens:		24_576	# Trying this now in Firefly.
+
 		#max-visible-tokens:		45_000
 			# Doing this because of the dumb 50K TPM rate limit.
-		max-visible-tokens:			16_384	# Should let me do 61 queries/day?
-			# Doing this because of the dumb 50K TPM rate limit.
+
+		#max-visible-tokens:		100_000
+			# For Claude 3. Really it can do 200K, but we set it to this to save costs.
 	
 		## ****** NOTE: THE ABOVE PARAMETER IS NOT CURRENTLY USED AT ALL IN EITHER
 		## 			gpt3/api.py OR telegram-bot.py. ******
