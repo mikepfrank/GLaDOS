@@ -1056,7 +1056,7 @@ class	TheAIPersonaConfig:
 			# Extract the max-visible-tokens parameter.
 		
 		if 'max-visible-tokens' in fieldConf:
-			theAIConfig.maxVisibleTokens = maxTok = fieldConf['max-visible-tokens']
+			theAIConfig.maxVisibleTokens = maxTok = int(fieldConf['max-visible-tokens'])
 				# TODO: Make sure value given is valid.
 			_logger.normal(f"    [Config/AI]     AI config:     The AI's receptive field size is {maxTok}.")
 		else:
