@@ -467,8 +467,11 @@ _ENGINES = [
 	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',   'field-size': 96_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	
 		# 128k GPT-4V models. (Vision capability added.)
-	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-vision-preview',      'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
-	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-1106-vision-preview', 'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+    {'model-family': 'GPT-4V', 'engine-name': 'gpt-4-vision-preview',      'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+    {'model-family': 'GPT-4V', 'engine-name': 'gpt-4-1106-vision-preview', 'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+    #{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-turbo-2024-04-09', 'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+    {'model-family': 'GPT-4V', 'engine-name': 'gpt-4-turbo-2024-04-09', 'field-size': 96_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+
 
 		# Anthropic Claude models.
 	{'model-family': 'Claude-1',	'engine-name': 'claude-instant-1.2',	'field-size': 100_000,	'prompt-price': 0.8e-3,	'price': 2.4e-3,	'is-chat':	'either',	'has-vision': False,	'encoding': 'non-tiktoken'},
@@ -3835,6 +3838,8 @@ def encode_image(image_path):
   with open(image_path, "rb") as image_file:
     return base64.b64encode(image_file.read()).decode('utf-8')
 
+IMAGE_DESC_MAXTOKS = 1000
+
 def describeImage(filename:str, verbosity:str='medium', query:str=None):
 	"""Given the path to a JPEG image, use the GPT-4V model
 		to generate a text description of the image, and return
@@ -3882,9 +3887,18 @@ def describeImage(filename:str, verbosity:str='medium', query:str=None):
 		"Authorization": f"Bearer {api_key}"
 	}
 
+	# NOTE: I'm not sure if the newer 4/9/24 vision model really does
+	# better than the original (11/6/23) gpt-4-vision-preview.  It may
+	# actually be worse!  But it's cheaper, at least...
+
+	#VISION_MODEL = 'gpt-4-vision-preview'
+	VISION_MODEL = 'gpt-4-turbo-2024-04-09'
+
+
 	# Construct POST payload.
 	payload = {
-		"model": "gpt-4-vision-preview",
+
+		"model":		VISION_MODEL,
 		"messages": [
 			{
 				"role": "user",
@@ -3902,7 +3916,7 @@ def describeImage(filename:str, verbosity:str='medium', query:str=None):
 				]
 			}
 		],
-		"max_tokens": 500
+		"max_tokens":	IMAGE_DESC_MAXTOKS
 	}
 	
 	# Stream the image to the API via an https POST.
