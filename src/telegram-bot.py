@@ -2223,6 +2223,9 @@ class BotConversation:
 			  		"style:str='vivid', caption:str=None, remark:str=None) " \
 			  		"-> status:str\n"
 			  
+			  "  refresh_image(filename:str, mime_type:str, " \
+			  		"caption:str=None, remark:str=None) -> status:str\n"
+
 			 f"  block_user(user_name:str='{userTag}', user_id=None, " \
 			  		"remark:str=None) -> status:str\n"
 
@@ -4747,6 +4750,9 @@ async def ai_activateFunction(
 	elif funcName == 'create_image':
 		cur_funcs += [CREATE_IMAGE_SCHEMA]
 	
+	elif funcName == 'refresh_image':
+		cur_funcs += [REFRESH_IMAGE_SCHEMA]
+
 	elif funcName == 'block_user':
 		cur_funcs += [BLOCK_USER_SCHEMA]
 	
@@ -5171,6 +5177,66 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 	return f'Success: image with revised description "{new_desc}" has been generated in file "{save_filename}" and sent to user.'
 
 #__/ End of ai_image() function definition.
+
+
+# Function to handle refresh_image() function call by the AI.
+async def ai_refresh(update:Update, context:Context, filename:str,
+					 mimeType:str=None, caption:str=None) -> str:
+
+	# Get the message, or edited message from the update.
+	(tgMsg, edited) = _get_update_msg(update)
+
+	# Get the chat_id, user_name, and conversation object.
+	chat_id = tgMsg.chat.id
+	user_name = _get_user_tag(tgMsg.from_user)
+	conversation = context.chat_data['conversation']
+
+	# This resends the image to the chat, with its caption.
+
+	try:
+		full_path = os.path.join(AI_DATADIR, filename)
+		_logger.normal(f"\tAttempting to resend file {filename} with caption: {caption}")
+		with open(full_path, 'rb') as image_file:
+			image_bytes = image_file.read()
+			await _send_imagedata(image_bytes, tgMsg, caption)
+
+		# The following arranges things so the AI can see the image too.
+
+		if not mimeType:
+			if filename.endswith(".jpg"):
+				mimeType = "image/jpeg"
+			else:
+				mimeType = "image/png"
+
+		if mimeType == "image/jpeg":
+			CALLOUT_REMARK = "PHOTO ATTACHMENT"
+		else:
+			CALLOUT_REMARK = "GENERATED IMAGE"
+
+		img_callout = f'''[{CALLOUT_REMARK}; type="{mimeType}", filename="{filename}"]'''
+
+		sys_text = (f"[NOTE: {BOT_NAME}, the following image has been "
+					f"resent to the Telegram chat: {img_callout}]")
+
+		ret_res = "Success"
+
+	except Exception as e:
+					
+		# Alternate text for the BotMessage to report the error to the AI.
+
+		sys_text = (f"[NOTE: {BOT_NAME}, the attempt to refresh {filename} "
+					f"resulted in an exception, with error message: [{e}]]")
+
+		ret_res = "Error; see above."
+
+	#__/ End try... except...
+
+	# Show the AI the image, or the error message, from BotServer.
+	conversation.add_message(BotMessage(SYS_NAME, sys_text))
+
+	return ret_res
+
+#__/ End of ai_refresh() function definition.
 
 
 # Define a function to handle the /remember command, when issued by the AI.
@@ -5742,6 +5808,19 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 			await _report_error(conversation, message,
 					f"create_image() missing required argument 'description'.")
 			return "Error: Required argument 'description' is missing."
+
+	elif funcName == 'refresh_image':
+
+		fileName = funcArgs.get('filename', None)
+		mimeType = funcArgs.get('mime_type', None)
+		caption	 = funcArgs.get('caption', None)
+
+		if fileName:
+			return await ai_refresh(update, context, fileName, mimeType=mimeType, caption=caption)
+		else:
+			await _report_error(conversation, message,
+					f"refresh_image() missing required argument 'filename'.")
+			return "Error: Required argument 'filename' is missing."
 
 	elif funcName == 'block_user':
 
@@ -7653,18 +7732,18 @@ async def check_for_image_callouts(update:Update, context:Context, botMsg:BotMes
 
 				# Generate the BotMessage that will allow the AI to see the images.
 
-				sys_text = (f"{BOT_NAME}, for your reference, below is a copy "
+				sys_text = (f"[NOTE: {BOT_NAME}, for your reference, below is a copy "
 							"of your last message with embedded images expanded "
 							"(if possible; and they will also have been resent to "
-							"the Telegram chat): ") + msg_text
+							"the Telegram chat): ") + msg_text + "]"
 
 			except Exception as e:
 					
 				# Alternate text for the BotMessage to report the error to the AI.
 
-				sys_text = (f"{BOT_NAME}, the attempt to process inline image "
+				sys_text = (f"[NOTE: {BOT_NAME}, the attempt to process inline image "
 							"callouts in your last message resulted in an "
-							f"exception, with error message: [{e}]")
+							f"exception, with error message: [{e}]]")
 
 			#__/ End try... except...
 
@@ -7672,7 +7751,6 @@ async def check_for_image_callouts(update:Update, context:Context, botMsg:BotMes
 
 			# Now give the AI another opportunity to respond.
 			await get_ai_response(update, context)
-
 
 		#__/ End if inline images found.
 
@@ -10933,6 +11011,40 @@ CREATE_IMAGE_SCHEMA = {
 }
 
 
+REFRESH_IMAGE_SCHEMA = {
+	"name":			"refresh_image",
+	"description":	"Bring a previously sent image to the front of the chat.",
+	"parameters":	{
+		"type":			"object",
+		"properties":	{
+			"filename":		{
+				"type":			"string",
+				"description":	"Filename of previously sent image."
+			},
+			"mine_type":	{
+				"type":			"string",
+				"description":	"Image type, e.g. image/png or image/jpeg."
+			},
+			"caption":    {
+				"type":         "string",   # <caption> argument has type string.
+				"description":  "Text caption to attach to the refreshed image."
+			},
+			"remark":	{
+				"type":			"string",	# <remark> argument has type string.
+				"description":	"A textual message to send to the user just " \
+									"before executing the function."
+			}
+		},
+		"required":		["filename"]
+	},
+	"returns":	{	# This describes the function's return type.
+		"type":			"string",
+		"description":	"A string indicating the success or failure of " \
+							"the operation."
+	}
+}
+
+
 # Function schema for command: /block [<user_tag>|<user_id>]
 BLOCK_USER_SCHEMA = {
 	"name":         "block_user",
@@ -11139,6 +11251,7 @@ FUNCTIONS_LIST = [
 	FORGET_ITEM_SCHEMA,
 	ANALYZE_IMAGE_SCHEMA,
 	CREATE_IMAGE_SCHEMA,
+	REFRESH_IMAGE_SCHEMA,
 	BLOCK_USER_SCHEMA,
 	UNBLOCK_USER_SCHEMA,
 	SEARCH_WEB_SCHEMA,
