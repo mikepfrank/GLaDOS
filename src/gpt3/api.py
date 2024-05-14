@@ -494,11 +494,7 @@ _FUNCTION_MODELS = [
 	'gpt-4-1106-vision-preview',
 	'gpt-4-turbo-2024-04-09',
 	'gpt-4o',
-<<<<<<< HEAD
 	'gpt-4o-2024-05-13'
-=======
-	'gpt-4o-2024-05-13',
->>>>>>> 8beccc0c2e7a547fdaedca4901b05820af15a81b
 ]
 def _has_functions(engine_name):
 	"""Return True if the named engine supports the functions interface."""
