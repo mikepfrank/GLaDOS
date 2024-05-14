@@ -458,15 +458,20 @@ _ENGINES = [
 	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-32k-0613',	'field-size': 32768, 'price': 0.12,	'prompt-price': 0.06,	'is-chat': True,	'encoding': 'p50k_base'},
 
 		# 128k GPT-4 models. (Context window size increased to 128,000 tokens; data through Apr. 2023.)
-	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-turbo-preview',  'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
-	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-1106-preview',   'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
-	#{'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',   'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-turbo-preview',  'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-1106-preview',   'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
+	#{'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',   'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	# -------- NOTE: Artificially cutting this down from 128K to 96K to reduce costs.
-	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',   'field-size': 96000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',   'field-size': 96_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	
 		# 128k GPT-4V models. (Vision capability added.)
-	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-vision-preview',      'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
-	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-1106-vision-preview', 'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-vision-preview',      'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-1106-vision-preview', 'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-turbo-2024-04-09', 'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-turbo-2024-04-09', 'field-size': 96_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+		# The GPT-4o models will eventually also have audio support in the API.
+	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 
 ] # End _ENGINES constant module global data structure.
 
@@ -487,6 +492,9 @@ _FUNCTION_MODELS = [
 	'gpt-4-0125-preview',
 	'gpt-4-vision-preview',
 	'gpt-4-1106-vision-preview',
+	'gpt-4-turbo-2024-04-09',
+	'gpt-4o',
+	'gpt-4o-2024-05-13',
 ]
 def _has_functions(engine_name):
 	"""Return True if the named engine supports the functions interface."""
@@ -3164,7 +3172,7 @@ class GPT3ChatCore(GPT3Core):
 		
 		chatConf = chatCore.chatConf	# Get our current chat configuration.
 
-		apiargs['model'] = chatConf.engineId	# This API arg. is required. Can't skip it.
+		apiargs['model'] = model = chatConf.engineId	# This API arg. is required. Can't skip it.
 			# NOTE: OpenAI used to call this parameter 'engine' but now calls it 'model'.
 			# The old name still works, but is deprecated; we use the new name here in
 			# case they ever remove the old name.
@@ -3205,6 +3213,30 @@ class GPT3ChatCore(GPT3Core):
 		else:
 			functionCall		= kwargs.get('functionCall', None)	# Default is 'auto'
 
+		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Turn the functionList into a list of tool objects
+
+		toolList = []
+		for func in functionList:
+
+			if model == 'gpt-4-turbo-2024-04-09':
+				if 'returns' in func:
+					del func['returns']		# No longer supported?
+
+			# Do some error checking.
+			#if 'returns' not in func:
+			#	_logger.error(f"FUNCTION {func['name']} IS MISSING 'returns' FIELD")
+
+			tool = {
+				'type':			'function',
+				'function':		func
+			}
+
+			toolList.append(tool)
+		#__/
+				
+		toolChoice = functionCall
+
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| Now, add the selected (non-None) parameter values to the argument list.
 		#| (Note below we have to match the exact keyword argument names supported 
@@ -3227,8 +3259,12 @@ class GPT3ChatCore(GPT3Core):
 		if user				!= None:	apiargs['user']				= user
 
 			# Available only in 0613 (June 13, 2023) or later releases of chat models.
-		if functionList		!= None:	apiargs['functions']		= functionList
-		if functionCall		!= None:	apiargs['function_call']	= functionCall
+
+		#if functionList		!= None:	apiargs['functions']		= functionList
+		#if functionCall		!= None:	apiargs['function_call']	= functionCall
+
+		if toolList		!= None:	apiargs['tools']		= toolList
+		if toolChoice	!= None:	apiargs['tool_choice']	= toolChoice
 
 		#if 'messages' in apiargs:
 		#	_logger.info(f"In genChatArgs(), set apiargs['messages']=[list of {len(apiargs['messages'])} messages]")

@@ -315,6 +315,8 @@
 # Set these global flags to configure diagnostic output.
 
 CONS_INFO = False	# True shows info-level messages on the console.
+
+#LOG_DEBUG = True	# True shows debug-level messages in the log file.
 LOG_DEBUG = False	# True shows debug-level messages in the log file.
 
 
@@ -6068,6 +6070,12 @@ async def process_raw_response(
 		if repRes != 'success': return
 
 	#__/ End if content filter triggered.
+
+	# This handles case if response_text is None.
+	if not response_text:
+		_logger.warn("AI's text response was null. Ignoring...")
+		return
+
 
 	# Strip off any leading or trailing whitespace (Telegram won't display it
 	# anyway.).
