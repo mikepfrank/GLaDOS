@@ -219,23 +219,22 @@ Step 9. - Start using the servers.
 9a. Usage tips for Telegram bot.
 --------------------------------
 
-The bot is used like any Telegram bot. It understands text
-and audio/voice messages only. Commands must be typed as text
-or selected from the command menu. You may want to adjust
-the following settings pertaining to behavior in group chats:
+The bot is used like any Telegram bot. It understands text,
+audio/voice, and photo messages (with optional captions).
+Commands must be typed as text or selected from the command
+menu. You may want to adjust the following settings pertaining
+to behavior in group chats:
 
     * Allow Groups? - Set this to ON/ENABLED if you want people
                         to be able to add your bot to groups.
 
     * Group Privacy - Set this to OFF/DISABLED if you want the
-                        bot to potentially respond to every message 
+            bot to potentially respond to every message 
 			in a group chat.  (Note, however, that the
 			ChatGPT bots such as Aria/Turbo have the 
 			capability to voluntarily refrain from 
 			responding in group chats when it isn't 
-			appropriate.)  If ON/ENABLED, the bot can 
-			only respond if a user formally addresses 
-			it with "@<bot_username> ..."
+			appropriate.)
 
 
 9b. Usage tips for GLaDOS server.
