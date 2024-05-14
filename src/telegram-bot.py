@@ -1959,8 +1959,10 @@ class BotConversation:
 			#"should begin on a new line. "
 			"You may include multiple Telegram messages in your response, but each one "
 			f"must begin on a new line starting with '{botName}>'"
-			"(Or, alternatively to just sending messages, you can activate "
-			"an available function and then call that function, if appropriate.)"
+			#"(Or, alternatively to just sending messages, you can activate "
+			#"an available function and then call that function, if appropriate.)"
+			"(Or, alternatively to just sending messages, you can call "
+			"an available function, if appropriate.)"
 		)
 
 		#"You can send additional Telegram "\
@@ -5182,9 +5184,10 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 	# pass it our list of function descriptions.
 	if hasFunctions(ENGINE_NAME):
 		# Retrieve our current functions list...
-		functions = botConvo.cur_funcs + \
-					[ACTIVATE_FUNCTION_SCHEMA, PASS_TURN_SCHEMA]
-					# Plus always include these two.
+		#functions = botConvo.cur_funcs + \
+		#			[ACTIVATE_FUNCTION_SCHEMA, PASS_TURN_SCHEMA]
+		#			# Plus always include these two.
+		functions = FUNCTIONS_LIST
 
 		func_names = [func['name'] for func in functions if 'name' in func]
 		_logger.info(f"\tIn chat {chat_id}, current function list is: {func_names}.")
@@ -5735,7 +5738,10 @@ async def process_function_call(
 	chat_id = botConvo.chat_id
 
 	# Retrieve the function call object from the OpenAI message containing it.
-	funCall = funcall_oaiMsg.function_call
+	if funcall_oaiMsg.tool_calls:
+		funCall = funcall_oaiMsg.tool_calls[0].function
+	else:
+		funCall = funcall_oaiMsg.function_call
 
 	# Retrieve the function name and arguments from the function call object.
 	function_name = funCall.name
@@ -6053,7 +6059,11 @@ async def process_raw_response(
 	# a function.  If it is, we'll dispatch out to the process_function_call()
 	# function to handle this case.
 
-	funCall = response_oaiMsg.function_call
+	if response_oaiMsg.tool_calls:
+		funCall = response_oaiMsg.tool_calls[0].function
+	else:
+		funCall = response_oaiMsg.function_call
+	
 	if funCall:
 		
 		await process_function_call(response_oaiMsg, tgUpdate, tgContext)
@@ -6111,8 +6121,8 @@ async def process_raw_response(
 	# This handles case if response_text is None.
 	if not response_text:
 		_logger.warn("AI's text response was null. Ignoring...")
+		#response_text = ""
 		return
-
 
 	# Strip off any leading or trailing whitespace (Telegram won't display it
 	# anyway.).
@@ -9220,7 +9230,7 @@ FUNCTIONS_LIST = [
 	BLOCK_USER_SCHEMA,
 	UNBLOCK_USER_SCHEMA,
 	SEARCH_WEB_SCHEMA,
-	ACTIVATE_FUNCTION_SCHEMA,
+#	ACTIVATE_FUNCTION_SCHEMA,
 	PASS_TURN_SCHEMA
 ]	
 

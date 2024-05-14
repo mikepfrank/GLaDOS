@@ -3219,9 +3219,10 @@ class GPT3ChatCore(GPT3Core):
 		toolList = []
 		for func in functionList:
 
-			if model == 'gpt-4-turbo-2024-04-09':
-				if 'returns' in func:
-					del func['returns']		# No longer supported?
+			#if model == 'gpt-4-turbo-2024-04-09' or model == 'gpt-4o':
+			#if model == 'gpt-4-turbo-2024-04-09':
+			#	if 'returns' in func:
+			#		del func['returns']		# No longer supported?
 
 			# Do some error checking.
 			#if 'returns' not in func:
