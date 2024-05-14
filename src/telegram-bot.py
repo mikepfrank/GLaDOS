@@ -3951,7 +3951,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		if response_text.lower() != '/pass' and conversation.is_repeated_message(response_botMsg):
 
 			# Generate an info-level log message to indicate that we're suppressing the response.
-			_logger.info(f"Suppressing response [{response_text}]; it's a repeat.")
+			_logger.info(f"\nSuppressing response [{response_text}] in chat {chat_id}; it's a repeat.")
 
 			# Delete the last message from the conversation.
 			conversation.delete_last_message()
@@ -4738,6 +4738,10 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 				if 'isNavigational' in result:
 					_logger.normal(f"\t\t\t\tDeleting isNavigational: {trim(result['isNavigational'])}")
 					del result['isNavigational']
+
+				if 'noCache' in result:
+					_logger.normal(f"\t\t\t\tDeleting noCache: {trim(result['noCache'])}")
+					del result['noCache']
 
 
 		# Strip a bunch of useless fields out of news values.
