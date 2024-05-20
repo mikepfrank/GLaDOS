@@ -224,12 +224,14 @@ from	curses.ascii	import	RS #, STX, ETX	# We use these to delimit messages.
 			# We previously assumed [STX][ETX] delimiters surrounded each message.
 			# We new assume that an [RS] token terminates each message.
 
+import asyncio
+
 	#/==========================================================================
 	#|	1.2. Imports of modules to support GPT-3.		[module code subsection]
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 import	openai		# OpenAI's Python bindings for their REST API to GPT-3.
-from	openai	import	OpenAI	# Client constructor.
+from	openai	import	OpenAI, AsyncOpenAI	# Client constructor.
 
 import	tiktoken	# A fast standalone tokenizer module for GPT-3.
 import	backoff		# Utility module for exponential backoff on failures.
@@ -470,8 +472,15 @@ _ENGINES = [
 	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-turbo-2024-04-09', 'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-turbo-2024-04-09', 'field-size': 96_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 		# The GPT-4o models will eventually also have audio support in the API.
-	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
-	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 64_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 32_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 24_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 16_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 64_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 32_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 24_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 
 ] # End _ENGINES constant module global data structure.
 
@@ -643,7 +652,8 @@ CHAT_ROLE_FUNCRET	= 'function'
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 global		_client			# The OpenAI API client object.
-_client		= OpenAI()		# Creates the client (we only need 1).
+#_client		= OpenAI()		# Creates the client (we only need 1).
+_client		= AsyncOpenAI()		# Creates the client (we only need 1).
 
 
 global 		_aiPath		# Path to the AI's data directory.
@@ -2027,13 +2037,14 @@ class ChatCompletion(Completion):
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	def __init__(newChatCompletion:ChatCompletion, *args, **kwargs):
+		return
 		
+	@classmethod
+	async def create(cls, *args, **kwargs):
+
 		"""Instance initializer for class ChatCompletion."""
 		
-		#if 'messages' in kwargs:
-		#	_logger.info(f"In ChatCompletion.__init__() with messages=[list of {len(kwargs['messages'])} messages]")
-
-		chatCompl = newChatCompletion	# For convenience.
+		chatCompl = cls(*args, **kwargs)
 
 			# These are things we are going to try to find in our arguments,
 			# or generate ourselves.
@@ -2102,7 +2113,7 @@ class ChatCompletion(Completion):
 			#_logger.debug("In ChatCompletion.__init__() with apiArgs:\n" + prettyArgs)
 
 				# This actually calls the API, with any needed retries.
-			chatComplStruct = chatCompl._createChatComplStruct(apiArgs, 
+			chatComplStruct = await chatCompl._createChatComplStruct(apiArgs, 
 				minRepWin=minRepWin) # Pass this thru to set min reply window.
 		
 		#__/ End if we will generate the completion structure.
@@ -2111,6 +2122,8 @@ class ChatCompletion(Completion):
 	
 		chatCompl._gotMsg = False	# For a stream, haven't yet gathered the whole message.
 		chatCompl._msg = None
+
+		return chatCompl
 
 	#__/ End of class gpt3.api.ChatCompletion's instance initializer.
 
@@ -2335,7 +2348,7 @@ class ChatCompletion(Completion):
 	#@backoff.on_exception(backoff.expo,
 	#					  (openai.error.APIError))
 						  
-	def _createChatComplStruct(thisChatCompletion:ChatCompletion, apiArgs:dict, 
+	async def _createChatComplStruct(thisChatCompletion:ChatCompletion, apiArgs:dict, 
 				minRepWin:int=DEF_TOKENS):
 			# By default, we'll throw an exception if the estimated result space
 			# is less than 100 tokens.  This can be overridden by the caller
@@ -2471,7 +2484,7 @@ class ChatCompletion(Completion):
 		#try:
 
 		# New style chat completion call:
-		chatComplObj = _client.chat.completions.create(**apiArgs)
+		chatComplObj = await _client.chat.completions.create(**apiArgs)
 
 		# Old style:
 		#chatComplStruct = openai.ChatCompletion.create(**apiArgs)
@@ -3295,7 +3308,7 @@ class GPT3ChatCore(GPT3Core):
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	def genChatCompletion(self, *args, **kwargs):
+	async def genChatCompletion(self, *args, **kwargs):
 	
 		"""With automatic exponential backoff, query the server
 			for a completion object for the given prompt using the
@@ -3307,7 +3320,7 @@ class GPT3ChatCore(GPT3Core):
 		#if 'messages' in kwargs:
 		#	_logger.info(f"In genChatCompletion() with messages=[list of {len(kwargs['messages'])} messages]")
 
-		return ChatCompletion(self, *args, **kwargs)
+		return await ChatCompletion.create(self, *args, **kwargs)
 			# Calls the ChatCompletion constructor; this does all the real work 
 			# of calling the API.
 		
@@ -3333,12 +3346,12 @@ class GPT3ChatCore(GPT3Core):
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	def genMessage(self:GPT3ChatCore, messages=None):
+	async def genMessage(self:GPT3ChatCore, messages=None):
 		"""Generate a new message based on the current messages."""
 
 		#_logger.debug(f"In GPT3ChatCore.genMessage() with {len(messages)} messages...")
 
-		resultCompletion = self.genChatCompletion(messages=messages)
+		resultCompletion = await self.genChatCompletion(messages=messages)
 
 		newMessage = resultCompletion.message
 
@@ -3375,14 +3388,14 @@ class GPT3ChatCore(GPT3Core):
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
-	def genString(self:GPT3ChatCore, messages=None):
+	async def genString(self:GPT3ChatCore, messages=None):
 
 		"""Generate a single completion string for the current messages
 			or the messages argument (if provided)."""
 
 		_logger.debug(f"In GPT3ChatCore.genString() with {len(messages)} messages...")
 
-		newMessage = self.genMessage(messages=messages)
+		newMessage = await self.genMessage(messages=messages)
 		return newMessage['content']
 
 	#__/ End instance method GPT3Core.genString().
@@ -3550,7 +3563,7 @@ def stats():
 #__/ End module public function stats().
 
 
-def genImage(desc:str, dims:str=None, style:str=None):
+async def genImage(desc:str, dims:str=None, style:str=None):
 	"""Generate an image from the given description string with given dimensions.
 		Returns the URL of the generated image."""
 	
@@ -3570,7 +3583,7 @@ def genImage(desc:str, dims:str=None, style:str=None):
 	#)
 
 	# This is the new API call for the Dall-E 3 image generator.
-	response = _client.images.generate(
+	response = await _client.images.generate(
 		model	= 'dall-e-3',		# Other options include: 'dall-e-2'
 		prompt	= desc,				# max length: 4000 characters for dall-e-3
 		size	= dims,				# Options include: 1024x1024 (square, default), 1792x1024 (landscape) and 1024x1792 (portrait).
@@ -3589,7 +3602,7 @@ def genImage(desc:str, dims:str=None, style:str=None):
 #__/ End module public function genImage().
 	
 
-def genSpeech(text:str, user:str = None, voice:str = None, response_format=None):
+async def genSpeech(text:str, user:str = None, voice:str = None, response_format=None):
 	"""Generates spoken voice audio for the given text.
 		Returns the filename of the generated (.mp3) file.
 		The <user> argument, if provided, is used in the
@@ -3615,7 +3628,7 @@ def genSpeech(text:str, user:str = None, voice:str = None, response_format=None)
 
 	speech_filepath = path.join(speechDir, filename)
 
-	response = _client.audio.speech.create(
+	response = await _client.audio.speech.create(
 		model = 'tts-1',	# Optimized for speed. Other choices include: tts-1-hd (optimized for quality).
 		voice = voice,		# Female voice for Aria. Choices include alloy, echo, fable, onyx, nova, shimmer.
 		#voice = 'nova',		# Female voice for Aria. Choices include alloy, echo, fable, onyx, nova, shimmer.
@@ -3628,14 +3641,14 @@ def genSpeech(text:str, user:str = None, voice:str = None, response_format=None)
 	return speech_filepath
 
 
-def transcribeAudio(filename:str):
+async def transcribeAudio(filename:str):
 	"""Given the path to an MP3 audio file, use the transcriptions endpoint
 		to convert the audio to text, and return the text."""
 	
 	_logger.info(f"Passing {filename} to the OpenAI transcription endpoint...")
 	audio_file = open(filename, 'rb')
 
-	transcript = _client.audio.transcriptions.create(
+	transcript = await _client.audio.transcriptions.create(
 		model	= "whisper-1",
 		file	= audio_file
 	)
@@ -4031,10 +4044,10 @@ def _displayStats(doWrite:bool=True):
 		#  if the contents start to overflow.
 
 		_statLine(doWrite, "")
-		_statLine(doWrite, "                       |         Token Counts          |")
-		_statLine(doWrite, "                       | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ |")
-		_statLine(doWrite, "Engine Name            |    Input |  Output |    Total |  USD Cost")
-		_statLine(doWrite, "=======================|==========|=========|==========|==========")
+		_statLine(doWrite, "                          |         Token Counts          |")
+		_statLine(doWrite, "                          | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ |")
+		_statLine(doWrite, "Engine Name               |    Input |  Output |    Total |  USD Cost")
+		_statLine(doWrite, "==========================|==========|=========|==========|==========")
 		
 		# Cumulative input, output, and total token counts.
 		cumIn = cumOut = cumTot = 0
@@ -4042,7 +4055,7 @@ def _displayStats(doWrite:bool=True):
 		# Generate a table row for each engine.
 		for engine in _ENGINE_NAMES:
 			
-			engStr 	= "%22s" % engine
+			engStr 	= "%25s" % engine
 
 			# If stats structures are out of date, expand them as needed.
 			if not engine in _inputToks:
@@ -4075,8 +4088,8 @@ def _displayStats(doWrite:bool=True):
 	
 		totStr = "$%8.4f" % _totalCost
 	
-		_statLine(doWrite,  "~~~~~~~~~~~~~~~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~~")
-		_statLine(doWrite, f"TOTALS:                | {cumInStr} | {cumOutStr} | {cumTotStr} | {totStr}")
+		_statLine(doWrite,  "~~~~~~~~~~~~~~~~~~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~~")
+		_statLine(doWrite, f"TOTALS:                   | {cumInStr} | {cumOutStr} | {cumTotStr} | {totStr}")
 		_statLine(doWrite, "")
 	
 		# If doWrite=True, then we were writing to the file, and we need to close it.
