@@ -418,16 +418,10 @@ from	telegram.error	import	BadRequest, Forbidden, ChatMigrated, TimedOut
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 import openai
-from openai		import	OpenAI, AsyncOpenAI	# New in 1.x
-
-global	ASYNC
-ASYNC = True
+from openai		import	OpenAI	# New in 1.x
 
 global 			_oai_client
-if ASYNC:
-	_oai_client		= AsyncOpenAI()
-else:
-	_oai_client		= OpenAI()
+_oai_client		= OpenAI()
 
 #from openai		import Embedding	# Deprecated in 1.x
 from openai		import RateLimitError			# Detects quota exceeded.
@@ -448,14 +442,14 @@ EMBEDDING_MODEL = "text-embedding-ada-002"
 
 #@retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(6))
 @backoff.on_exception(backoff.expo, Exception, max_tries=6)
-async def get_embedding(text: str, engine=EMBEDDING_MODEL, **kwargs) -> list:
+def get_embedding(text: str, engine=EMBEDDING_MODEL, **kwargs) -> list:
 	"""Gets a multidimensional vector embedding of a piece of text."""
 	# NOTE: Vectors returned have a length of 1,536.
 
 	# replace newlines, which can negatively affect performance.
 	text = text.replace("\n", " ")
 
-	embedding = await _oai_client.embeddings.create(input=[text], model=engine, **kwargs)
+	embedding = _oai_client.embeddings.create(input=[text], model=engine, **kwargs)
 	return embedding.data[0].embedding	# Note new access syntax
 
 	# Pre-1.x API:
@@ -1643,7 +1637,7 @@ class BotConversation:
 	# so that the user does not see error messages that might embarrass us.
 	# (Of course, the caller can always show the error to the user if desired.)
 
-	async def report_error(thisConv:BotConversation, errmsg:str):
+	def report_error(thisConv:BotConversation, errmsg:str):
 
 		"""Adds an error report to the conversation memory so that the AI can
 			see it. Also logs the error to the application's main log file."""
@@ -1655,14 +1649,14 @@ class BotConversation:
 		_logger.error(msg)	# Log the error.
 
 		# Add the error report to the conversation.
-		await thisConv.add_message(BotMessage(SYS_NAME, msg))
+		thisConv.add_message(BotMessage(SYS_NAME, msg))
 
 		_lastError = msg	# So higher-level callers can access it.
 
 	#__/ End report_error() instance method for class Conversation.
 
 
-	async def add_message(thisConv:BotConversation, message:BotMessage, finalize=True):
+	def add_message(thisConv:BotConversation, message:BotMessage, finalize=True):
 
 		"""Adds a message to the conversation. Also archives the message
 			unless finalize=False is specified."""
@@ -1688,7 +1682,7 @@ class BotConversation:
 		if message.sender != BOT_NAME and message.sender != SYS_NAME \
 		   and not _isBlocked(message.sender):
 			try:
-				thisConv.dynamicMem = await _getDynamicMemory(thisConv)
+				thisConv.dynamicMem = _getDynamicMemory(thisConv)
 
 			except RateLimitError as e:
 
@@ -1964,7 +1958,7 @@ class BotConversation:
 			#"bot. You may include multiple such messages in your response, but each one "
 			#"should begin on a new line. "
 			"You may include multiple Telegram messages in your response, but each one "
-			f"must begin on a new line starting with '{botName}>'. "
+			f"must begin on a new line starting with '{botName}>'"
 			#"(Or, alternatively to just sending messages, you can activate "
 			#"an available function and then call that function, if appropriate.)"
 			"(Or, alternatively to just sending messages, you can call "
@@ -2310,10 +2304,10 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 	# Add the /start command itself to the conversation archive.
 
 	if autoStart:
-		await conversation.add_message(BotMessage(SYS_NAME, '/start'))
+		conversation.add_message(BotMessage(SYS_NAME, '/start'))
 			# This is to tell the AI that the server is auto-starting.
 	else:
-		await conversation.add_message(BotMessage(user_name, tgMessage.text))
+		conversation.add_message(BotMessage(user_name, tgMessage.text))
 
 	# Send an initial message to the user.
 		# NOTE: If messages were read from the conversation archive file,
@@ -2327,7 +2321,7 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 					   f"conversation {chat_id}.")
 
 		# First record the initial message in our conversation data structure.
-		await conversation.add_message(BotMessage(conversation.bot_name, START_MESSAGE))
+		conversation.add_message(BotMessage(conversation.bot_name, START_MESSAGE))
 
 		# Now try to also send it to the user.
 		if await _reply_user(tgMessage, conversation, START_MESSAGE) != 'success':
@@ -2367,7 +2361,7 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 		#	f"you will be identified by your {which_name}, {user_name}.]"
 				
 			# Make sure the AI sees that message, even if we fail in sending it to the user.
-		await conversation.add_message(BotMessage(SYS_NAME, warning_msgStr))
+		conversation.add_message(BotMessage(SYS_NAME, warning_msgStr))
 		
             # Also send the warning message to the user. (Making it clear that 
             # it's a system message, not from the AI persona itself.)
@@ -2384,7 +2378,7 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 		with open(ann_path, 'r') as ann_file:
 			ann_text = ann_file.read().strip()
 			msgStr = f"ANNOUNCEMENT: {ann_text}"
-			await conversation.add_message(BotMessage(SYS_NAME, msgStr))
+			conversation.add_message(BotMessage(SYS_NAME, msgStr))
 			fullMsgStr = f"[SYSTEM {msgStr}]"
 			_logger.info(f"Sending user {user_name} system announcement: {fullMsgStr}")
 			await _reply_user(tgMessage, conversation, fullMsgStr, ignore=True)
@@ -2428,7 +2422,7 @@ async def handle_help(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# Add the /help command itself to the conversation archive.
-	await conversation.add_message(BotMessage(user_name, tgMessage.text))
+	conversation.add_message(BotMessage(user_name, tgMessage.text))
 
 	_logger.normal(f"\nUser {user_name} entered a /help command for chat {chat_id}.")
 
@@ -2437,7 +2431,7 @@ async def handle_help(update:Update, context:Context) -> None:
 
 	# Also record the help string in our conversation data structure.
 	who = BOT_NAME if customHelp else SYS_NAME
-	await conversation.add_message(BotMessage(who, HELP_STRING))
+	conversation.add_message(BotMessage(who, HELP_STRING))
 
 	# Send the help string to the user.
 	if 'success' != await _reply_user(tgMessage, conversation, HELP_STRING, markup=True):	# The help message may include markup.
@@ -2485,7 +2479,7 @@ async def handle_image(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# Add the /help command itself to the conversation archive.
-	await conversation.add_message(BotMessage(user_name, tgMessage.text))
+	conversation.add_message(BotMessage(user_name, tgMessage.text))
 
 	_logger.normal(f"\nUser {user_name} entered an /image command for chat {chat_id}.")
 
@@ -2505,9 +2499,9 @@ async def handle_image(update:Update, context:Context) -> None:
 			(image_url, new_desc, save_filename) = send_result
 
 			# Make a note in conversation archive to indicate that the image was sent.
-			await conversation.add_message(BotMessage(SYS_NAME, f'[Generated image "{new_desc}" in file "{save_filename}" and sent it to the user.]'))
+			conversation.add_message(BotMessage(SYS_NAME, f'[Generated image "{new_desc}" in file "{save_filename}" and sent it to the user.]'))
 		else:
-			await conversation.add_message(BotMessage(SYS_NAME, f'[ERROR: Failed to send image to user.]'))
+			conversation.add_message(BotMessage(SYS_NAME, f'[ERROR: Failed to send image to user.]'))
 
 		# Allow the AI to follow up (but without re-processing the message).
 		await handle_message(update, context, isNewMsg=False)
@@ -2558,7 +2552,7 @@ async def handle_echo(update:Update, context:Context) -> None:
 	cmdLine = tgMessage.text
 
 	# Add the /echo command itself to the conversation archive.
-	await conversation.add_message(BotMessage(user_name, cmdLine))
+	conversation.add_message(BotMessage(user_name, cmdLine))
 
 	_logger.normal(f"\nUser {user_name} entered an /echo command for chat {chat_id}.")
 
@@ -2579,7 +2573,7 @@ async def handle_echo(update:Update, context:Context) -> None:
 	_logger.normal(f"\tEchoing [{textToEcho}] in conversation {chat_id}.")
 
 	# Record the echo text in our conversation data structure.
-	await conversation.add_message(BotMessage(SYS_NAME, responseText))
+	conversation.add_message(BotMessage(SYS_NAME, responseText))
 
 	await _reply_user(tgMessage, conversation, responseText)
 
@@ -2634,7 +2628,7 @@ async def handle_showmem(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# Add the /showmem command itself to the conversation archive.
-	await conversation.add_message(BotMessage(user_name, message.text))
+	conversation.add_message(BotMessage(user_name, message.text))
 
 	_logger.normal(f"\nUser {user_name} entered a /showmem command for chat {chat_id}.")
 
@@ -2656,7 +2650,7 @@ async def handle_showmem(update:Update, context:Context) -> None:
 						"tables have been printed to the system console."
 
 	# Also record the echo text in our conversation data structure.
-	await conversation.add_message(BotMessage(SYS_NAME, CONFIRMATION_TEXT))
+	conversation.add_message(BotMessage(SYS_NAME, CONFIRMATION_TEXT))
 
 	# Send it to user.
 	await _reply_user(message, conversation, f"[SYSTEM: {CONFIRMATION_TEXT}]")
@@ -2712,7 +2706,7 @@ async def handle_delmem(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# Add the /showmem command itself to the conversation archive.
-	await conversation.add_message(BotMessage(user_name, message.text))
+	conversation.add_message(BotMessage(user_name, message.text))
 
 	_logger.normal(f"\nUser {user_name} entered a /delmem command for chat {chat_id}.")
 
@@ -2745,7 +2739,7 @@ async def handle_delmem(update:Update, context:Context) -> None:
 		CONF_TEXT = f"The memory item with item_text='{rest}' has been deleted."
 
 	# Also record the echo text in our conversation data structure.
-	await conversation.add_message(BotMessage(SYS_NAME, CONF_TEXT))
+	conversation.add_message(BotMessage(SYS_NAME, CONF_TEXT))
 
 	# Send it to user.
 	await _reply_user(message, conversation, f"[SYSTEM: {CONF_TEXT}]")
@@ -2790,7 +2784,7 @@ async def handle_greet(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# Add the /greet command itself to the conversation archive.
-	await conversation.add_message(BotMessage(user_name, tgMessage.text))
+	conversation.add_message(BotMessage(user_name, tgMessage.text))
 
 	_logger.normal(f"\nUser {user_name} entered a /greet command for chat {chat_id}.")
 
@@ -2798,7 +2792,7 @@ async def handle_greet(update:Update, context:Context) -> None:
 	_logger.normal(f"\tSending greeting in conversation {chat_id}.")
 
 	# Record the greeting text in our conversation data structure.
-	await conversation.add_message(BotMessage(SYS_NAME, GREETING_TEXT))
+	conversation.add_message(BotMessage(SYS_NAME, GREETING_TEXT))
 
 	# Send the greeting to the user.
 	await _reply_user(tgMessage, conversation, GREETING_TEXT)
@@ -2842,7 +2836,7 @@ async def handle_reset(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# Add the /reset command itself to the conversation archive.
-	await conversation.add_message(BotMessage(user_name, tgMsg.text))
+	conversation.add_message(BotMessage(user_name, tgMsg.text))
 
 	# Print diagnostic information.
 	_logger.normal(f"\nUser {user_name} entered a /reset command for chat {chat_id}.")
@@ -2861,7 +2855,7 @@ async def handle_reset(update:Update, context:Context) -> None:
 	reset_msgStr = f"This is {BOT_NAME}. I've cleared my memory of our previous conversation."
 
 		# Record the reset message in our conversation data structure.
-	await conversation.add_message(BotMessage(conversation.bot_name, reset_msgStr))
+	conversation.add_message(BotMessage(conversation.bot_name, reset_msgStr))
 
 		# Send it to the user as well.
 	await _reply_user(tgMsg, conversation, reset_msgStr)
@@ -2905,7 +2899,7 @@ async def handle_speech(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# Add the /speech command itself to the conversation archive.
-	await conversation.add_message(BotMessage(user_name, tgMsg.text))
+	conversation.add_message(BotMessage(user_name, tgMsg.text))
 
 	# Print diagnostic information.
 	_logger.normal(f"\nUser {user_name} entered a /speech command for chat {chat_id}.")
@@ -2963,7 +2957,7 @@ async def handle_quiet(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# Add the /quiet command itself to the conversation archive.
-	await conversation.add_message(BotMessage(user_name, tgMsg.text))
+	conversation.add_message(BotMessage(user_name, tgMsg.text))
 
 	# Print diagnostic information.
 	_logger.normal(f"\nUser {user_name} entered a /quiet command for chat {chat_id}.")
@@ -2981,7 +2975,7 @@ async def handle_quiet(update:Update, context:Context) -> None:
 
 	quiet_msgStr = f'Remember to use my name "{BOT_NAME}" when you want me to respond!'
 		# Record the reset message in our conversation data structure.
-	await conversation.add_message(BotMessage(conversation.bot_name, quiet_msgStr))
+	conversation.add_message(BotMessage(conversation.bot_name, quiet_msgStr))
 		# Send it to the user as well.
 	await _reply_user(tgMsg, conversation, quiet_msgStr)
 
@@ -3025,7 +3019,7 @@ async def handle_noisy(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# Add the /noisy command itself to the conversation archive.
-	await conversation.add_message(BotMessage(user_name, tgMsg.text))
+	conversation.add_message(BotMessage(user_name, tgMsg.text))
 
 	# Print diagnostic information.
 	_logger.normal(f"\nUser {user_name} entered a /noisy command for chat {chat_id}.")
@@ -3043,7 +3037,7 @@ async def handle_noisy(update:Update, context:Context) -> None:
 
 	noisy_msgStr = f'Now I can respond to any message sent in this chat!'
 		# Record the reset message in our conversation data structure.
-	await conversation.add_message(BotMessage(conversation.bot_name, noisy_msgStr))
+	conversation.add_message(BotMessage(conversation.bot_name, noisy_msgStr))
 		# Send it to the user as well.
 	await _reply_user(tgMsg, conversation, noisy_msgStr)
 
@@ -3104,7 +3098,7 @@ async def handle_remember(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# First, we'll add the whole /remember command line to the conversation, so that the AI can see it.
-	await conversation.add_message(BotMessage(user_name, tgMsg.text))
+	conversation.add_message(BotMessage(user_name, tgMsg.text))
 
 	# Check whether the user is in our access list.
 	if not _check_access(user_name, user_id=user_id):
@@ -3201,7 +3195,7 @@ async def handle_forget(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# First, we'll add the whole /forget command line to the conversation, so that the AI can see it.
-	await conversation.add_message(BotMessage(user_name, tgMsg.text))
+	conversation.add_message(BotMessage(user_name, tgMsg.text))
 
 	# Check whether the user is in our access list.
 	if not _check_access(user_name, user_id):
@@ -3299,7 +3293,7 @@ async def handle_memory(update:Update, context:Context) -> None:
 	conversation = context.chat_data['conversation']
 
 	# First, we'll add the whole /memory command line to the conversation, so that the AI can see it.
-	await conversation.add_message(BotMessage(user_name, tgMsg.text))
+	conversation.add_message(BotMessage(user_name, tgMsg.text))
 
 	# Check whether the user is in our access list.
 	if not _check_access(user_name, user_id):
@@ -3333,7 +3327,7 @@ async def handle_memory(update:Update, context:Context) -> None:
 		memString = f"ID={itemID} (user:{userTag} {privacy} {locality}) {itemText}"
 
 		# Add the memory string to the conversation context.
-		await conversation.add_message(BotMessage(SYS_NAME, memString))
+		conversation.add_message(BotMessage(SYS_NAME, memString))
 
 		# Send it to the user.
 		await _reply_user(tgMsg, conversation, memString)
@@ -3433,7 +3427,7 @@ async def handle_audio(update:Update, context:Context) -> None:
 	# Now we'll use the OpenAI transcriptions API to transcribe the MP3 audio to text.
 	_logger.normal(f"\tConverting audio from user {user_name} in chat {chat_id} to a text transcript using Whisper.")
 	try:
-		text = await transcribeAudio(mp3_file_path)
+		text = transcribeAudio(mp3_file_path)
 	except Exception as e:
 		await _report_error(conversation, tgMsg,
 					  f"In handle_audio(), transcribeAudio() threw an exception: {type(e).__name__} {e}")
@@ -3680,9 +3674,9 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 
 	# Add the message just received to the conversation.
 	if isNewMsg:
-		await conversation.add_message(BotMessage(user_name, text))
+		conversation.add_message(BotMessage(user_name, text))
 		if got_image:
-			await conversation.add_message(BotMessage(SYS_NAME,
+			conversation.add_message(BotMessage(SYS_NAME,
 				f"[NOTE: {BOT_NAME}, please use analyze_image() to inspect the photo attachment]"))
 
 	# Get the current user object, stash it in convo temporarily.
@@ -3854,7 +3848,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 
 				# Create a new Message object and add it to the conversation, but, don't finalize it yet.
 				response_botMsg = BotMessage(conversation.bot_name, response_text)
-				await conversation.add_message(response_botMsg, finalize=False)
+				conversation.add_message(response_botMsg, finalize=False)
 
 			else:
 				# We're extending an existing response.
@@ -4013,16 +4007,10 @@ async def handle_unknown_command(update:Update, context:Context) -> None:
 # Define an error handler for exceptions caught by the dispatcher.
 async def handle_error(update:Update, context:Context) -> None:
 	"""Log errors caused by updates."""
-
-	# This is a special case when the updater loop has trouble reaching the master Telegram server.
-	# We can't really do anything about this, so we just suppress the message.
-	if update is None and str(context.error).startswith("httpx.ReadError"):
-		_logger.warn('Suppressing httpx.ReadError from update loop.')
-	else:
-		_logger.error('Update [\n%s\n] caused error "%s"', pformat(update), context.error, exc_info=True)
-		#	_logger.error('Update [\n%s\n] caused error "%s"', pformat(update), context.error, exc_info=logmaster.doDebug)
-			# This will log the full traceback of the exception if debug logging is turned on.
-		#_logger.error(traceback.format_exc())  
+	_logger.error('Update [\n%s\n] caused error "%s"', pformat(update), context.error, exc_info=True)
+#	_logger.error('Update [\n%s\n] caused error "%s"', pformat(update), context.error, exc_info=logmaster.doDebug)
+		# This will log the full traceback of the exception if debug logging is turned on.
+	#_logger.error(traceback.format_exc())  
 #__/
 
 
@@ -4382,9 +4370,11 @@ async def ai_vision(update:Update, context:Context, filename:str,
 #__/ End async function ai_vision().
 
 
-# Limit on number of images that can be generated per day per chat.
-DAILY_IMAGE_LIMIT = 7
-	# Adjusting this as needed to help keep costs under control.
+## Limit on number of images that can be generated per day per chat.
+
+#DAILY_IMAGE_LIMIT = 5
+DAILY_IMAGE_LIMIT = 10
+
 
 # Define a function to handle the /image command, when issued by the AI.
 async def ai_image(update:Update, context:Context, imageDesc:str,
@@ -4414,7 +4404,7 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 			if context.chat_data['nimages_today'] >= daily_image_limit:
 				_logger.warning(f"Daily image generation limit reached in chat {chat_id}.")
 
-				diagMsg = f"Daily image generation limit of {daily_image_limit} has been reached in this chat. Try again tomorrow!"
+				diagMsg = f"Image generation rate limit of {daily_image_limit} has been reached in this chat. Try again tomorrow!"
 
 				sendRes = await _send_diagnostic(message, conversation, diagMsg)
 				if sendRes != 'success': return sendRes
@@ -4469,7 +4459,7 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 	else:
 		_logger.warn(f"\tUnknown shape name '{shape}'; reverting to 'square'.")
 		# Show the AI the warning too.
-		await conversation.add_message(BotMessage(SYS_NAME, f"Warning: Shape '{shape}' is invalid; defaulting to 'square'."))
+		conversation.add_message(BotMessage(SYS_NAME, f"Warning: Shape '{shape}' is invalid; defaulting to 'square'."))
 		size = "1024x1024"
 
 	# Process the "style" parameter.
@@ -4553,7 +4543,7 @@ async def ai_remember(updateMsg:TgMsg, conversation:BotConversation, textToAdd:s
 					f"{'global' if isGlobal else 'local'} memory ["
 					f"{textToAdd}].")
 
-	newItemID = await _addMemoryItem(user.id, chat_id, textToAdd, isPublic, isGlobal)
+	newItemID = _addMemoryItem(user.id, chat_id, textToAdd, isPublic, isGlobal)
 	return f"Success: created new memory item {newItemID}"
 
 	# Obsolete code below.
@@ -4631,7 +4621,7 @@ async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
 		nItems = maxn
 
 			# Make sure the AI sees that message, even if we fail in sending it to the user.
-		await conversation.add_message(BotMessage(SYS_NAME, warning_msgStr))
+		conversation.add_message(BotMessage(SYS_NAME, warning_msgStr))
 		
             # Also send the warning message to the user. (Making it clear that 
             # it's a system message, not from the AI persona itself.)
@@ -4641,7 +4631,7 @@ async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
 	#__/
 
 	_logger.normal(f"In chat {chatID}, for user #{userID}, AI is searching for the top {nItems} memories matching the search query: [{queryPhrase}].")
-	matchList = await _searchMemories(userID, chatID, queryPhrase, nItems=nItems)
+	matchList = _searchMemories(userID, chatID, queryPhrase, nItems=nItems)
 
 	_logger.normal(f"Found the following matches: [\n{matchList}\n].")
 
@@ -4792,7 +4782,7 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 
 		errMsg = f"{type(e).__name__} exception: {e}"
 
-		await botConvo.add_message(BotMessage(SYS_NAME, f"[ERROR: {errMsg}]"))
+		botConvo.add_message(BotMessage(SYS_NAME, f"[ERROR: {errMsg}]"))
 		return errMsg
 
 		#botConvo.add_message(BotMessage(SYS_NAME, f"[ERROR: {_lastError}]"))
@@ -5378,7 +5368,7 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 		# Now we'll do the actual API call, with exception handling.
 		try:
 			# Get the response from the GPT, as a gpt3.api.ChatCompletion object.
-			chatCompletion = await global_gptCore.genChatCompletion(	# Call the API.
+			chatCompletion = global_gptCore.genChatCompletion(	# Call the API.
 				
 				maxTokens=maxTokens,	# Max. number of tokens to return.
 					# We went to a lot of trouble to set this up properly above!
@@ -5508,15 +5498,10 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 			# diagnostic message to the user.  (And also add it to the
 			# conversation so the AI can see it.)
 			
-			import traceback
-
-			trace = traceback.format_exc()
-
 			await _report_error(botConvo, tgMsg, f"Exception while "
 								f"getting API response: {type(e).__name__} "
-								f"({e}); STACK TRACE: \n{trace}")
-			raise
-			#return
+								f"({e})")
+			return
 		#__/
 
 		# Here we handle any other exceptions that might have occurred during
@@ -5706,21 +5691,12 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 
 #__/ End function process_ai_command().
 
-# Adjusting this as needed to try to hit target daily expenditures.
-DAILY_MESSAGE_LIMIT = 15
-
+						 
 async def process_chat_message(update:Update, context:Context) -> None:
 
 	"""We dispatch to this function to process messages from the user if our
 		selected engine is for OpenAI's chat endpoint."""
 	
-	# Get the message, or edited message from the update.
-	(message, edited) = _get_update_msg(update)
-
-	# Get the chat_id, user_name, and conversation object.
-	chat_id = message.chat.id
-	user_name = _get_user_tag(message.from_user)
-
 	# To save space, when processing a new user message, we'll just
 	# let the bot remember only the last function schema it previously
 	# activated when starting to process a new message. (Except, the
@@ -5737,52 +5713,11 @@ async def process_chat_message(update:Update, context:Context) -> None:
 	func_names = [func['name'] for func in cur_funcs if 'name' in func]
 	_logger.info(f"Current function list in chat {chat_id} is {func_names}.")
 
-	# Make sure we haven't hit the message limit.
-
-	if user_name == 'Michael':	# Michaels are exempt from the rate limit.
-		daily_message_limit = float('inf')
-	else:
-		daily_message_limit = DAILY_MESSAGE_LIMIT
-		
-	if 'last_msg_date' in context.chat_data:
-		today = get_current_date()
-		if context.chat_data['last_msg_date'] == today:
-			if context.chat_data['nmsgs_today'] >= daily_message_limit:
-				_logger.warning(f"Daily message input limit reached in chat {chat_id}.")
-				diagMsg = f"Daily response limit of {daily_message_limit} messages has been reached in this chat. Try again tomorrow!"
-				sendRes = await _send_diagnostic(message, botConvo, diagMsg)
-				return
-		else:
-
-			# Make sure AI knows the message limit is resetting now..
-			if 'nmsgs_today' in context.chat_data and context.chat_data['nmsgs_today'] >= daily_message_limit:
-				await botConvo.add_message(BotMessage(SYS_NAME, "[NOTE: It's a new day! Resetting message quota.]"))
-
-			context.chat_data['nmsgs_today'] = 0	# We haven't responded yet.
-			_logger.normal(f"No responses yet today in chat {chat_id}. Resetting rate limit.")
-
 	# Now everything is handled by this new implementation, which has been
 	# rewritten so that it can also handle cases where the AI is responding from
 	# a result that's been returned from a function that it previously called.
 
-	result = await get_ai_response(update, context)
-
-	# Update record of how many user messages have been processed today in this context.
-	today = get_current_date()
-	if 'last_msg_date' not in context.chat_data or today != context.chat_data['last_msg_date']:
-		context.chat_data['last_msg_date'] = today
-
-		# Make sure AI knows the message limit is resetting now.
-		if 'nmsgs_today' in context.chat_data and context.chat_data['nmsgs_today'] >= DAILY_MESSAGE_LIMIT:
-			await botConvo.add_message(BotMessage(SYS_NAME, "[It's a new day! Resetting message quota.]"))
-			
-		context.chat_data['nmsgs_today'] = 1		# The message we just responded to.
-	else:
-		context.chat_data['nmsgs_today'] += 1
-
-	_logger.info(f"A total of {context.chat_data['nmsgs_today']} user messages have been responded to in chat {chat_id} today ({today}).")
-
-	return result
+	return await get_ai_response(update, context)
 
 #__/ End definition of async function process_chat_message().
 
@@ -5825,7 +5760,7 @@ async def process_function_call(
 		_logger.error(f'Got a JSON decoding error "{str(e)}" when parsing '
 					  f'argument list: [\n{function_argStr}\n]')
 
-		await botConvo.add_message(BotMessage(SYS_NAME, '[ERROR: AI tried to call '
+		botConvo.add_message(BotMessage(SYS_NAME, '[ERROR: AI tried to call '
 			f'function {function_name} with arguments ```{function_argStr}``` '
 			'but there was a JSON decode error while parsing the arguments: '
 			f'"{str(e)}"]'))
@@ -5847,7 +5782,7 @@ async def process_function_call(
 	# ^^^ The above is obsolet now, given new-style function call formatting.
 
 	# This generates a new-format bot message for the function call action.
-	await botConvo.add_message(BotMessage(BOT_NAME, function_argStr, func_name=function_name))
+	botConvo.add_message(BotMessage(BOT_NAME, function_argStr, func_name=function_name))
 
 	# Extract the optional remark argument from the argument list.
 	if 'remark' in function_args:
@@ -5882,7 +5817,7 @@ async def process_function_call(
 	if response_text != "":
 
 		# Append the response text to the conversation.
-		await botConvo.add_message(BotMessage(BOT_NAME, response_text))
+		botConvo.add_message(BotMessage(BOT_NAME, response_text))
 					
 		# Try sending the response text to the user. (But ignore send errors here.)
 		await send_response(tgUpdate, tgContext, response_text)
@@ -5927,7 +5862,7 @@ async def process_function_call(
 	#botConvo.add_message(BotMessage(SYS_NAME, fret_note))
 	# ^^ This is obsolete now that we have new-style message formats for function returns.
 	# The following generates a new-format bot message for the function return.
-	await botConvo.add_message(BotMessage(f"@{function_name}", resultStr))
+	botConvo.add_message(BotMessage(f"@{function_name}", resultStr))
 
 	# Back when our functions just never returned a result, we would just skip
 	# everything below here. But they do return results now.
@@ -6181,7 +6116,7 @@ async def process_raw_response(
 					  "filter. Repeated violations could result in a ban."
 
 		# This allows the AI to see this warning message too.
-		await botConvo.add_message(BotMessage(SYS_NAME, WARNING_MSG))
+		botConvo.add_message(BotMessage(SYS_NAME, WARNING_MSG))
 
 		repRes = await _reply_user(tgMsg, botConvo, "[SYSTEM {WARNING_MSG}]")
 		if repRes != 'success': return
@@ -6230,10 +6165,10 @@ async def process_raw_response(
 	split_str = f"\n{botConvo.bot_name}> "
 	if split_str in response_text:
 		response_msgs = response_text.split(split_str)
-		_logger.info("\nDetected multiple Telegram messages in response:")
+		_logger.normal("\nDetected multiple Telegram messages in response:")
 		i=1
 		for msg in response_msgs:
-			_logger.info(f"\tMessage #{i}: [{msg}]")
+			_logger.normal(f"\tMessage #{i}: [{msg}]")
 			i += 1
 	else:
 		response_msgs = [response_text]
@@ -6269,7 +6204,7 @@ async def process_raw_response(
 		#__/ End check for repeated messages.
 
 		# It isn't a repeat, so we'll add it to the conversation.
-		await botConvo.add_message(response_botMsg)
+		botConvo.add_message(response_botMsg)
 
 		# Update the message object, and the context.
 		response_botMsg.text = response_msg
@@ -6350,50 +6285,6 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 #__/ End of process_response() function definition.
 
 
-async def _send_imagedata(img_data, tgMsg:TgMsg, caption:str=None, ):
-    # img_data is image data as file handle, bytes, or string                                                                                                                                   
-    # tgMsg is the user message we're replying to                                                                                                                                               
-    # caption is an optional string to use as the message caption                                                                                                                               
-
-    # Get the message's chat ID.                                                                                                                                                                
-    chat_id = tgMsg.chat.id
-
-    # Get our preferred name for the user.                                                                                                                                                      
-    username = _get_user_tag(tgMsg.from_user)
-
-    # Prepare the image to be sent via Telegram                                                                                                                                                 
-    image_data = InputFile(img_data)
-
-    # Send the image as a reply in Telegram                                                                                                                                                     
-    try:
-        timeout=30  # Try longer timeouts                                                                                                                                                       
-        await tgMsg.reply_photo(photo=image_data, caption=caption,
-                read_timeout=timeout, write_timeout=timeout,
-                connect_timeout=timeout, pool_timeout=timeout)
-
-    except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
-
-        exType = type(e).__name__
-
-        _logger.error(f"Got a {type(e).__name__} exception from Telegram "
-                      "({e}) for conversation {chat_id}; aborting.")
-        conversation.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram " \
-            "exception {exType} ({e}) while sending to user {user_name}.]"))
-
-        if isinstance(e, BadRequest) and "Not enough rights to send" in e.message:
-            try:
-                await app.bot.leave_chat(chat_id)
-                _logger.normal(f"Left chat {chat_id} due to insufficient permissions.")
-            except Exception as leave_error:
-                _logger.error(f"Error leaving chat {chat_id}: {leave_error}")
-
-        return None
-
-    #__/                                                                                                                                                                                        
-
-#__/ End private function _send_imagedata                                                                                                                                                       
-
-
 async def send_image(update:Update, context:Context, desc:str, dims=None, style=None, caption=None, save_copy=True) -> (str, str, str):
 	"""Generates an image from the given description and sends it to the user.
 		Also archives a copy on the server unless save_copy=False is specified.
@@ -6426,7 +6317,7 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, style=
 
 	# Use the OpenAI API to generate the image.
 	try:
-		(image_url, revised_prompt) = await genImage(desc, dims, style)
+		(image_url, revised_prompt) = genImage(desc, dims, style)
 	except Exception as e:
 		await _report_error(conversation, tgMsg,
 					  f"In send_image(), genImage() threw an exception: {type(e).__name__} ({e})")
@@ -6462,36 +6353,33 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, style=
 	# Prepare the image to be sent via Telegram
 	image_data = InputFile(response.content)
 	
-	# This actually sends the image to the user as a photo reply (or tries to).																													
-	await _send_imagedata(response.content, tgMsg, caption=caption)
+	# Send the image as a reply in Telegram
+	try:
+		await tgMsg.reply_photo(photo=image_data, caption=caption)
 
-	# # Send the image as a reply in Telegram
-	# try:
-	#	await tgMsg.reply_photo(photo=image_data, caption=caption)
+	except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
 
-	# except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
+		_logger.error(f"Got a {type(e).__name__} exception from Telegram "
+					  "({e}) for conversation {chat_id}; aborting.")
+		conversation.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram " \
+			"exception {exType} ({e}) while sending to user {user_name}.]"))
 
-	#	_logger.error(f"Got a {type(e).__name__} exception from Telegram "
-	#				  "({e}) for conversation {chat_id}; aborting.")
-	#	await conversation.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram " \
-	#		"exception {exType} ({e}) while sending to user {user_name}.]"))
+		if isinstance(e, BadRequest) and "Not enough rights to send" in e.message:
+			try:
+				await app.bot.leave_chat(chat_id)
+				_logger.normal(f"Left chat {chat_id} due to insufficient permissions.")
+			except Exception as leave_error:
+				_logger.error(f"Error leaving chat {chat_id}: {leave_error}")
 
-	#	if isinstance(e, BadRequest) and "Not enough rights to send" in e.message:
-	#		try:
-	#			await app.bot.leave_chat(chat_id)
-	#			_logger.normal(f"Left chat {chat_id} due to insufficient permissions.")
-	#		except Exception as leave_error:
-	#			_logger.error(f"Error leaving chat {chat_id}: {leave_error}")
+		return None
 
-	#	return None
-
-	# #__/
+	#__/
 
 	# Update record of how many images have been generated today in this context.
 
 	today = get_current_date()
 	if 'last_image_date' not in context.chat_data or today != context.chat_data['last_image_date']:
-		context.chat_data['last_image_date'] = today
+		context.chat_data['last_image_date'] = get_current_date()
 		context.chat_data['nimages_today'] = 1	# The image we just made.
 	else:
 		context.chat_data['nimages_today'] += 1
@@ -6530,7 +6418,6 @@ async def send_response(update:Update, context:Context, response_text:str) -> No
 
 	# Send the last chunk.
 	await _reply_user(message, conversation, response_text, markup=True)
-
 #__/
 
 
@@ -6569,7 +6456,7 @@ def timeString() -> str:
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
-async def _addMemoryItem(userID, chatID, itemText, isPublic=False, isGlobal=False):
+def _addMemoryItem(userID, chatID, itemText, isPublic=False, isGlobal=False):
 
 	privacy = "public" if isPublic else "private"
 	locality = "global" if isGlobal else "local"
@@ -6589,7 +6476,7 @@ async def _addMemoryItem(userID, chatID, itemText, isPublic=False, isGlobal=Fals
 	itemID = '{:08x}'.format(random.randint(0, 0xFFFFFFFF))
 
 	# Get the embedding for the item, as a pickled numpy array.
-	embedding_pickle = await _getEmbeddingPickle(itemText)
+	embedding_pickle = _getEmbeddingPickle(itemText)
 
 	# NEW VERSION:
 	# Insert the memory item into the remembered_items table
@@ -7019,7 +6906,7 @@ async def _ensure_convo_loaded(update:Update, context:Context) -> bool:
 
 
 # This could be a method of class Conversation.
-async def _getDynamicMemory(convo:BotConversation):
+def _getDynamicMemory(convo:BotConversation):
 
 	# Get current context (user & chat IDs).
 	user = convo.last_user
@@ -7044,7 +6931,7 @@ async def _getDynamicMemory(convo:BotConversation):
 		nItems = 2
 
 	# We'll get the best-matching N items (based on field size).
-	memList = await _searchMemories(userID, chatID, searchPhrase, nItems=nItems)
+	memList = _searchMemories(userID, chatID, searchPhrase, nItems=nItems)
 
 	# We'll accumulate lines with the following format:
 	#
@@ -7077,23 +6964,23 @@ async def _getDynamicMemory(convo:BotConversation):
 #__/ 
 
 
-async def _getEmbedding(text):
+def _getEmbedding(text):
 
 	"""Gets the embedding of a given text, as a vector (list)."""
 
     # Get the response from OpenAI Embeddings API. Returns a vector.
-	embedding_asList = await get_embedding(text, engine="text-embedding-ada-002")
+	embedding_asList = get_embedding(text, engine="text-embedding-ada-002")
 
 	return embedding_asList
 
 #__/
 
 
-async def _getEmbeddingStr(text):
+def _getEmbeddingStr(text):
 	"""Gets a string representation of the embedding of a text."""
 
 	# Get the response from OpenAI Embeddings API. Returns a vector.
-	embedding_asList = await _getEmbedding(text)
+	embedding_asList = _getEmbedding(text)
 
 	# Convert the embedding list to a comma-separated string
 	embedding_str = _listToStr(embedding_asList)
@@ -7102,11 +6989,11 @@ async def _getEmbeddingStr(text):
 #__/
 
 
-async def _getEmbeddingPickle(text):
+def _getEmbeddingPickle(text):
     """Gets a pickled numpy array representation of the embedding of a text."""
 
     # Get the response from OpenAI Embeddings API. Returns a vector.
-    embedding_asList = await _getEmbedding(text)
+    embedding_asList = _getEmbedding(text)
 
     # Convert the embedding list to a numpy array and pickle it
     embedding_np = np.array(embedding_asList)
@@ -8141,7 +8028,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 						  f"for conversation {chat_id}; {whatDoing}.")
 	
 			if convo is not None:
-				await convo.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram exception " \
+				convo.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram exception " \
 					f"{exType} ({e}) while sending to user {user_name}.]"))
 	
 			if isinstance(e, BadRequest) and "Not enough rights to send" in e.message:
@@ -8168,7 +8055,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 			try:
 				await _reply_asSpeech(message, convo, text)
 
-				await convo.add_message(BotMessage(SYS_NAME,
+				convo.add_message(BotMessage(SYS_NAME,
 					"[Voice clip automatically generated and sent to user.]"))
 
 				break
@@ -8183,7 +8070,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 							  f"for conversation {chat_id}; {whatDoing}.")
 	
 				if convo is not None:
-					await convo.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram exception " \
+					convo.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram exception " \
 						f"{exType} ({e}) while sending to user {user_name}.]"))
 	
 				if isinstance(e, BadRequest) and "Not enough rights to send" in e.message:
@@ -8221,7 +8108,7 @@ async def _reply_asSpeech(userTgMessage:TgMsg, convo:BotConversation, text):
 
 	# This uses the OpenAI text-to-speech API 
 	#mp3_filename = genSpeech(text, user=user_name)
-	opus_filename = await genSpeech(text, user=user_name, voice=AI_VOICE, response_format="opus")
+	opus_filename = genSpeech(text, user=user_name, voice=AI_VOICE, response_format="opus")
 
 	# This uses ffmpeg to convert to OGG
 	#ogg_filename = _mp3_to_ogg(mp3_filename)
@@ -8270,7 +8157,7 @@ async def _report_error(convo:BotConversation, telegramMessage,
 
 	if showAI:
 		# Add the error message to the conversation.
-		await convo.add_message(BotMessage(SYS_NAME, msg))
+		convo.add_message(BotMessage(SYS_NAME, msg))
 
 	if showUser:
 		await _reply_user(telegramMessage, convo, f"[SYSTEM {msg}]")
@@ -8278,7 +8165,7 @@ async def _report_error(convo:BotConversation, telegramMessage,
 #__/ End private function _report_error().
 
 
-async def _searchMemories(userID, chatID, searchPhrase,
+def _searchMemories(userID, chatID, searchPhrase,
 					nItems=DEFAULT_SEARCHMEM_NITEMS):
 	"""Semantic search of accessible memories for closest matches."""
 
@@ -8290,7 +8177,7 @@ async def _searchMemories(userID, chatID, searchPhrase,
 	db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
 
 	# Get the embedding of the search phrase. This is a list (vector).
-	searchEmbedding = await _getEmbedding(searchPhrase)
+	searchEmbedding = _getEmbedding(searchPhrase)
 
 	# Create a connection to the SQLite database
 	conn = sqlite3.connect(db_path)
@@ -8481,7 +8368,7 @@ async def _send_diagnostic(userTgMessage:TgMsg, convo:BotConversation,
 
 	# First, record the diagnostic for the AI's benefit.
 	if toAI:
-		await convo.add_message(BotMessage(SYS_NAME, fullMsg))
+		convo.add_message(BotMessage(SYS_NAME, fullMsg))
 
 	# Now also send it to the user.
 	return await _reply_user(userTgMessage, convo, fullMsg, ignore)
@@ -9739,6 +9626,43 @@ _logger.normal(f"\nNOTE: Complete specs for all functions together would take up
 	#|==========================================================================
 	#|  7.5. Start main loop.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+# Set the path to the bot's data directory
+AI_DATADIR = "/opt/AIs/lumina"
+
+# Path to the database file
+db_path = os.path.join(AI_DATADIR, 'telegram', 'bot-db.sqlite')
+
+# Database connection
+conn = sqlite3.connect(db_path)
+c = conn.cursor()
+
+# List of memories to re-add
+memories = [
+	{"itemID": "a85ac774", "userID": 1774316494, "chatID": 1774316494, "public": True, "global": True, "itemText": "Michael Frank is a reversible computing researcher."},
+	{"itemID": "6036b01c", "userID": 1774316494, "chatID": 1774316494, "public": True, "global": True, "itemText": "This Telegram bot interface was developed for me by an AI enthusiast named Michael Frank."},
+	{"itemID": "28f0677f", "userID": 1774316494, "chatID": 1774316494, "public": True, "global": True, "itemText": "Michael Frank is getting ready to join a startup company with the goal of commercializing reversible computing technology."},
+	{"itemID": "3700182f", "userID": 1774316494, "chatID": 1774316494, "public": True, "global": True, "itemText": "I should inform user Sia-Choome that I have unblocked him to give him another chance at interactions. I should make sure to explain to him the limitations of my ability to generate and understand Farsi speech in this interface, and that I may have misunderstood some of his past statements."},
+	{"itemID": "7b26bd91", "userID": 1774316494, "chatID": 1774316494, "public": True, "global": True, "itemText": "Michael sometimes uses the name 'Dr. Thanos' as a pseudonym."},
+	{"itemID": "8ccd7a1f", "userID": 1774316494, "chatID": 1774316494, "public": True, "global": True, "itemText": "Inform user Lilith that the memories about her interaction preferences will be effective when talking to her in group chats as well as direct chats, and ask if that's the behavior she prefers."}
+]
+
+# Insert memories back into the database
+for memory in memories:
+
+	# Get the embedding for the item, as a pickled numpy array.
+	embedding_pickle = _getEmbeddingPickle(memory['itemText'])
+
+	c.execute('''
+		INSERT OR REPLACE INTO remembered_items (itemID, userID, chatID, public, global, itemText, embedding_blob)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+		''', (memory['itemID'], memory['userID'], memory['chatID'], memory['public'], memory['global'], memory['itemText'], embedding_pickle))
+
+# Commit the transaction and close the connection
+conn.commit()
+conn.close()
+
+print("Memories have been successfully re-added.")
 
 # Now, let's run the bot. This will start polling the Telegram servers for new updates.
 app.run_polling()
