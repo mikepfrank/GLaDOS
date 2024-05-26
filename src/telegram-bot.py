@@ -1964,7 +1964,7 @@ class BotConversation:
 			#"bot. You may include multiple such messages in your response, but each one "
 			#"should begin on a new line. "
 			"You may include multiple Telegram messages in your response, but each one "
-			f"must begin on a new line starting with '{botName}>'"
+			f"must begin on a new line starting with '{botName}>'. "
 			#"(Or, alternatively to just sending messages, you can activate "
 			#"an available function and then call that function, if appropriate.)"
 			"(Or, alternatively to just sending messages, you can call "
@@ -4378,8 +4378,8 @@ async def ai_vision(update:Update, context:Context, filename:str,
 
 ## Limit on number of images that can be generated per day per chat.
 
-#DAILY_IMAGE_LIMIT = 5
-DAILY_IMAGE_LIMIT = 10
+DAILY_IMAGE_LIMIT = 6
+#DAILY_IMAGE_LIMIT = 10
 
 
 # Define a function to handle the /image command, when issued by the AI.
@@ -4410,7 +4410,7 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 			if context.chat_data['nimages_today'] >= daily_image_limit:
 				_logger.warning(f"Daily image generation limit reached in chat {chat_id}.")
 
-				diagMsg = f"Image generation rate limit of {daily_image_limit} has been reached in this chat. Try again tomorrow!"
+				diagMsg = f"Daily image generation limit of {daily_image_limit} has been reached in this chat. Try again tomorrow!"
 
 				sendRes = await _send_diagnostic(message, conversation, diagMsg)
 				if sendRes != 'success': return sendRes
@@ -5703,7 +5703,7 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 #__/ End function process_ai_command().
 
 						 
-DAILY_MESSAGE_LIMIT = 10
+DAILY_MESSAGE_LIMIT = 12
 
 async def process_chat_message(update:Update, context:Context) -> None:
 
@@ -5749,6 +5749,11 @@ async def process_chat_message(update:Update, context:Context) -> None:
 				sendRes = await _send_diagnostic(message, botConvo, diagMsg)
 				return
 		else:
+
+			# Make sure AI knows the message limit is resetting now..
+			if 'nmsgs_today' in context.chat_data and context.chat_data['nmsgs_today'] >= daily_message_limit:
+				await botConvo.add_message(BotMessage(SYS_NAME, "[NOTE: It's a new day! Resetting message quota.]"))
+
 			context.chat_data['nmsgs_today'] = 0	# We haven't responded yet.
 			_logger.normal(f"No responses yet today in chat {chat_id}. Resetting rate limit.")
 
@@ -5762,6 +5767,11 @@ async def process_chat_message(update:Update, context:Context) -> None:
 	today = get_current_date()
 	if 'last_msg_date' not in context.chat_data or today != context.chat_data['last_msg_date']:
 		context.chat_data['last_msg_date'] = today
+
+		# Make sure AI knows the message limit is resetting now.
+		if 'nmsgs_today' in context.chat_data and context.chat_data['nmsgs_today'] >= DAILY_MESSAGE_LIMIT:
+			await botConvo.add_message(BotMessage(SYS_NAME, "[It's a new day! Resetting message quota.]"))
+			
 		context.chat_data['nmsgs_today'] = 1		# The message we just responded to.
 	else:
 		context.chat_data['nmsgs_today'] += 1

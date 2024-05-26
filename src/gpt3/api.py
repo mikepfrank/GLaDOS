@@ -476,7 +476,9 @@ _ENGINES = [
 	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 64_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 32_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 24_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
-	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 16_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 16_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 8_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+
 	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 64_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 32_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
