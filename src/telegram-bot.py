@@ -7086,7 +7086,9 @@ def _parse_function_call(xml_string):
 
 		parameters = invoke.find('parameters')
 		if parameters is None:
-			raise FunctionCallError("Missing <parameters> element in the function call.")
+			# Treat no parameters element as an empty parameters element.
+			parameters = ET.Element('parameters')
+			#raise FunctionCallError("Missing <parameters> element in the function call.")
 		
 		param_dict = {}
 		for param in parameters:
@@ -7853,7 +7855,7 @@ def _parse_response(text_response:str, verbose=True):
 		# If there's any text before the first subelement, that's no good.
 		if text_before_1st_subelement:
 			if verbose:
-				_logger.error(f"NON-EMPTY TEXT [{text_before_1st_subelement:20}...] FOUND BEFORE FIRST SUB-ELEMENT.")
+				_logger.error(f"NON-EMPTY TEXT [{text_before_1st_subelement[:20]}...] FOUND BEFORE FIRST SUB-ELEMENT.")
 			properly_formatted = False
 
 		else:
@@ -7874,7 +7876,7 @@ def _parse_response(text_response:str, verbose=True):
 				text_after_this_subelement = child.tail.strip() if child.tail else None
 				if text_after_this_subelement:
 					if verbose:
-						_logger.error(f"NON-EMPTY TEXT [{text_before_1st_subelement:20}...] FOUND AFTER #{i} SUB-ELEMENT.")
+						_logger.error(f"NON-EMPTY TEXT [{text_after_this_subelement[:20]}...] FOUND AFTER #{i} SUB-ELEMENT.")
 					properly_formatted = False
 					break
 
