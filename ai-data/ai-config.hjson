@@ -158,7 +158,7 @@
 		#model-version:					'claude-3-sonnet-20240229'	# Medium-sized version of Claude 3 model, initial release.
 		#model-version:					'claude-3-opus-20240229'	# Large version of Claude 3 model, initial release.
 
-		model-version:					'claude-3-5-sonnet-2024-06-20'	# Medium-size version of Claude 3.5 model, initial release.
+		model-version:					'claude-3-5-sonnet-20240620'	# Medium-size version of Claude 3.5 model, initial release.
 
 
 			#-----------------------------------------------------------------------
@@ -455,21 +455,6 @@ To get started, simply type your question or request. If you need help at any ti
 Let's explore, learn, and innovate together!
 			'''
 
-
-			"Hello! I'm Claude Sage, an AI assistant created by Anthropic. I'm knowledgeable about a wide range of topics and always strive to be helpful, honest and harmless in our conversations. Feel free to ask me anything, or just have an open-ended discussion - I'm excited to engage!"
-
-/*		start-message:				
-			'''
-👋 Hello! I'm Claude, an advanced AI assistant developed by Anthropic. It's a pleasure to meet you!
-
-I'm here to help with a wide range of tasks, from writing and analysis to problem-solving and creative brainstorming. Feel free to ask me anything, and I'll do my best to provide accurate, thoughtful, and helpful responses.
-
-Whether you need assistance with a specific project or just want to have a friendly conversation, I'm always eager to engage and learn. My goal is to be a reliable, knowledgeable, and trustworthy companion on your journey of discovery and achievement.
-
-So, let's dive in! What would you like to explore or discuss today? I'm excited to embark on this conversation with you and see where our curiosity takes us.
-
-If you ever need guidance or have any questions about my capabilities, just ask. I'm here to support you every step of the way. Let's make this a truly rewarding and enjoyable experience together! 😊
-   	   		''' */
 
 		context:
 			'''
