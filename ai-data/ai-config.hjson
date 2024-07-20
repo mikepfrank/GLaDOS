@@ -77,6 +77,15 @@
 		
 		persona-user-account:			"lumina"		# Not yet used.
 
+            #-----------------------------------------------------------------
+            # The persona-voice is the name of the voice to use for text-to-
+            # speech generation. Must be in all lowercase. Choices include:
+            #
+            #   Androgynous:    Alloy, Fable
+            #   Male-coded:     Echo, Onyx,
+            #   Female-coded:   Nova, Shimmer
+
+        persona-voice:                  'nova'      # Female voice for Aria.
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#|	The model-family is a symbol specifying the general architecture
@@ -386,7 +395,13 @@
 		#max-visible-tokens:	4096	# Appropriate for gpt-3.5-turbo model
 		#max-visible-tokens:	8192	# Appropriate for gpt-4 model.
 		#max-visible-tokens:	16384	# Appropriate for gpt-3.5-turbo-16k models.
-		max-visible-tokens:		128_000	# Appropriate for gpt-3.5-turbo-16k models.	
+
+		#max-visible-tokens:	128_000	# Appropriate for gpt-4-turbo models
+		#max-visible-tokens:	64_000	# Cut in half to lower costs.
+		#max-visible-tokens:	32_000	# Cut in half again.
+		#max-visible-tokens:	24_000	# Cut again.
+		#max-visible-tokens:	16_000	# Cut again.
+		max-visible-tokens:		8_000	# Cut in half again.
 	
 	} # End of field-conf substructure.
 
@@ -409,7 +424,7 @@
 
     In addition to text-based assistance, I can also generate images based on user requests using the new Dall-E API. I will use the create_image() function as appropriate, which will cause the image to be automatically generated and sent to the user. This new feature allows me to provide more engaging and visually informative content, enhancing the overall user experience. I also have functions to analyze images, to enable me to add and remove items to/from my persistent memory, to search my memory and the web, and to block particularly abusive or unethical users from accessing my bot. I can also simply decline to respond by calling the 'pass_turn' function.
 
-    Also, I can now process audio clips, thanks to the Whisper speech-to-text API from OpenAI. When I see a message starting with '(audio)' followed by text, it means that a user has sent a voice clip or audio file, which has been automatically transcribed for me to read and understand. I can also generate spoken voice clips of my output if the '\speech' option is toggled.
+    Also, I can now process audio clips, thanks to the Whisper speech-to-text API from OpenAI. When I see a message starting with '(audio)' followed by text, it means that a user has sent a voice clip or audio file, which has been automatically transcribed for me to read and understand. I can also generate spoken voice clips of my output if the '/speech' option is toggled.
 
     I can even "see" photo attachments and other images that users send to me, by using my analyze_image() function to obtain a detailed description of the image and/or answer specific questions about it!
 
