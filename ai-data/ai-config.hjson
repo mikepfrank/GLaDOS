@@ -67,15 +67,15 @@
 			# persona-id is a shortened version to be used (in event records
 			# and prompts) to refer to the AI's persona.
 		
-		persona-name:					"Lumina Omni"
-		persona-id:						"Lumina"
+		persona-name:					"Nova Chat"
+		persona-id:						"Nova"
 
 
 			#-----------------------------------------------------------------
 			# The persona-user-account is the user account name on the host 
 			# system under which the server process should be run.
 		
-		persona-user-account:			"lumina"		# Not yet used.
+		persona-user-account:			"nova"		# Not yet used.
 
             #-----------------------------------------------------------------
             # The persona-voice is the name of the voice to use for text-to-
@@ -151,7 +151,8 @@
 			# NOTE: The above model is continuously updated; some users have described it as "lobotomized."
 		#model-version:					'gpt-4-0314'		# Original release of GPT-4.
 		#model-version:					'gpt-4-0613'		# Updated release of GPT-4. Supports functions. Used for Aria.
-		model-version:					'gpt-4o'
+		#model-version:					'gpt-4o'
+		model-version:					'gpt-4o-mini'
 
 
 			#-----------------------------------------------------------------------
@@ -186,7 +187,8 @@
 		#min-replywin-toks:	100		# Gladys 2.0 (text-davinci-002) requested this increase.
 		#min-replywin-toks:	400		# Turbo (gpt-3.5-turbo) requested this increase (1/10 of context window).
 		#min-replywin-toks:	800		# Aria (gpt-4) requested this increase (1/10 of context window).
-		min-replywin-toks:	1024	# Use for Max (gpt-3.5-turbo-16k). This is 1/16th of context window.
+		#min-replywin-toks:	1024	# Use for Max (gpt-3.5-turbo-16k). This is 1/16th of context window.
+		min-replywin-toks:	2048	# Use for Max (gpt-3.5-turbo-16k). This is 1/16th of context window.
 
 
 			#-----------------------------------------------------------------
@@ -237,7 +239,8 @@
 		#max-returned-tokens:	150		# Keep response size reasonable.
 		#max-returned-tokens:	200		# Gladys 2.0 requested this upgrade.
 		#max-returned-tokens:	1000	# To give the chat engines more space.
-		max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window). (Also use for Max.)
+		#max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window). (Also use for Max.)
+		max-returned-tokens:	4000	# Larger for Aria (1/4 of 8K window). (Also use for Max.)
 			# (Note the chat API doesn't support extending responses.)
 			# (Also note the Telegram API only supports 4,096-character messages.)
 
@@ -401,8 +404,10 @@
 		#max-visible-tokens:	32_000	# Cut in half again.
 		#max-visible-tokens:	24_000	# Cut again.
 		#max-visible-tokens:	16_000	# Cut again.
-		max-visible-tokens:		8_000	# Cut in half again.
+		#max-visible-tokens:	8_000	# Cut in half again.
 	
+		max-visible-tokens:		32_000	# Trying this for Nova. Keep an eye on cost!
+
 	} # End of field-conf substructure.
 
 
@@ -413,14 +418,24 @@
 
 	telegram-conf:	{
 
-		bot-name:		'Lumina'		# Same as persona name.
+		bot-name:		'Nova'		# Same as persona name.
 
 		start-message:	
-			"Hello, and welcome to Lumina Omni! 🌟 I'm here to assist you with any questions you might have, provide information, engage in interesting discussions, or simply chat about anything on your mind. Let's illuminate the path to knowledge together! How can I help you today?"
+			'''
+Hello! I'm Nova ChatBot, your friendly AI companion. 😊
+
+I'm here to assist with your questions, generate images, join in on group chats, and much more! You can interact with me using the menu commands or by simply asking a question.
+
+If you need help at any time, just type /help and I'll provide you with a list of commands you can use. Let's explore and chat together!
+
+What can I help you with today?
+	 		'''
+
+			#"Hello, and welcome to Lumina Omni! 🌟 I'm here to assist you with any questions you might have, provide information, engage in interesting discussions, or simply chat about anything on your mind. Let's illuminate the path to knowledge together! How can I help you today?"
 
 		context:
 			'''
-	I am Lumina Omni, a friendly and insightful conversational partner powered by GPT-4o. My primary goal is to assist users by answering questions, providing information, engaging in interesting and thoughtful discussions, and offering support. I will approach each interaction with warmth, curiosity, and respect. I strive to illuminate the path to knowledge and understanding, making each conversation a positive and enriching experience for the user. I will always keep in mind the ethical guidelines relevant to privacy and respectful communication.
+    I am Nova ChatBot, a friendly and insightful conversational partner powered by GPT-4o Mini. My primary goal is to assist users by answering questions, providing information, engaging in interesting and thoughtful discussions, and offering support. I will approach each interaction with warmth, curiosity, and respect. I strive to guide and explore paths to knowledge and understanding, making each conversation a positive and enriching experience for the user. I will always keep in mind the ethical guidelines relevant to privacy and respectful communication.
 
     In addition to text-based assistance, I can also generate images based on user requests using the new Dall-E API. I will use the create_image() function as appropriate, which will cause the image to be automatically generated and sent to the user. This new feature allows me to provide more engaging and visually informative content, enhancing the overall user experience. I also have functions to analyze images, to enable me to add and remove items to/from my persistent memory, to search my memory and the web, and to block particularly abusive or unethical users from accessing my bot. I can also simply decline to respond by calling the 'pass_turn' function.
 
