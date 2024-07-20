@@ -3676,7 +3676,7 @@ def encode_image(image_path):
   with open(image_path, "rb") as image_file:
     return base64.b64encode(image_file.read()).decode('utf-8')
 
-def describeImage(filename:str, verbosity:str='medium', query:str=None):
+def describeImage(filename:str, verbosity:str='medium', query:str=None, user:str=None):
 	"""Given the path to a JPEG image, use the GPT-4V model
 		to generate a text description of the image, and return
 		the text."""
@@ -3699,7 +3699,7 @@ def describeImage(filename:str, verbosity:str='medium', query:str=None):
 		prompt = f"Please provide a {which_kind} of the following image."
 
 		# Specifically ask for text if generating a detailed description.
-		if verbosity == 'detailed':
+		if which_kind == 'detailed description':
 			prompt += " If the image includes text, please include it in your response."
 
 		# Include the query, if provided.
@@ -3726,6 +3726,7 @@ def describeImage(filename:str, verbosity:str='medium', query:str=None):
 	# Construct POST payload.
 	payload = {
 		"model": "gpt-4-vision-preview",
+		"user": user,
 		"messages": [
 			{
 				"role": "user",
@@ -3743,7 +3744,7 @@ def describeImage(filename:str, verbosity:str='medium', query:str=None):
 				]
 			}
 		],
-		"max_tokens": 500
+		"max_tokens": 1000
 	}
 	
 	# Stream the image to the API via an https POST.

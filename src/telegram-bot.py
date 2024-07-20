@@ -4192,7 +4192,7 @@ async def ai_block(updateMsg:TgMsg, conversation:BotConversation,
 			# If there are no matches, try searching by display name instead.
 			if len(matchingUsers) == 0:
 
-				matchingUsers = _lookup_user_by_dispname(userToUnblock)
+				matchingUsers = _lookup_user_by_dispname(userToBlock)
 
 				if len(matchingUsers) != 1:
 					_logger.warn(f"\tUser name '{userToBlock}' wasn't found or isn't unique.")
@@ -4287,7 +4287,7 @@ async def ai_forget(updateMsg:TgMsg, conversation:BotConversation,
 		return "error: missing required argument"
 	#__/
 
-	_logger.normal("Deleting a memory item in chat #{chat_id}.")
+	_logger.normal(f"\nDeleting a memory item in chat #{chat_id}.")
 	result = _deleteMemoryItem(item_id=itemToDel, text=textToDel, user_id=cur_user_id)
 	# Check for errors.
 	if result is not None:
@@ -4350,6 +4350,7 @@ async def ai_vision(update:Update, context:Context, filename:str,
 
 	# Get the chat_id, user_name, and conversation object.
 	chat_id = message.chat.id
+	user_id = message.from_user.id
 	user_name = _get_user_tag(message.from_user)
 	conversation = context.chat_data['conversation']
 
@@ -4367,7 +4368,8 @@ async def ai_vision(update:Update, context:Context, filename:str,
 		_logger.normal(f"\t(And also asking the question: {query})")
 
 	try:
-		text = describeImage(fullpath, verbosity=verbosity, query=query)
+		userStr = str(user_id)
+		text = describeImage(fullpath, verbosity=verbosity, query=query, user=userStr)
 	except Exception as e:
 		await _report_error(conversation, message,
 			f"In handle_photo(), describeImage() threw an exception: {type(e).__name__} {e}")
@@ -4375,7 +4377,7 @@ async def ai_vision(update:Update, context:Context, filename:str,
 		text = f"[Image analysis error: {e}]"
 		# We could also do a traceback here. Should we bother?
 	
-	_logger.normal(f'\tDescription of image from {who_from}: [{text}]')
+	_logger.normal(f'\tDescription of image from {who_from}: [{text[:30]}...]')
 	
 	return text
 
@@ -4643,9 +4645,12 @@ async def ai_search(updateMsg:TgMsg, conversation:BotConversation,
 	_logger.normal(f"In chat {chatID}, for user #{userID}, AI is searching for the top {nItems} memories matching the search query: [{queryPhrase}].")
 	matchList = await _searchMemories(userID, chatID, queryPhrase, nItems=nItems)
 
-	_logger.normal(f"Found the following matches: [\n{matchList}\n].")
+	# Pretty-print the JSON
+	formatted_matchList = json.dumps(matchList, indent=4)
 
-	return matchList
+	_logger.normal(f"Found the following matches: [\n{formatted_matchList}\n].")
+
+	return formatted_matchList
 
 #__/
 
@@ -8217,7 +8222,7 @@ async def _reply_asSpeech(userTgMessage:TgMsg, convo:BotConversation, text):
 	else:
 		chat_id = convo.chat_id
 
-	_logger.normal(f"\nConverting output [{text}] in chat {chat_id} to speech...")
+	_logger.normal(f"\nConverting output [{text[:30]}...] in chat {chat_id} to speech...")
 
 	# This uses the OpenAI text-to-speech API 
 	#mp3_filename = genSpeech(text, user=user_name)
@@ -8238,7 +8243,10 @@ async def _reply_asSpeech(userTgMessage:TgMsg, convo:BotConversation, text):
 	#	await message.reply_voice(ogg_file.read(), duration=_duration)
 
 	with open(opus_filename, "rb") as opus_file:
-		await message.reply_voice(opus_file.read())
+		timeout=30	# Try longer timeouts
+		await message.reply_voice(opus_file.read(), read_timeout=timeout,
+						  write_timeout=timeout, connect_timeout=timeout,
+						  pool_timeout=timeout)
 
 	# We should probably delete the .ogg file here, since it's big.
 
@@ -8367,7 +8375,7 @@ async def _searchMemories(userID, chatID, searchPhrase,
 		itemDict['userTag'] = userData['userTag']
 
 		# Change the 'public' and 'global' numeric flags to 'is_private' and 'is_global' booleans.
-		itemDict['is_private'] = not itemDict['public'];    del itemDict['public']
+		itemDict['is_private'] = not itemDict['public'];	del itemDict['public']
 		itemDict['is_global'] = not not itemDict['global']; del itemDict['global']
 			# ^ Note the double negative here is just doing an int->bool conversion.
 
