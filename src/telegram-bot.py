@@ -420,26 +420,42 @@ from	telegram.error	import	BadRequest, Forbidden, ChatMigrated, TimedOut
 import openai
 from openai		import	OpenAI, AsyncOpenAI	# New in 1.x
 
+# Turn on this flag to use the asynchronous I/O version of the OpenAI library.
 global	ASYNC
+# ASYNC = False
 ASYNC = True
+
+# Set this global to non-None to utilize an alternate API provider. Default is OpenAI.
+global  PROVIDER
+# PROVIDER = None
+PROVIDER = 'OpenRouter'
+
+# Depending on the API provider, set the base URL and API key appropriately.
+if PROVIDER == 'OpenRouter':
+	BASE_URL = "https://openrouter.ai/api/v1"
+	API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+# Construct the appropriate OpenAI-compatible client object, depending on
+# the ASYNC and PROVIDER settings.
 
 global 			_oai_client
 if ASYNC:
-	_oai_client		= AsyncOpenAI()
+	if not PROVIDER:
+		_oai_client		= AsyncOpenAI()		# Uses OPENAI_API_KEY env. var.
+	else:
+		_oai_client		= AsyncOpenAI(base_url=BASE_URL, api_key=API_KEY)
 else:
-	_oai_client		= OpenAI()
+	if not PROVIDER:
+		_oai_client		= OpenAI()
+	else:
+		_oai_client		= OpenAI(base_url=BASE_URL, api_key=API_KEY)
 
-#from openai		import Embedding	# Deprecated in 1.x
+
 from openai		import RateLimitError			# Detects quota exceeded.
 
-#from openai.embeddings_utils	import (
-#		get_embedding,		# Gets the embedding vector of a string.
-#		cosine_similarity	# Computes cosine of angle between vectors.
-#	)
-#
-## NOTE: openai.embeddings_utils wants to import too much stuff, so
-## instead we'll just copy the above two functions that we actually
-## need from it inline into our code below.
+## The below is for embeddings-related functionality.
+
+#from openai		import Embedding	# Deprecated in 1.x
 
 #EMBEDDING_MODEL = "text-similarity-davinci-001"
 EMBEDDING_MODEL = "text-embedding-ada-002"

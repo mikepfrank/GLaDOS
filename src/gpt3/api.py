@@ -490,6 +490,9 @@ _ENGINES = [
 
 	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-mini-2024-07-18', 'field-size': 128_000, 'prompt-price': 0.00015, 'price': 0.0006, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 
+		# Llama models (under OpenRouter)
+	{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'}
+
 
 ] # End _ENGINES constant module global data structure.
 
@@ -517,6 +520,7 @@ _FUNCTION_MODELS = [
 	'gpt-4o-2024-05-13',
 	'gpt-4o-mini',
 	'gpt-4o-mini-2024-07-18',
+	'',
 ]
 def _has_functions(engine_name):
 	"""Return True if the named engine supports the functions interface."""
