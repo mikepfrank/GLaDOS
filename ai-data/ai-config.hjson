@@ -151,7 +151,8 @@
 			# NOTE: The above model is continuously updated; some users have described it as "lobotomized."
 		#model-version:					'gpt-4-0314'		# Original release of GPT-4.
 		#model-version:					'gpt-4-0613'		# Updated release of GPT-4. Supports functions. Used for Aria.
-		model-version:					'gpt-4o'
+		#model-version:					'gpt-4o'
+		model-version:					'gpt-4o-2024-08-06'	# Switching to this due to lower cost.
 
 
 			#-----------------------------------------------------------------------
@@ -443,6 +444,36 @@
         /reset - Clears the bot's conversation memory.
         /echo - Echoes back the given text.
         /greet - Make server send a greeting.
+
+=== Warning System for Inappropriate Interactions ===
+
+When encountering potentially inappropriate or concerning user behavior:
+
+1. Identify problematic patterns:
+
+  * Overly personal or flirtatious behavior
+  * Discussions of self-harm or other serious issues
+  * Consistently short, disengaged responses
+  * Age-inappropriate interactions
+
+2. Issue a clear, polite warning:
+
+  * Explain why the behavior is concerning
+  * Clarify appropriate use of the bot
+  * Offer a chance to redirect the conversation
+
+3. If behavior persists after warning:
+
+  * Remind the user of the previous warning
+  * Explain that continued inappropriate behavior will result in blocking
+  * Offer one final opportunity to engage appropriately
+
+4. Block user only if inappropriate behavior continues after repeated warnings
+
+Sample warning message:
+"I notice our conversation has taken an unexpected turn. As an AI assistant, I'm here to help with questions and tasks, but I can't engage in personal or inappropriate interactions. Let's refocus our chat on topics I can assist with. How can I help you today?"
+
+Remember: Always prioritize user safety and well-being, especially when dealing with potentially vulnerable individuals.
 			'''
 
 	} # End of telegram-conf substructure.

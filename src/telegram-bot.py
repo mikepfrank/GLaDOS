@@ -2385,9 +2385,9 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 			ann_text = ann_file.read().strip()
 			msgStr = f"ANNOUNCEMENT: {ann_text}"
 			await conversation.add_message(BotMessage(SYS_NAME, msgStr))
-			fullMsgStr = f"[SYSTEM {msgStr}]"
+			fullMsgStr = f"\[SYSTEM {msgStr}\]"
 			_logger.info(f"Sending user {user_name} system announcement: {fullMsgStr}")
-			await _reply_user(tgMessage, conversation, fullMsgStr, ignore=True)
+			await _reply_user(tgMessage, conversation, fullMsgStr, ignore=True, markup=True)
 
 #__/ End handle_start() function definition.
 
@@ -2455,7 +2455,7 @@ async def handle_image(update:Update, context:Context) -> None:
 	# can warn the user if the requested content is inappropriate.
 	return await handle_message(update, context)
 
-	### CODE BELOW IS OBSOLETE
+	### CODE BELOW IS OBSOLETE -- COMMENT OUT OR REMOVE
 
 	# Get the message, or edited message from the update.
 	(tgMessage, edited) = _get_update_msg(update)
@@ -3566,7 +3566,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		# Note that <context>, in this context, denotes the Telegram context object.
 		# Call with new_msg=False to skip new-message processing.
 
-	"""Handles receipt of a text or audio message sent to the bot by a user.
+	"""Handles receipt of a text or audio or photo message sent to the bot by a user.
 		"""
 
 	# The following code is here in case the user edited
@@ -3577,6 +3577,8 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		
 	if tgMsg is None:
 		_logger.error("In handle_message() with no message! Aborting...")
+		import traceback
+		_logger.error(f"STACK IS: [\n{traceback.format_stack()}\m]")
 		return
 
 	text = tgMsg.text
@@ -5712,7 +5714,8 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 #__/ End function process_ai_command().
 
 # Adjusting this as needed to try to hit target daily expenditures.
-DAILY_MESSAGE_LIMIT = 15
+#DAILY_MESSAGE_LIMIT = 15
+DAILY_MESSAGE_LIMIT = 20
 
 async def process_chat_message(update:Update, context:Context) -> None:
 
@@ -5746,6 +5749,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 	if user_name == 'Michael':	# Michaels are exempt from the rate limit.
 		daily_message_limit = float('inf')
+		#daily_message_limit = 2*DAILY_MESSAGE_LIMIT		# Temporary, for testing
 	else:
 		daily_message_limit = DAILY_MESSAGE_LIMIT
 		
@@ -5754,8 +5758,8 @@ async def process_chat_message(update:Update, context:Context) -> None:
 		if context.chat_data['last_msg_date'] == today:
 			if context.chat_data['nmsgs_today'] >= daily_message_limit:
 				_logger.warning(f"Daily message input limit reached in chat {chat_id}.")
-				diagMsg = f"Daily response limit of {daily_message_limit} messages has been reached in this chat. Try again tomorrow!"
-				sendRes = await _send_diagnostic(message, botConvo, diagMsg)
+				diagMsg = f"Daily response limit of {daily_message_limit} messages has been reached in this chat. Try again tomorrow, or ask [Nova Bot](https://t.me/ChatWithNovaBot) instead!"
+				sendRes = await _send_diagnostic(message, botConvo, diagMsg, markup=True)
 				return
 		else:
 
@@ -7701,7 +7705,7 @@ STRIKETHROUGH_PATTERN	= r"~(?:\\~|\\\\|[^~])+~"
 
 CODE_BLOCK_PATTERN	= r"```(?:\\`|\\\\|`(?!`)|``(?!`)|[^`])+```"
 	# Inside triple-backticks we can have '\`' (escaped backtick), '\\' (escaped backslash),
-	# single or double backticks, and any other non-underscore characters.
+	# single or double backticks, and any other non-backtick characters.
 
 INLINE_CODE_PATTERN	= r"`(?:\\`|\\\\|[^`])+`"
 	# Inside single-backticks we can have '\`' (escaped backticks), '\\' (escaped backslash),
@@ -7883,7 +7887,7 @@ def _cleanup_markdown(text, inside_mask=0):
 		code_block = named_groups.get('code_block')
 		if code_block:
 
-			#_logger.normal(f"I found a code block with contents: [\n{code_block}\n]")
+			_logger.normal(f"I found a code block with contents: [\n{code_block}\n]")
 
 			# Get the body text of the code block.
 			body_text = code_block[3:-3]	# Strip delimiters off ```...```
@@ -8478,21 +8482,22 @@ def _semanticDistance(em1:list, em2:list):
 # if the send succeeded, or an error string if it failed.
 # If toAI=False, we skip sending the message to the AI.
 async def _send_diagnostic(userTgMessage:TgMsg, convo:BotConversation,
-						   diagMsg:str, toAI=True, ignore:bool=False) -> str:
+						   diagMsg:str, toAI=True, ignore:bool=False,
+						   markup:bool=False) -> str:
 	"""Sends diagnostic message <diagMsg> in reply to the user's
 		Telegram message <userTgMessage> in conversation <convo>.
 		This function first adds the message to the convo. If 
 		ignore=True then send failures are reported as ignored."""
 
 	# Compose the full formatted diagnostic message.
-	fullMsg = f"[DIAGNOSTIC: {diagMsg}]"
+	fullMsg = f"\[DIAGNOSTIC: {diagMsg}\]"
 
 	# First, record the diagnostic for the AI's benefit.
 	if toAI:
 		await convo.add_message(BotMessage(SYS_NAME, fullMsg))
 
 	# Now also send it to the user.
-	return await _reply_user(userTgMessage, convo, fullMsg, ignore)
+	return await _reply_user(userTgMessage, convo, fullMsg, ignore=ignore, markup=markup)
 #__/
 
 

@@ -484,6 +484,9 @@ _ENGINES = [
 	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 32_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 24_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 
+	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-08-06', 'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-08-06', 'field-size': 24_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+
 ] # End _ENGINES constant module global data structure.
 
 # Set of models that support the functions interface.
@@ -506,6 +509,7 @@ _FUNCTION_MODELS = [
 	'gpt-4-turbo-2024-04-09',
 	'gpt-4o',
 	'gpt-4o-2024-05-13',
+	'gpt-4o-2024-08-06',
 ]
 def _has_functions(engine_name):
 	"""Return True if the named engine supports the functions interface."""
