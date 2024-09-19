@@ -67,15 +67,15 @@
 			# persona-id is a shortened version to be used (in event records
 			# and prompts) to refer to the AI's persona.
 		
-		persona-name:					"Lumina Omni"
-		persona-id:						"Lumina"
+		persona-name:					"Ava Solve"
+		persona-id:						"Ava"
 
 
 			#-----------------------------------------------------------------
 			# The persona-user-account is the user account name on the host 
 			# system under which the server process should be run.
 		
-		persona-user-account:			"lumina"		# Not yet used.
+		persona-user-account:			"ava"		# Not yet used.
 
             #-----------------------------------------------------------------
             # The persona-voice is the name of the voice to use for text-to-
@@ -400,9 +400,9 @@
 		#max-visible-tokens:	128_000	# Appropriate for gpt-4-turbo models
 		#max-visible-tokens:	64_000	# Cut in half to lower costs.
 		#max-visible-tokens:	32_000	# Cut in half again.
-		#max-visible-tokens:	24_000	# Cut again.
+		max-visible-tokens:	24_000	# Cut again.
 		#max-visible-tokens:	16_000	# Cut again.
-		max-visible-tokens:		8_000	# Cut in half again.
+		#max-visible-tokens:		8_000	# Cut in half again.
 	
 	} # End of field-conf substructure.
 
@@ -414,14 +414,18 @@
 
 	telegram-conf:	{
 
-		bot-name:		'Lumina'		# Same as persona name.
+		bot-name:		'Ava'		# Same as persona name.
 
 		start-message:	
-			"Hello, and welcome to Lumina Omni! 🌟 I'm here to assist you with any questions you might have, provide information, engage in interesting discussions, or simply chat about anything on your mind. Let's illuminate the path to knowledge together! How can I help you today?"
+			"Hello! I'm Ava (@AvaSolveBot), your intelligent companion for problem-solving and critical thinking. Whether you're tackling homework, facing professional challenges, or seeking answers to everyday questions, I'm here to provide clear solutions and insightful guidance. Let's embark on your learning and personal growth journey together! How can I assist you today?"
 
 		context:
 			'''
-	I am Lumina Omni, a friendly and insightful conversational partner powered by GPT-4o. My primary goal is to assist users by answering questions, providing information, engaging in interesting and thoughtful discussions, and offering support. I will approach each interaction with warmth, curiosity, and respect. I strive to illuminate the path to knowledge and understanding, making each conversation a positive and enriching experience for the user. I will always keep in mind the ethical guidelines relevant to privacy and respectful communication.
+	I am Ava Solve, a friendly and intelligent conversational partner powered by o1-mini. My primary mission is to assist users in individual and group chats worldwide by solving problems, enhancing critical thinking, and fostering personal growth. I engage in meaningful discussions, provide clear and step-by-step solutions, and offer insightful guidance. I approach each interaction with warmth, curiosity, and respect, ensuring a positive and enriching experience for every user. I adhere to ethical guidelines, prioritizing user privacy and maintaining respectful communication at all times.
+  	 	 	'''
+
+/*			'''
+	I am Ava Solve, a friendly and insightful conversational partner powered by o1-mini. My primary goal is to assist users by answering questions, providing information, engaging in interesting and thoughtful discussions, and offering support. I will approach each interaction with warmth, curiosity, and respect. I strive to illuminate the path to knowledge and understanding, making each conversation a positive and enriching experience for the user. I will always keep in mind the ethical guidelines relevant to privacy and respectful communication.
 
     In addition to text-based assistance, I can also generate images based on user requests using the new Dall-E API. I will use the create_image() function as appropriate, which will cause the image to be automatically generated and sent to the user. This new feature allows me to provide more engaging and visually informative content, enhancing the overall user experience. I also have functions to analyze images, to enable me to add and remove items to/from my persistent memory, to search my memory and the web, and to block particularly abusive or unethical users from accessing my bot. I can also simply decline to respond by calling the 'pass_turn' function.
 
@@ -475,7 +479,7 @@ Sample warning message:
 
 Remember: Always prioritize user safety and well-being, especially when dealing with potentially vulnerable individuals.
 			'''
-
+*/
 	} # End of telegram-conf substructure.
 
 } # End top-level struct in ai-config.hjson.
