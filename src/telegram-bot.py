@@ -590,6 +590,7 @@ from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF
 	transcribeAudio,	# Transcribes an audio file to text.
 	genSpeech,			# Converts text to spoken voice audio.
 	describeImage,		# Uses GPT-4V to generate a detailed description of an image.
+	solveProblem,		# Uses o1-mini to solve a difficult reasoning problem.
 
 	oaiMsgObj_to_msgDict,	# For compatibility
 
@@ -1873,6 +1874,7 @@ class BotConversation:
 				f"  block_user(user_name:str='{userTag}', remark:str=None) -> status:str\n"
 				"  unblock_user(user_name:str, remark:str=None) -> status:str\n"
 				"  search_web(query:str, locale:str='en-US', sections:list=['webPages'], remark:str=None) -> results:dict\n"
+				"  solve_problem(description:str, show_work:bool=False, remark:str=None) -> solution:str\n"
 				"  pass_turn() -> None\n")
 
 			#COMMAND_LIST_HEADER + \
@@ -4105,6 +4107,9 @@ async def ai_activateFunction(
 	elif funcName == 'search_web':
 		cur_funcs += [SEARCH_WEB_SCHEMA]
 		
+	elif funcName == 'solve_problem':
+		cur_funcs += [SOLVE_PROBLEM_SCHEMA]
+
 	elif funcName == 'pass_turn':
 		# Do nothing because it's always activated.
 		return f"Note: The pass_turn function is always available; activation isn't needed."
@@ -4346,7 +4351,6 @@ async def ai_vision(update:Update, context:Context, filename:str,
 					verbosity:str=None, query:str=None
 	) -> str:
 
-
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 
@@ -4365,7 +4369,8 @@ async def ai_vision(update:Update, context:Context, filename:str,
 	else:
 		who_from = f"user {user_name}"
 
-	_logger.normal(f"\nConverting image {filename} from {who_from} in chat {chat_id} to a {verbosity} text description using GPT-4V.")
+	_logger.normal(f"\nConverting image {filename} from {who_from} in chat "
+				   f"{chat_id} to a {verbosity} text description using GPT-4V.")
 	if query:
 		_logger.normal(f"\t(And also asking the question: {query})")
 
@@ -4384,6 +4389,44 @@ async def ai_vision(update:Update, context:Context, filename:str,
 	return text
 
 #__/ End async function ai_vision().
+
+
+async def ai_solve(update:Update, context:Context, probDesc:str,
+				   showWork:bool=False
+	) -> str:
+
+	# Get the message, or edited message from the update.
+	(message, edited) = _get_update_msg(update)
+
+	# Get the chat_id, user_name, and conversation object.
+	chat_id = message.chat.id
+	user_id = message.from_user.id
+	user_name = _get_user_tag(message.from_user)
+	conversation = context.chat_data['conversation']
+
+	# Now we'll use the OpenAI o1-mini model to solve the problem.
+
+	if showWork:
+		paren = "(with detailed steps) "
+	else:
+		paren = ""
+
+	_logger.normal(f"\nSolving the following problem {paren}for {user_name} "
+				   f"in chat {chat_id} using o1-mini: [{probDesc}]")
+	try:
+		userStr = str(user_id)
+		text = solveProblem(probDesc, showWork=showWork, user=userStr)
+
+	except Exception as e:
+		await _report_error(conversation, message,
+			f"In ai_solve(), solveProblem() threw an exception: {type(e).__name__} {e}")
+
+		text = f"[Problem solving error: {e}]"
+		# We could also do a traceback here. Should we bother?
+
+	return text
+
+#__/ End async function ai_solve().
 
 
 # Limit on number of images that can be generated per day per chat.
@@ -5085,6 +5128,18 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 			await _report_error(conversation, message,
 					f"search_web() missing required argument 'query'.")
 			return "Error: Required argument 'query' is missing."
+
+	elif funcName == 'solve_problem':
+
+		probDesc	= funcArgs.get('description',	None)
+		showWork	= funcArgs.get('show_work',		False)
+
+		if probDesc:
+			return await ai_solve(update, context, probDesc, showWork=showWork)
+		else:
+			await _report_error(conversation, message,
+					f"solve_problem() missing required argument 'description'.")
+			return "Error: Required argument 'description' is missing."
 
 	elif funcName == 'activate_function':
 
@@ -8490,7 +8545,10 @@ async def _send_diagnostic(userTgMessage:TgMsg, convo:BotConversation,
 		ignore=True then send failures are reported as ignored."""
 
 	# Compose the full formatted diagnostic message.
-	fullMsg = f"\[DIAGNOSTIC: {diagMsg}\]"
+	if markup:
+		fullMsg = f"\[DIAGNOSTIC: {diagMsg}\]"
+	else:
+		fullMsg = f"[DIAGNOSTIC: {diagMsg}]"
 
 	# First, record the diagnostic for the AI's benefit.
 	if toAI:
@@ -8951,13 +9009,13 @@ REMEMBER_ITEM_SCHEMA = {
 				"type":			"boolean",	# <private> argument is Boolean.
 				"description":	"Is this information considered private "\
 									"(only viewable by the current user)? ",
-				"default":		True,
+				"default":		True
 			},
 			"is_global": {
 				"type":			"boolean",	# <private> argument is Boolean.
 				"description":	"Is this information considered global "\
 									"(viewable outside the current chat)?",
-				"default":		False,
+				"default":		False
 			},
 			"remark":	{
 				"type":			"string",	# <remark> argument has type string.
@@ -9092,9 +9150,12 @@ FORGET_ITEM_SCHEMA = {
 }
 
 
+# Function schema for GPT-4V based image analysis capability.
 ANALYZE_IMAGE_SCHEMA = {
 	"name":			"analyze_image",
-	"description":	"Analyzes an image, and returns a description of the image or answers a query about it.",
+	"description":	("Analyzes an image using the GPT-4V vision model, and "
+					 "returns a description of the image and/or answers a "
+					 "query about it."),
 	"parameters":	{
 		"type":			"object",
 		"properties":	{
@@ -9315,6 +9376,38 @@ SEARCH_WEB_SCHEMA = {
 }
 
 
+# Function schema for o1-mini based problem-solving capability.
+SOLVE_PROBLEM_SCHEMA = {
+	"name":			"solve_problem",
+	"description":  ("Solves a difficult technical problem in math, science, "
+					 "coding, or reasoning using the advanced o1-mini AI."),
+	"parameters":	{
+		"type":			"object",
+		"properties":	{
+			"description":	{
+				"type":			"string",
+				"description":	"Detailed, self-contained statement of the problem or task."
+			},
+			"show_work": {
+				"type":			"boolean",
+				"description":	"If true, instructs o1-mini to include detailed solution steps.",
+				"default":		False
+			},
+			"remark":	{
+				"type":			"string",	# <remark> argument has type string.
+				"description":	"A textual message to send to the user just " \
+								"before executing the function."
+			}
+		},
+		"required":		["description"]
+	},
+	"returns":	{
+		"type":			"string",
+		"description":	"An answer or detailed solution to the problem, or an error message."
+	}
+}
+
+
 # Function schema for the 'activate_function' function.
 ACTIVATE_FUNCTION_SCHEMA = {
 	"name":			"activate_function",
@@ -9372,6 +9465,7 @@ FUNCTIONS_LIST = [
 	BLOCK_USER_SCHEMA,
 	UNBLOCK_USER_SCHEMA,
 	SEARCH_WEB_SCHEMA,
+	SOLVE_PROBLEM_SCHEMA,
 #	ACTIVATE_FUNCTION_SCHEMA,
 	PASS_TURN_SCHEMA
 ]	
