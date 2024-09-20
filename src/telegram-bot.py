@@ -1861,28 +1861,37 @@ class BotConversation:
 		# MESSAGE #3.
 		# This one is fixed forever, we could just initialize it when the
 		# conversation is started. --> NO, NOW IT VARIES BY USER.
+
+#		chat_messages.append({
+#			'role': CHAT_ROLE_SYSTEM,
+#			'content': (FUNCTION_USAGE_HEADER +
+#				#"  activate_function(func_name:str, remark:str=None) -> status:str\n"
+#				"  remember_item(text:str, is_private:bool=True, is_global:bool=False, remark:str=None) -> status:str\n"
+#				f"  search_memory(query_phrase:str, max_results:int={DEFAULT_SEARCHMEM_NITEMS}, remark:str=None) -> results:list\n"
+#				"  forget_item(text:str=None, item_id:str=None, remark:str=None) -> status:str\n"
+#				"  analyze_image(filename:str, verbosity:str='medium', query:str=None, remark:str=None) -> result:str\n"
+#				"  create_image(description:str, shape:str='square', style:str='vivid', caption:str=None, remark:str=None) -> status:str\n"
+#				f"  block_user(user_name:str='{userTag}', remark:str=None) -> status:str\n"
+#				"  unblock_user(user_name:str, remark:str=None) -> status:str\n"
+#				"  search_web(query:str, locale:str='en-US', sections:list=['webPages'], remark:str=None) -> results:dict\n"
+#				"  pass_turn() -> None\n")
+
+
+		# MESSAGE #3.
+		# This one is fixed forever, we could just initialize it when the
+		# conversation is started. --> NO, NOW IT VARIES BY USER.
 		chat_messages.append({
 			'role': CHAT_ROLE_SYSTEM,
-			'content': (FUNCTION_USAGE_HEADER +
-				#"  activate_function(func_name:str, remark:str=None) -> status:str\n"
-				"  remember_item(text:str, is_private:bool=True, is_global:bool=False, remark:str=None) -> status:str\n"
-				f"  search_memory(query_phrase:str, max_results:int={DEFAULT_SEARCHMEM_NITEMS}, remark:str=None) -> results:list\n"
-				"  forget_item(text:str=None, item_id:str=None, remark:str=None) -> status:str\n"
-				"  analyze_image(filename:str, verbosity:str='medium', query:str=None, remark:str=None) -> result:str\n"
-				"  create_image(description:str, shape:str='square', style:str='vivid', caption:str=None, remark:str=None) -> status:str\n"
-				f"  block_user(user_name:str='{userTag}', remark:str=None) -> status:str\n"
-				"  unblock_user(user_name:str, remark:str=None) -> status:str\n"
-				"  search_web(query:str, locale:str='en-US', sections:list=['webPages'], remark:str=None) -> results:dict\n"
-				"  pass_turn() -> None\n")
+			'content': (f"{COMMAND_LIST_HEADER}"
+				"  /pass - Refrain from responding to the last user message.\n"
+				"  /image <desc> - Generate an image with description <desc> and send it to the user.\n"
+				"  /remember <text> - Adds <text> to my persistent context data.\n"
+				"  /forget <text> - Removes <text> from my persistent context data.\n"
+				"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n"
+				"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n")
 
-			#COMMAND_LIST_HEADER + \
-			#	"  /pass - Refrain from responding to the last user message.\n" + \
-			#	"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
-			#	"  /remember <text> - Adds <text> to my persistent context data.\n" + \
-			#	"  /forget <text> - Removes <text> from my persistent context data.\n" + \
-			#	"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
-			#	"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n"
 		})
+
 
 		# MESSAGE #4.
 		# OK, for a given conversation, this one only needs to change
@@ -1890,13 +1899,13 @@ class BotConversation:
 		# it only depends on the last user memory. It could also change if a
 		# new memory is added by a different user, but that shouldn't happen
 		# very often
-		if hasattr(thisConv, 'dynamicMem') and thisConv.dynamicMem:
-			chat_messages.append({
-				'role': CHAT_ROLE_SYSTEM,
-				'content': DYNAMIC_MEMORY_HEADER + \
-					thisConv.dynamicMem
-					# ^ Note this only changes when a new user message is added to the convo.
-			})
+#		if hasattr(thisConv, 'dynamicMem') and thisConv.dynamicMem:
+#			chat_messages.append({
+#				'role': CHAT_ROLE_SYSTEM,
+#				'content': DYNAMIC_MEMORY_HEADER + \
+#					thisConv.dynamicMem
+#					# ^ Note this only changes when a new user message is added to the convo.
+#			})
 
 		# MESSAGE #5.
 		# This one is fixed forever, we could just initialize it when the
@@ -1967,8 +1976,8 @@ class BotConversation:
 			f"must begin on a new line starting with '{botName}>'. "
 			#"(Or, alternatively to just sending messages, you can activate "
 			#"an available function and then call that function, if appropriate.)"
-			"(Or, alternatively to just sending messages, you can call "
-			"an available function, if appropriate.)"
+			#"(Or, alternatively to just sending messages, you can call "
+			#"an available function, if appropriate.)"
 		)
 
 		#"You can send additional Telegram "\
@@ -5696,6 +5705,11 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 		# NOTE: We could have passed remaining_text as the 4th argument (caption),
 		# but it's perhaps better to just send it as an ordinary text message.
 
+	elif command_name == 'pass':
+		# This is a command to generate null output.
+
+		_logger.normal(f"\nAI {BOT_NAME} entered a /pass command in chat {chat_id}.")
+			
 	else:
 		# This is a command type that we don't recognize.
 		_logger.warn(f"\nAI {BOT_NAME} entered an unknown command [/{command_name}] in chat {chat_id}.")
@@ -8490,7 +8504,10 @@ async def _send_diagnostic(userTgMessage:TgMsg, convo:BotConversation,
 		ignore=True then send failures are reported as ignored."""
 
 	# Compose the full formatted diagnostic message.
-	fullMsg = f"\[DIAGNOSTIC: {diagMsg}\]"
+	if markup:
+		fullMsg = f"\[DIAGNOSTIC: {diagMsg}\]"
+	else:
+		fullMsg = f"[DIAGNOSTIC: {diagMsg}]"
 
 	# First, record the diagnostic for the AI's benefit.
 	if toAI:
@@ -9562,15 +9579,11 @@ MODEL_FAMILY = global_gptCore.modelFamily
 
 	# This is the default help string if a custom one is not set.
 HELP_STRING=f"""
-{BOT_NAME} bot powered by {MODEL_FAMILY}/{ENGINE_NAME}. NOTE: {BOT_NAME} can now both understand and generate voice clips and images!
+{BOT_NAME} bot powered by {MODEL_FAMILY}/{ENGINE_NAME}. NOTE: {BOT_NAME} can understand and generate voice clips.
 
 Available user commands:
 /start - Starts the bot, if not already started; also reloads conversation history, if any.
 /help - Shows this help message.
-/image <desc> - Generate and return an image for the given description.
-/remember <text> - Adds the given statement to the bot's dynamic persistent memory.
-/search (memory|web) for <phrase> - Searches bot's memory or the web for <phrase>.
-/forget <item> - Removes the given statement from the bot's dynamic persistent memory.
 /quiet - Puts the bot into quiet mode. It will only respond when addressed by name.
 /noisy - Turns off quiet mode. The bot may now respond to any message.
 /speech - Toggles speech mode, in which the bot will send its messages as voice clips.
@@ -9579,6 +9592,25 @@ Available user commands:
 /greet - Causes the server to send a greeting. (Server responsiveness test.)
 
 NOTE: Please be polite and ethical, or you may be blocked."""
+
+#HELP_STRING=f"""
+#{BOT_NAME} bot powered by {MODEL_FAMILY}/{ENGINE_NAME}. NOTE: {BOT_NAME} can now both understand and generate voice clips and images!
+#
+#Available user commands:
+#/start - Starts the bot, if not already started; also reloads conversation history, if any.
+#/help - Shows this help message.
+#/image <desc> - Generate and return an image for the given description.
+#/remember <text> - Adds the given statement to the bot's dynamic persistent memory.
+#/search (memory|web) for <phrase> - Searches bot's memory or the web for <phrase>.
+#/forget <item> - Removes the given statement from the bot's dynamic persistent memory.
+#/quiet - Puts the bot into quiet mode. It will only respond when addressed by name.
+#/noisy - Turns off quiet mode. The bot may now respond to any message.
+#/speech - Toggles speech mode, in which the bot will send its messages as voice clips.
+#/reset - Clears the bot's memory of the conversation. Useful for breaking output loops.
+#/echo <text> - Echoes back the given text. (I/O test.)
+#/greet - Causes the server to send a greeting. (Server responsiveness test.)
+#
+#NOTE: Please be polite and ethical, or you may be blocked."""
 
 # Override above help string if it's set in ai-config.hjson.
 if aiConf.helpString:

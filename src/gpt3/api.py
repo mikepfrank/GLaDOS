@@ -2495,6 +2495,22 @@ class ChatCompletion(Completion):
 
 		#try:
 
+		## Do some surgery on the message list & other parameters for the o1 models
+
+		if apiArgs['model'].startswith('o1'):	# For the o1 series models only
+			newmsgs = []
+			for msg in apiArgs['messages']:
+				if msg['role'] == 'system':
+					msg['role'] = 'user'
+					msg['name'] = 'BotServer'
+				newmsgs.append(msg)
+			apiArgs['messages'] = newmsgs
+			del apiArgs['tools']
+			del apiArgs['tool_choice']
+			apiArgs['max_completion_tokens'] = apiArgs['max_tokens']
+			del apiArgs['max_tokens']
+			apiArgs['temperature'] = 1
+
 		# New style chat completion call:
 		chatComplObj = await _client.chat.completions.create(**apiArgs)
 
@@ -3536,7 +3552,9 @@ def tiktokenCount(text:str=None, encoding:str='gpt2', model:str=None):
 
 	# If the model argument is provided, use it to get the encoding.
 
-	if model != None:
+	if model == 'o1-mini':
+		encodingObj = tiktoken.encoding_for_model('gpt-4o')
+	elif model != None:
 		encodingObj = tiktoken.encoding_for_model(model)
 	else:
 		encodingObj = tiktoken.get_encoding(encoding)
