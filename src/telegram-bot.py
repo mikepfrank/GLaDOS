@@ -1459,18 +1459,18 @@ class BotConversation:
 	# This method adds a message to the AI's persistent memory file.
 	# It also updates the persistent context string.
 
-	def add_memory(thisConv:BotConversation, new_memory:str) -> bool:
+	async def add_memory(thisConv:BotConversation, new_memory:str) -> bool:
 		"""Adds a new item to the AI's persistent memory."""
 
 		global MEMORIES
 		global globalPersistentData	# We declare this global so we can modify it.
 		global _anyMemories
 
-		thisConv.report_error("The ability to add new memories is temporarily disabled.")
+		await thisConv.report_error("The ability to add new memories is temporarily disabled.")
 		return False
 
 		if new_memory is None or new_memory == "" or new_memory == "\n":
-			thisConv.report_error("The text of the new memory was not provided.")
+			await thisConv.report_error("The text of the new memory was not provided.")
 			return False
 
 		# Make sure the new memory ends in a newline.
@@ -1478,7 +1478,7 @@ class BotConversation:
 			new_memory += '\n'
 
 		if _anyMemories and ('\n' + new_memory) in MEMORIES:
-			thisConv.report_error(f"Text [{new_memory[:-1]}] is already in memory.")
+			await thisConv.report_error(f"Text [{new_memory[:-1]}] is already in memory.")
 			return False
 
 		if not _anyMemories:
@@ -1793,7 +1793,7 @@ class BotConversation:
 	# This method converts the persistent context and the list of messages
 	# into the format of a 'messages' list as expected by the GPT-3 chat API.
 
-	def get_chat_messages(thisConv:BotConversation):
+	def get_chat_messages(thisConv:BotConversation, finalPrompt:bool=True):
 
 		"""Convert the persistent context and the list of messages into the 
 			format of a 'messages' list as expected by the GPT-3 chat API."""
@@ -1883,12 +1883,16 @@ class BotConversation:
 		chat_messages.append({
 			'role': CHAT_ROLE_SYSTEM,
 			'content': (f"{COMMAND_LIST_HEADER}"
+				"NOTE: Each command line must be sent in a Telegram message by itself.\n"
 				"  /pass - Refrain from responding to the last user message.\n"
 				"  /image <desc> - Generate an image with description <desc> and send it to the user.\n"
+				"  /view <filename> - Analyze the image in <filename> and return a text description.\n"
 				"  /remember <text> - Adds <text> to my persistent context data.\n"
 				"  /forget <text> - Removes <text> from my persistent context data.\n"
+				"  /search [memory|web] <query> - Search memory or the web for the search phrase <query>.\n"
 				"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n"
-				"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n")
+				"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n"
+			)
 
 		})
 
@@ -1946,55 +1950,64 @@ class BotConversation:
 					chat_messages = chat_messages[:-1]
 		#__/
 
-		# We'll add one more system message to the list of chat messages,
-		# to make sure it's clear to the AI that it is responding in the 
-		# role of the message sender whose 'role' matches our .bot_name
-		# attribute. We also repeat some other important instructions.
-		#
-		# (The back-end language model will be prompted to respond by
-		# something like "assistant\n", which is why we need to make sure
-		# it knows that it's responding as the named bot persona.)
+		# Should we add the final prompt to remind the AI what it's supposed to be doing?
+		if finalPrompt:
 
-		#response_prompt = f"Respond as {botName}. (If you want to include an " \
-		#	"image in your response, you must put the command ‘/image <desc>’ at the " \
-		#	"very start of your response.)"
-		#response_prompt = f"Respond as {botName}. (Remember you can use an available " \
-		#	"function if there is one that is appropriate.)"
+			# We'll add one more system message to the list of chat messages,
+			# to make sure it's clear to the AI that it is responding in the 
+			# role of the message sender whose 'role' matches our .bot_name
+			# attribute. We also repeat some other important instructions.
+			#
+			# (The back-end language model will be prompted to respond by
+			# something like "assistant\n", which is why we need to make sure
+			# it knows that it's responding as the named bot persona.)
 
-		#f"Your responses should begin with '{botName}>' to trigger the Telegram " \
-		#	"bot server to send the subsequent text to the chat as a message from your " \
-		#	"bot. You may include multiple such messages in your response, but each one " \
-		#	"should begin on a new line. " \
+			#response_prompt = f"Respond as {botName}. (If you want to include an " \
+			#	"image in your response, you must put the command ‘/image <desc>’ at the " \
+			#	"very start of your response.)"
+			#response_prompt = f"Respond as {botName}. (Remember you can use an available " \
+			#	"function if there is one that is appropriate.)"
 
-		response_prompt = (
-			"Respond below; use the same language that the user used most recently, if appropriate. "
-			#f"Your responses should begin with '{botName}>' to trigger the Telegram "
-			#"bot server to send the subsequent text to the chat as a message from your "
-			#"bot. You may include multiple such messages in your response, but each one "
-			#"should begin on a new line. "
-			"You may include multiple Telegram messages in your response, but each one "
-			f"must begin on a new line starting with '{botName}>'. "
-			#"(Or, alternatively to just sending messages, you can activate "
-			#"an available function and then call that function, if appropriate.)"
-			#"(Or, alternatively to just sending messages, you can call "
-			#"an available function, if appropriate.)"
-		)
+			#f"Your responses should begin with '{botName}>' to trigger the Telegram " \
+			#	"bot server to send the subsequent text to the chat as a message from your " \
+			#	"bot. You may include multiple such messages in your response, but each one " \
+			#	"should begin on a new line. " \
 
-		#"You can send additional Telegram "\
-		#"messages to follow up by starting each one with '\\n{botName}>'. "\
+			response_prompt = (
+				f"[{BOT_NAME}, this concludes the transcript of recent events in "
+				f"this Telegram chat. Please respond to {userTag} below; use the "
+				"same language that they used most recently, if appropriate. "
+				#f"Your responses should begin with '{botName}>' to trigger the Telegram "
+				#"bot server to send the subsequent text to the chat as a message from your "
+				#"bot. You may include multiple such messages in your response, but each one "
+				#"should begin on a new line. "
+				"You may include multiple Telegram messages in your response, but each one "
+				f"must begin on a new line starting with '{botName}>'. "
+				"(Or, alternatively to just sending messages, you can also send "
+				"command lines starting with '/' to the bot server, or record "
+				"private thoughts starting with \'*thinks*\'.)"
+				#"(Or, alternatively to just sending messages, you can call "
+				#"an available function, if appropriate.)"
+			)
 
-		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
-			# Only give this instruction in group chats:
-			response_prompt += " However, if the user is not addressing you, " \
-							   "type '/pass' to remain silent."
-		else:
-			response_prompt += " You may also send '/pass' to refrain from responding."
+			#"You can send additional Telegram "\
+			#"messages to follow up by starting each one with '\\n{botName}>'. "\
 
-		chat_messages.append({
-			'role': CHAT_ROLE_SYSTEM,
-			#'name': SYS_NAME,
-			'content': response_prompt
-		})
+			if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
+				# Only give this instruction in group chats:
+				response_prompt += " However, if the user is not addressing you, " \
+								   "type '/pass' to remain silent."
+			else:
+				response_prompt += " You may also send '/pass' to refrain from responding."
+			response_prompt += ']'
+
+			chat_messages.append({
+				'role': CHAT_ROLE_SYSTEM,
+				#'name': SYS_NAME,
+				'content': response_prompt
+			})
+
+		#__/ End if finalPrompt
 
 		return chat_messages
 	
@@ -2065,7 +2078,7 @@ class _UnknownCommandFilter(filters.BaseFilter):
 			return False
 
 		text = message.text
-		defined_commands = ['/start', '/help', '/image', '/remember', '/forget', '/reset', '/echo', '/greet']
+		defined_commands = ['/start', '/help', '/image', '/remember', '/forget', '/search', '/reset', '/echo', '/greet']
 		
 		if text is None:
 			return False
@@ -2462,7 +2475,7 @@ async def handle_image(update:Update, context:Context) -> None:
 
 	# We now just let the AI handle these requests, so it
 	# can warn the user if the requested content is inappropriate.
-	return await handle_message(update, context)
+	#return await handle_message(update, context)
 
 	### CODE BELOW IS OBSOLETE -- COMMENT OUT OR REMOVE
 
@@ -2684,8 +2697,9 @@ async def handle_delmem(update:Update, context:Context) -> None:
 		_logger.warning("In handle_delmem() with no message? Aborting.")
 		return
 
-	# Get the chat ID.
-	chat_id = message.chat.id
+	# Get the chat ID and user ID.
+	chat_id		= message.chat.id
+	cur_user_id = message.from_user.id
 
 	# Make sure the thread component is set to this application (for logging).
 	logmaster.setComponent(_appName)
@@ -2744,14 +2758,22 @@ async def handle_delmem(update:Update, context:Context) -> None:
 	rest = ' '.join(cmdWords[2:])
 	
 	if subcmd=='id':
-		_logger.normal(f"\tDeleting memory item with ID#{rest}...")
-		_deleteMemoryItem(item_id=rest)
-		CONF_TEXT = f"The memory item with item_id='{rest}' has been deleted."
+
+		_logger.normal(f"\tDeleting memory item with ID#{rest} for user ID {cur_user_id}...")
+
+		res = _deleteMemoryItem(item_id=rest, user_id=cur_user_id)
+		if res is None: res = 'Success'
+
+		CONF_TEXT = f"The memory item with item_id='{rest}' has been deleted.\n\tResult was: [{res}]"
 		
 	elif subcmd=='text':
-		_logger.normal(f"\tDeleting memory item with text=[rest]...")
-		_deleteMemoryItem(text=rest)
-		CONF_TEXT = f"The memory item with item_text='{rest}' has been deleted."
+
+		_logger.normal(f"\tDeleting memory item with text=[rest] for user ID {cur_user_id}...")
+
+		res = _deleteMemoryItem(text=rest, user_id=cur_user_id)
+		if res is None: res = 'Success'
+
+		CONF_TEXT = f"The memory item with item_text='{rest}' has been deleted.\n\tResult was: [{res}]"
 
 	# Also record the echo text in our conversation data structure.
 	await conversation.add_message(BotMessage(SYS_NAME, CONF_TEXT))
@@ -3066,9 +3088,9 @@ async def handle_remember(update:Update, context:Context) -> None:
 
 	# We now just let the AI handle these requests, so that it can
 	# set the 'private' and 'global' fields as appropriate.
-	return await handle_message(update, context)
-
+	#return await handle_message(update, context)
 	### CODE BELOW IS OBSOLETE
+	# (Or it would be, if the above return wasn't commented out right now.)
 
 	# Get the message, or edited message from the update.
 	(tgMsg, edited) = _get_update_msg(update)
@@ -3134,7 +3156,9 @@ async def handle_remember(update:Update, context:Context) -> None:
 	text = ' '.join(tgMsg.text.split(' ')[1:])
 
 	# Tell the conversation object to add the given message to the AI's persistent memory.
-	if not conversation.add_memory(text):
+	#	NOTE: This still uses the legacy memories.txt file?
+	#	ALSO: This method is currently disabled!
+	if not await conversation.add_memory(text):
 		errmsg = _lastError
 
 		# Generate an error-level report to include in the application log.
@@ -3172,7 +3196,7 @@ async def handle_forget(update:Update, context:Context) -> None:
 	
 	# We now just let the AI handle these requests, so that it can
 	# set the 'private' and 'global' fields as appropriate.
-	return await handle_message(update, context)
+	#return await handle_message(update, context)
 
 	### CODE BELOW IS OBSOLETE
 
@@ -3690,11 +3714,13 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		_logger.error("Null conversation object in handle_message()!!")
 
 	# Add the message just received to the conversation.
+	finalPrompt = None	# We don't know whether to include the final prompt.
 	if isNewMsg:
 		await conversation.add_message(BotMessage(user_name, text))
 		if got_image:
 			await conversation.add_message(BotMessage(SYS_NAME,
-				f"[NOTE: {BOT_NAME}, please use analyze_image() to inspect the photo attachment]"))
+				f"[NOTE: {BOT_NAME}, please use the /view command to inspect the photo attachment]"))
+			finalPrompt = False		# Don't include the final prompt.
 
 	# Get the current user object, stash it in convo temporarily.
 	# (This may be needed later if we decide to block the current user.)
@@ -3730,7 +3756,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 	# of the message processing to a different function that's specialized to use 
 	# OpenAI's new chat API.
 	if global_gptCore.isChat:
-		return await process_chat_message(update, context)
+		return await process_chat_message(update, context, finalPrompt)
 
 
 	## Also move the below code to this new function:
@@ -4301,7 +4327,7 @@ async def ai_forget(updateMsg:TgMsg, conversation:BotConversation,
 	_logger.normal(f"\nDeleting a memory item in chat #{chat_id}.")
 	result = _deleteMemoryItem(item_id=itemToDel, text=textToDel, user_id=cur_user_id)
 	# Check for errors.
-	if result is not None:
+	if result is not None and result is not 'Success':
 		return "ERROR: " + result
 
 	if itemToDel is not None:
@@ -5159,7 +5185,8 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> None:
+async def get_ai_response(update:Update, context:Context, finalPrompt:bool=True,
+						  oaiMsgList=None) -> None:
 
 	# NOTE: oaiMsgList should be supplied ONLY if there is a pre-existing
 	# message list which includes messages with role 'function_call' or
@@ -5202,7 +5229,7 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 	# If a message list wasn't specifically supplied, then
 	# derive it from the convo.
 	if oaiMsgList is None:
-		oaiMsgList = botConvo.get_chat_messages()
+		oaiMsgList = botConvo.get_chat_messages(finalPrompt)
 		usingRawMsgs = False	# Our input wasn't a raw messsage list.
 	else:
 		usingRawMsgs = True		# Our input *was* a raw message list.
@@ -5664,6 +5691,45 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 		# when issued by the AI.
 		await ai_forget(message, conversation, command_args)
 
+	# Check to see if the AI typed the '/forget' command.
+	elif command_name == 'search':
+		# This is a command to search memory or the web.
+		
+		if command_args.startswith('memory '):
+			query = command_args[len('memory '):]
+		
+			results = await ai_search(message, conversation, query)
+
+			# Add result string to the conversation.
+			await conversation.add_message(BotMessage(f"search_memory", f"Command result:\n{results}"))
+
+			# Let BotServer explain the sitch.
+			await conversation.add_message(BotMessage(SYS_NAME,
+				f"[{BOT_NAME}, you may now respond to the command results returned above.]"))
+
+			# Give the AI a chance to respond to the result.
+			await get_ai_response(update, context, finalPrompt=False)
+
+		elif command_args.startswith('web '):
+			query = command_args[len('web '):]
+
+			results = await ai_searchWeb(message, conversation, query)
+
+			# Add result string to the conversation.
+			await conversation.add_message(BotMessage(f"search_web", results))
+
+			await conversation.add_message(BotMessage(SYS_NAME,
+				f"{BOT_NAME}, you may now respond to the command results returned above."))
+
+			await get_ai_response(update, context, finalPrompt=False)
+
+		else:
+			_logger.warn(f"\nAI {BOT_NAME} entered a /search command without a legal subcommand in chat {chat_id}.")
+
+			# Send the user a diagnostic message.
+			diagMsg = f"Illegal /search subcommand [{command_args}]."
+			await _send_diagnostic(message, conversation, diagMsg, ignore=True)
+
 	elif command_name == 'block':
 		# Adds the current user (or a specified user) to the block list.
 
@@ -5691,13 +5757,12 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 		await ai_unblock(message, conversation, command_args)
 
 	elif command_name == 'image':
-		# This is a command to generate an image and send it to the user.
+		# This is an AI command to generate an image and send it to the user.
 		
 		_logger.normal(f"\nAI {BOT_NAME} entered an /image command in chat {chat_id}.")
 			
-		# This does all the work of handling the '/image' command
-		# when issued by the AI.
-		await ai_image(update, context, command_args)	# Use whole arglist as image description.
+		# This does all the work of handling the '/image' command when issued by the AI.
+		result = await ai_image(update, context, command_args)	# Use whole arglist as image description.
 			# NOTE: We're passing the entire update object here, as well
 			# as the context, because we need to be able to send a message
 			# to the user, and we can't do that with just the message object.
@@ -5705,8 +5770,38 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 		# NOTE: We could have passed remaining_text as the 4th argument (caption),
 		# but it's perhaps better to just send it as an ordinary text message.
 
+		# Add result string to the conversation.
+		await conversation.add_message(BotMessage('image', f"Command result:\n{result}"))
+
+		# Let BotServer explain the sitch.
+		await conversation.add_message(BotMessage(SYS_NAME,
+			f"[{BOT_NAME}, you may now respond to the command results returned above.]"))
+
+		# Give the AI a chance to respond to the result.
+		await get_ai_response(update, context, finalPrompt=False)
+
+	elif command_name == 'view':
+		# This is an AI command to use a vision system to generate a text description of an image.
+
+		_logger.normal(f"\nAI {BOT_NAME} entered a /view command in chat {chat_id}.")
+
+		# This does all the real work of handling a '/view' command issued by the AI.
+
+		filename = command_args
+		result = await ai_vision(update, context, filename)
+		
+		# Add result string to the conversation.
+		await conversation.add_message(BotMessage('view', f"Command result:\n{result}"))
+
+		# Let BotServer explain the sitch.
+		await conversation.add_message(BotMessage(SYS_NAME,
+			f"[{BOT_NAME}, you may now respond to the command results returned above.]"))
+
+		# Give the AI a chance to respond to the result.
+		await get_ai_response(update, context, finalPrompt=False)
+
 	elif command_name == 'pass':
-		# This is a command to generate null output.
+		# This is an AI command to generate null output.
 
 		_logger.normal(f"\nAI {BOT_NAME} entered a /pass command in chat {chat_id}.")
 			
@@ -5731,11 +5826,15 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 #DAILY_MESSAGE_LIMIT = 15
 DAILY_MESSAGE_LIMIT = 20
 
-async def process_chat_message(update:Update, context:Context) -> None:
+async def process_chat_message(update:Update, context:Context, finalPrompt:bool) -> None:
 
 	"""We dispatch to this function to process messages from the user if our
 		selected engine is for OpenAI's chat endpoint."""
 	
+	# Default finalPrompt to True.
+	if finalPrompt is None:
+		finalPrompt = True
+
 	# Get the message, or edited message from the update.
 	(message, edited) = _get_update_msg(update)
 
@@ -5788,7 +5887,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 	# rewritten so that it can also handle cases where the AI is responding from
 	# a result that's been returned from a function that it previously called.
 
-	result = await get_ai_response(update, context)
+	result = await get_ai_response(update, context, finalPrompt)
 
 	# Update record of how many user messages have been processed today in this context.
 	today = get_current_date()
@@ -6050,7 +6149,7 @@ async def process_function_call(
 	# present stack. The next time get_ai_response() is called at the start of
 	# normal message processing, the two views will be brought back in sync.
 
-	await get_ai_response(tgUpdate, tgContext, temp_chat_oaiMsgs)
+	await get_ai_response(tgUpdate, tgContext, oaiMsgList=temp_chat_oaiMsgs)
 		# Recursive call to get and process the AI's response to this
 		# *temporary* view of the message list.
 
@@ -6355,18 +6454,26 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 
 	else: # Response was not a command. Treat it normally.
 
-		# Just send our response to the user as a normal message.
-		await send_response(update, context, response_text)
+		if response_text.startswith('*thinks*') or \
+		   response_text.startswith('*thinking*'):
+			# Console logging for diagnostic purposes.
+			_logger.normal(f"\nSuppressing private thought [{response_text}] from being sent to chat {chat_id}.")
 
-	# One more thing to do here: If the AI's response ends with the string "(cont)" or "(cont.)"
-	# or "(more)" or "...", then we'll send a message to the user asking them to continue the 
-	# conversation.
-	if response_text.endswith("(cont)") or response_botMsg.text.endswith("(cont.)") or \
-	   response_text.endswith("(more)") or response_botMsg.text.endswith("..."):
+		else:
+			# Just send our response to the user as a normal Telegram message.
+			await send_response(update, context, response_text)
 
-		contTxt = "[If you want me to continue my response, type '/continue'.]"
-		await _reply_user(tgMsg, conversation, contTxt, ignore=True)
-	#__/
+			# One more thing to do here: If the AI's response ends with the string "(cont)" or "(cont.)"
+			# or "(more)" or "...", then we'll send a message to the user asking them to continue the 
+			# conversation.
+			if response_text.endswith("(cont)") or response_botMsg.text.endswith("(cont.)") or \
+			   response_text.endswith("(more)") or response_botMsg.text.endswith("..."):
+
+				contTxt = "[If you want me to continue my response, type '/continue'.]"
+				await _reply_user(tgMsg, conversation, contTxt, ignore=True)
+
+		#__/ End if *thinking* else ...
+	#__/ End if *command line* else ...
 
 	# Processed AI's response successfully.
 
@@ -6941,12 +7048,12 @@ def _deleteMemoryItem(item_id=None, text=None, user_id=None) -> str:	# Returns N
 
 	if user_id:
 
+		# Initialize isAuthorized as False
+		isAuthorized = False
+
 		try:
 
 			c = conn.cursor()
-
-			# Initialize isAuthorized as False
-			isAuthorized = False
 
 			if item_id is not None:
 				# Check for the item_id match
@@ -6971,6 +7078,10 @@ def _deleteMemoryItem(item_id=None, text=None, user_id=None) -> str:	# Returns N
 			errStr = "Current user is not authorized to delete that memory because it was not created for them."
 			return errStr
 
+	else:
+		errStr = "Required argument <user_id> was not provided."
+		return errStr
+
 	# Now actually do the deletion.
 	try:
 		# Create a cursor object
@@ -6978,11 +7089,13 @@ def _deleteMemoryItem(item_id=None, text=None, user_id=None) -> str:	# Returns N
 
 		if item_id is not None:
 			# Delete the item with the specified item ID
+			_logger.normal(f"\t\tIn _deleteMemoryItem(), actually deleting item {item_id} for user {user_id}...")
 			c.execute("DELETE FROM remembered_items WHERE itemID = ? AND userID = ?",
 					  (item_id, user_id))
 
 		elif text is not None:
 			# Delete the item with the specified item text
+			_logger.normal(f"\t\tIn _deleteMemoryItem(), actually deleting item [{text}] for user {user_id}...")
 			c.execute("DELETE FROM remembered_items WHERE itemText = ? AND userID = ?",
 					  (text,user_id))
 
@@ -6997,7 +7110,10 @@ def _deleteMemoryItem(item_id=None, text=None, user_id=None) -> str:	# Returns N
 		# Close the connection
 		conn.close()
 
-	return None		# Indicates success
+	return ''		# Indicates success
+
+#__/ End function _deleteMemoryItem().
+
 
 async def _ensure_convo_loaded(update:Update, context:Context) -> bool:
 
@@ -7289,13 +7405,17 @@ def _initPersistentContext() -> None:
 	globalPersistentContext = \
 		MESSAGE_DELIMITER + PERMANENT_CONTEXT_HEADER + \
 			globalPersistentData + \
-		MESSAGE_DELIMITER + COMMAND_LIST_HEADER + \
-			"  /pass - Refrain from responding to the last user message.\n" + \
-			"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
-			"  /remember <text> - Adds <text> to my persistent context data.\n" + \
-			"  /forget <text> - Removes <text> from my persistent context data.\n" + \
-			"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
-			"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n" + \
+		MESSAGE_DELIMITER + COMMAND_LIST_HEADER + (
+			"NOTE: Each command line must be sent in a Telegram message by itself.\n"
+			"  /pass - Refrain from responding to the last user message.\n"
+			"  /image <desc> - Generate an image with description <desc> and send it to the user.\n"
+			"  /view <filename> - Analyze the image in <filename> and return a text description.\n"
+			"  /remember <text> - Adds <text> to my persistent context data.\n"
+			"  /forget <text> - Removes <text> from my persistent context data.\n"
+			"  /search [memory|web] <query> - Search memory or the web for the search phrase <query>.\n"
+			"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n"
+			"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n"
+		) + \
 		MESSAGE_DELIMITER + RECENT_MESSAGES_HEADER
 
 	#__/
@@ -8894,12 +9014,12 @@ BOT_NAME = aiConf.botName		# This is the name of the bot.
 AI_VOICE = aiConf.personaVoice	# The name of the voice used for text-to-speech.
 
 # These are the section headers of the AI's persistent context.
-PERMANENT_CONTEXT_HEADER = " ~~~ Permanent context data: ~~~\n"
-PERSISTENT_MEMORY_HEADER = " ~~~ Important persistent memories: ~~~\n"
-DYNAMIC_MEMORY_HEADER	 = " ~~~ Contextually relevant memories: ~~~\n"
-RECENT_MESSAGES_HEADER	 = " ~~~ Recent Telegram messages: ~~~\n"
-FUNCTION_USAGE_HEADER	 = " ~~~ Usage summary for functions available to AI: ~~~\n"
-COMMAND_LIST_HEADER		 = f" ~~~ Commands available for {BOT_NAME} to use: ~~~\n"
+PERMANENT_CONTEXT_HEADER =  "<!-- ~~~ Permanent context data: ~~~ -->\n"
+PERSISTENT_MEMORY_HEADER =  "<!-- ~~~ Important persistent memories: ~~~ -->\n"
+DYNAMIC_MEMORY_HEADER	 =  "<!-- ~~~ Contextually relevant memories: ~~~ -->\n"
+FUNCTION_USAGE_HEADER	 =  "<!-- ~~~ Usage summary for functions available to AI: ~~~ -->\n"
+COMMAND_LIST_HEADER		 = f"<!-- ~~~ Commands available for {BOT_NAME} to use: ~~~ -->\n"
+RECENT_MESSAGES_HEADER	 =  "<!-- ~~~ Transcript of recent interaction history in this Telegram chat: ~~~ -->\n"
 
 
 # Old obsolete versions of headers.

@@ -514,8 +514,8 @@ _FUNCTION_MODELS = [
 	'gpt-4o',
 	'gpt-4o-2024-05-13',
 	'gpt-4o-2024-08-06',
-	'o1-mini',
-	'o1-mini-2024-09-12',
+	'o1-mini',				# The o1 models don't support functions yet, but hopefully eventually...
+	#'o1-mini-2024-09-12',
 ]
 def _has_functions(engine_name):
 	"""Return True if the named engine supports the functions interface."""
