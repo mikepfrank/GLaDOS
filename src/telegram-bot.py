@@ -6057,6 +6057,8 @@ async def _process_text_message(text_content:str, alt_imageAction_hook=None) -> 
 	
 	return message_content
 
+#__/ End function _process_text_message().
+
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	get_ai_response()							[public async function]

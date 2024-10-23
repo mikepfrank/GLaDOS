@@ -158,7 +158,8 @@
 		#model-version:					'claude-3-sonnet-20240229'	# Medium-sized version of Claude 3 model, initial release.
 		#model-version:					'claude-3-opus-20240229'	# Large version of Claude 3 model, initial release.
 
-		model-version:					'claude-3-5-sonnet-20240620'	# Medium-size version of Claude 3.5 model, initial release.
+		#model-version:					'claude-3-5-sonnet-20240620'	# Medium-size version of Claude 3.5 model, initial release.
+		model-version:					'claude-3-5-sonnet-20241022'	# Medium-size version of Claude 3.5 model, updated release.
 
 
 			#-----------------------------------------------------------------------

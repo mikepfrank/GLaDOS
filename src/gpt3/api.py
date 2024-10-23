@@ -496,6 +496,9 @@ _ENGINES = [
 	{'model-family': 'Claude-3.5',	'engine-name': 'claude-3-5-sonnet-20240620',	'field-size': 32_768,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 	#{'model-family': 'Claude-3.5',	'engine-name': 'claude-3-5-sonnet-20240620',	'field-size': 200_000,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 
+	{'model-family': 'Claude-3.5',	'engine-name': 'claude-3-5-sonnet-20241022',	'field-size': 32_768,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+	#{'model-family': 'Claude-3.5',	'engine-name': 'claude-3-5-sonnet-20241022',	'field-size': 200_000,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+
 ] # End _ENGINES constant module global data structure.
 
 # Set of models that support the functions interface.
