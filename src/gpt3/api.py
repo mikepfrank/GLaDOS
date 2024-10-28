@@ -496,7 +496,11 @@ _ENGINES = [
 	{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': True, 'encoding': 'p50k_base'},
 
 	#{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'}
-	{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b-instruct', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'}
+	#{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b-instruct', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'}
+
+		# Llama models served by Hyperbolic
+
+	{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/Meta-Llama-3.1-405B', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'}
 
 ] # End _ENGINES constant module global data structure.
 
@@ -525,7 +529,7 @@ _FUNCTION_MODELS = [
 	'gpt-4o-mini',
 	'gpt-4o-mini-2024-07-18',
 	#'meta-llama/llama-3.1-405b',
-	'meta-llama/llama-3.1-405b-instruct',
+	#'meta-llama/llama-3.1-405b-instruct',
 ]
 def _has_functions(engine_name):
 	"""Return True if the named engine supports the functions interface."""
@@ -1385,10 +1389,16 @@ class Completion:
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	def __init__(inst, *args, **kwargs):
+	def __init__(newCompletion:Completion, *args, **kwargs):
+		return
 		
+	@classmethod
+	async def create(cls, *args, **kwargs):
+
 		"""Instance initializer for class Completion."""
 		
+		newComplObj = cls(*args, **kwargs)
+
 			# These are things we are going to try to find in our arguments,
 			# or generate ourselves.
 		
@@ -1436,8 +1446,8 @@ class Completion:
 		
 			# Remember the prompt and the core that we found, for later use.
 		
-		inst.prompt = prompt
-		inst.core = core
+		newComplObj.prompt = prompt
+		newComplObj.core = core
 		
 			# If we have no completion struct yet, we have to create it by 
 			# calling the actual API.  Use an internal instance method for 
@@ -1449,12 +1459,14 @@ class Completion:
 			apiArgs = core.genArgs(prompt)
 			
 				# This actually calls the API, with any needed retries.
-			complStruct = inst._createComplStruct(apiArgs)
+			complStruct = await newComplObj._createComplStruct(apiArgs)
 
 		#__/ End if we will generate the completion structure.
 		
-		inst.complStruct = complStruct		# Remember the completion structure.
+		newComplObj.complStruct = complStruct		# Remember the completion structure.
 	
+		return newComplObj
+
 	#__/ End of class gpt3.api.Completion's instance initializer.
 	
 
@@ -2948,13 +2960,13 @@ class GPT3Core:
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	def genCompletion(self, prompt=None):
+	async def genCompletion(self, prompt=None):
 	
 		"""With automatic exponential backoff, query the server
 			for a completion object for the given prompt using the
 			connection's current API configuration."""
 		
-		return Completion(self, prompt)
+		return await Completion.create(self, prompt)
 			# Calls the Completion constructor with the supplied prompt. This
 			# constructor does all the real work of calling the API.
 		
@@ -2972,9 +2984,9 @@ class GPT3Core:
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	
-	def genString(self, prompt) -> str:
+	async def genString(self, prompt) -> str:
 		"""Generate a single completion string for the given prompt."""
-		resultCompletion = self.genCompletion(prompt)
+		resultCompletion = await self.genCompletion(prompt)
 		text = resultCompletion.text
 		_logger.debug("[GPT-3/API] Server returned result string: [" + text + ']')
 		return text
@@ -3488,7 +3500,7 @@ class GPT3ChatCore(GPT3Core):
 # tokenizer/tokenizer.py module, or the tiktokenCount() function, which is
 # defined below (the latter is the recommended function to use now).
 
-def countTokens(text:str=None):
+async def countTokens(text:str=None):
 
 	"""Counts tokens in the given text using the online Ada model (pretty cheap)."""
 
@@ -3504,7 +3516,7 @@ def countTokens(text:str=None):
 				# Note we use the 'ada' engine because it is cheapest ($0.80/1M tokens).
 
 			# Please note this is not free! It uses probably 2*text of quota.
-		inputComplObj = _theTokenCounterCore.genCompletion(text)
+		inputComplObj = await _theTokenCounterCore.genCompletion(text)
 		return inputComplObj.nTokens
 
 #__/ End module public function countTokens().
@@ -3591,7 +3603,7 @@ def tiktokenCount(text:str=None, encoding:str='gpt2', model:str=None):
 
 	if model != None:
 		if model.startswith('meta'):
-			# This is a hack. When going through OpenRouter, we throw up
+			# This is a hack. When using Meta's Llama models, we throw up
 			# our hands about the tokenizer and don't care. Default to this.
 			encodingObj = tiktoken.encoding_for_model('gpt-4o')
 		else:

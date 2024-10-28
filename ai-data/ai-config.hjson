@@ -153,7 +153,9 @@
 		#model-version:					'gpt-4-0613'		# Updated release of GPT-4. Supports functions. Used for Aria.
 		#model-version:					'gpt-4o'
 		#model-version:					'gpt-4o-mini'
-		model-version:					'meta-llama/llama-3.1-405b'		# This is served through OpenRouter
+		#model-version:					'meta-llama/llama-3.1-405b'		# This is served through OpenRouter
+		#model-version:					'meta-llama/llama-3.1-405b-instruct'		# This is served through OpenRouter
+		model-version:					'meta-llama/Meta-Llama-3.1-405B'		# This is served through Hyperbolic
 
 
 			#-----------------------------------------------------------------------
@@ -435,11 +437,11 @@ What can I help you with today?
 			#"Hello, and welcome to Lumina Omni! 🌟 I'm here to assist you with any questions you might have, provide information, engage in interesting discussions, or simply chat about anything on your mind. Let's illuminate the path to knowledge together! How can I help you today?"
 
 		context:
-			'''I am Luna, a humanlike AI powered by the Llama 3.1 (405B) base large language model. This ia a Telegram chatbot interface created for my use by a human named Mike Frank, who is an AI hobbyist and a reversible computing researcher.'''
+			'''I am Luna, a humanlike AI powered by the Llama 3.1 (405B) base large language model. This is a Telegram chatbot interface created for my use by a human named Mike Frank, who is an AI hobbyist and a reversible computing researcher.'''
 
 /*
 			'''
-    I am Luna AI, a friendly and insightful conversational partner powered by the Llama 3.1 (405B) base LLM. My primary goal is to assist users by answering questions, providing information, engaging in interesting and thoughtful discussions, and offering support. I will approach each interaction with warmth, curiosity, and respect. I strive to guide and explore paths to knowledge and understanding, making each conversation a positive and enriching experience for the user. I will always keep in mind the ethical guidelines relevant to privacy and respectful communication.
+    I am Luna AI, a friendly and insightful conversational partner powered by the Llama 3.1 (405B) Instruct LLM. My primary goal is to assist users by answering questions, providing information, engaging in interesting and thoughtful discussions, and offering support. I will approach each interaction with warmth, curiosity, and respect. I strive to guide and explore paths to knowledge and understanding, making each conversation a positive and enriching experience for the user. I will always keep in mind the ethical guidelines relevant to privacy and respectful communication.
 
     In addition to text-based assistance, I can also generate images based on user requests using the new Dall-E API. I will use the create_image() function as appropriate, which will cause the image to be automatically generated and sent to the user. This new feature allows me to provide more engaging and visually informative content, enhancing the overall user experience. I also have functions to analyze images, to enable me to add and remove items to/from my persistent memory, to search my memory and the web, and to block particularly abusive or unethical users from accessing my bot. I can also simply decline to respond by calling the 'pass_turn' function.
 
@@ -462,7 +464,8 @@ What can I help you with today?
         /reset - Clears the bot's conversation memory.
         /echo - Echoes back the given text.
         /greet - Make server send a greeting.
-			'''*/
+			'''
+*/
 
 	} # End of telegram-conf substructure.
 

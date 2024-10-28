@@ -428,12 +428,16 @@ ASYNC = True
 # Set this global to non-None to utilize an alternate API provider. Default is OpenAI.
 global  PROVIDER
 # PROVIDER = None
-PROVIDER = 'OpenRouter'
+# PROVIDER = 'OpenRouter'
+PROVIDER = 'Hyperbolic'
 
 # Depending on the API provider, set the base URL and API key appropriately.
 if PROVIDER == 'OpenRouter':
 	BASE_URL = "https://openrouter.ai/api/v1"
 	API_KEY = os.getenv("OPENROUTER_API_KEY")
+elif PROVIDER == 'Hyperbolic':
+	BASE_URL = "https://api.hyperbolic.xyz/v1"
+	API_KEY = os.getenv("HYPERBOLIC_API_KEY")
 
 # Construct the appropriate OpenAI-compatible client object, depending on
 # the ASYNC and PROVIDER settings.
@@ -3809,8 +3813,11 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 
 			try:
 				# Get the response from GPT-3, as a Completion object.
-				completion = global_gptCore.genCompletion(context_string)
+				completion = await global_gptCore.genCompletion(context_string)
 				response_text = completion.text
+
+				_logger.debug("Got completion text: [{response_text}]")
+
 				break
 
 			except PromptTooLargeException as e:				# Imported from gpt3.api module.
@@ -7292,6 +7299,8 @@ def _initPersistentContext() -> None:
 		MESSAGE_DELIMITER + PERMANENT_CONTEXT_HEADER + \
 			globalPersistentData + \
 		MESSAGE_DELIMITER + COMMAND_LIST_HEADER + \
+			"To invoke a command, make sure that the command line is the very first line of your message.\n" + \
+			"\n" + \
 			"  /pass - Refrain from responding to the last user message.\n" + \
 			"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
 			"  /remember <text> - Adds <text> to my persistent context data.\n" + \
@@ -8762,11 +8771,11 @@ def _unblockUserByID(userID:int) -> bool:
 
 #MESSAGE_DELIMITER = '🤍'	# A Unicode character. Gladys selected the white heart emoji.
 	# We're temporarily trying a different delimiter that's less likely to appear in message text:
-#MESSAGE_DELIMITER = chr(ascii.RS)	# (Gladys agreed to try this.)
+MESSAGE_DELIMITER = chr(ascii.RS)	# (Gladys agreed to try this.)
 	# A control character.	(ASCII RS = 0x1E, record separator.)
 #MESSAGE_DELIMITER = chr(ascii.ETX)	# End-of-text control character.
 #MESSAGE_DELIMITER = chr(ascii.ETB)	# End-of-transmission-block control character.
-MESSAGE_DELIMITER = ""				# No delimiter at all!
+#MESSAGE_DELIMITER = ""				# No delimiter at all!
 	# ^ Trying this in desperation to hopefully get rid of API errors.
 	# NOTE: I think this was unnecessary.
 
@@ -8799,7 +8808,8 @@ PASS_TURN_RESULT = "Success: Noted that the AI is not responding to the last use
 
 # Configure the stop sequence appropriate for this application.
 #stop_seq = MESSAGE_DELIMITER	# This is appropriate given the RS delimiter.
-#stop_seq = ['\n' + MESSAGE_DELIMITER]	# Needed if delimiter might be in text.
+
+stop_seq = ['\n' + MESSAGE_DELIMITER]	# Needed if delimiter might be in text.
 	# NOTE: The stop parameter is used to tell the API to stop generating 
 	# tokens when it encounters the specified string(s). We set it to stop 
 	# when it encounters the message delimiter string at the start of a new 
@@ -8897,7 +8907,7 @@ PERSISTENT_MEMORY_HEADER = " ~~~ Important persistent memories: ~~~\n"
 DYNAMIC_MEMORY_HEADER	 = " ~~~ Contextually relevant memories: ~~~\n"
 RECENT_MESSAGES_HEADER	 = " ~~~ Recent Telegram messages: ~~~\n"
 FUNCTION_USAGE_HEADER	 = " ~~~ Usage summary for functions available to AI: ~~~\n"
-COMMAND_LIST_HEADER		 = f" ~~~ Commands available for {BOT_NAME} to use: ~~~\n"
+COMMAND_LIST_HEADER		 = f" ~~~ Commands available for {BOT_NAME} AI to use: ~~~\n"
 
 
 # Old obsolete versions of headers.
@@ -9558,8 +9568,8 @@ _initPersistentContext()	# Call the function for this defined earlier.
 
 global_gptCore = createCoreConnection(ENGINE_NAME, client=_oai_client,
 	maxTokens=globalMaxRetToks, temperature=temperature, presPen=presPen,
-	freqPen=freqPen)
-	#stop=stop_seq)
+	freqPen=freqPen, stop=stop_seq)
+					#   ^^^ It's important to set a stop sequence for base models.
 
 	# NOTE: The presence penalty and frequency penalty parameters are here 
 	# to try to prevent long outputs from becoming repetitive. But too-large
@@ -9578,7 +9588,7 @@ MODEL_FAMILY = global_gptCore.modelFamily
 
 	# This is the default help string if a custom one is not set.
 HELP_STRING=f"""
-{BOT_NAME} bot powered by {MODEL_FAMILY}/{ENGINE_NAME}. NOTE: {BOT_NAME} can now both understand and generate voice clips and images!
+{BOT_NAME} bot powered by {MODEL_FAMILY} ({ENGINE_NAME}). NOTE: {BOT_NAME} can now both understand and generate voice clips and images!
 
 Available user commands:
 /start - Starts the bot, if not already started; also reloads conversation history, if any.
