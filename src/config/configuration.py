@@ -1392,13 +1392,30 @@ class	TheAIPersonaConfig:
 		else:
 			theAIConfig.startMsg = None	# No default value provided in config file.
 
-		if 'context' in telegramConf:
+		# New feature: If 'context-file' is specified,
+		# get the context string from it instead of 'context'.
+
+		if 'context-file' in telegramConf:
+			contextFile = telegramConf['context-file']
+			contextFilePath = path.join(_AI_DATADIR, contextFile)
+			with open(contextFilePath, 'r') as _file:
+				context = _file.read()
+
+			# Make sure context string ends in a newline.
+			if not context.endswith('\n'):
+				context += '\n'
+			theAIConfig.context = context
+
+			_logger.normal(f"    [Config/AI]     AI config: The AI persona's Telegram context data was read from [{contextFilePath}].")
+
+		elif 'context' in telegramConf:
 			context = telegramConf['context']
 			# Make sure context string ends in a newline.
 			if not context.endswith('\n'):
 				context += '\n'
 			theAIConfig.context = context
 			_logger.normal(f"    [Config/AI]     AI config: The AI persona's Telegram context data is [{context.strip()}].")
+
 		else:
 			theAIConfig.context = None	# No default value provided in config file.
 

@@ -740,10 +740,12 @@ def _anthropize(msgDict):
 		looks_like_a_message = content.startswith('<message')
 		looks_like_a_thought = content.startswith('<thought')
 		looks_like_a_funcall = content.startswith('<function_calls>')
+		looks_like_a_rawresp = content.startswith('<raw_response>')
 
 		ok = looks_like_a_message \
 			or looks_like_a_thought \
-			or looks_like_a_funcall
+			or looks_like_a_funcall \
+			or looks_like_a_rawresp
 
 		# If doesn't look OK at a glance, then we wrap it so it
 		# appears to be a normal formatted message, or a thought.
@@ -2914,9 +2916,9 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 			ann_text = ann_file.read().strip()
 			msgStr = f"ANNOUNCEMENT: {ann_text}"
 			conversation.add_message(BotMessage(SYS_NAME, msgStr))
-			fullMsgStr = f"[SYSTEM {msgStr}]"
+			fullMsgStr = f"\[SYSTEM {msgStr}\]"
 			_logger.info(f"Sending user {user_name} system announcement: {fullMsgStr}")
-			await _reply_user(tgMessage, conversation, fullMsgStr, ignore=True)
+			await _reply_user(tgMessage, conversation, fullMsgStr, ignore=True, markup=True)
 
 #__/ End handle_start() function definition.
 
@@ -7494,7 +7496,7 @@ async def process_raw_response(
 		return		# This means the bot is simply not responding to this particular message.
 	
 	# Generate a debug-level log message to indicate that we're starting a new response.
-	_logger.debug('='*80 + "\nCreating new ordinary (non-function-call) response from "
+	_logger.debug('='*80 + "\nProcessing new ordinary (non-function-call) response from "
 				  f"{botConvo.bot_name} with text:\n[{response_text}].")
 
 	# At this point, according to our new protocol for allowing the AI to send multiple
@@ -7751,83 +7753,125 @@ def _parse_response(text_response:str, verbose=True):
 
 			```xml
 			<message sender="Claude">Message to send to the user.</message>
-			<thought>Private internal monologue by the AI...</thought>
+			<thought origin="Claude">Private internal monologue by the AI...</thought>
 			```
 
 		If not, the entire response is wrapped in the
-		`<message sender="Claude">` form. The return value is a pair
+		`<message sender="Claude">` form. The return value is a triple
 
-			`properly_formatted, elements`
+			`properly_formatted, elements, error_msg`
 
 		where `properly_formatted` is a boolean indicating whether the
 		original response was properly formatted, and `elements` is a
-		list of XML elements making up the response.
+		list of XML elements making up the response. If the response
+		was not properly_formatted, error_msg shows the error.
 	"""
 
 	properly_formatted = True
 	elements = []
+	error_msg = None
 
 	try:
 		root = ET.fromstring(f'<response>{text_response}</response>')
 
-		text_before_1st_subelement = root.text.strip() if root.text else None
+		# If there's any text before the first subelement, wrap it in a message element.
 
-		# If there's any text before the first subelement, that's no good.
+		text_before_1st_subelement = root.text.strip() if root.text else None
 		if text_before_1st_subelement:
+
+			elements.append(_text_to_xmlmsg(text_before_1st_subelement))
+
+			#if verbose:
+			#	_logger.error(f"NON-EMPTY TEXT [{text_before_1st_subelement:20}...] FOUND BEFORE FIRST SUB-ELEMENT.")
+			#properly_formatted = False
+
+		i = 0
+		for child in root:
+
+			i += 1
+
+			# If it's a tag we don't recognize; this is no good.
+			# We throw up our hands and declare a parsing filure.
+			if child.tag not in ['message', 'thought', 'raw_response']:
+				error_msg = f"UNRECOGNIZED SUB-ELEMENT TAG {child.tag}"
+				if verbose:
+					_logger.error(error_msg)
+				properly_formatted = False
+				break
+
+			if child.tag == 'raw_response':
+				error_msg = "RAW RESPONSE MAY NOT INCLUDE A <raw_response> ELEMENT"
+				if verbose:
+					_logger.error(error_msg)
+				properly_formatted = False
+				break
+
+			elements.append(child)
+
+			# If there's any text after the subelement, wrap it in a message element.
+
+			text_after_this_subelement = child.tail.strip() if child.tail else None
+			if text_after_this_subelement:
+
+				elements.append(_text_to_xmlmsg(text_after_this_subelement))
+
+				#if verbose:
+				#	_logger.error(f"NON-EMPTY TEXT [{text_before_1st_subelement:20}...] FOUND AFTER #{i} SUB-ELEMENT.")
+				#properly_formatted = False
+				#break
+
+		#__/ End loop through child elements.
+
+		# Finally, if we get here and no subelements were found, that's no good.
+		# (This shouldn't happen if we already made sure text_response was non-
+		# empty earlier, but just in case...)
+
+		if not elements:
+			error_msg = f"NO SUB-ELEMENTS FOUND IN RESPONSE"
 			if verbose:
-				_logger.error(f"NON-EMPTY TEXT [{text_before_1st_subelement:20}...] FOUND BEFORE FIRST SUB-ELEMENT.")
+				_logger.error(error_msg)
 			properly_formatted = False
 
-		else:
-		
-			i = 0
-			for child in root:
-
-				i += 1
-
-				# If it's a tag we don't recognize; this is no good.
-				if child.tag not in ['message', 'thought']:
-					if verbose:
-						_logger.error(f"UNRECOGNIZED SUB-ELEMENT TAG {child.tag}")
-					properly_formatted = False
-					break
-
-				# If there's any text after the subelement, that's no good either.
-				text_after_this_subelement = child.tail.strip() if child.tail else None
-				if text_after_this_subelement:
-					if verbose:
-						_logger.error(f"NON-EMPTY TEXT [{text_before_1st_subelement:20}...] FOUND AFTER #{i} SUB-ELEMENT.")
-					properly_formatted = False
-					break
-
-				elements.append(child)
-
-			#__/ End loop through child elements.
-
-			# Finally, if we get here and no subelements were found, that's no good.
-			# (This shouldn't happen if we already made sure text_response was non-
-			# empty earlier, but just in case...)
-
-			if not elements:
-				if verbose:
-					_logger.error(f"NO SUB-ELEMENTS FOUND IN RESPONSE")
-				properly_formatted = False
-
-		#__/ End if text before 1st sub-element ... else ...
-
 	except ET.ParseError as e:
+		error_msg = f"ELEMENT TREE PARSING ERROR [{e}] IN RESPONSE"
 		if verbose:
-			_logger.error(f"ELEMENT TREE PARSING ERROR [{e}] IN RESPONSE")
+			_logger.error(error_msg)
 		properly_formatted = False
 
 	if not properly_formatted:
-		# Handle unadorned blocks of text as normal messages
-		elements = [ET.Element('message', {'sender': 'Claude'})]
-		elements[0].text = text_response.strip()
+		# Note we unescape any HTML entities inside to increase chance of human readability.
+		elements = [_text_to_xmlmsg(text_response, unescape=True)]
 
-	return properly_formatted, elements
+	return properly_formatted, elements, error_msg
 
 #__/ End private function _parse_response().
+
+
+import html
+
+def _text_to_xmlmsg(text:str, unescape=False, sender=None):
+
+	"""Convert a text string to an XML-style 'message' element.
+		if unescape=True, then we assume that the text could include
+		HTML entities which need to be unescaped for readability."""
+
+	if not sender:
+		sender = BOT_NAME
+
+	elem = ET.Element('message', {'sender': sender})
+
+	# Unescape HTML entities, if needed.
+	if unescape:
+		text = html.unescape(text)
+
+	# Standardize the whitespace format (begin/end with newline).
+	text = f"\n{text.strip()}\n"
+
+	# Set the element text (this redoes escapes as needed).
+	elem.text = text
+
+	return elem
+#__/
 
 
 # Function to extract all text, recursively, within an element tree.
@@ -7934,9 +7978,44 @@ async def process_text_response(
 
 	if isinstance(_main_client, Anthropic):
 		
-		properly_formatted, elements = _parse_response(text_response)
+		properly_formatted, elements, error_msg = _parse_response(text_response)
 
 		_logger.normal(f"Was text response properly formatted? --> {properly_formatted}")
+
+		# If the response was not properly formatted, we publicly shame the AI.
+		if not properly_formatted:
+
+			# Compose an error message
+			errmsg = (f"{botConvo.bot_name}, your last response was "
+					  "not properly formatted. The error message was: "
+					  f"[{error_msg}]. Your raw response and this error "
+					  "message are being sent to the Telegram chat.")
+			
+			raw_elem = ET.Element('raw_response', {'from': botConvo.bot_name})
+			raw_elem.text = text_response
+			wrapped_txt = ET.tostring(raw_elem).decode('utf-8')
+
+			# Show the AI its raw response.
+			botConvo.add_message(BotMessage(botConvo.bot_name, wrapped_txt))
+
+			# Show the chat an unescaped version of the raw response, to
+			# hopefully improve the chances that it will be human-readable.
+			await _reply_user(tgMsg, botConvo, html.unescape(text_response))
+
+			# Report the error to the console, to the AI, & to the user.
+			await _report_error(botConvo, tgMsg, errmsg)
+
+			return
+
+			## We used to give the AI a chance to retry, but that's utterly hopeless.
+			#
+			#botConvo.add_message(BotMessage(SYS_NAME, errmsg))
+			#
+			#await get_ai_response(tgUpdate, tgContext, oaiMsgList=oaiMsgs)
+			#return 
+
+		#__/
+	
 		_logger.normal(f"\tThere were {len(elements)} elements in the response.")
 
 		# Go through all the elements in the response, processing them individually.
@@ -7945,7 +8024,7 @@ async def process_text_response(
 			if element.tag == 'thought':	# Got an internal monologue (thought) message.
 				
 				# Extract the content of the thought (sans leading/trailing whitespace).
-				thought_content = element.text.strip()
+				thought_content = _element_text(element).strip()
 
 				# Skip empty thoughts; no need to archive them.
 				if thought_content == "": continue
@@ -7979,7 +8058,7 @@ async def process_text_response(
 
 				tag		= element.tag
 				sender	= element.get('sender')
-				text	= element.text
+				text	= _element_text(element)
 
 				text_str = text or "None"
 

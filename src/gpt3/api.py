@@ -477,8 +477,9 @@ _ENGINES = [
 
 		# Claude 3 models.
 
+	{'model-family': 'Claude-3',	'engine-name': 'claude-3-haiku-20240307',	'field-size': 12_288,	'prompt-price': 0.25e-3,	'price': 1.25e-3,	'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 	#{'model-family': 'Claude-3',	'engine-name': 'claude-3-haiku-20240307',	'field-size': 16_384,	'prompt-price': 0.25e-3,	'price': 1.25e-3,	'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
-	{'model-family': 'Claude-3',	'engine-name': 'claude-3-haiku-20240307',	'field-size': 24_576,	'prompt-price': 0.25e-3,	'price': 1.25e-3,	'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+	#{'model-family': 'Claude-3',	'engine-name': 'claude-3-haiku-20240307',	'field-size': 24_576,	'prompt-price': 0.25e-3,	'price': 1.25e-3,	'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 	#{'model-family': 'Claude-3',	'engine-name': 'claude-3-haiku-20240307',	'field-size': 32_768,	'prompt-price': 0.25e-3,	'price': 1.25e-3,	'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 	#{'model-family': 'Claude-3',	'engine-name': 'claude-3-haiku-20240307',	'field-size': 200_000,	'prompt-price': 0.25e-3,	'price': 1.25e-3,	'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 
@@ -1255,7 +1256,7 @@ class PromptTooLargeException(Exception):
 		e.byHowMuch 	= byHowMuch
 
 		# Generate a human-readable error message.
-		msg = (f"GPT-3 API prompt string is {promptToks} tokens," +
+		msg = (f"LLM API prompt string is {promptToks} tokens," +
 			   f" max is {promptToks}, too large by {byHowMuch}.")
 
 		super(PromptTooLargeException, e).__init__(msg)
@@ -2517,7 +2518,9 @@ class ChatCompletion(Completion):
 							  f"maximum of {effMax}. Requesting "
 							  "message list shrink.")
 
-				e = PromptTooLargeException(_inputLength, effMax)
+				#e = PromptTooLargeException(_inputLength, effMax)
+				e = PromptTooLargeException(estInputLen, effMax)
+
 				raise e		# Complain to our caller hierarchy.
 
 			#__/ End if too little space left.
@@ -2587,7 +2590,7 @@ class ChatCompletion(Completion):
 			prettyArgs = pformat(apiArgs)
 			_logger.debug("Calling anthropicClient.messages.create() with these keyword args:\n" + prettyArgs)
 
-			_logger.normal("\nDoing last-minute scan for embedded image content:")
+			_logger.normal(f"\n[Anthropic API] Doing last-minute scan for embedded image content in {len(messages)}-message list:")
 
 			n_images = 0
 
