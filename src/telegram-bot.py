@@ -3707,7 +3707,8 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		await conversation.add_message(BotMessage(user_name, text))
 		if got_image:
 			await conversation.add_message(BotMessage(SYS_NAME,
-				f"[NOTE: {BOT_NAME}, please use analyze_image() to inspect the photo attachment]"))
+				#f"[NOTE: {BOT_NAME}, please use analyze_image() to inspect the photo attachment]"))
+				f"[NOTE: {BOT_NAME}, please inform the user that image input isn't yet implemented."))
 
 	# Get the current user object, stash it in convo temporarily.
 	# (This may be needed later if we decide to block the current user.)
@@ -7276,6 +7277,11 @@ def _initBotDB():
 	# based on the PERSISTENT_DATA string. We'll call it whenever the
 	# PERSISTENT_DATA string changes, which will happen when we read the
 	# AI's persistent memory file, or when a '/remember' command is issued.
+	#
+	# NOTE: This all needs to be reorganized, since the
+	# context-sensitive memory list potentially changes with each new
+	# user message sent in each chat... So it's no longer persistent,
+	# or global.
 	
 def _initPersistentContext() -> None:
 
@@ -7298,8 +7304,9 @@ def _initPersistentContext() -> None:
 	globalPersistentContext = \
 		MESSAGE_DELIMITER + PERMANENT_CONTEXT_HEADER + \
 			globalPersistentData + \
-		MESSAGE_DELIMITER + COMMAND_LIST_HEADER + \
-			"To invoke a command, make sure that the command line is the very first line of your message.\n" + \
+		MESSAGE_DELIMITER + COMMAND_LIST_HEADER + "\n" + \
+			f"NOTE: {BOT_NAME}, if you want to invoke a command, you should please " + \
+			"make sure that the command line is the very first line of your message.\n" + \
 			"\n" + \
 			"  /pass - Refrain from responding to the last user message.\n" + \
 			"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
@@ -7307,6 +7314,7 @@ def _initPersistentContext() -> None:
 			"  /forget <text> - Removes <text> from my persistent context data.\n" + \
 			"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
 			"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n" + \
+			"\n" + \
 		MESSAGE_DELIMITER + RECENT_MESSAGES_HEADER
 
 	#__/
@@ -8909,10 +8917,6 @@ RECENT_MESSAGES_HEADER	 = " ~~~ Recent Telegram messages: ~~~\n"
 FUNCTION_USAGE_HEADER	 = " ~~~ Usage summary for functions available to AI: ~~~\n"
 COMMAND_LIST_HEADER		 = f" ~~~ Commands available for {BOT_NAME} AI to use: ~~~\n"
 
-
-# Old obsolete versions of headers.
-#PERSISTENT_MEMORY_HEADER = " ~~~ Dynamically added persistent memories: ~~~\n"
-
 # Retrieve the bot's startup message from the AI persona's configuration.
 START_MESSAGE = aiConf.startMsg
 
@@ -9587,8 +9591,13 @@ global_gptCore = createCoreConnection(ENGINE_NAME, client=_oai_client,
 MODEL_FAMILY = global_gptCore.modelFamily
 
 	# This is the default help string if a custom one is not set.
-HELP_STRING=f"""
-{BOT_NAME} bot powered by {MODEL_FAMILY} ({ENGINE_NAME}). NOTE: {BOT_NAME} can now both understand and generate voice clips and images!
+
+HELP_STRING = f"{BOT_NAME} bot powered by {MODEL_FAMILY} ({ENGINE_NAME}"
+if PROVIDER:
+	HELP_STRING += f", served by {PROVIDER}"
+HELP_STRING += ")."
+#HELP_STRING += f"NOTE: {BOT_NAME} can now both understand and generate voice clips and images!"
+HELP_STRING += """
 
 Available user commands:
 /start - Starts the bot, if not already started; also reloads conversation history, if any.
