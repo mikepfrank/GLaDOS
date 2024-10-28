@@ -491,8 +491,12 @@ _ENGINES = [
 	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-mini-2024-07-18', 'field-size': 128_000, 'prompt-price': 0.00015, 'price': 0.0006, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 
 		# Llama models (under OpenRouter)
-	{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'}
 
+	#{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': True, 'encoding': 'p50k_base'}
+	{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': True, 'encoding': 'p50k_base'},
+
+	#{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'}
+	{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b-instruct', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'}
 
 ] # End _ENGINES constant module global data structure.
 
@@ -520,7 +524,8 @@ _FUNCTION_MODELS = [
 	'gpt-4o-2024-05-13',
 	'gpt-4o-mini',
 	'gpt-4o-mini-2024-07-18',
-	'',
+	#'meta-llama/llama-3.1-405b',
+	'meta-llama/llama-3.1-405b-instruct',
 ]
 def _has_functions(engine_name):
 	"""Return True if the named engine supports the functions interface."""
@@ -926,7 +931,10 @@ class GPT3APIConfig:
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	def __init__(inst, 
-					engineId:str=DEF_ENGINE,	maxTokens:int=DEF_TOKENS,	# API's default value for maxTokens is 16 (if not set here).
+					engineId:str=DEF_ENGINE,
+				 	client=None,				# API client object, if not our default.
+				 
+				 	maxTokens:int=DEF_TOKENS,	# API's default value for maxTokens is 16 (if not set here).
 					temperature:float=DEF_TEMP, topP:float=None, 	# API's default temperature would be 1 (if not set here).
 					nCompletions:int=None,		stream:bool=None,	# Defaults used to be: nCompletions=1, stream=False. (API defaults anyway.)
 					logProbs:int=None,			echo:bool=False,	# I believe these values are the API default values anyway.
@@ -937,7 +945,13 @@ class GPT3APIConfig:
 		"""Initialize a GPT-3 API configuration, reverting to
 			default values for any un-supplied parameters."""
 		
+		# Make sure we have a value for the 'client' parameter.
+		if not client:
+			client = _client	# Global default OpenAI client.
+
 			# Save the values of the supplied configuration parameters.
+
+		inst.client				= client
 
 		inst.engineId			= engineId
 		inst.suffix				= suffix
@@ -1591,7 +1605,7 @@ class Completion:
 		# This decorator performs automatic exponential backoff on certain REST failures.
 
 	@backoff.on_exception(backoff.expo, (openai.APIError), max_tries=6)
-	def _createComplStruct(thisCompletion:Completion, apiArgs, minRepWin:int=DEF_TOKENS):
+	async def _createComplStruct(thisCompletion:Completion, apiArgs, minRepWin:int=DEF_TOKENS):
 			# By default, don't accept shortening the space for the response to less than 100 tokens.
 	
 		"""Private instance method to retrieve a completion from the
@@ -1666,9 +1680,15 @@ class Completion:
 
 				_logger.warn(f"[GPT-3 API] Trimmed max_tokens from {origMax} to {maxToks}.")
 
+			# Retrieve the API client from the core connection object.
+			client = compl.core._client
+
 			# If we get here, we know we have enough space for our query + result,
 			# so we can proceed with the request to the actual underlying API.
-			complStruct = openai.Completion.create(**apiArgs)
+			complStruct = await client.completions.create(**apiArgs)
+
+			# OLD API. Deprecated
+			#complStruct = openai.Completion.create(**apiArgs)
 
 			# This measures the length of the response in tokens, and updates
 			# the global record of API usage statistics accordingly.			
@@ -2498,10 +2518,13 @@ class ChatCompletion(Completion):
 			# If we get here, we know we have enough space for our query + result,
 			# so we can proceed with the request to the actual underlying API.
 
+		# Retrieve the API client from the chat core object.
+		client = chatCompl.chatCore._client
+
 		#try:
 
 		# New style chat completion call:
-		chatComplObj = await _client.chat.completions.create(**apiArgs)
+		chatComplObj = await client.chat.completions.create(**apiArgs)
 
 		# Old style:
 		#chatComplStruct = openai.ChatCompletion.create(**apiArgs)
@@ -2740,6 +2763,7 @@ class ChatCompletion(Completion):
 #|
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+class GPT3Core: pass
 class GPT3Core:
 
 	"""An instance of this class represents a connection to the core GPT-3 
@@ -2763,9 +2787,20 @@ class GPT3Core:
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-	def __init__(inst, *args, **kwargs) -> None:
+	def __init__(newGPT3Core:GPT3Core, *args, **kwargs) -> None:
 
-			# If keyword arg 'config=' is present, use that as the config.
+		core = newGPT3Core
+
+		# If keyword arg 'client=' is present, use that as the client.
+
+		if 'client' in kwargs:
+			client = kwargs['client']
+			del kwargs['client']
+		else:
+			client = _client	# Use default.
+		core._client = client
+
+		# If keyword arg 'config=' is present, use that as the config.
 		
 		if 'config' in kwargs:
 			config = kwargs['config']
@@ -2773,7 +2808,7 @@ class GPT3Core:
 		else:
 			config = None
 
-			# Otherwise, if the first argument is a GPT3APIConfig, use that as the config.
+		# Otherwise, if the first argument is a GPT3APIConfig, use that as the config.
 	
 		if config == None and len(args) > 0:
 			if args[0] != None and isinstance(args[0],GPT3APIConfig):
@@ -2789,7 +2824,7 @@ class GPT3Core:
 
 		_logger.info("Creating new GPT3Core connection with configuration:\n" + str(config))
 
-		inst._configuration = config		# Remember our configuration.
+		core._configuration = config		# Remember our configuration.
 
 	#__/ End GPT3Core instance initializer.
 
@@ -3053,6 +3088,14 @@ class GPT3ChatCore(GPT3Core):
 	def __init__(newGPT3ChatCore:GPT3ChatCore, *args, **kwargs):
 
 		chatCore = newGPT3ChatCore	# For convenience.
+
+			# If keyword arg 'client=' is present, use that as the client.
+		if 'client' in kwargs:
+			client = kwargs['client']
+			del kwargs['client']
+		else:
+			client = _client	# Use default.
+		chatCore._client = client
 
 			# If keyword arg 'chatConf=' is present, use that as the chatConf.
 		
@@ -3497,7 +3540,8 @@ def createAPIConfig(engineId:str=None, **kwargs):
 #__/ End module public function createAPIConfig().
 
 
-def createCoreConnection(engineId:str=None, conf:GPT3APIConfig=None, **kwargs):
+def createCoreConnection(engineId:str=None, client=None,
+		conf:GPT3APIConfig=None, **kwargs):
 
 	"""Creates a new GPT3Core object and returns it.  We need to define 
 		this factory function because the choice of which class to 
@@ -3505,6 +3549,10 @@ def createCoreConnection(engineId:str=None, conf:GPT3APIConfig=None, **kwargs):
 		engine, we instantiate a GPT3ChatCore object; otherwise we 
 		instantiate a GPT3Core object. Keyword arguments are passed
 		through to the constructor of the appropriate class."""
+
+	# If no API client was provided, default to the one created by this module.
+	if not client:
+		client = _client
 
 	# If no engine ID was specified, get it from the conf object, if provided.
 	if engineId == None and conf != None:
@@ -3523,9 +3571,9 @@ def createCoreConnection(engineId:str=None, conf:GPT3APIConfig=None, **kwargs):
 
 	# Instantiate the appropriate type of core object.
 	if _is_chat(engineId):
-		newCore = GPT3ChatCore(engineId=engineId, chatConf=conf, **kwargs)
+		newCore = GPT3ChatCore(client=client, engineId=engineId, chatConf=conf, **kwargs)
 	else:
-		newCore = GPT3Core(engineId=engineId, config=conf, **kwargs)
+		newCore = GPT3Core(client=client, engineId=engineId, config=conf, **kwargs)
 
 	return newCore
 
@@ -3542,7 +3590,12 @@ def tiktokenCount(text:str=None, encoding:str='gpt2', model:str=None):
 	# If the model argument is provided, use it to get the encoding.
 
 	if model != None:
-		encodingObj = tiktoken.encoding_for_model(model)
+		if model.startswith('meta'):
+			# This is a hack. When going through OpenRouter, we throw up
+			# our hands about the tokenizer and don't care. Default to this.
+			encodingObj = tiktoken.encoding_for_model('gpt-4o')
+		else:
+			encodingObj = tiktoken.encoding_for_model(model)
 	else:
 		encodingObj = tiktoken.get_encoding(encoding)
 		

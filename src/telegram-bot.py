@@ -440,14 +440,18 @@ if PROVIDER == 'OpenRouter':
 
 global 			_oai_client
 if ASYNC:
+	_oai_emb_client = AsyncOpenAI()
 	if not PROVIDER:
 		_oai_client		= AsyncOpenAI()		# Uses OPENAI_API_KEY env. var.
 	else:
+		print(f" *** NOTE: Overriding PROVIDER to {PROVIDER}. ***")
 		_oai_client		= AsyncOpenAI(base_url=BASE_URL, api_key=API_KEY)
 else:
+	_oai_emb_client = OpenAI()
 	if not PROVIDER:
 		_oai_client		= OpenAI()
 	else:
+		print(f" *** NOTE: Overriding PROVIDER to {PROVIDER}. ***")
 		_oai_client		= OpenAI(base_url=BASE_URL, api_key=API_KEY)
 
 
@@ -471,7 +475,7 @@ async def get_embedding(text: str, engine=EMBEDDING_MODEL, **kwargs) -> list:
 	# replace newlines, which can negatively affect performance.
 	text = text.replace("\n", " ")
 
-	embedding = await _oai_client.embeddings.create(input=[text], model=engine, **kwargs)
+	embedding = await _oai_emb_client.embeddings.create(input=[text], model=engine, **kwargs)
 	return embedding.data[0].embedding	# Note new access syntax
 
 	# Pre-1.x API:
@@ -9552,8 +9556,9 @@ _initPersistentContext()	# Call the function for this defined earlier.
 		#|	GPT3Core subclass to instantiate based on the selected engine name.
 		#|	We also go ahead and configure some important API parameters here.
 
-global_gptCore = createCoreConnection(ENGINE_NAME, maxTokens=globalMaxRetToks, 
-	temperature=temperature, presPen=presPen, freqPen=freqPen)
+global_gptCore = createCoreConnection(ENGINE_NAME, client=_oai_client,
+	maxTokens=globalMaxRetToks, temperature=temperature, presPen=presPen,
+	freqPen=freqPen)
 	#stop=stop_seq)
 
 	# NOTE: The presence penalty and frequency penalty parameters are here 
