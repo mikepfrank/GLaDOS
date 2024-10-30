@@ -319,8 +319,8 @@
 
 CONS_INFO = False	# True shows info-level messages on the console.
 
-#LOG_DEBUG = True	# True shows debug-level messages in the log file.
-LOG_DEBUG = False	# True shows debug-level messages in the log file.
+LOG_DEBUG = True	# True shows debug-level messages in the log file.
+#LOG_DEBUG = False	# True shows debug-level messages in the log file.
 
 
 #/=============================================================================|
@@ -804,7 +804,7 @@ class BotMessage:
 
 		# Look for function calls.
 		if sender == BOT_NAME:
-			pattern = r'@(\w+)\((.*)\)'
+			pattern = r'$@(\w+)\((.*)\)'
 			match = re.search(pattern, text)
 			if match:
 				func_name, json_encoded_arglist_dict_str = match.groups()
@@ -3908,7 +3908,6 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 
 		return
 
-
 	# If we are in quiet mode, and we weren't named, and this isn't a command,
 	# then don't respond.
 	
@@ -3916,17 +3915,32 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		_logger.info(f"Ignoring a message from user {user_name} in chat {chat_id} because we're in quiet mode.")
 		return
 
-
 	# If the currently selected engine is a chat engine, we'll dispatch the rest
 	# of the message processing to a different function that's specialized to use 
-	# OpenAI's new chat API.
+	# OpenAI's new chat API. Otherwise, we do processing for plain text engines.
 	if global_gptCore.isChat:
 		return await process_chat_message(update, context)
+	else:
+		return await process_text_message(update, context)
+
+#__/ End async function handle_message().
 
 
-	## Also move the below code to this new function:
-	# else:
-	#	return await process_text_message(update, context)
+async def process_text_message(update:Update, context:Context):
+
+	# Get the message, or edited message from the update.
+	(tgMsg, edited) = _get_update_msg(update)
+		
+	# Retrieve various important information.
+	
+	text		= tgMsg.text
+	cur_user	= tgMsg.from_user
+	user_name	= _get_user_tag(cur_user)	# Really this is user_tag
+	user_id		= tgMsg.from_user.id
+	chat_id		= tgMsg.chat.id
+
+	# Retrieve the conversation object.
+	conversation = context.chat_data['conversation']
 
 	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#|	At this point, we know that we're using a standard GPT text engine (not
@@ -6521,20 +6535,23 @@ async def process_raw_response(
 #__/ End definition of function process_raw_response().
 
 
-async def process_response(update:Update, context:Context, response_botMsg:BotMessage) -> None:
-	"""Given a message object (of our Message class) representing a response
-		issued by the AI to some user message, this function processes it
-		appropriately; it may be interpreted as a text command issued by the
-		AI, or as a normal message to be sent to the user."""
+async def process_response(update:Update, context:Context,
+						   response_botMsg:BotMessage) -> None:
+
+	"""Given a message object (of our BotMessage class) representing a
+		response issued by the AI to some user message, this function
+		processes it appropriately; it may be interpreted as a text
+		command issued by the AI, or as a normal message to be sent to
+		the user. It may also include embedded function calls."""
 
 	# Get the user message, or edited message from the update.
 	(tgMsg, edited) = _get_update_msg(update)
 	
 	# Get the chat_id, user_name, and conversation object.
-	chat_id = tgMsg.chat.id
-	#user_name = _get_user_tag(tgMsg.from_user)
-	conversation = context.chat_data['conversation']
-	response_text = response_botMsg.text
+	chat_id			= tgMsg.chat.id
+	#user_name		= _get_user_tag(tgMsg.from_user)	# Really user_tag
+	conversation	= context.chat_data['conversation']
+	response_text	= response_botMsg.text
 
 	# First, check to see if the AI typed the '/pass' command, in which case we do nothing.
 	if response_text.lower() == '/pass':
@@ -6555,10 +6572,13 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 
 		return
 
-	else: # Response was not a command. Treat it normally.
+	# Response was not a command. Treat it normally.
 
-		# Just send our response to the user as a normal message.
-		await send_response(update, context, response_text)
+	# Just send our response to the user as a normal message.
+	await send_response(update, context, response_text)
+
+	# We also need to check for embedded function calls... (concise syntax)
+	await check_for_funcalls(update, context, response_text)
 
 	# One more thing to do here: If the AI's response ends with the string "(cont)" or "(cont.)"
 	# or "(more)" or "...", then we'll send a message to the user asking them to continue the 
@@ -6573,6 +6593,86 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 	# Processed AI's response successfully.
 
 #__/ End of process_response() function definition.
+
+
+# check_for_funcalls() -- Checks the AI's text response for embedded
+# function calls (in concise syntax) and if so, then process them.
+
+async def check_for_funcalls(update:Update, context:Context, response_text:str) -> None:
+
+	# Define the regular expression for matching a function invocation
+
+	invocation_pattern = r'''
+	@([a-zA-Z_][a-zA-Z0-9_]*)\s*	# Function name, after the '@'
+	\(\s*							# Opening parenthesis, optional whitespace
+	(?:								# Non-capture group for parameter list
+		(							# Non-capture group for arguments
+			"(?:[^"\\]|\\.)*"		# String positional argument
+		|							# OR
+			[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*(\d+|"(?:[^"\\]|\\.)*")
+									# Keyword argument (alphanumeric with value)
+		)\s*,?\s*					# Allow comma-separated arguments with optional whitespace
+	)*								# Zero or more occurrences of arguments
+	\)								# Closing parenthesis
+	'''
+
+	# Use verbose flag to enable comments and multiline pattern
+	invocation_regex = re.compile(invocation_pattern, re.VERBOSE)
+
+	# Search for matches
+	matches = invocation_regex.finditer(response_text)
+
+	# Print matches
+	for match in matches:
+		full_call = match.group(0)
+		func_name = match.group(1)
+
+		# Diagnostic output to console
+		_logger.normal(f"Found a '{func_name}' invocation: {full_call}")
+
+		# Extract the argument list part from the full_call
+		arguments_str = full_call[full_call.find('(') + 1 : full_call.rfind(')')]
+
+		# Define lists to hold positional and keyword arguments
+		positional_arglist = []
+		keyword_arglist = {}
+
+		# Regular expression to match individual arguments
+		argument_pattern = r'''
+		\s*							 # Optional leading whitespace
+		("(?:[^"\\]|\\.)*")			 # Match string argument
+		|							 # OR
+		([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(\d+|"(?:[^"\\]|\\.)*")
+									 # Match keyword argument
+		'''
+		argument_regex = re.compile(argument_pattern, re.VERBOSE)
+
+		# Iterate over all arguments found
+		for arg_match in argument_regex.finditer(arguments_str):
+			if arg_match.group(1):	# Positional argument (string)
+				positional_arglist.append(arg_match.group(1)[1:-1])	# Strip quotes
+			elif arg_match.group(2) and arg_match.group(3):	 # Keyword argument
+				value = arg_match.group(3)
+				if value[0]=='"':	# String
+					value = value[1:-1]	# Strip quotes
+				else:
+					value = int(value)	# Integer
+				keyword_arglist[arg_match.group(2)] = value
+
+		# Print the accumulated arguments
+		_logger.normal(f"\tPositional arguments: {positional_arglist}")
+		_logger.normal(f"\tKeyword arguments: {keyword_arglist}")
+
+		### CONTINUE HERE ###
+
+		# Next we just need code to log the function-call event and dispatch control to particular function calls.
+		# (But first I think we need to assign positional arguments to the appropriate keyword arguments.)
+
+	#__/ End loop iterating over matches.
+
+	_logger.normal("Finished scanning for function invocations.")
+
+#__/ End async function check_for_funcalls().
 
 
 async def _send_imagedata(img_data, tgMsg:TgMsg, caption:str=None, ):
