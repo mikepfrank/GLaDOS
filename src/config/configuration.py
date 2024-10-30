@@ -1388,9 +1388,28 @@ class	TheAIPersonaConfig:
 
 		if 'start-message' in telegramConf:
 			theAIConfig.startMsg = startMessage = telegramConf['start-message']
-			_logger.normal(f"    [Config/AI]     AI config:     The AI persona's Telegram start message is [{startMessage}].")
+			_logger.normal(f"	 [Config/AI]	 AI config:		The AI persona's Telegram start message is [{startMessage}].")
 		else:
 			theAIConfig.startMsg = None	# No default value provided in config file.
+
+		# New feature: If 'context-file' is specified,
+		# get the context string from it instead of 'context'.
+
+		theAIConfig.context = None	# No default value provided in config file.		
+		if 'context-file' in telegramConf:
+			contextFile = telegramConf['context-file']
+			contextFilePath = path.join(_AI_DATADIR, contextFile)
+			with open(contextFilePath, 'r') as _file:
+				context = _file.read()
+
+			# Make sure context string ends in a newline.
+			if not context.endswith('\n'):
+				context += '\n'
+			theAIConfig.context = context
+
+			_logger.normal(f"	 [Config/AI]	 AI config: The AI persona's Telegram context data was read from [{contextFilePath}].")
+			_logger.normal(f"	 [Config/AI]	 AI config: The AI persona's Telegram context data is [{context.strip()}].")
+			
 
 		if 'context' in telegramConf:
 			context = telegramConf['context']
@@ -1398,9 +1417,8 @@ class	TheAIPersonaConfig:
 			if not context.endswith('\n'):
 				context += '\n'
 			theAIConfig.context = context
-			_logger.normal(f"    [Config/AI]     AI config: The AI persona's Telegram context data is [{context.strip()}].")
-		else:
-			theAIConfig.context = None	# No default value provided in config file.
+			_logger.normal(f"	 [Config/AI]	 AI config: The AI persona's Telegram context data is [{context.strip()}].")
+
 
 		if 'help-string' in telegramConf:
 			helpString = telegramConf['help-string']

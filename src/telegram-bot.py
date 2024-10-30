@@ -10,6 +10,9 @@
 #|                  whenever we say GPT-3, we mean any models in the           |
 #|                  whole GPT-3 line of models, including GPT-4.)              |
 #|                                                                             |
+#|	  - Addendum:	This bot server now also supports various other			   |
+#|					models from OpenAI, Anthropic, and Meta.				   |
+#|                                                                             |
 #|																			   |
 #|	  DESCRIPTION:															   |
 #|	  ~~~~~~~~~~~~															   |
@@ -1249,6 +1252,7 @@ class BotConversation:
 			# OpenAI format (not BotMessage format) and may include function
 			# call and function return objects.
 
+		# This keeps track of the last user who interacted with us in the current chat.
 		newConv.last_user = creator		# The user who caused this convo to be created.
 
 		# The following is a string which we'll use to accumulate the conversation text.
@@ -1362,6 +1366,179 @@ class BotConversation:
 		else:
 			return None
 	#__/ End of lastMessage() instance method for class Conversation.
+
+
+	# This is a new method intended for assembling the context string
+	# from scratch, in a way that's dependent on the most recent user
+	# message. This includes everything up to the AI's prompt marker
+	# (such as "\n[RS] Luna>", where [RS]=ASCII record separator).
+	# NOTE: This method is for use with NON-chat (e.g. base) models.
+
+	def assemble_context(thisConv:BotConversation):
+
+		"""This method assembles the AI's context string from scratch
+			in a way that's dependent on the most recent user message.
+			This includes everything up to (but not including) the
+			AI's final prompt marker."""
+
+		chat_id = thisConv.chat_id
+		user_tag = _get_user_tag(thisConv.last_user)
+
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# As a preview, components of the context string include the
+		# following. Every component after the first is preceded by
+		# a message separator string, consisting of the message
+		# delimiter character (if any) followed by a space.
+		#
+		#	1. [/] Current time display, in the developer's time zone.
+		#
+		#	2. [/] Top-level instruction.
+		#
+		#	3. [/] Permanent context data. This consists of the
+		#		telegram-conf/context string, as retrieved per the
+		#		ai-config.hjson configuration file.
+		#		
+		#	4. Interface documentation. This includes:
+		#
+		#		4.1. [/] Message transcript format documentation.
+		#		4.2. [ ] Sending message sequences.
+		#		4.3. [ ] Inner monologue system.
+		#		4.4. [ ] Function calling.
+		#		4.5. [ ] Visual input (native vs. external).
+		#		4.6. [ ] Image generation.
+		#		4.7. [ ] Image refreshing.
+		#		4.8. [ ] Memory management.
+		#		4.9. [ ] User management.
+		#		4.10. [/] Speech I/O.
+		#		4.11. [ ] Web search.
+		#		4.12. [/] Markdown formatting syntax.
+		#		4.13. [/] Usage summary for commands available to the AI.
+		#		4.14. [ ] Full function schemas.
+		#		4.15. [ ] Usage summary for commands available to human users.
+		#		4.16. [ ] Response instructions.
+		#
+		#	5. [/] Contextually relevant memories.
+		#
+		#	6. [/] "Recent Telegram messages:" header.
+		#
+		#	7. [/] The actual list of recent messages.
+		#
+		#	8. [ ] Final instruction after messages and just before prompt marker.
+		#
+		#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		
+		# Initialize the context string, which we'll build up incrementally.
+		
+		context_str = ""
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 1. Add the time display.
+
+		context_str += f"Current time: {timeString()}\n"	# This function is defined above.
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 2. Add the top-level instruction.
+
+		context_str += MESSAGE_DELIMITER + TOPLEVEL_INSTRUCT_HEADER 		 + \
+			"Attention, AI: You are taking the role of a very humanlike AI " + \
+			f"persona named {BOT_NAME} in a Telegram chat. Below are the "   + \
+			"context headers for the persona, followed by recent messages "	 + \
+			"in the chat. Please try to keep your responses concise "		 + \
+			"except when asked to respond in detail.\n"
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 3. Add the permanent context data (retrieved from config).
+
+		_initPersistentData()	# Make sure it's been initialized.
+		context_str += MESSAGE_DELIMITER + PERMANENT_CONTEXT_HEADER			 + \
+			"[First-person context string, written and/or approved by you "	 + \
+			"to orient your current instance to this environment.]\n"		 + \
+			globalPersistentData
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 4. Interface documentation.
+
+		context_str += MESSAGE_DELIMITER + INTERFACE_DOCS_HEADER			 + \
+			f"[{BOT_NAME}, the following records document the functionality and "	 + \
+			"capabilities of your Telegram bot interface.]\n\n"
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 4.1. Message transcript format documentation.
+		
+		if chat_id >= 0:
+			indgrp = f'an individual chat with user "{user_tag}"'
+		else:
+			indgrp = "a group chat"
+
+		context_str += SUBMESSAGE_DELIMITER + TRANSCRIPT_DOC_HEADER			 + \
+			f"""In this environment, you are presented with a sequence of records separated by the ASCII record separator (RS) character, control-^. The initial records are context headers, and these are followed by records representing recent events in the current Telegram chat, which happens to be {indgrp}. Event types include Telegram messages, which each begin with a marker""" + ' " {userTag}>" ' + f"""indicating the entity the message is from. The userTag for a human user may be their Telegram first name, username, or numeric user ID, depending on what's available. Your userTag is {BOT_NAME}. There is also a special user tag "BotServer" denoting messages from the bot server automation; some of these messages are only sent to you but not to the chat, so don't assume other chat participants can see them.\n"""
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 4.10. Add the speech I/O capability documentation.
+
+		voice = AI_VOICE.title()	# Use Title Case for voice name.
+
+		if voice in ('Echo', 'Onyx'):
+			gender = "masculine"
+		elif voice in ('Nova', 'Shimmer'):
+			gender = "feminine"
+		else:
+			gender = "androgynous"
+
+		context_str += SUBMESSAGE_DELIMITER + SPEECH_IO_HEADER + \
+			("You have speech input/output capabilities powered by OpenAI's Whisper technology:\n"
+			 '\n'
+			 '   - Audio messages from users will be automatically transcribed to text prefixed with "(audio)".\n'
+			 '   - You can process these transcripts like regular text to comprehend spoken queries.\n'
+			 "   - The user can use the \'/speech\' command to toggle whether your responses will "
+			 		"be automatically vocalized by the BotServer using text-to-speech.\n"
+			 f'   - Your voice output uses the "{voice}" synthesized voice which has a {gender} character.\n'
+			 '\n'
+			 "This multi-modal interaction layer enables more natural conversational flows, "
+			 "with the ability for users to speak follow-up questions seamlessly or for you "
+			 f"to narrate lengthier information using the {voice} synthesized voice.\n")
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 4.12. Add the markdown formatting documentation.
+
+		context_str += SUBMESSAGE_DELIMITER + MARKDOWN_DOC_HEADER + \
+			("Your text output utilizes a variant of Telegram MarkdownV2 "
+			 "syntax, including **boldface**, __italic__, ___underline___, "
+			 "and ~~strikethrough~~ text styles, "
+			 "[inline URLs](http://www.example.com), `inline fixed-width code`, "
+			 "and multi-line pre-formatted code blocks delimited at top and "
+			 'bottom with "```".\n')
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 4.13. Add the usage summary for commands available to the AI.
+
+		context_str += AI_COMMAND_USAGE
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 5. Add the context-sensitive memories section.
+
+		if hasattr(thisConv, 'dynamicMem') and thisConv.dynamicMem:
+			context_str += MESSAGE_DELIMITER + DYNAMIC_MEMORY_HEADER + \
+				thisConv.dynamicMem
+					# ^ Note this only changes whenever a new user
+					#	message is added to the convo.
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 6. Add the "Recent Telegram messages:" header.
+
+		context_str += MESSAGE_DELIMITER + RECENT_MESSAGES_HEADER
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 7. Add the actual list of recent messages.
+
+		context_str += '\n'.join([str(m) for m in thisConv.messages])
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# Stash the result in the present conversation object.
+
+		thisConv.context_string = context_str
+
+	#__/ End instance method assemble_context() for class BotConversation.
 
 
 	# This method adds the messages in the conversation to the context string.
@@ -2372,8 +2549,8 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 	#__/
 
 
-	# Give the user a system warning if their first name contains unsupported characters or is too long.
-	if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", tgMessage.from_user.first_name):
+	# For chat models, give the user a system warning if their first name contains unsupported characters or is too long.
+	if global_gptCore.isChat and not re.match(r"^[a-zA-Z0-9_-]{1,64}$", tgMessage.from_user.first_name):
 		
 	       # Log the warning.
 		_logger.warning(f"User {tgMessage.from_user.first_name} has an "
@@ -3794,9 +3971,24 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		while True:
 
 			# If we're not extending an existing response, we need to start a new one.	To do this,
-			# we add Gladys' prompt to the conversation's context string to generate the full GPT-3
+			# we add the AI's prompt to the conversation's context string to generate the LLM's full
 			# context string.  Otherwise, we just use the existing context string.
+
 			if not extending_response:
+
+				# This is a new method call intended for assembling
+				# the context string from scratch; we need to do this
+				# to allow it to differ depending on the user's last
+				# query (since this affects the automatic heads-up
+				# display of context-sensitive memories). NOTE: This
+				# overrides all of the rest of the code that sets up
+				# the .context_string!
+
+				conversation.assemble_context()
+
+				# Get the conversation's current context string, and
+				# tack the AI's prompt onto the end of it.
+
 				context_string = conversation.context_string + AI_PROMPT 
 
 				# At this point, we want to archive the context_string to a file in the
@@ -7172,33 +7364,33 @@ def _get_user_tag(user) -> str:
 	# is None, or an empty string, or contains non-identifier characters, in which case 
 	# we'll use their username attribute. If that's also None, we'll use their ID. 
 
-	user_name = user.first_name
+	user_tag = user.first_name
 		# By default, we'll use the user's first name.
 	_which_name = 'first name'
 
 	# If the user's first name is an empty string, we'll invalidate it by setting it to None.
-	if user_name == '':
-		user_name = None
+	if user_tag == '':
+		user_tag = None
 
 	# If we're using the GPT-3 Chat API, we'll also need to make sure that the user's name
 	# is a valid identifier that's accepted by that API as a user name.
-	if user_name is not None and global_gptCore.isChat:
+	if user_tag is not None and global_gptCore.isChat:
 		# If the user's first name contains characters the GPT-3 Chat API won't accept 
 		# (or is too long or an empty string), we'll invalidate it by setting it to None.
-		if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", user_name):
-			user_name = None
+		if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", user_tag):
+			user_tag = None
 
 	# If the user's first name wasn't valid, we'll try to use their username.
-	if user_name is None:
-		user_name = user.username
+	if user_tag is None:
+		user_tag = user.username
 		_which_name = 'username'
 
 		# But, if that name isn't valid either, we'll use their ID.
-		if user_name is None or user_name == '':
-			user_name = str(user.id)
+		if user_tag is None or user_tag == '':
+			user_tag = str(user.id)
 			_which_name = 'user ID'
 
-	return user_name
+	return user_tag
 
 #__/ End private function _get_user_tag().
 
@@ -7280,8 +7472,8 @@ def _initBotDB():
 	#
 	# NOTE: This all needs to be reorganized, since the
 	# context-sensitive memory list potentially changes with each new
-	# user message sent in each chat... So it's no longer persistent,
-	# or global.
+	# user message sent in each chat... So it's no longer really
+	# persistent, or global.
 	
 def _initPersistentContext() -> None:
 
@@ -7301,20 +7493,10 @@ def _initPersistentContext() -> None:
 	#else:
 
 	# We now use this version always.
-	globalPersistentContext = \
-		MESSAGE_DELIMITER + PERMANENT_CONTEXT_HEADER + \
-			globalPersistentData + \
-		MESSAGE_DELIMITER + COMMAND_LIST_HEADER + "\n" + \
-			f"NOTE: {BOT_NAME}, if you want to invoke a command, you should please " + \
-			"make sure that the command line is the very first line of your message.\n" + \
-			"\n" + \
-			"  /pass - Refrain from responding to the last user message.\n" + \
-			"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
-			"  /remember <text> - Adds <text> to my persistent context data.\n" + \
-			"  /forget <text> - Removes <text> from my persistent context data.\n" + \
-			"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
-			"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n" + \
-			"\n" + \
+	globalPersistentContext =								  \
+		MESSAGE_DELIMITER + PERMANENT_CONTEXT_HEADER		+ \
+			globalPersistentData							+ \
+		AI_COMMAND_USAGE									+ \
 		MESSAGE_DELIMITER + RECENT_MESSAGES_HEADER
 
 	#__/
@@ -7340,8 +7522,13 @@ def _initPersistentData() -> None:
 	globalPersistentData = aiConf.context 
 		# NOTE: This should end with a newline. But if it doesn't, we'll add one.
 
+	# Make sure the context isn't null...
+	if globalPersistentData is None:
+		_logger.warn("Unexpected null context string in _initPersistentData()!")
+		globalPersistentData = ""
+
 	# Ensure that PERSISTENT_DATA ends with a newline.
-	if globalPersistentData[-1] != '\n':
+	if not globalPersistentData or globalPersistentData[-1] != '\n':
 		globalPersistentData += '\n'
 
 	# Append current memories, if any.
@@ -8787,6 +8974,15 @@ MESSAGE_DELIMITER = chr(ascii.RS)	# (Gladys agreed to try this.)
 	# ^ Trying this in desperation to hopefully get rid of API errors.
 	# NOTE: I think this was unnecessary.
 
+	# The following defines a message separator which pads the message
+	# delimiter string with a trailing space to facilitate tokenization.
+
+if MESSAGE_DELIMITER:		# If the delimiter isn't empty string,
+	MESSAGE_SEPARATOR = MESSAGE_DELIMITER + ' '		# Add a space after it (for benefit of tokenizer)
+	SUBMESSAGE_DELIMITER = chr(ascii.FS)	# ASCII FS = 0x1F, field separator.
+else:
+	MESSAGE_SEPARATOR = ""
+
 	# This is the size, in messages, of the window at the end of the conversation 
 	# within which we'll exclude messages in that region from being repeated by the AI.
 	# (This is basically a hack to try to suppress the AI's tendency to repeat itself.)
@@ -8910,15 +9106,50 @@ BOT_NAME = aiConf.botName		# This is the name of the bot.
 AI_VOICE = aiConf.personaVoice	# The name of the voice used for text-to-speech.
 
 # These are the section headers of the AI's persistent context.
-PERMANENT_CONTEXT_HEADER = " ~~~ Permanent context data: ~~~\n"
-PERSISTENT_MEMORY_HEADER = " ~~~ Important persistent memories: ~~~\n"
-DYNAMIC_MEMORY_HEADER	 = " ~~~ Contextually relevant memories: ~~~\n"
-RECENT_MESSAGES_HEADER	 = " ~~~ Recent Telegram messages: ~~~\n"
-FUNCTION_USAGE_HEADER	 = " ~~~ Usage summary for functions available to AI: ~~~\n"
-COMMAND_LIST_HEADER		 = f" ~~~ Commands available for {BOT_NAME} AI to use: ~~~\n"
+
+SECTION_DECORATOR = '='*5
+SUBSECTION_DECORATOR = '~'*5
+
+TOPLEVEL_INSTRUCT_HEADER = f" {SECTION_DECORATOR} TOP-LEVEL INSTRUCTION: {SECTION_DECORATOR}\n"
+
+PERMANENT_CONTEXT_HEADER = f" {SECTION_DECORATOR} PERMANENT CONTEXT DATA: {SECTION_DECORATOR}\n"
+INTERFACE_DOCS_HEADER	 = f" {SECTION_DECORATOR} INTERFACE DOCUMENTATION: {SECTION_DECORATOR}\n"
+
+TRANSCRIPT_DOC_HEADER	 = f" {SUBSECTION_DECORATOR} Transcript format: {SUBSECTION_DECORATOR}\n"
+SPEECH_IO_HEADER		 = f" {SUBSECTION_DECORATOR} Speech I/O capability: {SUBSECTION_DECORATOR}\n"
+MARKDOWN_DOC_HEADER		 = f" {SUBSECTION_DECORATOR} Markdown formatting syntax: {SUBSECTION_DECORATOR}\n"
+
+COMMAND_LIST_HEADER		 = f" {SUBSECTION_DECORATOR} Commands available for {BOT_NAME} AI to use: {SUBSECTION_DECORATOR}\n"
+FUNCTION_USAGE_HEADER	 = f" {SUBSECTION_DECORATOR} Usage summary for functions available to AI: {SUBSECTION_DECORATOR}\n"
+
+DYNAMIC_MEMORY_HEADER	 = f" {SECTION_DECORATOR} CONTEXTUALLY RELEVANT MEMORIES: {SECTION_DECORATOR}\n"
+
+RECENT_MESSAGES_HEADER	 = f" {SECTION_DECORATOR} RECENT TELEGRAM MESSAGES: {SECTION_DECORATOR}\n"
+
+# This one is left over from the legacy memory feature, which is now
+# deprecated, since it didn't segregate memories by user so it could
+# inadvertently violate users' privacy.
+#PERSISTENT_MEMORY_HEADER = f" {SECTION_DECORATOR} Important persistent memories: {SECTION_DECORATOR}\n"
 
 # Retrieve the bot's startup message from the AI persona's configuration.
 START_MESSAGE = aiConf.startMsg
+
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#  Sets up the AI's command usage summary.
+
+global AI_COMMAND_USAGE
+AI_COMMAND_USAGE = SUBMESSAGE_DELIMITER + COMMAND_LIST_HEADER									+ \
+	f"[NOTE: {BOT_NAME}, if you want to invoke any of the following Telegram-style commands, "	+ \
+	"you should please make sure that the command line is the very first line of your "			+ \
+	"message.]\n"																				+ \
+	"\n"																						+ \
+	"  /pass - Refrain from responding to the last user message.\n"								+ \
+	"  /image <desc> - Generate an image with description <desc> and send it to the user.\n"	+ \
+	"  /remember <text> - Adds <text> to my persistent context data.\n"							+ \
+	"  /forget <text> - Removes <text> from my persistent context data.\n"						+ \
+	"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n"			+ \
+	"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n"	+ \
+	"\n"
 
 # Text to send in response to the /greet command.
 GREETING_TEXT = "Hello! I'm glad you're here. I'm glad you're here.\n"
@@ -9405,104 +9636,6 @@ FUNCTIONS_LIST = [
 	PASS_TURN_SCHEMA
 ]	
 
-# # Define a function to handle the AI's search_web() function.
-# async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
-# 					   queryPhrase:str, maxResults:int=None, locale:str="en-US",
-# 					   sections:list=DEFAULT_BINGSEARCH_SECTIONS) -> str:
-
-# 	"""Do a web search using the Bing API."""
-
-# 	global _lastError
-
-# 	userID = updateMsg.from_user.id
-# 	chatID = botConvo.chat_id
-
-# 	_logger.normal(f"\nIn chat {chatID}, for user #{userID}, AI is doing a web search in the {locale} locale for {sections} on: [{queryPhrase}].")
-	
-# 	# Calculate how many items to return based on GPT's field size.
-# 	fieldSize = global_gptCore.fieldSize	# Retrieve property value.
-# 		# Total space in tokens for the AI's receptive field (context window).
-
-# 	if fieldSize >= 16000:		# 16k models and up
-# 		howMany = 10
-# 	elif fieldSize >= 8000:		# GPT-4 and higher
-# 		howMany = 5
-# 	elif fieldSize >= 4000:		# GPT-3.5 and higher
-# 		howMany = 3
-# 	else:
-# 		_logger.warn(f"This model has only {fieldSize} tokens. Web search results may overwhelm it.")
-
-# 		howMany = 2		# This is not very useful!
-
-# 	# Cap number of results at whatever the AI suggested.
-# 	if maxResults and maxResults < howMany:
-# 		howMany = maxResults
-
-# 	try:
-# 		# This actually does the search.
-# 		searchResult = _bing_search(queryPhrase, market=locale, count=howMany)
-
-# 	except UnsupportedLocale as e:
-# 		# We'll let the AI know it failed
-# 		botConvo.add_message(BotMessage(SYS_NAME, f"[ERROR: {_lastError}]"))
-# 		return f"Error: Unsupported locale / target market '{locale}' for search."
-
-# 	except BingQuotaExceeded as e:
-# 		# We'll let the AI know it failed
-# 		botConvo.add_message(BotMessage(SYS_NAME, f"[ERROR: {_lastError}]"))
-# 		return "Error: Bing search quota exceeded."
-
-# 	#_logger.debug(f"Raw search result:\n{pformat(searchResult)}")
-
-# 	# Create a fresh dict for the fields we want to keep.
-# 	cleanResult = dict()
-
-# 	# Keep only the fields we care about in our "cleaned" result.
-# 	for (key, val) in searchResult.items():
-# 		if key in sections:
-# 			cleanResult[key] = val
-
-# 	# If we found nothing, retry with the default section list.
-# 	if not cleanResult:
-# 		sections = DEFAULT_BINGSEARCH_SECTIONS
-# 		for (key, val) in searchResult.items():
-# 			if key in sections:
-# 				cleanResult[key] = val
-
-# 	# Strip out 'deepLinks' out of the webPages value, it's TMI.
-# 	if 'webPages' in cleanResult:
-# 		for result in cleanResult['webPages']['value']:
-# 			if 'deepLinks' in result:
-# 				del result['deepLinks']
-
-# 	# Strip a bunch of useless fields out of news values.
-# 	if 'news' in cleanResult:
-# 		for result in cleanResult['news']['value']:
-# 			if 'contractualRules' in result:
-# 				del result['contractualRules']
-# 			if 'image' in result:
-# 				del result['image']
-# 			if 'about' in result:
-# 				del result['about']
-# 			if 'mentions' in result:
-# 				del result['mentions']
-# 			if 'provider' in result:
-# 				del result['provider']
-# 			if 'video' in result:
-# 				del result['video']
-# 			if 'category' in result:
-# 				del result['category']
-		
-
-# 	# Return as a string (to go in content field of function message).
-# 	#return json.dumps(cleanResult)
-
-# 	# Format the result with tabs to make it easier for Turbo/Max to parse.
-# 	pp_result = json.dumps(cleanResult, indent=4)
-# 	tabbed_result = pp_result.replace(' '*8, '\t')
-# 	return tabbed_result
-
-# #__/
 
 	#/======================================================================
 	#|	6.2. Define global variables.		[python module code subsection]
