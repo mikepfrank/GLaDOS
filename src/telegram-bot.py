@@ -799,6 +799,10 @@ class BotMessage:
 		# Print diagnostic information.
 		#_logger.debug(f"Creating message object for: {sender}> {text}")
 
+		# If func_name argument was passed in, then assemble it into the text if not already there..
+		#if func_name and text and text.strip()[0] != '@':
+		#	text = f"@{func_name}({text})"
+
 		# First, let's see if this looks like a new-format function-call/return
 		# message, and if so, parse it appropriately.
 
@@ -1295,7 +1299,13 @@ class BotConversation:
 
 		# The initial function list. Typically only the last function used will appear,
 		# along with (always) the activate_function and pass_turn schemas.
-		newConv.cur_funcs = []
+
+		newConv.cur_funcs = cur_funcs = []
+
+		# It's easier to just add these two at the last second.
+		cur_funcs = list(cur_funcs) + [ACTIVATE_FUNCTION_SCHEMA, PASS_TURN_SCHEMA] 
+
+		newConv.cur_func_schemas = json.dumps(cur_funcs, indent=2, sort_keys=True)
 
 	#__/ End of conversation instance initializer.
 
@@ -1385,46 +1395,47 @@ class BotConversation:
 		user_tag = _get_user_tag(thisConv.last_user)
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		# As a preview, components of the context string include the
-		# following. Every component after the first is preceded by
-		# a message separator string, consisting of the message
-		# delimiter character (if any) followed by a space.
-		#
-		#	1. [/] Current time display, in the developer's time zone.
-		#
-		#	2. [/] Top-level instruction.
-		#
-		#	3. [/] Permanent context data. This consists of the
-		#		telegram-conf/context string, as retrieved per the
-		#		ai-config.hjson configuration file.
-		#		
-		#	4. Interface documentation. This includes:
-		#
-		#		4.1. [/] Message transcript format documentation.
-		#		4.2. [ ] Sending message sequences.
-		#		4.3. [ ] Inner monologue system.
-		#		4.4. [ ] Function calling.
-		#		4.5. [ ] Visual input (native vs. external).
-		#		4.6. [ ] Image generation.
-		#		4.7. [ ] Image refreshing.
-		#		4.8. [ ] Memory management.
-		#		4.9. [ ] User management.
-		#		4.10. [/] Speech I/O.
-		#		4.11. [ ] Web search.
-		#		4.12. [/] Markdown formatting syntax.
-		#		4.13. [/] Usage summary for commands available to the AI.
-		#		4.14. [ ] Full function schemas.
-		#		4.15. [ ] Usage summary for commands available to human users.
-		#		4.16. [ ] Response instructions.
-		#
-		#	5. [/] Contextually relevant memories.
-		#
-		#	6. [/] "Recent Telegram messages:" header.
-		#
-		#	7. [/] The actual list of recent messages.
-		#
-		#	8. [ ] Final instruction after messages and just before prompt marker.
-		#
+		#| As a preview, components of the context string include the
+		#| following. Every component after the first is preceded by
+		#| a message separator string, consisting of the message
+		#| delimiter character (if any) followed by a space.
+		#|
+		#|	1. [/] Current time display, in the developer's time zone.
+		#|
+		#|	2. [/] Top-level instruction.
+		#|
+		#|	3. [/] Permanent context data. This consists of the
+		#|		telegram-conf/context string, as retrieved per the
+		#|		ai-config.hjson configuration file.
+		#|		
+		#|	4. Interface documentation. This includes:
+		#|
+		#|		4.1. [/] Message transcript format documentation.
+		#|		4.2. [ ] Sending message sequences.
+		#|		4.3. [ ] Inner monologue system.
+		#|		4.4. [ ] Function calling.
+		#|		4.5. [ ] Visual input (native vs. external).
+		#|		4.6. [ ] Image generation.
+		#|		4.7. [ ] Image refreshing.
+		#|		4.8. [ ] Memory management.
+		#|		4.9. [ ] User management.
+		#|		4.10. [/] Speech I/O.
+		#|		4.11. [ ] Web search.
+		#|		4.12. [/] Markdown formatting syntax.
+		#|		4.13. [/] Usage summary for commands available to the AI.
+		#|		4.14. [/] Usage summary for functions available to the AI.
+		#|		4.15. [ ] Full function schemas for currently activated functions..
+		#|		4.16. [ ] Usage summary for commands available to human users.
+		#|		4.17. [ ] Response instructions.
+		#|
+		#|	5. [/] Contextually relevant memories.
+		#|
+		#|	6. [/] "Recent Telegram messages:" header.
+		#|
+		#|	7. [/] The actual list of recent messages.
+		#|
+		#|	8. [ ] Final instruction after messages and just before prompt marker.
+		#|
 		#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		
 		# Initialize the context string, which we'll build up incrementally.
@@ -1471,7 +1482,85 @@ class BotConversation:
 			indgrp = "a group chat"
 
 		context_str += SUBMESSAGE_DELIMITER + TRANSCRIPT_DOC_HEADER			 + \
-			f"""In this environment, you are presented with a sequence of records separated by the ASCII record separator (RS) character, control-^. The initial records are context headers, and these are followed by records representing recent events in the current Telegram chat, which happens to be {indgrp}. Event types include Telegram messages, which each begin with a marker""" + ' " {userTag}>" ' + f"""indicating the entity the message is from. The userTag for a human user may be their Telegram first name, username, or numeric user ID, depending on what's available. Your userTag is {BOT_NAME}. There is also a special user tag "BotServer" denoting messages from the bot server automation; some of these messages are only sent to you but not to the chat, so don't assume other chat participants can see them.\n"""
+			f"""In this environment, you are presented with a sequence of records separated by the ASCII record separator (RS) character, control-^. The initial records are context headers, and these are followed by records representing recent events in the current Telegram chat, which happens to be {indgrp}. Event types include:\n\n\t1. Telegram messages, which each begin with a marker""" + ' " {userTag}>" ' + f"""indicating the entity the message is from. The userTag for a human user may be their Telegram first name, username, or numeric user ID, depending on what's available. If the message text begins with '(audio)', then it represents a voice clip that was transcribed for you by Whisper. If the message text begins with '(edited)', then it's a newly edited version of an earlier user message. Your userTag is {BOT_NAME}. There is also a special user tag "BotServer" denoting messages from the bot server automation; some of these messages are only sent to you but not to the chat, so don't assume other chat participants can see them. Do not address the BotServer directly in your messages.\n\n\t2. Events recording successful function invocations that you triggered. These are formatted in the transcript as:\n\n\t\t" {SYS_NAME}> """ + '@{funcName}({funcArgs})' + f"""",\n\n\t  where funcArgs is formatted with dictionary syntax.\n\n\t3. Events recording results returned by the preceding function call. These are formatted in the transcript as:\n\n\t\t" @""" + '{funcName}> {result}' + """".\n\n"""
+			# ^^ Reformat this damn thing so it's easier to read.
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 4.2. Documentation for sending messages sequences.
+		
+		context_str += SUBMESSAGE_DELIMITER + MESSAGE_SEQ_HEADER			+ \
+			("This interface supports the capability for you to output a "
+			 "sequence of multiple Telegram messages in a row, that is, "
+			 "without waiting for the user to respond in between. To do "
+			 "this, simply separate the messages in the sequence with a "
+			 "literal ASCII unit separator control charactrer (US, hex 0x1F, ^_) "
+			 "instead of the usual record separator character (RS, hex 0x1E, ^^). "
+			 "For example:\n"
+			 "\n"
+			 "\t```text\n"
+			 f"\t\x1e {BOT_NAME}> This is the first Telegram message to be sent in my response.\n"
+			 f"\t\x1f {BOT_NAME}> This is a second Telegram message in the same response!\n"
+			 f"\t(Note that a single Telegram message can span multiple lines of text!)\n"
+			 f"\t\x1f {BOT_NAME}> This is the third and last Telegram message in this response.\n"
+			 f"\t\x1e	# <-- Note the record separator here ends {BOT_NAME}'s response.\n"
+			 "\t```\n"
+			 "\n"
+			)
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 4.4. Documentation for function-calling interface.
+
+		context_str += SUBMESSAGE_DELIMITER + FUNCTIONS_DOC_HEADER + \
+			("In this environment, in addition to your being able to execute "
+			 "simple Telegram-style commands starting with '/', you may also "
+			 "invoke functions from a more versatile set summarized under the "
+			 "'Function usage summary' section below. Most functions require "
+			 "activation before you can use them; the set of currently active "
+			 "functions is documented in the 'Detailed function schemas' "
+			 "section. To activate another function, first call the "
+			 "`activate_function` function, passing the name of the function to "
+			 "be activated as the `func_name` argument.\n"
+			 "\n"
+			 "To call a function, you should include an embedded function invocation "
+			 "string anywhere within the body of your message. The general "
+			 "appearance of this string is `@functionName(argList)` where "
+			 "functionName is the function identifier and argList is in "
+			 "Python format and can include positional and/or keyword "
+			 "arguments. Enclose string literals in double-quote (\") characters. "
+			 "Below are some examples of properly formatted function invocations:\n"
+			 "\n"
+			 "\t@activate_function(\"create_image\")\n"
+			 "\n"
+			 "(Note this will then reveal the full schema for create_image(). "
+			 "After it's visible, you will see all its options; for example:)\n"
+			 "\n"
+			 "\t@create_image(\"A beautiful mountain range\", style=\"natural\")\n"
+			 "\n"
+			 "You can also notify the user about each function invocation as it's "
+			 "happening by supplying a message to the user in the `remark` "
+			 "argument to the function, which will be sent to the user when the "
+			 "function is called. After each function call, you will have the "
+			 "opportunity to call additional functions and/or send messages to "
+			 "the user based on the function's result; this also applies "
+			 "recursively to those functions as well. However, the user will not "
+			 "have the opportunity to respond to any of your messages until the "
+			 "entire nested tree of function invocations has completed.\n"
+			 "\n"
+			 "After a function is invoked, such as the `activate_function` example "
+			 "above, its commencement will be noted as an event in the transcript like so:\n"
+			 "\n"
+			 f"\t {SYS_NAME}> @activate_function(" + '{"func_name": "create_image", "remark"=None})\n'
+			 "\n"
+			 "and its return result will be noted as another event appearing like:\n"
+			 "\n"
+			 "\t @activate_function> Success: Function create_image has been activated.\n"
+			 "\n"
+			 "Users cannot directly see these function commencement or return "
+			 "events; thus, if you want users to be aware of particular function "
+			 "outputs, such as detailed image descriptions or search results, you "
+			 "will need to narrate or summarize the relevant information for "
+			 "them in your regular responses.\n"
+			 )
 
 			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			# 4.10. Add the speech I/O capability documentation.
@@ -1515,10 +1604,48 @@ class BotConversation:
 		context_str += AI_COMMAND_USAGE
 
 			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 4.14. Add the usage summary for commands available to the AI.
+
+		context_str += SUBMESSAGE_DELIMITER + FUNCTION_USAGE_HEADER + \
+			(f"Below is a usage summary of the functions that you ({BOT_NAME}) can call. "
+			 "This is in a Python-like syntax, and you should also use Pythonic syntax for "
+			 "your embedded function invocations starting with '@'. Initial arguments without "
+			 "default values may be supplied positionally. Keyword arguments are optional. "
+			 "Be sure to enclose string values between double-quotation mark characters (\")."
+			 "To see a fully documented JSON schema for a function, you must first call "
+			 "`activate_function()` with the function's name.\n"
+			 "\n"
+			 "	activate_function(func_name:str, remark:str=None) -> status:str\n"
+			 "	remember_item(text:str, is_private:bool=True, is_global:bool=False, remark:str=None) -> status:str\n"
+			 f"	search_memory(query_phrase:str, max_results:int={DEFAULT_SEARCHMEM_NITEMS}, remark:str=None) -> results:list\n"
+			 "	forget_item(text:str=None, item_id:str=None, remark:str=None) -> status:str\n"
+			 "	create_image(description:str, shape:str=\"square\", style:str=\"vivid\", caption:str=None, remark:str=None) -> status:str\n"
+			 "	analyze_image(filename:str, verbosity:str=\"medium\", query:str=None, remark:str=None) -> result:str\n"
+			 f"	block_user(user_name:str=\"{user_tag}\", remark:str=None) -> status:str\n"
+			 "	unblock_user(user_name:str, remark:str=None) -> status:str\n"
+			 f"	search_web(query:str, max_results:int={DEFAULT_MAX_WEBRESULTS}, locale:str=\"en-US\", sections:list=[\"webPages\"], remark:str=None) -> results:dict\n"
+			 "	pass_turn() -> None\n")
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 4.15. Add the full schemas for currently active functions.
+
+		context_str += SUBMESSAGE_DELIMITER + FUNCTION_SCHEMAS_HEADER + \
+			(f"Below are the schemas for the functions that are currently "
+			 "active, either because they are always active, or because "
+			 "they were activated using an activate_function() call. Please "
+			 "note that only the {MAX_ACTIVE_FUNCS} most recently activated "
+			 "functions (plus activate_function and pass_turn) are shown."
+			 "\n\n") + \
+			thisConv.cur_func_schemas
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			# 5. Add the context-sensitive memories section.
 
 		if hasattr(thisConv, 'dynamicMem') and thisConv.dynamicMem:
 			context_str += MESSAGE_DELIMITER + DYNAMIC_MEMORY_HEADER + \
+				("Below is a list of the currently accessible memories that "
+				 "are most closely related semantically to the most recent "
+				 "user message. (Sorted from most to least similar.)\n\n") + \
 				thisConv.dynamicMem
 					# ^ Note this only changes whenever a new user
 					#	message is added to the convo.
@@ -2073,7 +2200,7 @@ class BotConversation:
 				"  create_image(description:str, shape:str='square', style:str='vivid', caption:str=None, remark:str=None) -> status:str\n"
 				f"  block_user(user_name:str='{userTag}', remark:str=None) -> status:str\n"
 				"  unblock_user(user_name:str, remark:str=None) -> status:str\n"
-				"  search_web(query:str, locale:str='en-US', sections:list=['webPages'], remark:str=None) -> results:dict\n"
+				"  search_web(query:str, max_results:int=5, locale:str='en-US', sections:list=['webPages'], remark:str=None) -> results:dict\n"
 				"  pass_turn() -> None\n")
 
 			#COMMAND_LIST_HEADER + \
@@ -4149,14 +4276,6 @@ async def process_text_message(update:Update, context:Context):
 		# Strip off any leading or trailing whitespace.
 		response_text = response_text.strip()
 
-		## Strip off any trailing whitespace from the response, since Telegram will ignore it anyway.
-		#response_text = response_text.rstrip()
-		#
-		## If the response starts with a space (which is expected, after the '>'), trim it off.
-		#response_text = response_text.lstrip(' ')
-		##if response_text[0] == ' ':
-		##	response_text = response_text[1:]
-
 		# If the response is empty, then return early. (Can't even send an empty message anyway.)
 		if response_text == "":
 			# Delete the last message from the conversation.
@@ -4172,6 +4291,16 @@ async def process_text_message(update:Update, context:Context):
 			#	# visible to the AI, only to the user.
 
 			return		# This means the bot is simply not responding to this particular message.
+
+		# Make sure response doesn't start with "(audio)", since this
+		# doesn't even make any sense for messages generated by the
+		# AI. (The user can select speech production using the
+		# '/speech' command, however.)
+
+		response_text = response_text.strip()	# Strip leading/trailing whitespace, if any.
+		if response_text.startswith('(audio)'):
+			response_text = response_text[len('(audio)'):]
+			response_text = response_text.strip()
 
 		# Update the message object, and the context.
 		response_botMsg.text = response_text
@@ -4194,8 +4323,8 @@ async def process_text_message(update:Update, context:Context):
 		# urge to repeat something it said earlier, but is holding its tongue.)
 		if response_text.lower() != '/pass' and conversation.is_repeated_message(response_botMsg):
 
-			# Generate an info-level log message to indicate that we're suppressing the response.
-			_logger.info(f"Suppressing response [{response_text}]; it's a repeat.")
+			# Generate a normal-level log message to indicate that we're suppressing the response.
+			_logger.normal(f"Suppressing response [{response_text}]; it's a repeat.")
 
 			# Delete the last message from the conversation.
 			conversation.delete_last_message()
@@ -4298,6 +4427,10 @@ async def handle_error(update:Update, context:Context) -> None:
 #	* /image <desc> - Generates an image with a given text description and sends it to the user.
 
 
+# These are the max # of active functions besides the 2 that are always active.
+
+MAX_ACTIVE_FUNCS = 3
+
 async def ai_activateFunction(
 	updateMsg:TgMsg, botConvo:BotConversation, funcName:str) -> str:
 
@@ -4349,7 +4482,16 @@ async def ai_activateFunction(
 		_logger.error(f"AI tried to activate an unknown function '{funcName}'.")
 		return f"Error: Unknown function name '{funcName}'."
 
+	# If there are too many active functions, expunge oldies.
+	while len(cur_funcs) > MAX_ACTIVE_FUNCS:
+		cur_funcs.pop(0)	# Pop the oldest element.
+
 	botConvo.cur_funcs = cur_funcs
+
+	# Make sure these two are always still on the list.
+	cur_funcs = list(cur_funcs) + [ACTIVATE_FUNCTION_SCHEMA, PASS_TURN_SCHEMA] 
+
+	botConvo.cur_func_schemas = json.dumps(cur_funcs, indent=2, sort_keys=True)
 
 	_logger.normal(f"\tAI activated function '{funcName}'.")
 
@@ -4901,9 +5043,12 @@ def trim(s:str, n:int=30):
 	else:
 		return s[:n] + "..."
 
+DEFAULT_MAX_WEBRESULTS=5
+
 # Define a function to handle the AI's search_web() function.
 async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
-					   queryPhrase:str, maxResults:int=None, locale:str="en-US",
+					   queryPhrase:str, maxResults:int=DEFAULT_MAX_WEBRESULTS,
+					   locale:str="en-US",
 					   sections:list=DEFAULT_BINGSEARCH_SECTIONS) -> str:
 
 	"""Do a web search using the Bing API."""
@@ -5438,10 +5583,12 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 	# pass it our list of function descriptions.
 	if hasFunctions(ENGINE_NAME):
 		# Retrieve our current functions list...
-		#functions = botConvo.cur_funcs + \
-		#			[ACTIVATE_FUNCTION_SCHEMA, PASS_TURN_SCHEMA]
-		#			# Plus always include these two.
-		functions = FUNCTIONS_LIST
+		functions = botConvo.cur_funcs + \
+					[ACTIVATE_FUNCTION_SCHEMA, PASS_TURN_SCHEMA]
+					# Plus always include these two.
+
+		# Or, use this version if we're just showing all schemas all the time.
+		#functions = FUNCTIONS_LIST
 
 		func_names = [func['name'] for func in functions if 'name' in func]
 		_logger.info(f"\tIn chat {chat_id}, current function list is: {func_names}.")
@@ -6031,7 +6178,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 # our functions from getting too long.
 
 async def process_function_call(
-		funcall_oaiMsg:dict,		# Raw OpenAI message that represents the function call.
+		funcall_oaiMsg:object,		# Raw OpenAI message that represents the function call.
 		tgUpdate:Update,			# The original Telegram update that prompted this call.
 		tgContext:Context,			# The Telegram context for this chat.
 	) -> None:
@@ -6083,14 +6230,21 @@ async def process_function_call(
 	# remember that it did the function call.
 	#fcall_note = f"[NOTE: {BOT_NAME} is doing function call {call_desc}.]"
 	#botConvo.add_message(BotMessage(SYS_NAME, fcall_note))
-	# ^^^ The above is obsolet now, given new-style function call formatting.
+	# ^^^ The above is obsolete now, given new-style function call formatting.
 
 	# This generates a new-format bot message for the function call action.
-	await botConvo.add_message(BotMessage(BOT_NAME, function_argStr, func_name=function_name))
+	if global_gptCore.isChat:
+		who = BOT_NAME	# Make it look like function commencement is from the AI.
+	else:
+		who = SYS_NAME	# Make it look like function commencement is from the BotServer.
+
+	await botConvo.add_message(BotMessage(who, function_argStr, func_name=function_name))
 
 	# Extract the optional remark argument from the argument list.
 	if 'remark' in function_args:
 		remark = function_args['remark']
+		if remark is None:
+			remark = ""
 		del function_args['remark']
 	else:
 		remark = ""		# If no remark, take it as empty string.
@@ -6167,6 +6321,16 @@ async def process_function_call(
 	# ^^ This is obsolete now that we have new-style message formats for function returns.
 	# The following generates a new-format bot message for the function return.
 	await botConvo.add_message(BotMessage(f"@{function_name}", resultStr))
+
+	# For non-chat models, give them a chance to respond.
+	if not global_gptCore.isChat:
+		await botConvo.add_message(BotMessage(SYS_NAME,
+			(f"[{BOT_NAME}, you may now respond to the '{function_name}' "
+			 "function's return result recorded above.")))
+		await handle_message(tgUpdate, tgContext, isNewMsg=False)
+		return
+
+	## NOTE: All of the below is only relevant for chat models.
 
 	# Back when our functions just never returned a result, we would just skip
 	# everything below here. But they do return results now.
@@ -6283,10 +6447,10 @@ async def process_function_call(
 #__/ End definition of function process_function_call().
 
 
-# Another new function, to process a raw response from the AI, which (for chat
-# engines) takes the form of an OpenAI message object (a dictionary-like
-# object). We separate this from get_ai_response() above just to keep our
-# functions from getting too long!
+# Another new function, to process a raw response from the AI, which
+# (for chat engines) takes the form of an OpenAI message object (a
+# dictionary-like object). We separate this from get_ai_response()
+# above just to keep our functions from getting too long!
 
 async def process_raw_response(
 			chatCompletion:ChatCompletion, 
@@ -6562,33 +6726,47 @@ async def process_response(update:Update, context:Context,
 		_logger.error(f"In process_response(), got an empty response message: [{str(response_botMsg)}].")
 		return
 
-	# Finally, we check to see if the AI's message is a command line;
-	# that is, if it starts with '/' followed by an identifier (e.g.,
-	# '/remember').  If so, we'll process it as a command.
-	if response_text[0] == '/':
+	# This is the right place to see if the AI sent its response as a
+	# sequence of multiple Telegram messages; if so, then we need to
+	# break it up and process each one separately.
 
-		# The AI attempted to send a command line, so process it as such.
-		await process_ai_command(update, context, response_text)
+	resp_delim = SUBMESSAGE_DELIMITER + f" {BOT_NAME}>"
+	message_texts = response_text.split(resp_delim)
+	if len(message_texts) > 1:
+		_logger.normal(f"NOTE: Got a response with {len(message_texts)} submessages.")
 
-		return
+	for msg_text in message_texts:
 
-	# Response was not a command. Treat it normally.
+		# Finally, we check to see if the AI's message is a command line;
+		# that is, if it starts with '/' followed by an identifier (e.g.,
+		# '/remember').  If so, we'll process it as a command.
+		if msg_text[0] == '/':
 
-	# Just send our response to the user as a normal message.
-	await send_response(update, context, response_text)
+			# The AI attempted to send a command line, so process it as such.
+			await process_ai_command(update, context, msg_text)
 
-	# We also need to check for embedded function calls... (concise syntax)
-	await check_for_funcalls(update, context, response_text)
+			return
 
-	# One more thing to do here: If the AI's response ends with the string "(cont)" or "(cont.)"
-	# or "(more)" or "...", then we'll send a message to the user asking them to continue the 
+		# Response was not a command. Treat it normally.
+
+		# Just send our response to the user as a normal message.
+		await send_response(update, context, msg_text)
+
+		# We also need to check for embedded function calls... (concise syntax)
+		await check_for_funcalls(update, context, msg_text)
+			# Note this will also call the function and allow the AI to respond to its result.
+
+	#__/
+
+	# One more thing to do here: If the AI's last response ends with
+	# the string "(cont)" or "(cont.)"  or "(more)" or "...", then
+	# we'll send a message to the user asking them to continue the
 	# conversation.
-	if response_text.endswith("(cont)") or response_botMsg.text.endswith("(cont.)") or \
-	   response_text.endswith("(more)") or response_botMsg.text.endswith("..."):
+	if msg_text.endswith("(cont)") or response_botMsg.text.endswith("(cont.)") or \
+	   msg_text.endswith("(more)") or response_botMsg.text.endswith("..."):
 
 		contTxt = "[If you want me to continue my response, type '/continue'.]"
 		await _reply_user(tgMsg, conversation, contTxt, ignore=True)
-	#__/
 
 	# Processed AI's response successfully.
 
@@ -6599,6 +6777,12 @@ async def process_response(update:Update, context:Context,
 # function calls (in concise syntax) and if so, then process them.
 
 async def check_for_funcalls(update:Update, context:Context, response_text:str) -> None:
+
+	# Get the user message, or edited message from the update.
+	(tgMsg, edited) = _get_update_msg(update)
+	
+	# Get the BotConversation object from the Telegram context.
+	conversation	= context.chat_data['conversation']
 
 	# Define the regular expression for matching a function invocation
 
@@ -6663,16 +6847,369 @@ async def check_for_funcalls(update:Update, context:Context, response_text:str) 
 		_logger.normal(f"\tPositional arguments: {positional_arglist}")
 		_logger.normal(f"\tKeyword arguments: {keyword_arglist}")
 
-		### CONTINUE HERE ###
+		# Next we just need code to log the function-call event and
+		# dispatch control to particular function calls.  (But first I
+		# think we need to assign positional arguments to the
+		# appropriate keyword arguments.)
 
-		# Next we just need code to log the function-call event and dispatch control to particular function calls.
-		# (But first I think we need to assign positional arguments to the appropriate keyword arguments.)
+		# Put together the Telegram arguments to pass into bot server functions
+		tgArgs = {
+			'update':	update,
+			'context':	context
+		}
+
+		# Dispatch control to the actual functions.
+
+		try:
+			if func_name == 'remember_item':
+				await remember_item(tgArgs, *positional_arglist, **keyword_arglist)
+	
+			elif func_name == 'search_memory':
+				await search_memory(tgArgs, *positional_arglist, **keyword_arglist)
+	
+			elif func_name == 'forget_item':
+				await forget_item(tgArgs, *positional_arglist, **keyword_arglist)
+	
+			elif func_name == 'analyze_image':
+				await analyze_image(tgArgs, *positional_arglist, **keyword_arglist)
+	
+			elif func_name == 'create_image':
+				await create_image(tgArgs, *positional_arglist, **keyword_arglist)
+	
+			elif func_name == 'block_user':
+				await block_user(tgArgs, *positional_arglist, **keyword_arglist)
+	
+			elif func_name == 'unblock_user':
+				await unblock_user(tgArgs, *positional_arglist, **keyword_arglist)
+	
+			elif func_name == 'search_web':
+				await search_web(tgArgs, *positional_arglist, **keyword_arglist)
+	
+			elif func_name == 'activate_function':
+				await activate_function(tgArgs, *positional_arglist, **keyword_arglist)
+	
+			elif func_name == 'pass_turn':
+				await pass_turn(tgArgs, *positional_arglist, **keyword_arglist)
+	
+			else:
+				await _report_error(conversation, tgMsg,
+					f"Unknown function name '{func_name}'.")
+
+		# We might get a type error here if the AI tried to provide an
+		# unknown keyword argument to a function, for example.
+		except TypeError as e:
+			await _report_error(conversation, tgMsg,
+				f"Type error in function invocation [{full_call}]: {str(e)}",
+					showStack=True)
 
 	#__/ End loop iterating over matches.
 
 	_logger.normal("Finished scanning for function invocations.")
 
 #__/ End async function check_for_funcalls().
+
+
+################################################################################
+
+################################################################################
+
+class DictLikeClass:
+    def __init__(self):
+        self._data = {}
+
+    # Support dictionary-like item getting
+    def __getitem__(self, key):
+        return self._data[key]
+
+    # Support dictionary-like item setting
+    def __setitem__(self, key, value):
+        self._data[key] = value
+
+    # Support dictionary-like item deletion
+    def __delitem__(self, key):
+        del self._data[key]
+
+    # Support 'in' keyword for key existence
+    def __contains__(self, key):
+        return key in self._data
+
+    # Support dictionary-like iteration
+    def __iter__(self):
+        return iter(self._data)
+
+    # Support dictionary-like length
+    def __len__(self):
+        return len(self._data)
+
+    # Support dictionary-like representation
+    def __repr__(self):
+        return repr(self._data)
+
+class DummyOaiFuncall(DictLikeClass):
+	# The below is a hack so we can also access the .content
+	# attribute using dictionary syntax, like ['content']
+	def __getitem__(self, key):
+		if key == 'content':
+			return self.content
+		else:
+			return super().__getitem__(key)
+	def __contains__(self, key):
+		if key == 'content':
+			return True
+		else:
+			return super().__contains__(key)
+
+class DummyOaiToolCall: pass
+class DummyOaiFunction: pass
+
+# ^ DummyOaiFuncall is a dummy class definition to mimic an OpenAI-style
+# function-call message. Its objects should have the following
+# attributes:
+#
+#	.content		- Message text; must always be None.
+#	.tool_calls		- Array of 'tool call' (DummyOaiToolCall) objects
+#
+# Similarly, objects of class DummyOaiToolCall should have these
+# attributes:
+#
+#	.function		- A single 'function' (DummyOaiFunction) object.
+#
+# And an object of class DummyOaiFunction should have these attributes:
+#
+#	.name			- The function's name; a string.
+#	.arguments		- The function's arguments; a JSON-encoded dictionary.
+#
+# The following helper function converts a sane function-call
+# representation (function name string and argument dict) into the
+# above nonsense, for backwards-compatibility with OpenAI-style
+# function processing..
+
+def _construct_oaiFuncallMsgObj(funcname:str, funcargs:dict) -> DummyOaiFuncall:
+
+	dummyOaiFunction = DummyOaiFunction()
+
+	dummyOaiFunction.name		= funcname
+	dummyOaiFunction.arguments	= json.dumps(funcargs)
+
+	dummyOaiToolCall = DummyOaiToolCall()
+
+	dummyOaiToolCall.function = dummyOaiFunction
+
+	dummyOaiFuncall = DummyOaiFuncall()
+
+	dummyOaiFuncall.content		= None
+	dummyOaiFuncall.tool_calls	= [dummyOaiToolCall]
+
+	return dummyOaiFuncall
+
+
+# These are the AI-callable functions; we define them this way here so
+# that we can call them with a mix of positional and keyword arguments.
+# Call them with (tgArgs, *positional_arglist, **keyword_arglist).
+# The tgArgs should be a dict with keys 'tgUpdate', 'tgContext'.
+
+async def remember_item(tgArgs:dict, text:str, is_private:bool=True,
+						is_global:bool=False, remark:str=None) -> str:
+
+	tgUpdate	= tgArgs['update']
+	tgContext	= tgArgs['context']
+
+	funcName = 'remember_item'
+	funcArgs = {
+		'text': 		text,
+		'is_private':	is_private,
+		'is_global':	is_global,
+		'remark':		remark
+	}
+
+	# Construct a mimic of one of OpenAI's function-call message objects.
+	funcall_oaiMsgObj = _construct_oaiFuncallMsgObj(funcName, funcArgs)
+
+	# Process it like a function-call message object from an OpenAI model.
+	return await process_function_call(funcall_oaiMsgObj, tgUpdate, tgContext)
+
+
+async def search_memory(tgArgs:dict, query_phrase:str,
+						max_results:int=DEFAULT_SEARCHMEM_NITEMS,
+						remark:str=None) -> list:
+
+	tgUpdate	= tgArgs['update']
+	tgContext	= tgArgs['context']
+
+	funcName = 'search_memory'
+	funcArgs = {
+		'query_phrase':	query_phrase,
+		'max_results':	max_results,
+		'remark':		remark
+	}
+
+	# Construct a mimic of one of OpenAI's function-call message objects.
+	funcall_oaiMsgObj = _construct_oaiFuncallMsgObj(funcName, funcArgs)
+
+	# Process it like a function-call message object from an OpenAI model.
+	return await process_function_call(funcall_oaiMsgObj, tgUpdate, tgContext)
+
+
+async def forget_item(tgArgs:dict, text:str=None, item_id:str=None,
+					  remark:str=None) -> str:
+
+	tgUpdate	= tgArgs['update']
+	tgContext	= tgArgs['context']
+
+	funcName = 'forget_item'
+	funcArgs = {
+		'text':		text,
+		'item_id':	item_id,
+		'remark':	remark
+	}
+
+	# Construct a mimic of one of OpenAI's function-call message objects.
+	funcall_oaiMsgObj = _construct_oaiFuncallMsgObj(funcName, funcArgs)
+
+	# Process it like a function-call message object from an OpenAI model.
+	return await process_function_call(funcall_oaiMsgObj, tgUpdate, tgContext)
+
+
+async def analyze_image(tgArgs:dict, filename:str, verbosity:str='medium',
+						query:str=None, remark:str=None) -> str:
+
+	tgUpdate	= tgArgs['update']
+	tgContext	= tgArgs['context']
+
+	funcName = 'analyze_image'
+	funcArgs = {
+		'filename':		filename,
+		'verbosity':	verbosity,
+		'query':		query,
+		'remark':		remark
+	}
+
+	# Construct a mimic of one of OpenAI's function-call message objects.
+	funcall_oaiMsgObj = _construct_oaiFuncallMsgObj(funcName, funcArgs)
+
+	# Process it like a function-call message object from an OpenAI model.
+	return await process_function_call(funcall_oaiMsgObj, tgUpdate, tgContext)
+
+
+async def create_image(tgArgs:dict, description:str, shape:str='square',
+					   style:str='vivid', caption:str=None, remark:str=None) -> str:
+
+	tgUpdate	= tgArgs['update']
+	tgContext	= tgArgs['context']
+
+	funcName = 'create_image'
+	funcArgs = {
+		'description':	description,
+		'shape':		shape,
+		'style':		style,
+		'caption':		caption,
+		'remark':		remark
+	}
+
+	# Construct a mimic of one of OpenAI's function-call message objects.
+	funcall_oaiMsgObj = _construct_oaiFuncallMsgObj(funcName, funcArgs)
+
+	# Process it like a function-call message object from an OpenAI model.
+	return await process_function_call(funcall_oaiMsgObj, tgUpdate, tgContext)
+
+
+async def block_user(tgArgs:dict, user_name:str=None, user_id:int=None,
+					 remark:str=None) -> str:
+
+	tgUpdate	= tgArgs['update']
+	tgContext	= tgArgs['context']
+
+	funcName = 'block_user'
+	funcArgs = {
+		'user_name':	user_name,
+		'user_id':		user_id,
+		'remark':		remark
+	}
+
+	# Construct a mimic of one of OpenAI's function-call message objects.
+	funcall_oaiMsgObj = _construct_oaiFuncallMsgObj(funcName, funcArgs)
+
+	# Process it like a function-call message object from an OpenAI model.
+	return await process_function_call(funcall_oaiMsgObj, tgUpdate, tgContext)
+
+
+async def unblock_user(tgArgs:dict, user_name:str=None, user_id:int=None,
+					   remark:str=None) -> str:
+
+	tgUpdate	= tgArgs['update']
+	tgContext	= tgArgs['context']
+
+	funcName = 'unblock_user'
+	funcArgs = {
+		'user_name':	user_name,
+		'user_id':		user_id,
+		'remark':		remark
+	}
+
+	# Construct a mimic of one of OpenAI's function-call message objects.
+	funcall_oaiMsgObj = _construct_oaiFuncallMsgObj(funcName, funcArgs)
+
+	# Process it like a function-call message object from an OpenAI model.
+	return await process_function_call(funcall_oaiMsgObj, tgUpdate, tgContext)
+
+
+async def search_web(tgArgs:dict, query:str,
+					 max_results:int=DEFAULT_MAX_WEBRESULTS, locale:str='en-US',
+					 sections=DEFAULT_BINGSEARCH_SECTIONS, remark:str=None) -> dict:
+
+	tgUpdate	= tgArgs['update']
+	tgContext	= tgArgs['context']
+
+	funcName = 'search_web'
+	funcArgs = {
+		'query':		query,
+		'max_results':	max_results,
+		'locale':		locale,
+		'sections':		sections,
+		'remark':		remark
+	}
+
+	# Construct a mimic of one of OpenAI's function-call message objects.
+	funcall_oaiMsgObj = _construct_oaiFuncallMsgObj(funcName, funcArgs)
+
+	# Process it like a function-call message object from an OpenAI model.
+	return await process_function_call(funcall_oaiMsgObj, tgUpdate, tgContext)
+
+
+async def activate_function(tgArgs:dict, func_name:str, remark:str=None) -> str:
+
+	tgUpdate	= tgArgs['update']
+	tgContext	= tgArgs['context']
+
+	funcName = 'activate_function'
+	funcArgs = {
+		'func_name':	func_name,
+		'remark':		remark
+	}
+
+	# Construct a mimic of one of OpenAI's function-call message objects.
+	funcall_oaiMsgObj = _construct_oaiFuncallMsgObj(funcName, funcArgs)
+
+	# Process it like a function-call message object from an OpenAI model.
+	return await process_function_call(funcall_oaiMsgObj, tgUpdate, tgContext)
+
+
+async def pass_turn(tgArgs:dict) -> None:
+
+	tgUpdate	= tgArgs['update']
+	tgContext	= tgArgs['context']
+
+	funcName = 'pass_turn'
+	funcArgs = dict()
+
+	# Construct a mimic of one of OpenAI's function-call message objects.
+	funcall_oaiMsgObj = _construct_oaiFuncallMsgObj(funcName, funcArgs)
+
+	# Process it like a function-call message object from an OpenAI model.
+	return await process_function_call(funcall_oaiMsgObj, tgUpdate, tgContext)
+
+
+################################################################################
 
 
 async def _send_imagedata(img_data, tgMsg:TgMsg, caption:str=None, ):
@@ -6990,7 +7527,7 @@ class BingQuotaExceeded(SearchError):
 
 # This function will be used internally by the WebAssistant when
 # doing web searches.
-def _bing_search(query_string:str, market:str='en-US', count=3):
+def _bing_search(query_string:str, market:str='en-US', count=DEFAULT_MAX_WEBRESULTS):
 	# The caller should fill in the market parameter based on the
 	# user's locale (if known), or on an alternate market for this
 	# particular search (if specified by the user).
@@ -8580,8 +9117,9 @@ async def _reply_asSpeech(userTgMessage:TgMsg, convo:BotConversation, text):
 
 
 async def _report_error(convo:BotConversation, telegramMessage,
-				 errMsg:str, logIt:bool=True,
-				 showAI:bool=True, showUser:bool=True) -> None:
+			errMsg:str, logIt:bool=True, showAI:bool=True,
+			showUser:bool=True, showStack=False
+		) -> None:
 
 	"""Report a given error response to a Telegram message. Flags
 		<logIt>, <showAI>, <showUser> control where the error is
@@ -8591,7 +9129,7 @@ async def _report_error(convo:BotConversation, telegramMessage,
 
 	if logIt:
 		# Record the error in the log file.
-		_logger.error(errMsg)
+		_logger.error(errMsg, exc_info=showStack)
 
 		#_logger.error(errMsg, exc_info=logmaster.doDebug)
 			# The exc_info option includes a stack trace if we're in debug mode.
@@ -9079,7 +9617,7 @@ MESSAGE_DELIMITER = chr(ascii.RS)	# (Gladys agreed to try this.)
 
 if MESSAGE_DELIMITER:		# If the delimiter isn't empty string,
 	MESSAGE_SEPARATOR = MESSAGE_DELIMITER + ' '		# Add a space after it (for benefit of tokenizer)
-	SUBMESSAGE_DELIMITER = chr(ascii.FS)	# ASCII FS = 0x1F, field separator.
+	SUBMESSAGE_DELIMITER = chr(ascii.US)	# ASCII FS = 0x1F, unit separator.
 else:
 	MESSAGE_SEPARATOR = ""
 
@@ -9216,11 +9754,15 @@ PERMANENT_CONTEXT_HEADER = f" {SECTION_DECORATOR} PERMANENT CONTEXT DATA: {SECTI
 INTERFACE_DOCS_HEADER	 = f" {SECTION_DECORATOR} INTERFACE DOCUMENTATION: {SECTION_DECORATOR}\n"
 
 TRANSCRIPT_DOC_HEADER	 = f" {SUBSECTION_DECORATOR} Transcript format: {SUBSECTION_DECORATOR}\n"
+MESSAGE_SEQ_HEADER		 = f" {SUBSECTION_DECORATOR} Message sequences: {SUBSECTION_DECORATOR}\n"
+FUNCTIONS_DOC_HEADER	 = f" {SUBSECTION_DECORATOR} Function calling: {SUBSECTION_DECORATOR}\n"
+
 SPEECH_IO_HEADER		 = f" {SUBSECTION_DECORATOR} Speech I/O capability: {SUBSECTION_DECORATOR}\n"
 MARKDOWN_DOC_HEADER		 = f" {SUBSECTION_DECORATOR} Markdown formatting syntax: {SUBSECTION_DECORATOR}\n"
 
 COMMAND_LIST_HEADER		 = f" {SUBSECTION_DECORATOR} Commands available for {BOT_NAME} AI to use: {SUBSECTION_DECORATOR}\n"
 FUNCTION_USAGE_HEADER	 = f" {SUBSECTION_DECORATOR} Usage summary for functions available to AI: {SUBSECTION_DECORATOR}\n"
+FUNCTION_SCHEMAS_HEADER	 = f" {SUBSECTION_DECORATOR} Full schemas of currently active functions: {SUBSECTION_DECORATOR}\n"
 
 DYNAMIC_MEMORY_HEADER	 = f" {SECTION_DECORATOR} CONTEXTUALLY RELEVANT MEMORIES: {SECTION_DECORATOR}\n"
 
@@ -9243,12 +9785,12 @@ AI_COMMAND_USAGE = SUBMESSAGE_DELIMITER + COMMAND_LIST_HEADER									+ \
 	"you should please make sure that the command line is the very first line of your "			+ \
 	"message.]\n"																				+ \
 	"\n"																						+ \
-	"  /pass - Refrain from responding to the last user message.\n"								+ \
-	"  /image <desc> - Generate an image with description <desc> and send it to the user.\n"	+ \
-	"  /remember <text> - Adds <text> to my persistent context data.\n"							+ \
-	"  /forget <text> - Removes <text> from my persistent context data.\n"						+ \
-	"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n"			+ \
-	"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n"	+ \
+	"	/pass - Refrain from responding to the last user message.\n"							+ \
+	"	/image <desc> - Generate an image with description <desc> and send it to the user.\n"	+ \
+	"	/remember <text> - Adds <text> to my persistent context data.\n"						+ \
+	"	/forget <text> - Removes <text> from my persistent context data.\n"						+ \
+	"	/block [<user>] - Adds the user to my block list. Defaults to current user.\n"			+ \
+	"	/unblock [<user>] - Removes the user from my block list. Defaults to current user.\n"	+ \
 	"\n"
 
 # Text to send in response to the /greet command.
@@ -9501,7 +10043,7 @@ CREATE_IMAGE_SCHEMA = {
 			"shape":	{
 				"type":			"string",
 				"description":	"Overall shape of image to generate.",
-				"default":		'square',
+				"Default":		'square',
 				"enum":			['square', 'portrait', 'landscape']
 			},
 			"style":	{
@@ -9606,7 +10148,8 @@ SEARCH_WEB_SCHEMA = {
 			},
 			"max_results": {
 				"type":			"integer",	# <max_results> is an integer
-				"description":	"The maximum number of items to return."
+				"description":	"The maximum number of items to return.",
+				"default":		DEFAULT_MAX_WEBRESULTS
 			},
 			"locale": {
 				"type": 		"string",
@@ -9622,9 +10165,10 @@ SEARCH_WEB_SCHEMA = {
 			},
 			"sections": {
 				"type":			"array",
-				"description":	"List of sections to return in the search results. "
-									f"(Default is {DEFAULT_BINGSEARCH_SECTIONS}).",
+				"description":	"List of sections to return in the search results. ",
+									#f"(Default is {DEFAULT_BINGSEARCH_SECTIONS}).",
 									#f"(Default is ['webPages', 'relatedSearches']).",
+				"default":		DEFAULT_BINGSEARCH_SECTIONS,
 				"minLength":	1,
 				"uniqueItems":	True,
 				"items": {
@@ -9732,7 +10276,7 @@ FUNCTIONS_LIST = [
 	BLOCK_USER_SCHEMA,
 	UNBLOCK_USER_SCHEMA,
 	SEARCH_WEB_SCHEMA,
-#	ACTIVATE_FUNCTION_SCHEMA,
+	ACTIVATE_FUNCTION_SCHEMA,	# Note this one can be removed if ALL schemas are to be shown always.
 	PASS_TURN_SCHEMA
 ]	
 
