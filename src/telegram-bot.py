@@ -1411,30 +1411,30 @@ class BotConversation:
 		#|	4. Interface documentation. This includes:
 		#|
 		#|		4.1. [/] Message transcript format documentation.
-		#|		4.2. [ ] Sending message sequences.
+		#|		4.2. [/] Sending message sequences.
 		#|		4.3. [ ] Inner monologue system.
-		#|		4.4. [ ] Function calling.
-		#|		4.5. [ ] Visual input (native vs. external).
-		#|		4.6. [ ] Image generation.
-		#|		4.7. [ ] Image refreshing.
-		#|		4.8. [ ] Memory management.
-		#|		4.9. [ ] User management.
-		#|		4.10. [/] Speech I/O.
-		#|		4.11. [ ] Web search.
-		#|		4.12. [/] Markdown formatting syntax.
-		#|		4.13. [/] Usage summary for commands available to the AI.
-		#|		4.14. [/] Usage summary for functions available to the AI.
-		#|		4.15. [ ] Full function schemas for currently activated functions..
-		#|		4.16. [ ] Usage summary for commands available to human users.
-		#|		4.17. [ ] Response instructions.
+		#|		4.4. [/] Function calling.
+		#|		4.6. [/] Image generation.
+		#|		4.5. [/] Visual input (native vs. external).
+		#|		4.7. [/] Memory management.
+		#|		4.8. [/] User management.
+		#|		4.9. [/] Speech I/O.
+		#|		4.10. [/] Web search.
+		#|		4.11. [/] Markdown formatting syntax.
+		#|		4.12. [/] Usage summary for commands available to the AI.
+		#|		4.13. [/] Usage summary for functions available to the AI.
+		#|		4.14. [/] Full function schemas for currently activated functions..
+		#|		4.15. [/] Usage summary for commands available to human users.
 		#|
 		#|	5. [/] Contextually relevant memories.
 		#|
-		#|	6. [/] "Recent Telegram messages:" header.
+		#|	6. [/] Response instructions.
 		#|
-		#|	7. [/] The actual list of recent messages.
+		#|	7. [/] "Recent Telegram messages:" header.
 		#|
-		#|	8. [ ] Final instruction after messages and just before prompt marker.
+		#|	8. [/] The actual list of recent messages.
+		#|
+		#|	9. [x] Final instruction after messages and just before prompt marker.
 		#|
 		#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		
@@ -1505,65 +1505,195 @@ class BotConversation:
 			 f"\t\x1e	# <-- Note the record separator here ends {BOT_NAME}'s response.\n"
 			 "\t```\n"
 			 "\n"
-			)
+			 "NOTE: Please try to keep individual Telegram messages under 4,096 "
+			 "characters in length since that is the maximum length of a message "
+			 "imposed by Telegram. Longer messages will be automatically broken "
+			 "up on arbitrary boundaries."
+		)
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 4.3. Inner monologue system.
+
+		context_str += SUBMESSAGE_DELIMITER + THOUGHT_DOC_HEADER + (
+			"This interface supports a simple inner monologue capability. "
+			"In a sequence of messages, any message that begins with the "
+			"string \"*thinks:\" or \"*thinking:\" will be suppressed from "
+			"being sent to the chat, while remaining visible for your reference "
+			"in the chat transcript. You may use this facility to plan or "
+			"reflect upon your visible responses or the user interaction more "
+			"broadly. Please remember that remote human chat participants on "
+			"will not be able to see your private thoughts, but they will be "
+			"displayed to the system operator on the bot server console for "
+			"diagnostic purposes during development.\n"
+			""
+			"Example response payload including private thoughts:\n"
+			"\n"
+			"\t```text\n"
+			f"\t\x1e {BOT_NAME}> *thinks: In this message, I'm privately "
+				"planning my response. This won't be sent to the chat.*\n"
+			f"\t\x1f {BOT_NAME}> Hello, user! I am now responding to you.\n"
+			f"\t\x1f {BOT_NAME}> *thinking: Let me reflect on that last "
+				"interaction...\n"
+			f"\t\x1e	# <-- Terminates {BOT_NAME}'s response.\n"
+			"\t```\n"
+			"\n"
+			"Please note that private thoughts are particularly useful for "
+			"invoking functions (discussed below) discreetly, without "
+			"displaying the literal function-call code to users.\n"
+		)
 
 			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			# 4.4. Documentation for function-calling interface.
 
-		context_str += SUBMESSAGE_DELIMITER + FUNCTIONS_DOC_HEADER + \
-			("In this environment, in addition to your being able to execute "
-			 "simple Telegram-style commands starting with '/', you may also "
-			 "invoke functions from a more versatile set summarized under the "
-			 "'Function usage summary' section below. Most functions require "
-			 "activation before you can use them; the set of currently active "
-			 "functions is documented in the 'Detailed function schemas' "
-			 "section. To activate another function, first call the "
-			 "`activate_function` function, passing the name of the function to "
-			 "be activated as the `func_name` argument.\n"
-			 "\n"
-			 "To call a function, you should include an embedded function invocation "
-			 "string anywhere within the body of your message. The general "
-			 "appearance of this string is `@functionName(argList)` where "
-			 "functionName is the function identifier and argList is in "
-			 "Python format and can include positional and/or keyword "
-			 "arguments. Enclose string literals in double-quote (\") characters. "
-			 "Below are some examples of properly formatted function invocations:\n"
-			 "\n"
-			 "\t@activate_function(\"create_image\")\n"
-			 "\n"
-			 "(Note this will then reveal the full schema for create_image(). "
-			 "After it's visible, you will see all its options; for example:)\n"
-			 "\n"
-			 "\t@create_image(\"A beautiful mountain range\", style=\"natural\")\n"
-			 "\n"
-			 "You can also notify the user about each function invocation as it's "
-			 "happening by supplying a message to the user in the `remark` "
-			 "argument to the function, which will be sent to the user when the "
-			 "function is called. After each function call, you will have the "
-			 "opportunity to call additional functions and/or send messages to "
-			 "the user based on the function's result; this also applies "
-			 "recursively to those functions as well. However, the user will not "
-			 "have the opportunity to respond to any of your messages until the "
-			 "entire nested tree of function invocations has completed.\n"
-			 "\n"
-			 "After a function is invoked, such as the `activate_function` example "
-			 "above, its commencement will be noted as an event in the transcript like so:\n"
-			 "\n"
-			 f"\t {SYS_NAME}> @activate_function(" + '{"func_name": "create_image", "remark"=None})\n'
-			 "\n"
-			 "and its return result will be noted as another event appearing like:\n"
-			 "\n"
-			 "\t @activate_function> Success: Function create_image has been activated.\n"
-			 "\n"
-			 "Users cannot directly see these function commencement or return "
-			 "events; thus, if you want users to be aware of particular function "
-			 "outputs, such as detailed image descriptions or search results, you "
-			 "will need to narrate or summarize the relevant information for "
-			 "them in your regular responses.\n"
-			 )
+		context_str += SUBMESSAGE_DELIMITER + FUNCTIONS_DOC_HEADER + (
+			"In this environment, in addition to your being able to execute "
+			"simple Telegram-style commands starting with '/', you may also "
+			"invoke functions from a more versatile set summarized under the "
+			"'Function usage summary' section below. Most functions require "
+			"activation before you can use them; the set of currently active "
+			"functions is documented in the 'Detailed function schemas' "
+			"section. To activate another function, first call the "
+			"`activate_function` function, passing the name of the function to "
+			"be activated as the `func_name` argument.\n"
+			"\n"
+			"To call a function, you should include an embedded function invocation "
+			"string anywhere within the body of your message. The general "
+			"appearance of this string is `@functionName(argList)` where "
+			"functionName is the function identifier and argList is in "
+			"Python format and can include positional and/or keyword "
+			"arguments. Enclose string literals in double-quote (\") characters. "
+			"Below are some examples of properly formatted function invocations:\n"
+			"\n"
+			"\t@activate_function(\"create_image\")\n"
+			"\n"
+			"(Note this will then reveal the full schema for create_image(). "
+			"After it's visible, you will see all its options; for example:)\n"
+			"\n"
+			"\t@create_image(\"A beautiful mountain range\", style=\"natural\")\n"
+			"\n"
+			"IMPORTANT NOTE: You MUST include a function invocation string such "
+			"as the above in a message event to cause the function to be invoked; "
+			"however, if you put '*thinks*' at the start of a message, then it won't "
+			"be sent to the chat; see the Inner Monologue instructions. Doing this is a "
+			"best practice, since most outside users won't want to see the function "
+			"call code.\n"
+			"\n"
+			"You can inform the user about each function invocation as it's "
+			"happening by supplying a message to the user in the `remark` "
+			"argument to the function, which will be sent to the user when the "
+			"function is called, even if's invoked from within a private thought.\n"
+			"\n"
+			"After a function is invoked, such as the `activate_function` example "
+			"above, its commencement will be noted as an event in the transcript like so:\n"
+			"\n"
+			f"\t\x1e {SYS_NAME}> @activate_function(" + '{"func_name": "create_image", "remark"=None})\n'
+			"\n"
+			"and its return result will be noted as another event appearing like:\n"
+			"\n"
+			"\t\x1e @activate_function> Success: Function create_image has been activated.\n"
+			"\n"
+			"Other chat participants cannot directly see any these function commencement or return "
+			"events, since they are only internal to your bot interface; thus, "
+			"if you want users to be aware of particular function "
+			"outputs, such as detailed image descriptions or search results, you "
+			"will need to narrate or summarize the relevant information for "
+			"them in your regular responses.\n"
+			"\n"
+			"After each function call, you will have the "
+			"opportunity to call additional functions and/or send messages to "
+			"the user based on the function's result; this also applies "
+			"recursively to those functions as well. However, the user will not "
+			"have the opportunity to respond to any of your messages until the "
+			"entire nested tree of function invocations has completed.\n"
+			"\n"
+			"Note that in general, any "
+			"messages containing function calls should appear at the VERY END of your "
+			"message sequence, so that you will have the opportunity to see and respond to the "
+			"function results before you attempt to generate subsequent output.\n"
+		)
+################################################################################
 
 			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			# 4.10. Add the speech I/O capability documentation.
+			# 4.5. Add the image generation capability documentation.
+
+		context_str += SUBMESSAGE_DELIMITER + IMAGE_GENERATION_HEADER + (
+			"You may utilize the create_image() function to generate an image "
+			"using the DALL-E API and send it to the chat. Activate this function "
+			"to inspect its full schema. Key arguments include:\n"
+			"\n"
+			"\t- description (required) - Overall text prompt for the desired image.\n"
+			"\t- shape, style (optional) - Control overall image shape and stylistic appearance.\n"
+			"\t- caption (optional) - Attach a text caption to the image.\n"
+			"\n"
+			"Please note that the image generation AI may modify or add details "
+			"to the prompt, but will return the new image description which you "
+			"may summarize to the user."
+			"\n"
+		)
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 4.6. Add the visual input capability documentation.
+
+		context_str += SUBMESSAGE_DELIMITER + VISUAL_INPUT_HEADER + (
+			"Although native visual input isn't yet supported in this interface, "
+			"you may invoke the analyze_image() function, which requests and image "
+			"description/analysis from the multimodal GPT-4V model. Active this "
+			"function to reveal its full schema to see detailed analysis options. "
+			"The only required argument is the filename of an image previously "
+			"uploaded by the user or generated by a create_image() call."
+		)
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 4.7. Add the memory system documentation.
+
+		context_str += SUBMESSAGE_DELIMITER + MEMORY_SYSTEM_HEADER + (
+			"This interface includes a dynamic, persistent, "
+			"semantically-searchable store of context-sensitive memories. "
+			"The memory system may be accessed using these functions:\n"
+			"\n"
+			"\t- remember_item(text, is_private, is_global) saves a new memory item.\n"
+			"\t- search_memory(query_phrase, max_results) performs a semantic search of accessible memories.\n"
+			"\t- forget_item(text OR item_id) deletes a specified previously-stored memory.\n"
+			"\n"
+			"In addition, the memories most closely related to the latest user "
+			"message are automatically displayed in the 'Contextually Relevant "
+			"Memories' section below.\n"
+			"\n"
+			"Note that memories are subject to access restrictions:\n"
+			"\n"
+			"\t- Memories marked as 'private' may only be accessed in response to the user for whom they were created.\n"
+			"\t- Memories may only be accessed from within the same chat that they were created in, unless marked as 'global'.\n"
+			"\n"
+			"Users may request specific memory access operations using their "
+			"'/remember', '/search memory', and '/forget' commands, which I "
+			"may choose to honor.\n"
+		)
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 4.8. Add the user management documentation.
+
+		context_str += SUBMESSAGE_DELIMITER + USER_MANAGEMENT_HEADER + (
+			"This interface provides you with functions to block/unblock users; "
+			"this capability is intended to help you deter users from behaving "
+			"abusively or unethically or repeatedly triggering content warnings. "
+			"Note that block() with no arguments blocks the current user, and "
+			"works even if their user tag is not unique.\n"
+			"\n"
+			"Please note that once you block a user, you cannot see or respond "
+			"to any further messages from them, including apologies or requests "
+			"to unblock them. Therefore, you should in general give multiple "
+			"escalating warnings before resorting to a block.\n"
+			"\n"
+			"As a less drastic measure than blocking users, note you can use the "
+			"'/pass' command, pass_turn() function, or an empty response to "
+			"simply ignore them.\n"
+			"\n"
+			"If a user requests you to block or unblock another user, you should "
+			"obtain a reasonable justification for the action before complying.\n"
+		)
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 4.9. Add the speech I/O capability documentation.
 
 		voice = AI_VOICE.title()	# Use Title Case for voice name.
 
@@ -1588,7 +1718,21 @@ class BotConversation:
 			 f"to narrate lengthier information using the {voice} synthesized voice.\n")
 
 			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			# 4.12. Add the markdown formatting documentation.
+			# 4.10. Add the web search capability documentation.
+
+		context_str += SUBMESSAGE_DELIMITER + WEB_SEARCH_HEADER + (
+			"The search_web() function allows you to search the web in "
+			"real time using the Bing search API, and retrieve relevant "
+			"snippets from the top search results. Activate this function "
+			"for full documentation of its options.\n"
+			"\n"
+			"When summarizing web results for users, you are encouraged "
+			"to use the Markdown-like text formatting syntax described "
+			"below.\n"
+		)
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 4.11. Add the markdown formatting documentation.
 
 		context_str += SUBMESSAGE_DELIMITER + MARKDOWN_DOC_HEADER + \
 			("Your text output utilizes a variant of Telegram MarkdownV2 "
@@ -1599,12 +1743,12 @@ class BotConversation:
 			 'bottom with "```".\n')
 
 			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			# 4.13. Add the usage summary for commands available to the AI.
+			# 4.12. Add the usage summary for commands available to the AI.
 
 		context_str += AI_COMMAND_USAGE
 
 			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			# 4.14. Add the usage summary for commands available to the AI.
+			# 4.13. Add the usage summary for functions available to the AI.
 
 		context_str += SUBMESSAGE_DELIMITER + FUNCTION_USAGE_HEADER + \
 			(f"Below is a usage summary of the functions that you ({BOT_NAME}) can call. "
@@ -1627,7 +1771,7 @@ class BotConversation:
 			 "	pass_turn() -> None\n")
 
 			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			# 4.15. Add the full schemas for currently active functions.
+			# 4.14. Add the full schemas for currently active functions.
 
 		context_str += SUBMESSAGE_DELIMITER + FUNCTION_SCHEMAS_HEADER + \
 			(f"Below are the schemas for the functions that are currently "
@@ -1637,6 +1781,35 @@ class BotConversation:
 			 "functions (plus activate_function and pass_turn) are shown."
 			 "\n\n") + \
 			thisConv.cur_func_schemas
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 4.15. Usage summary for commands available to human users.
+
+		context_str += SUBMESSAGE_DELIMITER + USER_COMMANDS_HEADER + (
+			"You may remind users that they may enter the following commands "
+			"themselves:\n"
+			"\n"
+			"\t/start - Starts bot; reloads conversation history.\n"
+			"\t/help - Displays general help and command help.\n"
+			"\t/image - Generates an image from a description. (This is a request that you should handle yourself.)\n"
+			"\t/quiet - Tell bot not to respond unless addressed by name.\n"
+			"\t/noisy - Tell bot it can respond to any message.\n"
+			"\t/speech - Toggle speech output mode.\n"
+			"\t/remember - Adds an item to the bot's persistent memory. (You should handle this request.)\n"
+			"\t/search - Search bot's memory or the web for a phrase. (You should handle this request.)\n"
+			"\t/forget - Removes an item from the bot's persistent memory. (You should handle this request.)\n"
+			"\t/reset - Clears the bot's conversation memory.\n"
+			"\t/echo - Echoes back the given text.\n"
+			"\t/greet - Make server send a greeting.\n"
+			"\n"
+			"For the commands /start, /help, /quiet, /noisy, /speech, /reset, "
+			"/echo, and /greet - the BotServer automation will handle the user's "
+			"request directly, so you do not need to provide any additional response.\n"
+			"\n"
+			"If users have questions about how to use the available commands, "
+			"please inform them that they can obtain more detailed guidance by "
+			"entering the /help command."
+		)
 
 			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			# 5. Add the context-sensitive memories section.
@@ -1651,12 +1824,27 @@ class BotConversation:
 					#	message is added to the convo.
 
 			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			# 6. Add the "Recent Telegram messages:" header.
+			# 6. Add the overall response instructions.
+
+		context_str += MESSAGE_DELIMITER + RESPONSE_INSTR_HEADER + (
+			"In your response, use the same language that the user used most "
+			"recently, if appropriate. Be concise unless asked for detail. You "
+			"may include multiple Telegram messages in your response, but they "
+			f"must be separated with '\x1f {BOT_NAME}>' as described earlier. "
+			"(Or, alternatively to just sending messages, you can just activate "
+			"an available function and then call that function, if appropriate.) "
+			"You may also call pass_turn() or send '/pass' or an empty message to "
+			"refrain from responding."
+		)
+
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 7. Add the "Recent Telegram messages:" header.
 
 		context_str += MESSAGE_DELIMITER + RECENT_MESSAGES_HEADER
 
 			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			# 7. Add the actual list of recent messages.
+			# 8. Add the actual list of recent messages.
 
 		context_str += '\n'.join([str(m) for m in thisConv.messages])
 
@@ -4298,8 +4486,8 @@ async def process_text_message(update:Update, context:Context):
 		# '/speech' command, however.)
 
 		response_text = response_text.strip()	# Strip leading/trailing whitespace, if any.
-		if response_text.startswith('(audio)'):
-			response_text = response_text[len('(audio)'):]
+		if response_text.startswith('(audio)') or response_text.startswith('(voice)'):
+			response_text = response_text[len('(audio)'):]	# Either form is this length.
 			response_text = response_text.strip()
 
 		# Update the message object, and the context.
@@ -6737,6 +6925,13 @@ async def process_response(update:Update, context:Context,
 
 	for msg_text in message_texts:
 
+		# Nix leading/trailing whitespace in individual message.
+		msg_text = msg_text.strip()
+
+		# Skip empty messages.
+		if msg_text == "":
+			continue
+
 		# Finally, we check to see if the AI's message is a command line;
 		# that is, if it starts with '/' followed by an identifier (e.g.,
 		# '/remember').  If so, we'll process it as a command.
@@ -6749,8 +6944,13 @@ async def process_response(update:Update, context:Context,
 
 		# Response was not a command. Treat it normally.
 
-		# Just send our response to the user as a normal message.
-		await send_response(update, context, msg_text)
+		# Check for internal monologue marker.
+		if msg_text.startswith("*thinks") or msg_text.startswith("*thinking"):
+			_logger.normal(f"Suppressing thought [{msg_text}] from being sent to chat {chat_id}")
+
+		else:
+			# Just send our response to the user as a normal message.
+			await send_response(update, context, msg_text)
 
 		# We also need to check for embedded function calls... (concise syntax)
 		await check_for_funcalls(update, context, msg_text)
@@ -6904,12 +7104,10 @@ async def check_for_funcalls(update:Update, context:Context, response_text:str) 
 
 	#__/ End loop iterating over matches.
 
-	_logger.normal("Finished scanning for function invocations.")
+	_logger.debug("Finished scanning for function invocations in response "
+				  f"to {_get_user_tag(tgMsg.from_user)} in chat {tgMsg.chat.id}.")
 
 #__/ End async function check_for_funcalls().
-
-
-################################################################################
 
 ################################################################################
 
@@ -9755,16 +9953,23 @@ INTERFACE_DOCS_HEADER	 = f" {SECTION_DECORATOR} INTERFACE DOCUMENTATION: {SECTIO
 
 TRANSCRIPT_DOC_HEADER	 = f" {SUBSECTION_DECORATOR} Transcript format: {SUBSECTION_DECORATOR}\n"
 MESSAGE_SEQ_HEADER		 = f" {SUBSECTION_DECORATOR} Message sequences: {SUBSECTION_DECORATOR}\n"
+THOUGHT_DOC_HEADER		 = f" {SUBSECTION_DECORATOR} Inner monologue: {SUBSECTION_DECORATOR}\n"
 FUNCTIONS_DOC_HEADER	 = f" {SUBSECTION_DECORATOR} Function calling: {SUBSECTION_DECORATOR}\n"
-
-SPEECH_IO_HEADER		 = f" {SUBSECTION_DECORATOR} Speech I/O capability: {SUBSECTION_DECORATOR}\n"
+VISUAL_INPUT_HEADER		 = f" {SUBSECTION_DECORATOR} Visual input: {SUBSECTION_DECORATOR}\n"
+IMAGE_GENERATION_HEADER	 = f" {SUBSECTION_DECORATOR} Image generation: {SUBSECTION_DECORATOR}\n"
+MEMORY_SYSTEM_HEADER	 = f" {SUBSECTION_DECORATOR} Memory system: {SUBSECTION_DECORATOR}\n"
+USER_MANAGEMENT_HEADER	 = f" {SUBSECTION_DECORATOR} User management: {SUBSECTION_DECORATOR}\n"
+SPEECH_IO_HEADER		 = f" {SUBSECTION_DECORATOR} Speech I/O: {SUBSECTION_DECORATOR}\n"
+WEB_SEARCH_HEADER		 = f" {SUBSECTION_DECORATOR} Web search: {SUBSECTION_DECORATOR}\n"
 MARKDOWN_DOC_HEADER		 = f" {SUBSECTION_DECORATOR} Markdown formatting syntax: {SUBSECTION_DECORATOR}\n"
 
 COMMAND_LIST_HEADER		 = f" {SUBSECTION_DECORATOR} Commands available for {BOT_NAME} AI to use: {SUBSECTION_DECORATOR}\n"
 FUNCTION_USAGE_HEADER	 = f" {SUBSECTION_DECORATOR} Usage summary for functions available to AI: {SUBSECTION_DECORATOR}\n"
 FUNCTION_SCHEMAS_HEADER	 = f" {SUBSECTION_DECORATOR} Full schemas of currently active functions: {SUBSECTION_DECORATOR}\n"
+USER_COMMANDS_HEADER	 = f" {SUBSECTION_DECORATOR} Commands available to human users: {SUBSECTION_DECORATOR}\n"
 
 DYNAMIC_MEMORY_HEADER	 = f" {SECTION_DECORATOR} CONTEXTUALLY RELEVANT MEMORIES: {SECTION_DECORATOR}\n"
+RESPONSE_INSTR_HEADER	 = f" {SECTION_DECORATOR} RESPONSE INSTRUCTIONS: {SECTION_DECORATOR}\n"
 
 RECENT_MESSAGES_HEADER	 = f" {SECTION_DECORATOR} RECENT TELEGRAM MESSAGES: {SECTION_DECORATOR}\n"
 
