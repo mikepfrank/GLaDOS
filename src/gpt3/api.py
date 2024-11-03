@@ -502,7 +502,7 @@ _ENGINES = [
 ] # End _ENGINES constant module global data structure.
 
 # Set of models that support the functions interface.
-# TO DO: Change this to a field in _ENGINES.
+# TO DO: Change this to a boolean field in _ENGINES.
 _FUNCTION_MODELS = [
 	'gpt-3.5-turbo',			# Supports functions as of 6/13/'23.
 	'gpt-3.5-turbo-0613',
@@ -520,7 +520,8 @@ _FUNCTION_MODELS = [
 	'gpt-4-1106-vision-preview',
 	'claude-3-sonnet-20240229',
 	'claude-3-opus-20240229',
-	'claude-3-5-sonnet-20240620'
+	'claude-3-5-sonnet-20240620',
+	'claude-3-5-sonnet-20241022'
 ]
 
 def _has_functions(engine_name):
@@ -1931,6 +1932,12 @@ class ChatMessages:
 #__/ End class ChatMessages.
 
 
+# Maximum number of images that may be embedded in the prompt.
+
+# MAX_IMAGES = 20	# This is Anthropic's maximum.
+MAX_IMAGES = 5		# Changing to this to reduce chance of prompt bloat.
+
+
 #/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #|	gpt3.api.ChatCompletion								[module public class]
 #|
@@ -2589,7 +2596,7 @@ class ChatCompletion(Completion):
 			# Do some sanitization of the messages list:
 			# (1) Make sure first message isn't from the AI
 			messages = apiArgs['messages']
-			while messages[0]['role'] == CHAT_ROLE_AI:
+			while len(messages) > 0 and messages[0]['role'] == CHAT_ROLE_AI:
 				messages.pop(0)
 			apiArgs['messages'] = messages
 
@@ -2613,8 +2620,8 @@ class ChatCompletion(Completion):
 							_logger.normal(f"\tFound #{n_images} most-recent "
 								f"image with {len(content_item['source']['data'])} "
 								"characters of base64 image data.")
-							if n_images > 20:
-								_logger.normal("\t\tExpiring that one due to 20-image limit.")
+							if n_images > MAX_IMAGES:
+								_logger.normal(f"\t\tExpiring that one due to {MAX_IMAGES}-image limit.")
 								# Do surgery on the item to change it to a text placeholder.
 								content_item['type'] = 'text'		# Changes type
 								del content_item['source']			# Unlinks image data
@@ -2627,7 +2634,9 @@ class ChatCompletion(Completion):
 			#__/ End loop thru messages in reverse order.
 
 			# Anthropic style chat completion.
-			chatComplObj = client.messages.create(**apiArgs)
+			chatComplObj = client.messages.create(
+				extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
+				**apiArgs)
 
 		else:
 			prettyArgs = pformat(apiArgs)

@@ -419,7 +419,10 @@ from anthropic import Anthropic		# Main class for accessing Anthropic API.
 from anthropic import RateLimitError as AnthroRateLimitError
 from anthropic import APIStatusError
 
-_anthropic_client	= Anthropic()
+_anthropic_client	= Anthropic(
+#	default_headers = {"anthropic-beta": "prompt-caching-2024-07-31"}
+		# Saves on communication & cost
+)
 	# Note this expects the Anthropic API key to be in ANTHROPIC_API_KEY.
 
 
@@ -6468,6 +6471,13 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 				# back-end) is too long.  Thus, we need to expunge the oldest
 				# message from the conversation.
 
+				# NOTE: It could be the case that the prompt is too
+				# long due to large embedded images, in which case it
+				# would really make more sense just not to include so
+				# many embedded images in the prompt in the first
+				# place. We really need a more sophisticated way to
+				# handle this.
+
 				try:
 					botConvo.expunge_oldest_message()
 						# NOTE: If it succeeds, this modifies conversation.context_string.
@@ -6731,20 +6741,28 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 
 #__/ End function process_ai_command().
 
+# Adjusting this as needed to try to hit target daily expenditures.
+DAILY_MESSAGE_LIMIT = 10
+#DAILY_MESSAGE_LIMIT = 15
+#DAILY_MESSAGE_LIMIT = 20
 						 
 async def process_chat_message(update:Update, context:Context) -> None:
 
 	"""We dispatch to this function to process messages from the user if our
 		selected engine is for OpenAI's chat endpoint."""
 	
+	# Get the user message, or edited message from the update.
+	(message, edited)	= _get_update_msg(update)
+	user_name			= _get_user_tag(message.from_user)
+	
+	botConvo	= context.chat_data['conversation']
+	chat_id		= botConvo.chat_id
+	cur_funcs	= botConvo.cur_funcs
+
 	# To save space, when processing a new user message, we'll just
 	# let the bot remember only the last function schema it previously
 	# activated when starting to process a new message. (Except, the
 	# activate_function and pass_turn schemas are always visible.)
-
-	botConvo	= context.chat_data['conversation']
-	chat_id		= botConvo.chat_id
-	cur_funcs	= botConvo.cur_funcs
 
 	# The modern models have more context space, so let's keep 
 	# around more of the function schemas than we did previously.
@@ -6765,6 +6783,36 @@ async def process_chat_message(update:Update, context:Context) -> None:
 	func_names = [func['name'] for func in cur_funcs if 'name' in func]
 	_logger.info(f"Current function list in chat {chat_id} is {func_names}.")
 
+	# Make sure we haven't hit the message limit.
+
+	if user_name == 'Michael':	# Michaels are exempt from the rate limit.
+		daily_message_limit = float('inf')
+		#daily_message_limit = 2*DAILY_MESSAGE_LIMIT		# Temporary, for testing
+	else:
+		daily_message_limit = DAILY_MESSAGE_LIMIT
+
+	if 'last_msg_date' in context.chat_data:
+		today = get_current_date()
+		if context.chat_data['last_msg_date'] == today:
+			if context.chat_data['nmsgs_today'] >= daily_message_limit:
+				_logger.warning(f"Daily message input limit reached in chat {chat_id}.")
+				diagMsg = (f"Daily response limit of {daily_message_limit} "
+					"messages has been reached in this chat. Try again tomorrow, "
+					"or ask [Nova Bot](https://t.me/ChatWithNovaBot) instead!")
+				sendRes = await _send_diagnostic(message, botConvo, diagMsg, markup=True)
+				return
+		else:
+			#if 'nmsgs_today' in context.chat_data and context.chat_data['nmsgs_today'] >= daily_message_limit:
+			# ^^ Took out this 'if' so the AI can see the date change even if quota wasn't reached
+
+			# Make sure AI knows the message limit is resetting now..
+			await botConvo.add_message(BotMessage(SYS_NAME,
+				f"[NOTE: It's a new day ({today})! Resetting message quota.]"))
+
+			context.chat_data['nmsgs_today'] = 0	# We haven't responded yet.
+			_logger.normal(f"No responses yet today in chat {chat_id}. Resetting rate limit.")
+
+ 
 	# If this is an Anthropic client, make sure the first message in the convo
 	# isn't from the assistant.
 
