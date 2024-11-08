@@ -488,6 +488,15 @@ _ENGINES = [
 	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-08-06', 'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-08-06', 'field-size': 24_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 
+	#{'model-family': 'GPT-4V', 'engine-name': 'chatgpt-4o-latest', 'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4V', 'engine-name': 'chatgpt-4o-latest', 'field-size': 24_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+
+	#{'model-family': 'GPT-4V', 'engine-name': 'chatgpt-4o-latest-20240808', 'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4V', 'engine-name': 'chatgpt-4o-latest-20240808', 'field-size': 24_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+
+	#{'model-family': 'GPT-4V', 'engine-name': 'chatgpt-4o-latest-20240903', 'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4V', 'engine-name': 'chatgpt-4o-latest-20240903', 'field-size': 24_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+
 ] # End _ENGINES constant module global data structure.
 
 # Set of models that support the functions interface.
@@ -511,6 +520,9 @@ _FUNCTION_MODELS = [
 	'gpt-4o',
 	'gpt-4o-2024-05-13',
 	'gpt-4o-2024-08-06',
+	'chatgpt-4o-latest',
+	'chatgpt-4o-latest-20240808',
+	'chatgpt-4o-latest-20240903',
 ]
 def _has_functions(engine_name):
 	"""Return True if the named engine supports the functions interface."""
@@ -3532,7 +3544,10 @@ def tiktokenCount(text:str=None, encoding:str='gpt2', model:str=None):
 	# If the model argument is provided, use it to get the encoding.
 
 	if model != None:
-		encodingObj = tiktoken.encoding_for_model(model)
+		if model.startswith('chatgpt-4o-latest'):
+			encodingObj = tiktoken.encoding_for_model('gpt-4o')
+		else:	
+			encodingObj = tiktoken.encoding_for_model(model)
 	else:
 		encodingObj = tiktoken.get_encoding(encoding)
 		
@@ -3776,6 +3791,7 @@ def describeImage(filename:str, verbosity:str='medium', query:str=None, user:str
 #__/ End function describeImage().
 
 
+
 def solveProblem(probDesc:str, showWork:bool=False, user:str=None):
 	"""Given a detailed problem statement, use the o1-mini model
 		to solve the problem, and return the solution text."""
@@ -3786,9 +3802,13 @@ def solveProblem(probDesc:str, showWork:bool=False, user:str=None):
 
 	prompt = "Please provide a solution to the following problem."
 	if showWork:
-		prompt += " Please include in your response a detailed account of your reasoning steps, insofar as this is possible."
+		#prompt += " Please include in your response a detailed account of your reasoning steps, insofar as this is possible."
+		prompt += " Please show your work."
+
 	prompt += "\n---\n"
 	prompt += probDesc
+
+	_logger.info(f"Prompt passed to o1-mini call: [{prompt}]")
 
 	# Construct POST headers.
 	headers = {
@@ -3816,7 +3836,7 @@ def solveProblem(probDesc:str, showWork:bool=False, user:str=None):
 		# break it down into multiple Telegram messages if needed.
 		"max_completion_tokens": 4096
 	}
-	
+
 	# Query the API via https POST.
 	response = requests.post("https://api.openai.com/v1/chat/completions",
 							 headers=headers, json=payload)
@@ -3826,9 +3846,17 @@ def solveProblem(probDesc:str, showWork:bool=False, user:str=None):
 
 	_logger.info(f"Raw response from o1-mini call: [{response_json}]")
 
+	# Check for errors.
+	if 'error' in response_json:
+		error = response_json['error']
+		errmsg = error['message']
+		errtype = error['type']
+		errcode = error['code']
+		return f"[REASONING ERROR: Error message: [{errmsg}]; error type = {errtype}; error code = {errcode}.]"
+
 	if 'choices' not in response_json:
 		_logger.error("The preceding JSON object did not have a 'choices' field.")
-		return "[REASONING ERROR: The expected 'choices' field was not included in the raw JSON response: [{response_json}]]"
+		return f"[REASONING ERROR: The expected 'choices' field was not included in the raw JSON response: [{response_json}]]"
 
 	solution = response_json['choices'][0]['message']['content']
 	_logger.info(f"Got solution text: [{solution}]")
@@ -3836,7 +3864,6 @@ def solveProblem(probDesc:str, showWork:bool=False, user:str=None):
 	return solution
 
 #__/ End function solveProblem().
-
 
 
 	#/==========================================================================

@@ -4430,7 +4430,8 @@ async def ai_solve(update:Update, context:Context, probDesc:str,
 
 
 # Limit on number of images that can be generated per day per chat.
-DAILY_IMAGE_LIMIT = 7
+DAILY_IMAGE_LIMIT = 5
+#DAILY_IMAGE_LIMIT = 7
 	# Adjusting this as needed to help keep costs under control.
 
 # Define a function to handle the /image command, when issued by the AI.
@@ -5769,8 +5770,10 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 #__/ End function process_ai_command().
 
 # Adjusting this as needed to try to hit target daily expenditures.
+DAILY_MESSAGE_LIMIT = 8
+#DAILY_MESSAGE_LIMIT = 10
 #DAILY_MESSAGE_LIMIT = 15
-DAILY_MESSAGE_LIMIT = 20
+#DAILY_MESSAGE_LIMIT = 20
 
 async def process_chat_message(update:Update, context:Context) -> None:
 
