@@ -375,6 +375,7 @@ __all__ = [
 		'genImage',				# Function: Generate an image from a description.
 		'transcribeAudio',		# Function: Transcribe an audio file to text.
 		'describeImage',		# Function: Generate a text description of an image.
+        'solveProblem',         # Function: Solve a difficult reasoning problem.
 
 	]
 
@@ -3777,6 +3778,81 @@ def describeImage(filename:str, verbosity:str='medium', query:str=None, user:str
 
 	#return "[to be implemented]"
 	return description
+
+#__/ End function describeImage().
+
+
+def solveProblem(probDesc:str, showWork:bool=False, user:str=None):
+	"""Given a detailed problem statement, use the o1-mini model
+		to solve the problem, and return the solution text."""
+
+	_logger.info(f"Passing problem [{probDesc}] to the OpenAI o1-mini model...")
+
+	# Construct prompt.
+
+	prompt = "Please provide a solution to the following problem."
+	if showWork:
+		prompt += " Please show your work."
+		#prompt += " Please include in your response a detailed account of your reasoning steps, insofar as this is possible."
+	prompt += "\n---\n"
+	prompt += probDesc
+
+	_logger.info(f"Prompt passed to o1-mini call: [{prompt}]")
+
+	# Construct POST headers.
+	headers = {
+		"Content-Type": "application/json",
+		"Authorization": f"Bearer {api_key}"
+	}
+
+	# Construct POST payload.
+	payload = {
+		"model": "o1-mini",
+		"user": user,
+		"messages": [
+			{
+				"role": "user",
+				"content": [
+					{
+						"type": "text",
+						"text": prompt
+					}
+				]
+			}
+		],
+		# NOTE: Telegram messages are limited to 4096 characters.
+		# But the caller can/should summarize the response and/or
+		# break it down into multiple Telegram messages if needed.
+		"max_completion_tokens": 4096
+	}
+
+	# Query the API via https POST.
+	response = requests.post("https://api.openai.com/v1/chat/completions",
+							 headers=headers, json=payload)
+
+	# Parse the response.
+	response_json = response.json()
+
+	_logger.info(f"Raw response from o1-mini call: [{response_json}]")
+
+	# Check for errors.
+	if 'error' in response_json:
+		error = response_json['error']
+		errmsg = error['message']
+		errtype = error['type']
+		errcode = error['code']
+		return f"[REASONING ERROR: Error message: [{errmsg}]; error type = {errtype}; error code = {errcode}.]"
+
+	if 'choices' not in response_json:
+		_logger.error("The preceding JSON object did not have a 'choices' field.")
+		return f"[REASONING ERROR: The expected 'choices' field was not included in the raw JSON response: [{response_json}]]"
+
+	solution = response_json['choices'][0]['message']['content']
+	_logger.info(f"Got solution text: [{solution}]")
+
+	return solution
+
+#__/ End function solveProblem().
 
 
 	#/==========================================================================
