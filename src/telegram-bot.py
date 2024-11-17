@@ -1614,14 +1614,14 @@ class BotConversation:
 			#"\n"
 			#"(Note this will then reveal the full schema for create_image(). "
 			#"After it's visible, you will see all its options; for example:)\n"
-			"\n"
+			#"\n"
 			f"\t{MESSAGE_DELIMITER} {BOT_NAME}> User, just FYI, I'm calling this function: @create_image(\"A beautiful mountain range\", style=\"natural\", remark=\"Creating an image for you...\")\n"
 			"\n"
 			f"\t{MESSAGE_DELIMITER} {BOT_NAME}> *thinks: I don't need to say this out loud to make it happen: @search_web(\"Recent advances in AI\", remark=\"Searching web for recent AI advances...\")*\n"
 			"\n"
 			"IMPORTANT NOTE: You MUST transmit a function invocation string using "
 			"formats like the above in a message event to cause the function to be invoked; "
-			"however, if you put '*thinks*' at the start of a message, then it won't "
+			"however, if you put '*thinks:' at the start of a message, then it won't "
 			"be sent to the chat; see the Inner Monologue instructions. Doing this is a "
 			"best practice, since most outside users won't want to see the function "
 			"call code.\n"
@@ -1696,11 +1696,11 @@ class BotConversation:
 			"\n"
 			f"\t{MESSAGE_DELIMITER} JoeUser> [PHOTO ATTACHMENT; filename=\"photos/JoeUser-217977.jpg\"]\n(CAPTION: Can you tell me what this is?)\n"
 			f"\t{MESSAGE_DELIMITER} {SYS_NAME}> [NOTE: Grok, please use analyze_image() to inspect the photo attachment]\n"
-			f"\t{MESSAGE_DELIMITER} {BOT_NAME}> *thinks: OK, here I go with analyze_image() call...\n"
+			f"\t{MESSAGE_DELIMITER} {BOT_NAME}> *thinks: OK, here I go with the analyze_image() call...\n"
 			f"\t@analyze_image(\"photos/JoeUser-217977.jpg\", remark=\"Analyzing the image to figure out what it is...\")\n"
 			f"\t{MESSAGE_DELIMITER} @analyze_image> The image shows a bowl of soup or stew [etc., etc.]...\n"
 			f"\t{MESSAGE_DELIMITER} {SYS_NAME} [Grok, you may now respond to the 'analyze_image' function's return result recorded above.]\n"
-			"\n\n"
+			"\n"
 		)
 
 			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1928,7 +1928,7 @@ class BotConversation:
 			f"[{BOT_NAME}, you may now respond to the last "
 			"user message above. In your response, please use the same "
 			"language that the user used most recently, if appropriate. "
-			"Be concise unless asked for detail. You may include multiple "
+			"Be concise unless asked for detail. You may transmit multiple "
 			"Telegram messages in your response, but each one must start "
 			f"with your \"{BOT_NAME}>\" new-message marker. You may also "
 			"invoke functions from within private thoughts, if appropriate. "
@@ -7108,7 +7108,7 @@ async def check_for_funcalls(update:Update, context:Context, response_text:str) 
 		|
 			'(?:[^'\\]|\\.)*'		# Single-quoted string positional argument
 		|							# OR
-			[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*(\d+|true|false|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')
+			[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*(\d+|true|false|null|none|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')
 									# Keyword argument (alphanumeric with value)
 		)\s*,?\s*					# Allow comma-separated arguments with optional whitespace
 	)*								# Zero or more occurrences of arguments
@@ -7143,7 +7143,7 @@ async def check_for_funcalls(update:Update, context:Context, response_text:str) 
 		|
 		('(?:[^'\\]|\\.)*')			 # Match single-quoted string argument
 		|							 # OR
-		([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(\d+|true|false|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')
+		([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(\d+|true|false|null|none|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')
 									 # Match keyword argument
 		'''
 		argument_regex = re.compile(argument_pattern, re.VERBOSE | re.IGNORECASE)
@@ -7161,6 +7161,8 @@ async def check_for_funcalls(update:Update, context:Context, response_text:str) 
 					value = True
 				elif value.lower() == 'false':
 					value = False
+				elif value.lower() in ('null', 'none'):
+					value = None
 				else:
 					value = int(value)	# Integer
 				keyword_arglist[arg_match.group(3)] = value
