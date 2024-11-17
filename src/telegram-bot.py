@@ -432,15 +432,24 @@ ASYNC = True
 global  PROVIDER
 # PROVIDER = None
 # PROVIDER = 'OpenRouter'
-PROVIDER = 'Hyperbolic'
+# PROVIDER = 'Hyperbolic'
+PROVIDER = 'xAI'
 
 # Depending on the API provider, set the base URL and API key appropriately.
 if PROVIDER == 'OpenRouter':
-	BASE_URL = "https://openrouter.ai/api/v1"
-	API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+	BASE_URL	= "https://openrouter.ai/api/v1"
+	API_KEY		= os.getenv("OPENROUTER_API_KEY")
+
 elif PROVIDER == 'Hyperbolic':
-	BASE_URL = "https://api.hyperbolic.xyz/v1"
-	API_KEY = os.getenv("HYPERBOLIC_API_KEY")
+
+	BASE_URL	= "https://api.hyperbolic.xyz/v1"
+	API_KEY		= os.getenv("HYPERBOLIC_API_KEY")
+	
+elif PROVIDER == 'xAI':
+	
+	BASE_URL	= "https://api.x.ai/v1"
+	API_KEY		= os.getenv("XAI_API_KEY")
 
 # Construct the appropriate OpenAI-compatible client object, depending on
 # the ASYNC and PROVIDER settings.
@@ -1489,7 +1498,7 @@ class BotConversation:
 
 		context_str += SUBMESSAGE_DELIMITER + TRANSCRIPT_DOC_HEADER + (
 			"In this environment, you are presented with a sequence of records "
-			"separated by the ASCII record separator (RS) character, control-^. "
+			"separated by the special end-of-string token, '<|eos|>'. "
 			"The initial records are context headers, and these are followed by "
 			"records representing recent events in the current Telegram chat, "
 			f"which happens to be {indgrp}. Event types include:\n"
@@ -1511,7 +1520,7 @@ class BotConversation:
 			"\t2. Events recording successful function invocations that you "
 				"triggered. These are formatted in the transcript as:\n"
 				"\n"
-				f"\t\t\" {SYS_NAME}> " "@{funcName}({funcArgs}),\"\n"
+				f"\t\t\" {SYS_NAME}> " "@{funcName}({funcArgs})\",\n"
 				"\n"
 				"\t  where funcArgs is formatted with dictionary syntax.\n"
 			"\n"
@@ -1530,17 +1539,15 @@ class BotConversation:
 			 "sequence of multiple Telegram messages in a row, that is, "
 			 "without waiting for the user to respond in between. To do "
 			 "this, simply separate the messages in the sequence with a "
-			 "literal ASCII unit separator control charactrer (US, hex 0x1F, ^_) "
-			 "instead of the usual record separator character (RS, hex 0x1E, ^^). "
+			 "Rotated Heavy Black Heart Bullet character (U+2765, '❥') "
+			 "instead of the usual end-of-string token ('<|eos|>'). "
 			 "For example:\n"
 			 "\n"
-			 "\t```text\n"
-			 f"\t\x1e {BOT_NAME}> This is the first Telegram message to be sent in my response.\n"
-			 f"\t\x1f {BOT_NAME}> This is a second Telegram message in the same response!\n"
+			 f"\t{MESSAGE_DELIMITER} {BOT_NAME}> This is the first Telegram message to be sent in my response.\n"
+			 f"\t{SUBMESSAGE_DELIMITER} {BOT_NAME}> This is a second Telegram message in the same response!\n"
 			 f"\t(Note that a single Telegram message can span multiple lines of text!)\n"
-			 f"\t\x1f {BOT_NAME}> This is the third and last Telegram message in this response.\n"
-			 f"\t\x1e	# <-- Note the record separator here ends {BOT_NAME}'s response.\n"
-			 "\t```\n"
+			 f"\t{SUBMESSAGE_DELIMITER} {BOT_NAME}> This is the third and last Telegram message in this response.\n"
+			 f"\t{MESSAGE_DELIMITER}\n"
 			 "\n"
 			 "NOTE: Please try to keep individual Telegram messages under 4,096 "
 			 "characters in length since that is the maximum length of a message "
@@ -1558,21 +1565,19 @@ class BotConversation:
 			"being sent to the chat, while remaining visible for your reference "
 			"in the chat transcript. You may use this facility to plan or "
 			"reflect upon your visible responses or the user interaction more "
-			"broadly. Please remember that remote human chat participants on "
-			"will not be able to see your private thoughts, but they will be "
-			"displayed to the system operator on the bot server console for "
-			"diagnostic purposes during development.\n"
+			"broadly. Please remember that remote human chat participants "
+			"will not be able to see your private thoughts, but be aware that "
+			"they will be displayed to the system operator on the bot server "
+			"console for diagnostic purposes during development.\n"
 			""
 			"Example response payload including private thoughts:\n"
 			"\n"
-			"\t```text\n"
-			f"\t\x1e {BOT_NAME}> *thinks: In this message, I'm privately "
+			f"\t{MESSAGE_DELIMITER} {BOT_NAME}> *thinks: In this message, I'm privately "
 				"planning my response. This won't be sent to the chat.*\n"
-			f"\t\x1f {BOT_NAME}> Hello, user! I am now responding to you.\n"
-			f"\t\x1f {BOT_NAME}> *thinking: Let me reflect on that last "
+			f"\t{SUBMESSAGE_DELIMITER} {BOT_NAME}> Hello, user! I am now responding to you.\n"
+			f"\t{SUBMESSAGE_DELIMITER} {BOT_NAME}> *thinking: Let me reflect on that last "
 				"interaction...\n"
-			f"\t\x1e	# <-- Terminates {BOT_NAME}'s response.\n"
-			"\t```\n"
+			f"\t{MESSAGE_DELIMITER}\n"
 			"\n"
 			"Please note that private thoughts are particularly useful for "
 			"invoking functions (discussed below) discreetly, without "
@@ -1602,19 +1607,20 @@ class BotConversation:
 			"functionName is the function identifier and argList is in "
 			"Python format and can include positional and/or keyword "
 			"arguments. Enclose string literals in double-quote (\") characters. "
-			"Below are some examples of properly formatted function invocations:\n"
+			"Below are some examples of properly formatted function invocations "
+			"embedded within external and private messages.\n"
 			"\n"
 			#"\t@activate_function(\"create_image\")\n"
 			#"\n"
 			#"(Note this will then reveal the full schema for create_image(). "
 			#"After it's visible, you will see all its options; for example:)\n"
 			"\n"
-			"\t@create_image(\"A beautiful mountain range\", style=\"natural\", remark=\"Creating an image for you...\")\n"
+			f"\t{MESSAGE_DELIMITER} {BOT_NAME}> User, just FYI, I'm calling this function: @create_image(\"A beautiful mountain range\", style=\"natural\", remark=\"Creating an image for you...\")\n"
 			"\n"
-			"\t@search_web(\"Recent advances in AI\", remark=\"Searching web for recent AI advances...\")"
+			f"\t{MESSAGE_DELIMITER} {BOT_NAME}> *thinks: I don't need to say this out loud to make it happen: @search_web(\"Recent advances in AI\", remark=\"Searching web for recent AI advances...\")*\n"
 			"\n"
-			"IMPORTANT NOTE: You MUST include a function invocation string such "
-			"as the above in a message event to cause the function to be invoked; "
+			"IMPORTANT NOTE: You MUST transmit a function invocation string using "
+			"formats like the above in a message event to cause the function to be invoked; "
 			"however, if you put '*thinks*' at the start of a message, then it won't "
 			"be sent to the chat; see the Inner Monologue instructions. Doing this is a "
 			"best practice, since most outside users won't want to see the function "
@@ -1628,11 +1634,11 @@ class BotConversation:
 			"After a function is invoked, such as the `create_image` example "
 			"above, its commencement will be noted as an event in the transcript like so:\n"
 			"\n"
-			f"\t\x1e {SYS_NAME}> @create_image(" + '{"description": "A beautiful mountain range", [...]})\n'
+			f"\t{MESSAGE_DELIMITER} {SYS_NAME}> @create_image(" + '{"description": "A beautiful mountain range", [...]})\n'
 			"\n"
 			"and its return result will be noted as another event appearing like:\n"
 			"\n"
-			"\t\x1e @create image> Success: image with revised description [...] has been generated in file [...] and sent to user.\n"
+			f"\t{MESSAGE_DELIMITER} @create image> Success: image with revised description [...] has been generated in file [...] and sent to user.\n"
 			"\n"
 			"Please note that other chat participants cannot directly see any these function commencement or return "
 			"events, since they are only internal to your bot interface; thus, "
@@ -1685,7 +1691,15 @@ class BotConversation:
 			#"Active this "
 			#"function to reveal its full schema to see detailed analysis options. "
 			"The only required argument is the filename of an image previously "
-			"uploaded by the user or generated by a create_image() call."
+			"uploaded by the user or generated by a create_image() call. "
+			"Here is an excerpt from a event transcript illustrating proper usage:\n"
+			"\n"
+			f"\t{MESSAGE_DELIMITER} JoeUser> [PHOTO ATTACHMENT; filename=\"photos/JoeUser-217977.jpg\"]\n(CAPTION: Can you tell me what this is?)\n"
+			f"\t{MESSAGE_DELIMITER} {SYS_NAME}> [NOTE: Grok, please use analyze_image() to inspect the photo attachment]\n"
+			f"\t{MESSAGE_DELIMITER} {BOT_NAME}> *thinks: OK, here I go with analyze_image() call...\n"
+			f"\t@analyze_image(\"photos/JoeUser-217977.jpg\", remark=\"Analyzing the image to figure out what it is...\")\n"
+			f"\t{MESSAGE_DELIMITER} @analyze_image> The image shows a bowl of soup or stew [etc., etc.]...\n"
+			f"\t{MESSAGE_DELIMITER} {SYS_NAME} [Grok, you may now respond to the 'analyze_image' function's return result recorded above.]\n"
 			"\n\n"
 		)
 
@@ -1885,7 +1899,7 @@ class BotConversation:
 			"In your response, use the same language that the user used most "
 			"recently, if appropriate. Be concise unless asked for detail. You "
 			"may include multiple Telegram messages in your response, but they "
-			f"must be separated with '\x1f {BOT_NAME}>' as described earlier. "
+			f"must be separated with '{SUBMESSAGE_DELIMITER} {BOT_NAME}>' as described earlier. "
 			"(Or, alternatively to just sending messages, you can just "
 			"call an available function, if appropriate.) "
 			#"activate "
@@ -1905,6 +1919,33 @@ class BotConversation:
 			# 8. Add the actual list of recent messages.
 
 		context_str += '\n'.join([str(m) for m in thisConv.messages])
+		context_str += '\n'
+
+			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			# 9. Add the final response prompt.
+
+		context_str += MESSAGE_DELIMITER + FINAL_PROMPT_HEADER + (
+			f"[{BOT_NAME}, you may now respond to the last "
+			"user message above. In your response, please use the same "
+			"language that the user used most recently, if appropriate. "
+			"Be concise unless asked for detail. You may include multiple "
+			"Telegram messages in your response, but each one must start "
+			f"with your \"{BOT_NAME}>\" new-message marker. You may also "
+			"invoke functions from within private thoughts, if appropriate. "
+			"If you do not wish to respond to the user, you may send an empty "
+			"response or invoke the pass_turn() function or the '/pass' command."
+		)
+
+		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
+			context_str += (
+				" Please note that since this is a group chat, it may not be "
+				"appropriate for you to respond to every message. Try to "
+				"exercise good judgment in regards to whether you're currently "
+				"being addressed, or if it's appropriate for you to interject. "
+				"(If not, then please remain silent.)"
+			)
+
+		context_str += "]"
 
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# Stash the result in the present conversation object.
@@ -4229,10 +4270,11 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 					   f"conversation {chat_id}.")
 		text = "(edited) " + text
 
+	## Commenting this out for now because it's causing problems with photo processing for some reason..
 	# If this is a group chat and the message text is empty or None,
 	# assume we were just added to the chat, and just delegate to the
 	# handle_start() function.
-	if chat_id < 0 and (text is None or text == ""):
+	if chat_id < 0 and (text is None or text == "") and isNewMsg:
 		_logger.normal(f"Added to group chat {chat_id} by user {user_name}. Auto-starting.")
 		#update.message.text = '/start'
 		await handle_start(update, context, autoStart=True)
@@ -4257,8 +4299,8 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		await conversation.add_message(BotMessage(user_name, text))
 		if got_image:
 			await conversation.add_message(BotMessage(SYS_NAME,
-				#f"[NOTE: {BOT_NAME}, please use analyze_image() to inspect the photo attachment]"))
-				f"[NOTE: {BOT_NAME}, please inform the user that image input isn't yet implemented."))
+				f"[NOTE: {BOT_NAME}, please use analyze_image() to inspect the photo attachment]"))
+				#f"[NOTE: {BOT_NAME}, please inform the user that image input isn't yet implemented.]"))
 
 	# Get the current user object, stash it in convo temporarily.
 	# (This may be needed later if we decide to block the current user.)
@@ -4443,6 +4485,9 @@ async def process_text_message(update:Update, context:Context):
 			#__/
 		#__/
 
+		response_text = response_text.rstrip('<|eos|>')
+			# Grok likes to put this special token at the end of its responses.
+
 		# Unless the total response length has just maxed out the available space,
 		# if we get here, then we have a new chunk of response from GPT-3 that we
 		# need to process.
@@ -4521,6 +4566,9 @@ async def process_text_message(update:Update, context:Context):
 
 		# Strip off any leading or trailing whitespace.
 		response_text = response_text.strip()
+
+		# Strip off any leading instances of the bot's sender tag marker.
+		response_text = response_text.lstrip(f"{BOT_NAME}>")
 
 		# If the response is empty, then return early. (Can't even send an empty message anyway.)
 		if response_text == "":
@@ -6977,12 +7025,18 @@ async def process_response(update:Update, context:Context,
 	# sequence of multiple Telegram messages; if so, then we need to
 	# break it up and process each one separately.
 
-	resp_delim = SUBMESSAGE_DELIMITER + f" {BOT_NAME}>"
+	#resp_delim = SUBMESSAGE_DELIMITER + f" {BOT_NAME}>"	# Seems to cause problems.
+	resp_delim = f" {BOT_NAME}>"
+
 	message_texts = response_text.split(resp_delim)
+
 	if len(message_texts) > 1:
 		_logger.normal(f"NOTE: Got a response with {len(message_texts)} submessages.")
 
 	for msg_text in message_texts:
+
+		# Trim off any extra submessage delimiters at start or end.
+		msg_text = msg_text.strip(SUBMESSAGE_DELIMITER)
 
 		# Nix leading/trailing whitespace in individual message.
 		msg_text = msg_text.strip()
@@ -7051,8 +7105,10 @@ async def check_for_funcalls(update:Update, context:Context, response_text:str) 
 	(?:								# Non-capture group for parameter list
 		(							# Non-capture group for arguments
 			"(?:[^"\\]|\\.)*"		# String positional argument
+		|
+			'(?:[^'\\]|\\.)*'		# Single-quoted string positional argument
 		|							# OR
-			[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*(\d+|"(?:[^"\\]|\\.)*")
+			[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*(\d+|true|false|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')
 									# Keyword argument (alphanumeric with value)
 		)\s*,?\s*					# Allow comma-separated arguments with optional whitespace
 	)*								# Zero or more occurrences of arguments
@@ -7060,7 +7116,7 @@ async def check_for_funcalls(update:Update, context:Context, response_text:str) 
 	'''
 
 	# Use verbose flag to enable comments and multiline pattern
-	invocation_regex = re.compile(invocation_pattern, re.VERBOSE)
+	invocation_regex = re.compile(invocation_pattern, re.VERBOSE | re.IGNORECASE)
 
 	# Search for matches
 	matches = invocation_regex.finditer(response_text)
@@ -7084,23 +7140,30 @@ async def check_for_funcalls(update:Update, context:Context, response_text:str) 
 		argument_pattern = r'''
 		\s*							 # Optional leading whitespace
 		("(?:[^"\\]|\\.)*")			 # Match string argument
+		|
+		('(?:[^'\\]|\\.)*')			 # Match single-quoted string argument
 		|							 # OR
-		([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(\d+|"(?:[^"\\]|\\.)*")
+		([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(\d+|true|false|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')
 									 # Match keyword argument
 		'''
-		argument_regex = re.compile(argument_pattern, re.VERBOSE)
+		argument_regex = re.compile(argument_pattern, re.VERBOSE | re.IGNORECASE)
 
 		# Iterate over all arguments found
 		for arg_match in argument_regex.finditer(arguments_str):
-			if arg_match.group(1):	# Positional argument (string)
-				positional_arglist.append(arg_match.group(1)[1:-1])	# Strip quotes
-			elif arg_match.group(2) and arg_match.group(3):	 # Keyword argument
-				value = arg_match.group(3)
-				if value[0]=='"':	# String
+			if arg_match.group(1) or arg_match.group(2):	# Positional argument (string)
+				group = arg_match.group(1) or arg_match.group(2)
+				positional_arglist.append(group[1:-1])	# Strip quotes
+			elif arg_match.group(3) and arg_match.group(4):	 # Keyword argument
+				value = arg_match.group(4)
+				if value[0]=='"' or value[0]=="'":	# String
 					value = value[1:-1]	# Strip quotes
+				elif value.lower() == 'true':
+					value = True
+				elif value.lower() == 'false':
+					value = False
 				else:
 					value = int(value)	# Integer
-				keyword_arglist[arg_match.group(2)] = value
+				keyword_arglist[arg_match.group(3)] = value
 
 		# Print the accumulated arguments
 		_logger.normal(f"\tPositional arguments: {positional_arglist}")
@@ -9861,20 +9924,22 @@ def _unblockUserByID(userID:int) -> bool:
 
 #MESSAGE_DELIMITER = '🤍'	# A Unicode character. Gladys selected the white heart emoji.
 	# We're temporarily trying a different delimiter that's less likely to appear in message text:
-MESSAGE_DELIMITER = chr(ascii.RS)	# (Gladys agreed to try this.)
+#MESSAGE_DELIMITER = chr(ascii.RS)	# (Gladys agreed to try this.)
 	# A control character.	(ASCII RS = 0x1E, record separator.)
 #MESSAGE_DELIMITER = chr(ascii.ETX)	# End-of-text control character.
 #MESSAGE_DELIMITER = chr(ascii.ETB)	# End-of-transmission-block control character.
 #MESSAGE_DELIMITER = ""				# No delimiter at all!
 	# ^ Trying this in desperation to hopefully get rid of API errors.
 	# NOTE: I think this was unnecessary.
+MESSAGE_DELIMITER = '<|eos|>'	# For Grok. Special token
 
 	# The following defines a message separator which pads the message
 	# delimiter string with a trailing space to facilitate tokenization.
 
 if MESSAGE_DELIMITER:		# If the delimiter isn't empty string,
 	MESSAGE_SEPARATOR = MESSAGE_DELIMITER + ' '		# Add a space after it (for benefit of tokenizer)
-	SUBMESSAGE_DELIMITER = chr(ascii.US)	# ASCII FS = 0x1F, unit separator.
+	#SUBMESSAGE_DELIMITER = chr(ascii.US)	# ASCII FS = 0x1F, unit separator.
+	SUBMESSAGE_DELIMITER = "❥"	# Rightwards pointing black heart.
 else:
 	MESSAGE_SEPARATOR = ""
 
@@ -10032,6 +10097,7 @@ DYNAMIC_MEMORY_HEADER	 = f" {SECTION_DECORATOR} CONTEXTUALLY RELEVANT MEMORIES: 
 RESPONSE_INSTR_HEADER	 = f" {SECTION_DECORATOR} RESPONSE INSTRUCTIONS: {SECTION_DECORATOR}\n"
 
 RECENT_MESSAGES_HEADER	 = f" {SECTION_DECORATOR} RECENT TELEGRAM MESSAGES: {SECTION_DECORATOR}\n"
+FINAL_PROMPT_HEADER		 = f" {SECTION_DECORATOR} RESPONSE PROMPT: {SECTION_DECORATOR}\n"
 
 # This one is left over from the legacy memory feature, which is now
 # deprecated, since it didn't segregate memories by user so it could
