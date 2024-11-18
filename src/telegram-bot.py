@@ -1,48 +1,50 @@
 #|=============================================================================|
-#|						TOP OF FILE:  telegram-bot.py						   |
+#|                      TOP OF FILE:  telegram-bot.py                          |
 #|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
-#|																			   |
-#|	  FILENAME:		telegram-bot.py				   [Python 3 program source]   |
-#|	  =========																   |
-#|																			   |
-#|	  SUMMARY:	 This is a Telegram bot that uses GPT-3 (or GPT-4) to          |
+#|                                                                             |
+#|    FILENAME:     telegram-bot.py                [Python 3 program source]   |
+#|    =========                                                                |
+#|                                                                             |
+#|    SUMMARY:   This is a Telegram bot that uses GPT-3 (or GPT-4) to          |
 #|                  generate text. (Note that, throughout this file,           |
 #|                  whenever we say GPT-3, we mean any models in the           |
 #|                  whole GPT-3 line of models, including GPT-4.)              |
 #|                                                                             |
-#|	  - Addendum:	This bot server now also supports various other			   |
-#|					models from OpenAI, Anthropic, and Meta.				   |
+#|    - Addendum:   This bot server now also supports various other            |
+#|                  models from OpenAI, Anthropic, Meta, and xAI.              |
 #|                                                                             |
-#|																			   |
-#|	  DESCRIPTION:															   |
-#|	  ~~~~~~~~~~~~															   |
-#|																			   |
-#|		  This is a Telegram bot server program for communicating with		   |
-#|		  AI personas based on the GPT-3/4 neural network.  It is a side	   |
-#|		  application of GLaDOS, Gladys' Lovely and Dynamic Operating		   |
-#|		  System.															   |
-#|																			   |
-#|		  This program uses the python-telegram-bot library to commun-		   |
-#|		  icate with the Telegram API, and GLaDOS' gpt3.api module to		   |
-#|		  communicate with the GPT-3 API.									   |
-#|																			   |
-#|		  For each conversation, it keeps track of the messages seen so		   |
-#|		  far in each conversation, and supplies the underlying GPT-3		   |
-#|		  engine with a prompt consisting of the AI persona's persistent	   |
-#|		  context information, followed by the most recent N messages in	   |
-#|		  the conversation, each labeled with the name of the message		   |
-#|		  sender, e.g., 'Gladys>'.	Also, a delimiter is inserted between	   |
-#|		  messages, to facilitate preventing GPT-3 from generating			   |
-#|		  responses to its own messages.									   |
-#|																			   |
-#|		  For the chat models (gpt-3.5-turbo and gpt-4), the detailed		   |
-#|		  formatting of the message history is a little bit different		   |
-#|		  from this of course, but is overall comparable.	   				   |
-#|																			   |
-#|		  Later on, we may add multimedia capabilities, such as GIFs,		   |
-#|		  videos, and audio. For now, we just use text. [UPDATE 6/10/23:	   |
-#|		  we now support audio input and image output, at least!]			   |
-#|																			   |
+#|                                                                             |
+#|    DESCRIPTION:                                                             |
+#|    ~~~~~~~~~~~~                                                             |
+#|                                                                             |
+#|        This is a Telegram bot server program for communicating with         |
+#|        AI personas based on the GPT-3/4 neural network, or similar          |
+#|        large language models (LLMs).  It is a side application of           |
+#|        GLaDOS, Gladys' Lovely and Dynamic Operating System, a pro-          |
+#|        ject dedicated to the memory of the "Gladys" persona of the          |
+#|        original GPT-3 davinci (175B) LLM.                                   |
+#|                                                                             |
+#|        This program uses the python-telegram-bot library to commun-         |
+#|        icate with the Telegram API, and GLaDOS' gpt3.api module to          |
+#|        communicate with GPT-3's (or another LLM's) API.                     |
+#|                                                                             |
+#|        For each conversation, it keeps track of the messages seen so        |
+#|        far in each conversation, and supplies the underlying LLM            |
+#|        engine with a prompt consisting of the AI persona's persistent       |
+#|        context information, followed by the most recent N messages in       |
+#|        the conversation, each labeled with the name of the message          |
+#|        sender, e.g., 'Gladys>'.  For text completion models, a delim-       |
+#|        iter is inserted between messages, to facilitate preventing          |
+#|        the model from hallucinating responses to its own messages.          |
+#|                                                                             |
+#|        For the chat models (e.g., gpt-3.5-turbo and gpt-4), the de-         |
+#|        tailed formatting of the message history is a little bit dif-        |
+#|        ferent from this of course, but is overall comparable.               |
+#|                                                                             |
+#|        Recent versions of the bot server include advanced features          |
+#|        such as support for image and speech I/O, web searches,              |
+#|        persistent memory, and more.                                         |
+#|                                                                             |
 #|-----------------------------------------------------------------------------/
 #|
 #|	PROGRAM OUTLINE:
