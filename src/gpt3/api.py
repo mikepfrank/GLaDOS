@@ -497,6 +497,7 @@ _ENGINES = [
 	#{'model-family': 'Claude-3.5',	'engine-name': 'claude-3-5-sonnet-20240620',	'field-size': 200_000,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 
 	{'model-family': 'Claude-3.5',	'engine-name': 'claude-3-5-sonnet-20241022',	'field-size': 32_768,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+	#{'model-family': 'Claude-3.5',	'engine-name': 'claude-3-5-sonnet-20241022',	'field-size': 49_152,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 	#{'model-family': 'Claude-3.5',	'engine-name': 'claude-3-5-sonnet-20241022',	'field-size': 200_000,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 
 ] # End _ENGINES constant module global data structure.
@@ -1265,7 +1266,7 @@ class PromptTooLargeException(Exception):
 		e.byHowMuch 	= byHowMuch
 
 		# Generate a human-readable error message.
-		msg = (f"GPT-3 API prompt string is {promptToks} tokens," +
+		msg = (f"LLM API prompt string is {promptToks} tokens," +
 			   f" max is {promptToks}, too large by {byHowMuch}.")
 
 		super(PromptTooLargeException, e).__init__(msg)
@@ -1935,7 +1936,8 @@ class ChatMessages:
 # Maximum number of images that may be embedded in the prompt.
 
 # MAX_IMAGES = 20	# This is Anthropic's maximum.
-MAX_IMAGES = 5		# Changing to this to reduce chance of prompt bloat.
+# MAX_IMAGES = 5		# Changing to this to reduce chance of prompt bloat.
+MAX_IMAGES = 3		# Changing to this to reduce chance of prompt bloat.
 
 
 #/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

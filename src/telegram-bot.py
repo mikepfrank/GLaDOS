@@ -1457,7 +1457,8 @@ class BotConversation:
 		else:
 			functions = None
 
-		bc.cur_func_schemas = json.dumps(functions, indent=2, sort_keys=True)
+		#bc.cur_func_schemas = json.dumps(functions, indent=2, sort_keys=True)
+		bc.cur_func_schemas = json.dumps(functions, indent=2)
 
 
 	#/==========================================================================
@@ -6161,7 +6162,8 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 	else:
 		functions = None
 
-	botConvo.cur_func_schemas = json.dumps(functions, indent=2, sort_keys=True)
+	#botConvo.cur_func_schemas = json.dumps(functions, indent=2, sort_keys=True)
+	botConvo.cur_func_schemas = json.dumps(functions, indent=2)
 
 	# If a message list wasn't specifically supplied, then
 	# derive it from the convo.
@@ -6182,7 +6184,7 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 	#| (However, we try to do our best to trim it down before the call.)
 	#|
 	#| Exceptions handled:
-	#|	If we get a PromptTooLongException, then we'll try again with a
+	#|	If we get a PromptTooLargeException, then we'll try again with a
 	#|		shorter prompt.
 	#|	If we get a RateLimitError, then we'll emit a diagnostic reponse
 	#|		message.
@@ -6742,7 +6744,8 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 #__/ End function process_ai_command().
 
 # Adjusting this as needed to try to hit target daily expenditures.
-DAILY_MESSAGE_LIMIT = 10
+DAILY_MESSAGE_LIMIT = 8
+#DAILY_MESSAGE_LIMIT = 10
 #DAILY_MESSAGE_LIMIT = 15
 #DAILY_MESSAGE_LIMIT = 20
 						 
@@ -6786,8 +6789,8 @@ async def process_chat_message(update:Update, context:Context) -> None:
 	# Make sure we haven't hit the message limit.
 
 	if user_name == 'Michael':	# Michaels are exempt from the rate limit.
-		daily_message_limit = float('inf')
-		#daily_message_limit = 2*DAILY_MESSAGE_LIMIT		# Temporary, for testing
+		#daily_message_limit = float('inf')
+		daily_message_limit = int(DAILY_MESSAGE_LIMIT/2)		# Temporary, for testing
 	else:
 		daily_message_limit = DAILY_MESSAGE_LIMIT
 
@@ -6806,7 +6809,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 			# ^^ Took out this 'if' so the AI can see the date change even if quota wasn't reached
 
 			# Make sure AI knows the message limit is resetting now..
-			await botConvo.add_message(BotMessage(SYS_NAME,
+			botConvo.add_message(BotMessage(SYS_NAME,
 				f"[NOTE: It's a new day ({today})! Resetting message quota.]"))
 
 			context.chat_data['nmsgs_today'] = 0	# We haven't responded yet.
@@ -6818,11 +6821,29 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 	botConvo.nix_init_assts()
 
-	# Now everything is handled by this new implementation, which has been
-	# rewritten so that it can also handle cases where the AI is responding from
-	# a result that's been returned from a function that it previously called.
+	result = await get_ai_response(update, context)
 
-	return await get_ai_response(update, context)
+	# Update record of how many user messages have been processed
+	# today in this context.  NOTE: We are checking again whether the
+	# date has rolled over just in case it rolled over while we were
+	# getting the AI's response.
+
+	today = get_current_date()
+	if 'last_msg_date' not in context.chat_data or today != context.chat_data['last_msg_date']:
+		context.chat_data['last_msg_date'] = today
+
+		# Make sure AI knows the message limit is resetting now.
+		if 'nmsgs_today' in context.chat_data and context.chat_data['nmsgs_today'] >= daily_message_limit:
+			botConvo.add_message(BotMessage(SYS_NAME, f"[It's a new day ({today})! Resetting message quota.]"))
+
+		context.chat_data['nmsgs_today'] = 1		# The message we just responded to.
+	else:
+		context.chat_data['nmsgs_today'] += 1
+
+	_logger.info(f"A total of {context.chat_data['nmsgs_today']} user messages "
+				 f"have been responded to in chat {chat_id} today ({today}).")
+
+	return result
 
 #__/ End definition of async function process_chat_message().
 
@@ -9258,8 +9279,9 @@ def _logOaiMsgs(oaiMsgList:list, basename="latest-messages") -> None:
 				# Our text representation of OpenAI messages.
 	
 	# Also do a json dump
-	with open(f"{LOG_DIR}/{basename}.json", "w") as outfile:
-		json.dump(oaiMsgList, outfile)
+	#with open(f"{LOG_DIR}/{basename}.json", "w") as outfile:
+	#	json.dump(oaiMsgList, outfile)
+	# ^^ Commented out since it can be very large with image data.
 
 #__/
 
@@ -10344,21 +10366,25 @@ def _semanticDistance(em1:list, em2:list):
 # if the send succeeded, or an error string if it failed.
 # If toAI=False, we skip sending the message to the AI.
 async def _send_diagnostic(userTgMessage:TgMsg, convo:BotConversation,
-						   diagMsg:str, toAI=True, ignore:bool=False) -> str:
+						   diagMsg:str, toAI=True, ignore:bool=False,
+						   markup:bool=False) -> str:
 	"""Sends diagnostic message <diagMsg> in reply to the user's
 		Telegram message <userTgMessage> in conversation <convo>.
 		This function first adds the message to the convo. If 
 		ignore=True then send failures are reported as ignored."""
 
 	# Compose the full formatted diagnostic message.
-	fullMsg = f"[DIAGNOSTIC: {diagMsg}]"
+	if markup:
+		fullMsg = f"\[DIAGNOSTIC: {diagMsg}\]"
+	else:
+		fullMsg = f"[DIAGNOSTIC: {diagMsg}]"
 
 	# First, record the diagnostic for the AI's benefit.
 	if toAI:
 		convo.add_message(BotMessage(SYS_NAME, fullMsg))
 
 	# Now also send it to the user.
-	return await _reply_user(userTgMessage, convo, fullMsg, ignore)
+	return await _reply_user(userTgMessage, convo, fullMsg, ignore, markup)
 #__/
 
 
