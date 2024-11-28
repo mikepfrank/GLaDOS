@@ -3701,6 +3701,11 @@ def tiktokenCount(text:str=None, encoding:str='gpt2', model:str=None, client=Non
 
 	# If the client argument is provided, use its token_count() function.
 	if client:
+
+		# Hack because Anthropic provides no easy way to count tokens in a raw string.
+		if isinstance(client, Anthropic):
+			return _msg_tokens({'role': 'user', 'content': text}, model, client) - 4
+
 		return client.count_tokens(text)
 
 	# If the model argument is provided, use it to get the encoding.
@@ -4477,6 +4482,17 @@ def messageRepr(message:dict) -> str:
 	return _msg_repr(message)
 
 
+def _anth_count_tokens(msg:dict, client:Anthropic) -> int:
+	"""Counts tokens in a message using the count_tokens endpoint."""
+	response = client.beta.messages.count_tokens(
+		betas=["token-counting-2024-11-01"],
+		model="claude-3-5-sonnet-20241022",
+		messages=[msg])
+	#ntok = json.loads(response.json())['input_tokens']
+	ntok = response.input_tokens
+	return ntok
+
+
 def _msg_tokens(msg:dict, model:str=None, client=None) -> int:
 	"""Return the number of tokens in the given message dict. Note that
 		we include the tokens in the 'role' and 'content' fields of
@@ -4505,7 +4521,24 @@ def _msg_tokens(msg:dict, model:str=None, client=None) -> int:
 	#print(f"*** IN _msg_tokens() WITH CLIENT = {client} ***")
 
 	if client:
-		return client.count_tokens(repr_text)
+
+		# Because the .count_tokens() method is no longer directly
+		# supported by the Anthropic client...
+		if isinstance(client, Anthropic):
+
+			# In case the message dict contains a 'bot-msg-obj' key,
+			# we need to delete it. But we do this in a fresh copy,
+			# so as not to disturb the original dict object.
+
+			if 'bot-msg-obj' in msg:
+				new_msg = msg.copy()		# Create a shallow copy.
+				del new_msg['bot-msg-obj']	# Delete that key.
+				msg = new_msg				# Update msg variable.
+
+			return _anth_count_tokens(msg, client)
+
+		else:
+			return client.count_tokens(repr_text)
 		
 	msgToks = tiktokenCount(repr_text, model=model)
 

@@ -347,6 +347,10 @@ import 	re
 	# This simple built-in version of the regex library is sufficient for our
 	# purposes here.
 
+# This one is just to suppress numpy warnings caused by pickle.
+import warnings
+warnings.filterwarnings('ignore', message='numpy.core.numeric is deprecated')
+
 # We use this to compactly store embedding vectors as SQLite BLOBs.
 import	pickle
 
@@ -815,6 +819,10 @@ def _anthropize(msgDict):
 	# If there's a 'name' field, delete it at this point -- Anthropic can't take it.
 	if 'name' in msgDict:
 		del msgDict['name']
+
+	# Make sure no leading or trailing whitespace in message content.
+	if not isinstance(msgDict['content'], list):
+		msgDict['content'] = msgDict['content'].strip()
 
 	return msgDict		# Return the dict we just constructed.
 
@@ -6788,9 +6796,9 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 	# Make sure we haven't hit the message limit.
 
-	if user_name == 'Michael':	# Michaels are exempt from the rate limit.
-		#daily_message_limit = float('inf')
-		daily_message_limit = int(DAILY_MESSAGE_LIMIT/2)		# Temporary, for testing
+	if user_name == 'Michael' or user_name == 'Jiff':	# Michaels are exempt from the rate limit.
+		daily_message_limit = float('inf')
+		#daily_message_limit = int(DAILY_MESSAGE_LIMIT/2)		# Temporary, for testing
 	else:
 		daily_message_limit = DAILY_MESSAGE_LIMIT
 
@@ -11715,8 +11723,8 @@ app.add_handler(MessageHandler(unknown_command_filter,
 #pprint(result)
 
 # Show a diagnostic: How much token space does the function list take?
-FUNC_TOKS = tiktokenCount(json.dumps(FUNCTIONS_LIST), model=ENGINE_NAME, client=_main_client)
-_logger.normal(f"\nNOTE: Complete specs for all functions together would take up {FUNC_TOKS} tokens.")
+#FUNC_TOKS = tiktokenCount(json.dumps(FUNCTIONS_LIST), model=ENGINE_NAME, client=_main_client)
+#_logger.normal(f"\nNOTE: Complete specs for all functions together would take up {FUNC_TOKS} tokens.")
 
 	#|==========================================================================
 	#|  7.5. Start main loop.
