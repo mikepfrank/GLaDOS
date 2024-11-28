@@ -606,7 +606,8 @@ from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF
 	oaiMsgObj_to_msgDict,	# For compatibility
 
 	_has_functions as hasFunctions,		# Pretend it's a public function.
-	_get_field_size as getFieldSize
+	_get_field_size as getFieldSize,
+	_msg_tokens as msgTokens
 
 )	# End of imports from gpt3.api module.
 
@@ -714,6 +715,7 @@ def _anthropize(msgDict):
 	if msgDict['role'] == CHAT_ROLE_SYSTEM:
 		msgDict['role'] = CHAT_ROLE_USER
 		msgDict['content'] = _msg_to_xml(msgDict['content'], SYS_NAME)
+		CHECK_FOR_ANOMOLOUS_MSGS([msgDict], 4)
 
 		# msgDict['content'] = f'<message sender="{SYS_NAME}">\n' \
 		#	 + msgDict['content'] + '\n' \
@@ -724,6 +726,7 @@ def _anthropize(msgDict):
 		if 'name' in msgDict:
 			user_tag = msgDict['name']
 			msgDict['content'] = _msg_to_xml(msgDict['content'], user_tag)
+			CHECK_FOR_ANOMOLOUS_MSGS([msgDict], 5)
 
 			#msgDict['content'] = f'<message sender="{user_tag}">\n' \
 			#					 + msgDict['content'] + '\n' \
@@ -759,8 +762,10 @@ def _anthropize(msgDict):
 			msg_content = msgDict['content']
 			if msg_content.startswith("*thinks*") or msg_content.startswith("*thinking*"):
 				msgDict['content'] = _thought_to_xml(msg_content, BOT_NAME)
+				CHECK_FOR_ANOMOLOUS_MSGS([msgDict], 6)
 			else:
 				msgDict['content'] = _msg_to_xml(msg_content, BOT_NAME)
+				CHECK_FOR_ANOMOLOUS_MSGS([msgDict], 7)
 
 			#msgDict['content'] = f'<message sender="{BOT_NAME}">\n' \
 			#					 + msgDict['content'] + '\n' \
@@ -792,6 +797,7 @@ def _anthropize(msgDict):
 
 		#msgDict['content'] = f"{BOT_NAME}> " + xml_funcall
 		msgDict['content'] = xml_funcall
+		CHECK_FOR_ANOMOLOUS_MSGS([msgDict], 8)
 
 		del msgDict['function_call']
 
@@ -823,6 +829,7 @@ def _anthropize(msgDict):
 	# Make sure no leading or trailing whitespace in message content.
 	if not isinstance(msgDict['content'], list):
 		msgDict['content'] = msgDict['content'].strip()
+		CHECK_FOR_ANOMOLOUS_MSGS([msgDict], 9)
 
 	return msgDict		# Return the dict we just constructed.
 
@@ -1020,6 +1027,20 @@ class BotMessage:
 		newMessage.expanded_content = None
 			# No expanded content initially.
 
+		# Go ahead and generate & cache the OpenAI-like message dict.
+		newMessage.oai_msg_dict = newMessage.oaiMsgDict()
+
+		# Count the number of tokens in the message. Also caches it
+		# here in the object, as well as in the oai_msg_dict that we
+		# just created.
+		#newMessage.num_tokens()		# Ignore result.
+		#
+		# ^^ NOTE: Don't do this quite yet, because when reloading
+		#		long conversations, it could do a lot of extra REST
+		#		queries. Instead, do it after trimming the length
+		#		of the convo in botConversation.read_archive().
+		#
+
 	#__/ End definition of instance initializer for class Message.
 
 
@@ -1045,6 +1066,42 @@ class BotMessage:
 	#|		These are public methods that operate on instances of the
 	#|		BotMessage class.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	# This method is used to count message tokens in Anthropic models. For
+	# efficiency, we cache the result to avoid extra REST transactions.
+	def num_tokens(thisBotMsg:BotMessage) -> int:
+
+		# If number of tokens is already cached, just return it.
+		if hasattr(thisBotMsg, 'n_tokens'):
+			return thisBotMsg.n_tokens
+
+		## OK, we haven't counted the tokens yet. LET'S DO THIS!
+
+		# LLM API client is the global main client.
+		client = _main_client
+
+		# Also fetch LLM model identifier from a global.
+		model  = ENGINE_NAME
+		
+		# Fetch the cached OpenAI-style message dictionary for this BotMessage.
+		msg_dict = thisBotMsg.oai_msg_dict
+
+		# Now we can call the private function msgTokens(), which does
+		# the real work of counting the tokens. For Anthropic models, this
+		# involves a REST query, so it's slow.
+		nToks = msgTokens(msg_dict, model, client)
+
+		# Let's cache the result in this BotMessage object.
+		thisBotMsg.n_tokens = nToks
+
+		# For good measure, we'll also cache it in our cached OAI style message dict.
+		thisBotMsg.oai_msg_dict['ntokens'] = nToks
+
+		# Return the number of tokens to our caller.
+		return nToks
+
+	#__/ End method botMessage.num_tokens().
+
 
 	# Trims some content off the front of a message.
 	def trimFront(thisBotMsg:BotMessage) -> bool:
@@ -1076,47 +1133,61 @@ class BotMessage:
 		# Actually update the message text.
 		thisBotMsg.text = text
 
-		return True		# Successfully truncated.
-	#__/
+		# We also need to update the cached OpenAI style dict
+		# and the token count.
 
+		del thisBotMsg.oai_msg_dict		# Blow away cached copy.
 
-	def trimFront(thisBotMsg:BotMessage) -> bool:
-		# Trims some content off the front of a message.
+		# Regenerate message dict.
+		thisBotMsg.oai_msg_dict = thisBotMsg.oaiMsgDict()
 
-		text = thisBotMsg.text
-
-		TRUNCATION_NOTICE = "[system: the initial part of this message was removed due to length] "
-
-		# If text was already shortened, remove TRUNCATION_NOTICE from the front before shortening again.
-		if text.startswith(TRUNCATION_NOTICE):
-			text = text[len(TRUNCATION_NOTICE):]
-
-		# Remove TRUNCATION_LEN characters from start of text.
-
-		TRUNCATION_LEN = 200
-		if len(text)>TRUNCATION_LEN:
-
-			_logger.warn(f"Trimming this text off of front of oldest message: [{text[0:TRUNCATION_LEN]}]...")
-
-			text = text[TRUNCATION_LEN:]
-		else:
-			return False	#Unable to truncate further.
-
-		# Add TRUNCATION_NOTICE to start of text.
-		text = TRUNCATION_NOTICE + text
-
-		# Actually update the message text.
-		thisBotMsg.text = text
+		# Recalculate message length.
+		thisBotMsg.num_tokens()
 
 		return True		# Successfully truncated.
 	#__/
 
 
-	# This creates and returns an OpenAI-style chat message
-	# dictionary based on this BotMessage.
+	# Extends the text of a (non-finalized) message. This is used
+	# in non-chat (text completion) models to allow the LLM to 
+	# continue extending its response beyond max_tokens. Returns
+	# a boolean indicating if the operation was successful.
+
+	def extend(thisBotMsg:BotMessage, extra_text:str) -> bool:
+
+		message = thisBotMsg
+		
+		# First, make sure the message has not already been finalized.
+		if message.archived:
+			_logger.error("Tried to extend an already-archived message.")
+			return False
+
+		# Add the extra text onto the end of the message.
+		message.text += extra_text
+
+		# Recalculate the message dict & token count.
+		del thisBotMsg.oai_msg_dict
+		thisBotMsg.oai_msg_dict = thisBotMsg.oaiMsgDict()		
+		thisBotMsg.num_tokens()
+
+		return True
+
+	#__/ End botMessage.extend().
+
 
 	def oaiMsgDict(thisBotMsg:BotMessage) -> dict:
 		"""Returns an OpenAI-style chat message dictionary"""
+
+		# First, we'll check to see if we already cached this puppy
+		# in the BotMessage object itself; if so, then we don't need
+		# to regenerate it. This is important, because the cached
+		# dict could include a cached ['ntokens'] length value which
+		# we don't want to have to recompute with a slow REST query.
+
+		if hasattr(thisBotMsg, 'oai_msg_dict'):
+			return thisBotMsg.oai_msg_dict
+
+		# If we get here, then we actually need to build this dict.
 
 		sender = thisBotMsg.sender
 			# Note this is a string; it may be SYS_NAME,
@@ -1206,6 +1277,7 @@ class BotMessage:
 		elif isinstance(_main_client, Anthropic):
 			_oaiMsgDict['content'] = text
 				# This will get reformatted into XML in the _anthropize() call later on.
+			CHECK_FOR_ANOMOLOUS_MSGS([_oaiMsgDict], 10)
 
 		else:	# Normal message, for OpenAI clients.
 			_oaiMsgDict['content'] = str(thisBotMsg)
@@ -1231,6 +1303,8 @@ class BotMessage:
 
 			# NOTE: Previously, we just sent the message text, like this:
 			#'content':	message.text	# The content field is also expected.
+
+			CHECK_FOR_ANOMOLOUS_MSGS([_oaiMsgDict], 11)
 
 		# To reduce API errors, we set the 'name' property only for
 		# the 'user' role, and the 'function' role.
@@ -1661,6 +1735,13 @@ class BotConversation:
 			# Update the conversation's context string.
 			thisConv.expand_context()
 
+			# This is a good place to calculate the lengths of
+			# all of the messages that haven't scrolled off the top.
+			for message in thisConv.messages:
+				message.num_tokens()	# Counts and caches the #tokens.
+
+		#__/ End if transcript file exists.
+
 	#__/ End read_archive() instance method for class Conversation.
 
 
@@ -1991,16 +2072,9 @@ class BotConversation:
 	def extend_message(thisConv:BotConversation, message:BotMessage, extra_text):
 		"""Extends a non-finalized message by adding some extra text to it."""
 
-		# First, make sure the message has not already been finalized.
-		if message.archived:
-			_logger.error("Tried to extend an already-archived message.")
-			return
-
-		# Add the extra text onto the end of the message.
-		message.text += extra_text
-
-		# We also need to update the context string.
-		thisConv.context_string += extra_text
+		if message.extend(extra_text):
+			# We also need to update the context string.
+			thisConv.context_string += extra_text
 	#__/
 
 
@@ -2498,8 +2572,11 @@ class BotConversation:
 				   'content' in chat_messages[-1]:
 
 					# Append last message content to second-to-last.
-					chat_messages[-2]['content'] += '\n' + \
-						chat_messages[-1]['content']
+					#chat_messages[-2]['content'] += '\n' + \
+					#	chat_messages[-1]['content']
+					append_contents(chat_messages[-2], chat_messages[-1])
+
+					CHECK_FOR_ANOMOLOUS_MSGS(chat_messages, 12)
 
 					# Trim off the last message; it's been absorbed.
 					chat_messages = chat_messages[:-1]
@@ -2521,8 +2598,10 @@ class BotConversation:
 						msg['role'] == CHAT_ROLE_USER):
 
 					# Just add the new user content onto the end of the last one.
-					new_msglist[-1]['content'] += '\n' + msg['content']
+					#new_msglist[-1]['content'] += '\n' + msg['content']
+					append_contents(new_msglist[-1], msg)
 						
+					CHECK_FOR_ANOMOLOUS_MSGS(new_msglist, 13)
 
 				else:
 					new_msglist.append(msg)
@@ -2562,6 +2641,60 @@ class BotConversation:
 
 
 #__/ End Conversation class definition.
+
+
+def append_contents(msgDict1, msgDict2):
+	"""Modifies the 'content' value in the 1st (OpenAI-style)
+		message dictionary by appending the 'content' value from the 2nd
+		message dictionary to it.
+
+		Please note that this must correctly handle the case where
+		either or both of the values is a list of content items,
+		rather than a string.
+	"""
+
+	# Several cases to consider here: 
+	#
+	#	(1) Both 'content' values are strings, in which case we can
+	#		just append the strings (separated by newline).
+	#
+	#	(2) Both 'content' items are lists of content items, in which
+	#		case we can just append the lists.
+	#
+	#	(3) One item is a string and one is a list, in which case we
+	#		must convert the string to a list, and append the lists.
+
+	content1 = msgDict1['content']
+	content2 = msgDict2['content']
+
+	isStr1 = isinstance(content1, str)
+	isStr2 = isinstance(content2, str)
+
+	if isStr1 and isStr2:
+		msgDict1['content'] += '\n' + content2
+
+	elif (not isStr1) and (not isStr2):
+
+		# Assume they're both lists of content items.
+		
+		newlineItem = {'type': 'text', 'text': '\n'}
+		msgDict1['content'] += [newlineItem] + content2
+
+	elif isStr1 and not isStr2:
+
+		item1 = {'type': 'text', 'text': content1 + '\n'}
+
+		msgDict1['content'] = [item1] + content2
+
+	elif (not isStr1) and isStr2:
+
+		item2 = {'type': 'text', 'text': '\n' + content2}
+
+		msgDict1['content'] = content1 + [item2]
+
+	#__/ This covers all cases.
+
+#__/ End function append_contents().
 
 
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2833,6 +2966,13 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 
 	# Print diagnostic information.
 	_logger.normal(f"\nUser {user_name} started conversation {chat_id}.")
+
+	# Compose a system diagnostic message explaining what we're doing.
+	start_msgStr = f"[Starting up {BOT_NAME} bot, please be patient...]"
+
+	# Send it to the AI and to the user.
+	sendRes = await _reply_user(tgMessage, None, start_msgStr)
+	if sendRes != 'success': return sendRes
 
 	# Create a new conversation object and link it from the Telegram context object.
 	# NOTE: It needs to go in the context.chat_data dictionary, because that way it
@@ -4463,7 +4603,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 
 			except PromptTooLargeException as e:				# Imported from gpt3.api module.
 
-				_logger.debug("The prompt was too large by {e.byHowMuch} tokens! Trimming...")
+				_logger.normal("The prompt was too large by {e.byHowMuch} tokens! Trimming...")
 
 				# The prompt is too long.  We need to expunge the oldest message from the conversation.
 				# However, we need to do this within a try/except clause in case the only message left
@@ -5612,7 +5752,7 @@ async def ai_unblock(updateMsg:TgMsg, conversation:BotConversation,
 	# If no user was specified, then we'll unblock the current user.
 	if userToUnblock == None and userIDToUnblock == None:
 		userToUnblock = user_name
-		userIDToBlock = cur_user_id
+		userIDToUnblock = cur_user_id
 		_logger.normal(f"\tDefaulting to current user {userToUnblock}, ID={userIDToUnblock}.")
 
 	# If we know the user tag to block, but not the user ID, we have to 
@@ -5851,12 +5991,12 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 	elif funcName == 'unblock_user':
 
 		# NOTE: Unblocking users by tag may not always work, since tags are not unique.
-		userToUnblock = funcArgs.get('user_name', user_name)		# Default to current user.
+		userToUnblock = funcArgs.get('user_name', None)		# Default to current user.
 		userIDToUnBlock = funcArgs.get('user_id', None)
 		if userIDToUnBlock is not None:
 			userIDToUnBlock = int(userIDToUnBlock)
 
-		return await ai_unblock(message, conversation, userToUnblock)
+		return await ai_unblock(message, conversation, userToUnblock=userToUnblock, userIDToUnblock=userIDToUnBlock)
 
 	elif funcName == 'search_web':
 
@@ -5929,6 +6069,7 @@ def _sanitize_msgs(oaiMsgList):
 			   		newOaiMsgs[-2]['role'] == CHAT_ROLE_USER and \
 					newOaiMsgs[-1]['role'] == CHAT_ROLE_USER:
 				newOaiMsgs[-2]['content'] += '\n' + newOaiMsgs[-1]['content']
+				CHECK_FOR_ANOMOLOUS_MSGS(newOaiMsgs, 14)
 				newOaiMsgs = newOaiMsgs[:-1]
 
 			# Consolidate consecutive assistant messages.
@@ -5936,6 +6077,7 @@ def _sanitize_msgs(oaiMsgList):
 			   		newOaiMsgs[-2]['role'] == CHAT_ROLE_AI and \
 					newOaiMsgs[-1]['role'] == CHAT_ROLE_AI:
 				newOaiMsgs[-2]['content'] += '\n' + newOaiMsgs[-1]['content']
+				CHECK_FOR_ANOMOLOUS_MSGS(newOaiMsgs, 15)
 				newOaiMsgs = newOaiMsgs[:-1]
 
 		oaiMsgList = newOaiMsgs
@@ -6383,6 +6525,8 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 							botMsg = msgDict['bot-msg-obj']
 							if botMsg.expanded_content:
 								msgDict['content'] = botMsg.expanded_content
+								CHECK_FOR_ANOMOLOUS_MSGS([msgDict], 3)
+
 								continue	# Proceed to next message.
 						
 						# If the content is a string, turn it into a list:
@@ -6391,10 +6535,14 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 							# This is a list including text and images.
 							msgDict['content'] = message_content
 
+							CHECK_FOR_ANOMOLOUS_MSGS([msgDict], 2)
+
 							# Make sure the original botMsg remembers our expanded form.
 							if 'bot-msg-obj' in msgDict:
 								botMsg = msgDict['bot-msg-obj']
 								botMsg.expanded_content = message_content
+
+			CHECK_FOR_ANOMOLOUS_MSGS(oaiMsgList, 1)
 
 			# Get the response from the GPT, as a gpt3.api.ChatCompletion object.
 			chatCompletion = global_gptCore.genChatCompletion(	# Call the API.
@@ -6446,9 +6594,11 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 			break
 		#__/ End main body of 'try' clause for getting results from GPT.
 
-		except (PromptTooLargeException, APIStatusError):
+		except (PromptTooLargeException, APIStatusError) as e:
 			# PromptTooLargeException is from gpt3.api module
 			# APIStatusError is from anthropic library
+
+			_logger.error(f"Got an exception: {e}.")
 
 			# Are we using a raw message list that was passed in to us from
 			# process_function_call()? If so, then we need to trim that one;
@@ -6476,6 +6626,8 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 				continue	# Loop back to start of while loop and try again.
 
 			else:
+
+				_logger.normal(f"\nExpunging oldest message from chat #{chat_id}...")
 
 				# The LLM prompt (constructed internally at the remote API
 				# back-end) is too long.  Thus, we need to expunge the oldest
@@ -6603,6 +6755,17 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 
 #__/ End definition of function get_ai_response().
 						 
+
+def CHECK_FOR_ANOMOLOUS_MSGS(msgList:list, where:int):
+	for msg in msgList:
+		content = msg['content']
+		if isinstance(content, list):
+			nitems = len(content)
+			if nitems>100:
+				_logger.fatal(f"AT SITE {where}: Message content has {nitems} items...")
+				_logger.normal(f"Message content is: {content}")
+				quit()
+
 
 # Process a command (message starting with '/') from the AI.
 async def process_ai_command(update:Update, context:Context, response_text:str) -> None:
@@ -10388,7 +10551,7 @@ async def _send_diagnostic(userTgMessage:TgMsg, convo:BotConversation,
 		fullMsg = f"[DIAGNOSTIC: {diagMsg}]"
 
 	# First, record the diagnostic for the AI's benefit.
-	if toAI:
+	if toAI and convo:
 		convo.add_message(BotMessage(SYS_NAME, fullMsg))
 
 	# Now also send it to the user.

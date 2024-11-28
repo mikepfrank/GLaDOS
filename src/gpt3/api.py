@@ -1655,7 +1655,7 @@ class Completion:
 						# Calculate the effective maximum prompt length, in tokens.
 					effMax = fieldSize - minRepWin
 
-					_logger.debug(f"[GPT-3 API] Prompt length of {_inputLength} exceeds"
+					_logger.normal(f"[LLM API] Prompt length of {_inputLength} exceeds"
 								  f" our effective maximum of {effMax}. Requesting field shrink.")
 
 					e = PromptTooLargeException(_inputLength, effMax)
@@ -2530,7 +2530,7 @@ class ChatCompletion(Completion):
 
 				#_logger.debug(f"In ._createChatComplStruct(), effMax={effMax}.")
 
-				_logger.debug("[GPT chat API] Prompt length of "
+				_logger.normal("[LLM chat API] Prompt length of "
 							  f"{estInputLen} exceeds our effective "
 							  f"maximum of {effMax}. Requesting "
 							  "message list shrink.")
@@ -2610,14 +2610,24 @@ class ChatCompletion(Completion):
 			n_images = 0
 
 			for msg in reversed(messages):
-				## Commenting out these diagnostics for now
+				## Commenting out the diagnostics for now
 				contents = msg['content']
 				if isinstance(contents, list):
-					#_logger.normal(f"\tFound a message containing {len(contents)} content items...")
+
+					_logger.info(f"\tFound a message containing {len(contents)} content items...")
+					if len(contents) > 100:
+						_logger.error(f"Anomalous message content: {contents}")
+						quit()
+
 					for content_item in contents:
+
 						#if content_item['type'] == 'text':
 						#	_logger.normal(f'\t\tFound a text item: "{content_item['text'][:30]}...".')
-						if content_item['type'] == 'image':
+
+						if isinstance(content_item, str):
+							_logger.error(f"Found a content item that's a string: [{content_item}]")
+
+						if isinstance(content_item, dict) and content_item['type'] == 'image':
 							n_images += 1
 							_logger.normal(f"\tFound #{n_images} most-recent "
 								f"image with {len(content_item['source']['data'])} "
@@ -2629,15 +2639,36 @@ class ChatCompletion(Completion):
 								del content_item['source']			# Unlinks image data
 								content_item['text'] = '[EXPIRED]'	# Notes that the image data is too old
 
+			# Shallow-copy all the message dicts, so we can f around
+			# with them without messing up the originals.
+
+			fresh_msgs = []
+			for msg in messages:
+
+				fresh_msg = msg.copy()
+			
 				# This is a hack to clean out back-references to Telegram-bot message objects.
-				if 'bot-msg-obj' in msg:
-					del msg['bot-msg-obj']
+				if 'bot-msg-obj' in fresh_msg:
+					del fresh_msg['bot-msg-obj']
+
+				# Also delete the cached 'ntokens' value, if present.
+				if 'ntokens' in fresh_msg:
+					del fresh_msg['ntokens']
+
+				fresh_msgs.append(fresh_msg)
 
 			#__/ End loop thru messages in reverse order.
 
+			messages = fresh_msgs	# Use cleaned-up copy of message list.
+			apiArgs['messages'] = messages
+
+			_logger.normal(f"\nAbout to count tokens for model {apiArgs['model']}...")
+			ntoks = _anth_count_tokens(messages, apiArgs['model'], client)
+			_logger.normal(f"\t*** NOTE: Full message list has {ntoks} tokens. ***")
+
 			# Anthropic style chat completion.
 			chatComplObj = client.messages.create(
-				extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
+				#extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
 				**apiArgs)
 
 		else:
@@ -4482,18 +4513,28 @@ def messageRepr(message:dict) -> str:
 	return _msg_repr(message)
 
 
-def _anth_count_tokens(msg:dict, client:Anthropic) -> int:
-	"""Counts tokens in a message using the count_tokens endpoint."""
+def _anth_count_tokens(msgs, engine, client:Anthropic) -> int:
+	"""Counts tokens in a message or message list using the
+		count_tokens endpoint."""
+
+	if isinstance(msgs, dict):
+		msgs = [msgs]
+
+	if engine is None:
+		engine = "claude-3-5-sonnet-20241022"
+
 	response = client.beta.messages.count_tokens(
 		betas=["token-counting-2024-11-01"],
-		model="claude-3-5-sonnet-20241022",
-		messages=[msg])
-	#ntok = json.loads(response.json())['input_tokens']
+		model=engine,
+		messages=msgs)
+
 	ntok = response.input_tokens
+
 	return ntok
 
 
 def _msg_tokens(msg:dict, model:str=None, client=None) -> int:
+
 	"""Return the number of tokens in the given message dict. Note that
 		we include the tokens in the 'role' and 'content' fields of
 		the message dict, as well as an estimate of the tokens in
@@ -4501,6 +4542,46 @@ def _msg_tokens(msg:dict, model:str=None, client=None) -> int:
 		to represent the messages before passing them to the 
 		underlying language model."""
 		
+	#print(f"*** IN _msg_tokens() WITH CLIENT = {client} ***")
+
+	if client:
+
+		# Because the .count_tokens() method is no longer directly
+		# supported by the Anthropic client...
+		if isinstance(client, Anthropic):
+
+			# See if we already cached the # of tokens.
+			if 'ntokens' in msg:
+				ntok = msg['ntokens']
+
+			else:
+				# In case the message dict contains a 'bot-msg-obj' key,
+				# we need to delete it. But we do this in a fresh copy,
+				# so as not to disturb the original dict object.
+
+				if 'bot-msg-obj' in msg:
+					new_msg = msg.copy()		# Create a shallow copy.
+					del new_msg['bot-msg-obj']	# Delete that key.
+				else:
+					new_msg = msg
+
+				ntok = _anth_count_tokens(new_msg, model, client)	# Inefficient!
+
+				# Cache the value so we don't have to do the REST call each time.
+				msg['ntokens'] = ntok
+
+			#__/ End if 'ntokens' already set or not.
+
+			return ntok
+
+		else:
+			return client.count_tokens(repr_text)
+		
+	#__/ End if client.
+
+	# If we get here, we don't have a client object, so just count
+	# tokens the old-fashioned way.
+
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#| NOTE: Our current best guess as to the back-end message
 	#| representation is as follows:
@@ -4518,28 +4599,6 @@ def _msg_tokens(msg:dict, model:str=None, client=None) -> int:
 
 	repr_text = _msg_repr(msg)
 
-	#print(f"*** IN _msg_tokens() WITH CLIENT = {client} ***")
-
-	if client:
-
-		# Because the .count_tokens() method is no longer directly
-		# supported by the Anthropic client...
-		if isinstance(client, Anthropic):
-
-			# In case the message dict contains a 'bot-msg-obj' key,
-			# we need to delete it. But we do this in a fresh copy,
-			# so as not to disturb the original dict object.
-
-			if 'bot-msg-obj' in msg:
-				new_msg = msg.copy()		# Create a shallow copy.
-				del new_msg['bot-msg-obj']	# Delete that key.
-				msg = new_msg				# Update msg variable.
-
-			return _anth_count_tokens(msg, client)
-
-		else:
-			return client.count_tokens(repr_text)
-		
 	msgToks = tiktokenCount(repr_text, model=model)
 
 	# This is too verbose for normal operation. Comment it out after testing.
