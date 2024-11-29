@@ -1,0 +1,280 @@
+NOTES ON CONFIGURING A NEW HOST
+for GladOS Telegram Bots
+
+Assumed OS:		Amazon Linux 2023
+Memory:			Recommend 8 GB+
+Disk space:		Recommend 32 GB+
+
+
+1. Create user groups.
+~~~~~~~~~~~~~~~~~~~~~~
+
+	a. "ais" group - For access to resources shared by all AIs running on the system.
+
+		$ sudo groupadd ais
+		
+	b. "gpt-users" group - For access to resources relating to OpenAI models/APIs.
+	
+		$ sudo groupadd gpt-users
+	
+	c. "claude-users" group - For access to resources relating to Anthropic models/APIs.
+	
+		$ sudo groupadd claude-users
+
+
+2. Create user accounts for AIs.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	In this example, we'll set up an account for the Novus (Claude 3.5 Sonnet) bot.
+	
+	a. Create the user account.
+	
+		$ sudo adduser novus
+		
+	b. Add the user to appropriate groups. In this case, Novus bot will need 
+		to access both the OpenAI and Anthropic APIs, so we'll add him to the
+		gpt-users and claude-users groups as well as to the general ais group.
+		
+		$ sudo usermod -a -G ais,gpt-users,claude-users novus
+
+
+3. Make sure we have Python (at least 3.8) and pip.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	a. Check Python version. (Should be 3.8 or better.)
+	
+		$ python3 --version
+		Python 3.9.16
+		
+	b. Install pip. (Make sure it's for Python 3.)
+	
+		$ sudo yum install python3-pip.noarch
+		
+
+4. Install Python libraries we'll need.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	a. Install Python date utilities. (Used for time zone features.)
+	
+		$ sudo pip install python-dateutil
+		
+	b. Install backoff utility. (Used for exponential backoff.)
+	
+		$ sudo pip install backoff
+		
+	c. Install hjson library. (Used for human-readable JSON files.)
+	
+		$ sudo pip install hjson
+		
+	d. Install Python telegram bot library.
+	
+		$ sudo pip install python-telegram-bot
+		
+	e. Install OpenAI library.
+	
+		$ sudo pip install openai
+		
+		ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+		awscli 2.15.30 requires distro<1.9.0,>=1.5.0, but you have distro 1.9.0 which is incompatible.
+		
+	f. Install Tiktoken library.
+	
+		$ sudo pip install tiktoken
+		
+		ERROR: Cannot uninstall requests 2.25.1, RECORD file not found. Hint: The package was installed by rpm.
+
+		[NOTE: We ended up installing tiktoken locally from within the novus account.]
+
+	g. Install Anthropic library.
+	
+		$ sudo pip install anthropic
+		
+	f. Install pydub library.
+	
+		$ sudo pip install pydub
+
+	h. Install numpy library.
+	
+		$ sudo pip install numpy
+
+
+5. Make sure we have a suitable version of curses. 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	(Note this is needed for the main GladOS server only -- not needed for 
+	just running the Telegram bot.)
+
+	$ yum list ncurses
+	Last metadata expiration check: 0:20:35 ago on Tue Nov 26 21:47:42 2024.
+	Installed Packages
+	ncurses.x86_64                6.2-4.20200222.amzn2023.0.6                @System
+
+
+6. Set up API access key store.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	a. Create directory structure for API keys.
+
+		$ sudo su -
+		# cd /opt
+		# mkdir glados
+		# chgrp ais glados
+		# chmod g+s glados
+		# cd glados
+		# mkdir apis
+		# cd apis
+		# mkdir azure openai anthropic hyperbolic
+		# chgrp gpt-users openai
+		# chgrp claude-users anthropic
+	
+	b. Create the API access key files.
+	
+		i. Bing search API key.
+	
+			# cd azure
+			# cat > bing-search_key.txt
+			(paste the key)
+			^D
+			# chmod o-r bing-search_key.txt
+		
+		ii. OpenAI API key.
+		
+			# cd ../openai
+			# cat > openai_key.txt
+			(paste the key)
+			^D
+			# chmod o-r openai_key.txt
+	
+		iii. Anthropic API key.
+		
+			# cd ../anthropic
+			# cat > anthropic_key.txt
+			(paste the key)
+			^D
+			# chmod o-r anthropic_key.txt
+		
+		iv. Hyperbolic API key.
+		
+			# cd ../hyperbolic
+			# cat > hyperbolic_key.txt
+			(paste the key)
+			^D
+
+
+7. Set up ssh access from bot account to github (for pushing).
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	a. Create bot's .ssh directory.
+
+		$ sudo su - novus
+		novus$ mkdir .ssh
+		novus$ chmod go-rwx .ssh
+	
+	b. Install appropriate id_rsa & id_rsa.pub files, and do:
+	
+		novus$ chmod go-r id_rsa
+
+
+8. Set up bot's Telegram access token.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	a. Create bot's .telegram directory.
+	
+		novus$ mkdir .telegram
+		novus$ chmod o-rwx .telegram
+		
+	b. Create the token file.
+		
+		novus$ cd .telegram
+		novus$ cat > token.txt
+		(paste the token)
+		^D
+		
+
+9. Configure the bot's .bash_profile.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	novus$ cat >> .bash_profile
+	
+	export AI_NAME=novus
+	export AI_DATADIR=/opt/AIs/${AI_NAME}
+
+	export TELEGRAM_TOKEN=`cat ~/.telegram/token.txt`
+	export TELEGRAM_BOT_TOKEN=$TELEGRAM_TOKEN
+
+	export TZ='America/Denver'
+
+	apis_dir='/opt/glados/apis'
+	export OPENAI_API_KEY=`cat ${apis_dir}/openai/openai_key.txt`
+	export ANTHROPIC_API_KEY=`cat ${apis_dir}/anthropic/anthropic_key.txt`
+	#export HYPERBOLIC_API_KEY=`cat ${apis_dir}/hyperbolic/hyperbolic_key.txt`
+
+	export BING_SEARCH_V7_ENDPOINT="https://api.bing.microsoft.com"
+	export BING_SEARCH_V7_SUBSCRIPTION_KEY=`cat ${apis_dir}/azure/bing-search_key.txt`
+
+	^D
+
+
+10. Set up the bot's git profile.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	$ sudo yum install git
+	$ sudo su - novus
+	novus$ git config --global user.name "Novus AI"
+	novus$ git config --global user.email "novus@example.com"
+
+
+11. Check out the bot's GladOS codebase.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	novus$ git clone git@github.com:mikepfrank/GLaDOS.git
+	novus$ cd GLaDOS
+	novus$ git checkout novus
+	
+	
+12. Create the bot's data directory under /opt.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	$ cd /opt/glados
+	$ sudo mkdir AIs
+	$ cd AIs
+	$ sudo mkdir novus
+	$ sudo chown novus:novus novus
+	$ sudo su - novus
+
+
+13. Install LAME and ffmpeg for audio conversion.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	a. Install LAME
+
+		$ wget https://sourceforge.net/projects/lame/files/lame/3.100/lame-3.100.tar.gz/download
+		$ mv download lame-3.100.tar.gz
+		$ tar xvfz lame-3.100.tar.gz
+		$ cd lame-3.100
+		$ ./configure
+		$ make
+		$ sudo make install 
+
+	b. Add /usr/local/lib to the shared library locations registered with the system.
+	
+		$ sudo bash -c 'echo "/usr/local/lib" > /etc/ld.so.conf.d/local-libs.conf'
+		$ sudo ldconfig
+
+	c. Install nasm and ffmpeg.
+	
+		$ sudo yum install nasm		# Needed for ffmpeg build.
+		$ wget https://ffmpeg.org/releases/ffmpeg-7.1.tar.xz
+		$ xz -d ffmpeg-7.1.tar.xz
+		$ tar xvf ffmpeg-7.1.tar
+		$ cd ffmpeg-7.1
+		$ ./configure --enable-libmp3lame
+		$ make
+		$ sudo make install
+
+
+14. Start up the AI's Telegram bot.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	novus$ cd GLaDOS
+	novus$ make run-bot

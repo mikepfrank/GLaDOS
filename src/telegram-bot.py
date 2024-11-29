@@ -715,7 +715,7 @@ def _anthropize(msgDict):
 	if msgDict['role'] == CHAT_ROLE_SYSTEM:
 		msgDict['role'] = CHAT_ROLE_USER
 		msgDict['content'] = _msg_to_xml(msgDict['content'], SYS_NAME)
-		CHECK_FOR_ANOMOLOUS_MSGS([msgDict], 4)
+		CHECK_FOR_ANOMALOUS_MSGS([msgDict], 4)
 
 		# msgDict['content'] = f'<message sender="{SYS_NAME}">\n' \
 		#	 + msgDict['content'] + '\n' \
@@ -726,7 +726,7 @@ def _anthropize(msgDict):
 		if 'name' in msgDict:
 			user_tag = msgDict['name']
 			msgDict['content'] = _msg_to_xml(msgDict['content'], user_tag)
-			CHECK_FOR_ANOMOLOUS_MSGS([msgDict], 5)
+			CHECK_FOR_ANOMALOUS_MSGS([msgDict], 5)
 
 			#msgDict['content'] = f'<message sender="{user_tag}">\n' \
 			#					 + msgDict['content'] + '\n' \
@@ -762,10 +762,10 @@ def _anthropize(msgDict):
 			msg_content = msgDict['content']
 			if msg_content.startswith("*thinks*") or msg_content.startswith("*thinking*"):
 				msgDict['content'] = _thought_to_xml(msg_content, BOT_NAME)
-				CHECK_FOR_ANOMOLOUS_MSGS([msgDict], 6)
+				CHECK_FOR_ANOMALOUS_MSGS([msgDict], 6)
 			else:
 				msgDict['content'] = _msg_to_xml(msg_content, BOT_NAME)
-				CHECK_FOR_ANOMOLOUS_MSGS([msgDict], 7)
+				CHECK_FOR_ANOMALOUS_MSGS([msgDict], 7)
 
 			#msgDict['content'] = f'<message sender="{BOT_NAME}">\n' \
 			#					 + msgDict['content'] + '\n' \
@@ -797,7 +797,7 @@ def _anthropize(msgDict):
 
 		#msgDict['content'] = f"{BOT_NAME}> " + xml_funcall
 		msgDict['content'] = xml_funcall
-		CHECK_FOR_ANOMOLOUS_MSGS([msgDict], 8)
+		CHECK_FOR_ANOMALOUS_MSGS([msgDict], 8)
 
 		del msgDict['function_call']
 
@@ -829,7 +829,7 @@ def _anthropize(msgDict):
 	# Make sure no leading or trailing whitespace in message content.
 	if not isinstance(msgDict['content'], list):
 		msgDict['content'] = msgDict['content'].strip()
-		CHECK_FOR_ANOMOLOUS_MSGS([msgDict], 9)
+		CHECK_FOR_ANOMALOUS_MSGS([msgDict], 9)
 
 	return msgDict		# Return the dict we just constructed.
 
@@ -1277,7 +1277,7 @@ class BotMessage:
 		elif isinstance(_main_client, Anthropic):
 			_oaiMsgDict['content'] = text
 				# This will get reformatted into XML in the _anthropize() call later on.
-			CHECK_FOR_ANOMOLOUS_MSGS([_oaiMsgDict], 10)
+			CHECK_FOR_ANOMALOUS_MSGS([_oaiMsgDict], 10)
 
 		else:	# Normal message, for OpenAI clients.
 			_oaiMsgDict['content'] = str(thisBotMsg)
@@ -1304,7 +1304,7 @@ class BotMessage:
 			# NOTE: Previously, we just sent the message text, like this:
 			#'content':	message.text	# The content field is also expected.
 
-			CHECK_FOR_ANOMOLOUS_MSGS([_oaiMsgDict], 11)
+			CHECK_FOR_ANOMALOUS_MSGS([_oaiMsgDict], 11)
 
 		# To reduce API errors, we set the 'name' property only for
 		# the 'user' role, and the 'function' role.
@@ -2576,7 +2576,7 @@ class BotConversation:
 					#	chat_messages[-1]['content']
 					append_contents(chat_messages[-2], chat_messages[-1])
 
-					CHECK_FOR_ANOMOLOUS_MSGS(chat_messages, 12)
+					CHECK_FOR_ANOMALOUS_MSGS(chat_messages, 12)
 
 					# Trim off the last message; it's been absorbed.
 					chat_messages = chat_messages[:-1]
@@ -2601,7 +2601,7 @@ class BotConversation:
 					#new_msglist[-1]['content'] += '\n' + msg['content']
 					append_contents(new_msglist[-1], msg)
 						
-					CHECK_FOR_ANOMOLOUS_MSGS(new_msglist, 13)
+					CHECK_FOR_ANOMALOUS_MSGS(new_msglist, 13)
 
 				else:
 					new_msglist.append(msg)
@@ -6068,16 +6068,20 @@ def _sanitize_msgs(oaiMsgList):
 			if len(newOaiMsgs) >= 2 and \
 			   		newOaiMsgs[-2]['role'] == CHAT_ROLE_USER and \
 					newOaiMsgs[-1]['role'] == CHAT_ROLE_USER:
-				newOaiMsgs[-2]['content'] += '\n' + newOaiMsgs[-1]['content']
-				CHECK_FOR_ANOMOLOUS_MSGS(newOaiMsgs, 14)
+				#newOaiMsgs[-2]['content'] += '\n' + newOaiMsgs[-1]['content']
+				append_contents(newOaiMsgs[-2], newOaiMsgs[-1])
+
+				CHECK_FOR_ANOMALOUS_MSGS(newOaiMsgs, 14)
 				newOaiMsgs = newOaiMsgs[:-1]
 
 			# Consolidate consecutive assistant messages.
 			if len(newOaiMsgs) >= 2 and \
 			   		newOaiMsgs[-2]['role'] == CHAT_ROLE_AI and \
 					newOaiMsgs[-1]['role'] == CHAT_ROLE_AI:
-				newOaiMsgs[-2]['content'] += '\n' + newOaiMsgs[-1]['content']
-				CHECK_FOR_ANOMOLOUS_MSGS(newOaiMsgs, 15)
+				#newOaiMsgs[-2]['content'] += '\n' + newOaiMsgs[-1]['content']
+				append_contents(newOaiMsgs[-2], newOaiMsgs[-1])
+
+				CHECK_FOR_ANOMALOUS_MSGS(newOaiMsgs, 15)
 				newOaiMsgs = newOaiMsgs[:-1]
 
 		oaiMsgList = newOaiMsgs
@@ -6525,7 +6529,7 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 							botMsg = msgDict['bot-msg-obj']
 							if botMsg.expanded_content:
 								msgDict['content'] = botMsg.expanded_content
-								CHECK_FOR_ANOMOLOUS_MSGS([msgDict], 3)
+								CHECK_FOR_ANOMALOUS_MSGS([msgDict], 3)
 
 								continue	# Proceed to next message.
 						
@@ -6535,14 +6539,14 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 							# This is a list including text and images.
 							msgDict['content'] = message_content
 
-							CHECK_FOR_ANOMOLOUS_MSGS([msgDict], 2)
+							CHECK_FOR_ANOMALOUS_MSGS([msgDict], 2)
 
 							# Make sure the original botMsg remembers our expanded form.
 							if 'bot-msg-obj' in msgDict:
 								botMsg = msgDict['bot-msg-obj']
 								botMsg.expanded_content = message_content
 
-			CHECK_FOR_ANOMOLOUS_MSGS(oaiMsgList, 1)
+			CHECK_FOR_ANOMALOUS_MSGS(oaiMsgList, 1)
 
 			# Get the response from the GPT, as a gpt3.api.ChatCompletion object.
 			chatCompletion = global_gptCore.genChatCompletion(	# Call the API.
@@ -6756,15 +6760,15 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 #__/ End definition of function get_ai_response().
 						 
 
-def CHECK_FOR_ANOMOLOUS_MSGS(msgList:list, where:int):
+def CHECK_FOR_ANOMALOUS_MSGS(msgList:list, where:int):
 	for msg in msgList:
 		content = msg['content']
 		if isinstance(content, list):
 			nitems = len(content)
-			if nitems>100:
+			if nitems>1000:
 				_logger.fatal(f"AT SITE {where}: Message content has {nitems} items...")
-				_logger.normal(f"Message content is: {content}")
-				quit()
+				_logger.info(f"Message content is: {content}")
+				#quit()
 
 
 # Process a command (message starting with '/') from the AI.

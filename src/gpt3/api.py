@@ -1267,7 +1267,7 @@ class PromptTooLargeException(Exception):
 
 		# Generate a human-readable error message.
 		msg = (f"LLM API prompt string is {promptToks} tokens," +
-			   f" max is {promptToks}, too large by {byHowMuch}.")
+			   f" max is {maxToks}, too large by {byHowMuch}.")
 
 		super(PromptTooLargeException, e).__init__(msg)
 			# Call the base class constructor with the generated message.
@@ -1935,9 +1935,9 @@ class ChatMessages:
 
 # Maximum number of images that may be embedded in the prompt.
 
-# MAX_IMAGES = 20	# This is Anthropic's maximum.
+MAX_IMAGES = 20		# This is Anthropic's maximum.
 # MAX_IMAGES = 5		# Changing to this to reduce chance of prompt bloat.
-MAX_IMAGES = 3		# Changing to this to reduce chance of prompt bloat.
+# MAX_IMAGES = 3		# Changing to this to reduce chance of prompt bloat.
 
 
 #/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2615,9 +2615,9 @@ class ChatCompletion(Completion):
 				if isinstance(contents, list):
 
 					_logger.info(f"\tFound a message containing {len(contents)} content items...")
-					if len(contents) > 100:
-						_logger.error(f"Anomalous message content: {contents}")
-						quit()
+					if len(contents) > 1000:
+						_logger.info(f"Anomalous message content: {contents}")
+						#quit()
 
 					for content_item in contents:
 
