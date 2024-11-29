@@ -78,6 +78,14 @@ to install GladOS.  Note you will need to `pip install` several packages:
 `openai`, `backoff`, `tiktoken`, `hjson`, and `python-dateutil`.  Please
 make sure that you are using the Python 3 version of pip.
 
+### New Host Setup ([`NEW-HOST.txt`](NEW-HOST.txt "NEW-HOST.txt file"))
+
+This is a plain ASCII text file with some more detailed notes on how
+to deploy an example Telegram bot (Novus) on your own host. Currently
+assumes that the host OS is Amazon Linux 2023. For full functionality, 
+you need API keys for OpenAI, Anthropic, Bing search, and a bot token 
+for Telegram.
+
 ### Makefile ([`makefile`](makefile "makefile"))
 
 Currently this supports the following make rules, which can be invoked using the ``make`` command:

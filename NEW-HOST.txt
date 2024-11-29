@@ -5,6 +5,12 @@ Assumed OS:		Amazon Linux 2023
 Memory:			Recommend 8 GB+
 Disk space:		Recommend 32 GB+
 
+You will also need API keys for OpenAI, Anthropic, and Azure/Bing search, 
+and a Telegram bot token.
+
+In the below, '$' denotes the prompt for an administrator account
+having sudo privileges (e.g., ec2-user on AWS EC2 or Lightsail).
+
 
 1. Create user groups.
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -89,11 +95,11 @@ Disk space:		Recommend 32 GB+
 	
 		$ sudo pip install anthropic
 		
-	f. Install pydub library.
+	h. Install pydub library.
 	
 		$ sudo pip install pydub
 
-	h. Install numpy library.
+	i. Install numpy library.
 	
 		$ sudo pip install numpy
 
