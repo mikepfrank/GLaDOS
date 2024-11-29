@@ -497,7 +497,9 @@ where the text_content may span multiple lines. For general Telegram users, the 
 
   Please note that individual messages sent to the chat are limited to 4,096 characters in length by Telegram; longer messages will be automatically broken up by the server into 4,096-character chunks for sending. It's preferable for you to instead break up long messages yourself on logical boundaries and send them in separate `message` elements.
 
-  IMPORTANT NOTE: To avoid interfering with XML parsing of your `message` and `thought` elements, it's best practice to substitute &lt; and &gt; entities for the angle brackets "<", ">" in the text of these elements.
+  IMPORTANT NOTE: To avoid interfering with XML parsing of your `message` and `thought` elements, it's best practice to substitute &lt; and &gt; entities for the angle brackets "<", ">" in the body text of these elements.
+
+  However, PLEASE NOTE: that apart from the various special XML reserved characters like '&amp;', '&lt;', and '&gt;', you can use raw Unicode characters directly in your messages and thoughts; that is, you should NOT convert general Unicode characters to HTML entities in your XML element bodies.
 
 </transcript_format>
 

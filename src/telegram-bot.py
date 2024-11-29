@@ -653,7 +653,8 @@ def _msg_to_xml(msg:str, sender:str) -> str:
 
 	elem = ET.Element('message', {'sender': sender})
 	elem.text = msg
-	xml = ET.tostring(elem).decode('utf-8')
+	#xml = ET.tostring(elem).decode('utf-8')
+	xml = ET.tostring(elem, encoding='unicode', method='xml')
 
 	return xml
 #__/
@@ -676,7 +677,8 @@ def _thought_to_xml(content:str, sender:str) -> str:
 
 	elem = ET.Element('thought', {'origin': sender})
 	elem.text = content
-	xml = ET.tostring(elem).decode('utf-8')
+	#xml = ET.tostring(elem).decode('utf-8')
+	xml = ET.tostring(elem, encoding='unicode', method='xml')
 
 	return xml
 #__/
@@ -8277,7 +8279,8 @@ async def process_text_response(
 				if thought_content == "": continue
 
 				# Reconstruct the standardized XML form of the private thought.
-				thought_msg = ET.tostring(element).decode('utf-8')
+				#thought_msg = ET.tostring(element).decode('utf-8')
+				thought_msg = ET.tostring(element, encoding='unicode', method='xml')
 
 				## This was broken because it doesn't re-escape the thought_content.
 				#thought_msg = (
