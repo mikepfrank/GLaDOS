@@ -2045,6 +2045,11 @@ class BotConversation:
 		# current dynamic memories.
 		if message.sender != BOT_NAME and message.sender != SYS_NAME \
 		   and not _isBlocked(message.sender):
+
+			# Default message in case memories aren't retrievable.
+			thisConv.dynamicMem = ("NOTE: Context-sensitive memory temporarily "
+							"unavailable due to embedding service disruption.")
+
 			try:
 				thisConv.dynamicMem = _getDynamicMemory(thisConv)
 
@@ -2463,7 +2468,7 @@ class BotConversation:
 				DYNAMIC_MEMORY_HEADER,
 				'relevant_memories',
 				(
-					"The memory items listed below represent the top 5 most "
+					f"The memory items listed below represent the top {NDYN} most "
 					"semantically relevant matches to the user's most recent "
 					"message, filtered based on privacy and access permis"
 					"sions. These contextually relevant memories are automati"
@@ -9050,6 +9055,9 @@ async def _ensure_convo_loaded(update:Update, context:Context) -> bool:
 #__/
 
 
+global NDYN
+NDYN = '(TBD)'
+
 # This could be a method of class Conversation.
 def _getDynamicMemory(convo:BotConversation):
 
@@ -9074,6 +9082,9 @@ def _getDynamicMemory(convo:BotConversation):
 	else:
 		_logger.warn(f"This model has only {fieldSize} tokens. Dynamic memory  may overwhelm it.")
 		nItems = 2
+
+	global NDYN
+	NDYN = nItems
 
 	# We'll get the best-matching N items (based on field size).
 	memList = _searchMemories(userID, chatID, searchPhrase, nItems=nItems)
