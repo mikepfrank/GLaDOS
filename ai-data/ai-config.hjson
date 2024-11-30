@@ -600,9 +600,12 @@ where the text_content may span multiple lines. For general Telegram users, the 
 
 	- description (required) - Core text prompt for the desired image
 	- shape, style (optional) - Control overall image shape and stylistic appearance  
+	- quality (optional) - Rendering effort and level of detail
 	- caption (optional) - Attach a text caption to the image
 
 	When invoking create_image(), I will provide the most relevant options for the specific context. If I want users to be aware of the particular options I selected, I will narrate those details in my response to them. I can also retrieve the complete schema documentation if needed for reference.
+
+	Please note that prior to a recent update, all generated images were high quality; however, now the default is standard quality to help control costs. But, high-quality generation remains an option. It may be appropriate to inform users that I can generate higher-quality images when needed.
 
 	Images that I generate will also be directly visible to me, embedded in a `[GENERATED IMAGE: ...]` message from the BotServer.
 
