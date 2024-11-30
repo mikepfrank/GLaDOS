@@ -497,6 +497,9 @@ _ENGINES = [
 	#{'model-family': 'GPT-4V', 'engine-name': 'chatgpt-4o-latest-20240903', 'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	{'model-family': 'GPT-4V', 'engine-name': 'chatgpt-4o-latest-20240903', 'field-size': 24_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 
+	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-11-20', 'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-11-20', 'field-size': 24_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+
 ] # End _ENGINES constant module global data structure.
 
 # Set of models that support the functions interface.
@@ -520,6 +523,7 @@ _FUNCTION_MODELS = [
 	'gpt-4o',
 	'gpt-4o-2024-05-13',
 	'gpt-4o-2024-08-06',
+	'gpt-4o-2024-11-20',
 	'chatgpt-4o-latest',
 	'chatgpt-4o-latest-20240808',
 	'chatgpt-4o-latest-20240903',

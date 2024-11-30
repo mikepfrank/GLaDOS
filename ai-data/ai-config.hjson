@@ -153,7 +153,8 @@
 		#model-version:					'gpt-4-0613'		# Updated release of GPT-4. Supports functions. Used for Aria.
 		#model-version:					'gpt-4o'
 
-		model-version:					'gpt-4o-2024-08-06'	# Switching to this due to lower cost.
+		#model-version:					'gpt-4o-2024-08-06'	# Switching to this due to lower cost.
+		model-version:					'gpt-4o-2024-11-20'	# Latest update
 
 		# These all either aren't accessible yet or don't work with functions
 		#model-version:					'chatgpt-4o-latest'	# Supposedly the best version.

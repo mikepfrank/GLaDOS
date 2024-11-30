@@ -421,7 +421,7 @@ import openai
 from openai		import	OpenAI, AsyncOpenAI	# New in 1.x
 
 global	ASYNC
-ASYNC = True
+ASYNC = True	# Use asyncio version of OpenAI library
 
 global 			_oai_client
 if ASYNC:
@@ -4426,7 +4426,7 @@ async def ai_solve(update:Update, context:Context, probDesc:str,
 
 	return text
 
-#__/ End async function ai_solve().
+#__/ End async function ai_solve(.
 
 
 # Limit on number of images that can be generated per day per chat.
@@ -5823,7 +5823,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 			# Make sure AI knows the message limit is resetting now..
 			if 'nmsgs_today' in context.chat_data and context.chat_data['nmsgs_today'] >= daily_message_limit:
-				await botConvo.add_message(BotMessage(SYS_NAME, "[NOTE: It's a new day! Resetting message quota.]"))
+				await botConvo.add_message(BotMessage(SYS_NAME, f"[NOTE: It's a new day ({today})! Resetting message quota.]"))
 
 			context.chat_data['nmsgs_today'] = 0	# We haven't responded yet.
 			_logger.normal(f"No responses yet today in chat {chat_id}. Resetting rate limit.")
@@ -5835,19 +5835,21 @@ async def process_chat_message(update:Update, context:Context) -> None:
 	result = await get_ai_response(update, context)
 
 	# Update record of how many user messages have been processed today in this context.
+
 	today = get_current_date()
 	if 'last_msg_date' not in context.chat_data or today != context.chat_data['last_msg_date']:
 		context.chat_data['last_msg_date'] = today
 
 		# Make sure AI knows the message limit is resetting now.
-		if 'nmsgs_today' in context.chat_data and context.chat_data['nmsgs_today'] >= DAILY_MESSAGE_LIMIT:
-			await botConvo.add_message(BotMessage(SYS_NAME, "[It's a new day! Resetting message quota.]"))
+		if 'nmsgs_today' in context.chat_data and context.chat_data['nmsgs_today'] >= daily_message_limit:
+			await botConvo.add_message(BotMessage(SYS_NAME, f"[It's a new day ({today})! Resetting message quota.]"))
 			
 		context.chat_data['nmsgs_today'] = 1		# The message we just responded to.
 	else:
 		context.chat_data['nmsgs_today'] += 1
 
-	_logger.info(f"A total of {context.chat_data['nmsgs_today']} user messages have been responded to in chat {chat_id} today ({today}).")
+	_logger.info(f"A total of {context.chat_data['nmsgs_today']} user messages "
+				 f"have been responded to in chat {chat_id} today ({today}).")
 
 	return result
 
