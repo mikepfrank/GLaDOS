@@ -4436,7 +4436,8 @@ DAILY_IMAGE_LIMIT = 5
 
 # Define a function to handle the /image command, when issued by the AI.
 async def ai_image(update:Update, context:Context, imageDesc:str,
-				   shape:str=None, style:str=None, caption:str=None	#, remaining_text:str=None
+				   shape:str=None, style:str=None, quality:str=None, 
+				   caption:str=None	#, remaining_text:str=None
 	) -> str:
 
 	# Get the message, or edited message from the update.
@@ -4529,15 +4530,28 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 		_logger.warn(f"\tUnknown style '{style}'; reverting to 'natural'.")
 		style = 'natural'
 
+	# Process the "quality" parameter.
+	if quality is None:
+		quality = 'standard'
+	elif quality == 'hd' or quality == 'HD':
+		quality = 'high'
+	elif (quality != 'high') and (quality != 'standard'):
+		_logger.warn(f"\tUnknown quality '{quality}'; reverting to 'standard'.")
+
+		# Show the AI the warning too.
+		conversation.add_message(BotMessage(SYS_NAME, f"Warning: quality '{style}' is invalid; defaulting to 'standard'."))
+
+		quality = 'standard'
+
 	# Generate and send an image described by the /image command argument string.
-	_logger.normal(f"\nGenerating a {style} {shape} image with description "
+	_logger.normal(f"\nGenerating a {quality}-quality {style} {shape} image with description "
 					f"[{imageDesc}] for user '{user_name}' in "
 					f"conversation {chat_id}.")
 	if caption:
 		_logger.normal(f"\tAn image caption [{caption}] was also specified.")
 
 	# Attempt to actually generate and send the image.
-	send_result = await send_image(update, context, imageDesc, dims=size, style=style, caption=caption)
+	send_result = await send_image(update, context, imageDesc, dims=size, style=style, quality=quality, caption=caption)
 
 	if send_result is None:
 		return f'Error: Failed to generate and send image to the user.'
@@ -5080,10 +5094,11 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 		imageDesc = funcArgs.get('description', None)
 		shape	  = funcArgs.get('shape', None)
 		style	  = funcArgs.get('style', None)
+		quality	  = funcArgs.get('quality', None)
 		caption	  = funcArgs.get('caption', None)
 
 		if imageDesc:
-			return await ai_image(update, context, imageDesc, shape=shape, style=style, caption=caption)
+			return await ai_image(update, context, imageDesc, shape=shape, style=style, quality=quality, caption=caption)
 		else:
 			await _report_error(conversation, message,
 					f"create_image() missing required argument 'description'.")
@@ -6463,7 +6478,9 @@ async def _send_imagedata(img_data, tgMsg:TgMsg, caption:str=None, ):
 #__/ End private function _send_imagedata                                                                                                                                                       
 
 
-async def send_image(update:Update, context:Context, desc:str, dims=None, style=None, caption=None, save_copy=True) -> (str, str, str):
+@backoff.on_exception(backoff.expo, TimedOut, max_tries=4)	# If this doesn't work, try Exception
+async def send_image(update:Update, context:Context, desc:str, dims=None, 
+					 style=None, quality=None, caption=None, save_copy=True) -> (str, str, str):
 	"""Generates an image from the given description and sends it to the user.
 		Also archives a copy on the server unless save_copy=False is specified.
 		Returns a temporary URL for the image, if successful, and a revised
@@ -6490,12 +6507,16 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, style=
 	if dims is None:
 		dims = "1024x1024"
 
-	_logger.normal(f"\tGenerating {dims} image for user {username} from " \
+	# If
+	if quality is None:
+		quality = 'standard'
+
+	_logger.normal(f"\tGenerating {quality}-quality {dims} image for user {username} from " \
 				   f"description [{desc}]. Caption is [{str(caption)}]...")
 
 	# Use the OpenAI API to generate the image.
 	try:
-		(image_url, revised_prompt) = await genImage(desc, dims, style)
+		(image_url, revised_prompt) = await genImage(desc, dims, style, quality)
 	except Exception as e:
 		await _report_error(conversation, tgMsg,
 					  f"In send_image(), genImage() threw an exception: {type(e).__name__} ({e})")
@@ -9215,6 +9236,12 @@ CREATE_IMAGE_SCHEMA = {
 				"description":	"Overall style of image appearance.",
 				"default":		'vivid',
 				"enum":			['vivid', 'natural']
+			},
+			"quality":	{
+				"type":			"string",
+				"description":	"Rendering effort & image detail.",
+				"default":		'standard',
+				"enum":			['standard', 'high']
 			},
 			"caption":    {
 				"type":         "string",   # <caption> argument has type string.
