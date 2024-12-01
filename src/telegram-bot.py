@@ -2375,9 +2375,9 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 			ann_text = ann_file.read().strip()
 			msgStr = f"ANNOUNCEMENT: {ann_text}"
 			conversation.add_message(BotMessage(SYS_NAME, msgStr))
-			fullMsgStr = f"[SYSTEM {msgStr}]"
+			fullMsgStr = f"\[SYSTEM {msgStr}\]"
 			_logger.info(f"Sending user {user_name} system announcement: {fullMsgStr}")
-			await _reply_user(tgMessage, conversation, fullMsgStr, ignore=True)
+			await _reply_user(tgMessage, conversation, fullMsgStr, ignore=True, markup=True)
 
 #__/ End handle_start() function definition.
 
@@ -4329,6 +4329,7 @@ async def ai_vision(update:Update, context:Context, filename:str,
 
 	# Get the chat_id, user_name, and conversation object.
 	chat_id = message.chat.id
+	user_id = message.from_user.id
 	user_name = _get_user_tag(message.from_user)
 	conversation = context.chat_data['conversation']
 
@@ -4346,7 +4347,8 @@ async def ai_vision(update:Update, context:Context, filename:str,
 		_logger.normal(f"\t(And also asking the question: {query})")
 
 	try:
-		text = describeImage(fullpath, verbosity=verbosity, query=query)
+		userStr = str(user_id)
+		text = describeImage(fullpath, verbosity=verbosity, query=query, user=userStr)
 	except Exception as e:
 		await _report_error(conversation, message,
 			f"In handle_photo(), describeImage() threw an exception: {type(e).__name__} {e}")
@@ -4363,8 +4365,8 @@ async def ai_vision(update:Update, context:Context, filename:str,
 
 ## Limit on number of images that can be generated per day per chat.
 
-#DAILY_IMAGE_LIMIT = 5
-DAILY_IMAGE_LIMIT = 10
+DAILY_IMAGE_LIMIT = 5
+#DAILY_IMAGE_LIMIT = 10
 
 
 # Define a function to handle the /image command, when issued by the AI.
@@ -4742,6 +4744,10 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 				if 'noCache' in result:
 					_logger.normal(f"\t\t\t\tDeleting noCache: {trim(result['noCache'])}")
 					del result['noCache']
+
+				if 'thumbnailUrl' in result:
+					_logger.normal(f"\t\t\t\tDeleting thumbnailUrl: {trim(result['thumbnailUrl'])}")
+					del result['thumbnailUrl']
 
 
 		# Strip a bunch of useless fields out of news values.
