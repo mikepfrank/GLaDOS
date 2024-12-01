@@ -1863,7 +1863,7 @@ class BotConversation:
 				f"  search_memory(query_phrase:str, max_results:int={DEFAULT_SEARCHMEM_NITEMS}, remark:str=None) -> results:list\n" + \
 				"  forget_item(text:str=None, item_id:str=None, remark:str=None) -> status:str\n" + \
 				"  analyze_image(filename:str, verbosity:str='medium', query:str=None, remark:str=None) -> result:str\n" + \
-				"  create_image(description:str, shape:str='square', style:str='vivid', caption:str=None, remark:str=None) -> status:str\n" + \
+				"  create_image(description:str, shape:str='square', style:str='vivid', quality:str='standard', caption:str=None, remark:str=None) -> status:str\n" + \
 				f"  block_user(user_name:str='{userTag}', remark:str=None) -> status:str\n" + \
 				"  unblock_user(user_name:str, remark:str=None) -> status:str\n" + \
 				"  search_web(query:str, locale:str='en-US', sections:list=['webPages'], remark:str=None) -> results:dict\n" + \
@@ -1958,7 +1958,7 @@ class BotConversation:
 			#"bot. You may include multiple such messages in your response, but each one "
 			#"should begin on a new line. "
 			"You may include multiple Telegram messages in your response, but each one "
-			f"must begin on a new line starting with '{botName}>'"
+			f"must begin on a new line starting with '{botName}>'. "
 			"(Or, alternatively to just sending messages, you can activate "
 			"an available function and then call that function, if appropriate.)"
 		)
@@ -6276,6 +6276,11 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 		return
 
 	else: # Response was not a command. Treat it normally.
+
+		# See if it begins with "*thinks" or "*thinking"
+		if response_text.startswith('*think'):
+			_logger.normal(f"\nPrivate thought not being sent to Telegram: [{response_text}]")
+			return
 
 		# Just send our response to the user as a normal message.
 		await send_response(update, context, response_text)

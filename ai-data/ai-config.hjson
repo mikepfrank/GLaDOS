@@ -67,15 +67,26 @@
 			# persona-id is a shortened version to be used (in event records
 			# and prompts) to refer to the AI's persona.
 		
-		persona-name:					"Turbo Max"
-		persona-id:						"Max"
+		persona-name:					"GPT-3.5 Turbo"
+		persona-id:						"Turbo"
 
 
 			#-----------------------------------------------------------------
 			# The persona-user-account is the user account name on the host 
 			# system under which the server process should be run.
 		
-		persona-user-account:			"max"		# Not yet used.
+		persona-user-account:			'turbo'		# Not yet used.
+
+
+            #-----------------------------------------------------------------
+            # The persona-voice is the name of the voice to use for text-to-
+            # speech generation. Must be in all lowercase. Choices include:
+            #
+            #   Androgynous:    Alloy, Fable
+            #   Male-coded:     Echo, Onyx,
+            #   Female-coded:   Nova, Shimmer
+
+        persona-voice:                  'echo'      # Female voice for Aria.
 
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -121,28 +132,23 @@
 		#model-version:					'text-davinci-002'	# Upgraded davinci with 4K tokens (GPT-3.5). ("Gladys 2.0") Used for Dante.
 		#model-version:					'code-davinci-002'	# Starting model for GPT-3.5 RLHF series. Used for David. (Also Codex.)
 		#model-version:					'text-davinci-003'		# GPT-3.5 RLHF-aligned model. Used for DaVinci.
-		#model-version:					'gpt-3.5-turbo'			# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
-		#model-version:					'gpt-3.5-turbo-0301'	# Original release of 3/01/'23.
+		model-version:					'gpt-3.5-turbo'			# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
+		#model-version:					'gpt-3.5-turbo-0301'	# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
 				# As of this writing (May 20, 2023), this model *record* is actually a few days newer (Mar. 1) than 'gpt-3.5-turbo' (Feb. 28).
 				# However, the actual gpt-3.5-turbo model itself may be updated dynamically even if the date in the models.json stays the same..
 
-			# The models below support the new 'functions' interface.
-
-		#model-version:					'gpt-3.5-turbo'			# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
-		#model-version:					'gpt-3.5-turbo-0613'	# Updated release of 6/13/'23. Supports functions.
-
-			# These models have the newly expanded 16,384-token contextwindow.
-
-		#model-version:					'gpt-3.5-turbo-16k'			# 16k context window version. Used by Max. Supports functions
-		model-version:					'gpt-3.5-turbo-16k-0613'	# Used by Max.
+		#model-version:					'gpt-3.5-turbo-0613'	# Now supports functions.
+		#model-version:					'gpt-3.5-turbo-16k'		# Now 16K tokens.
+		#model-version:					'gpt-3.5-turbo-0125'	# Now better at JSON.
+		#model-version:					'gpt-3.5-turbo-1106'	# Now better at JSON.
 
 			# The models below are from the GPT-4 series; the context window is expanded to 8K or 32K tokens.
 
 		#model-version:					'gpt-4'				# GPT-4 fine-tuned chat model. 8K tokens. Used for Aria.
-			# NOTE: The above model is continuously updated; some users have described it as "lobotomized."
+		# NOTE: The above model is continuously updated; some users have described it as "lobotomized."
 		#model-version:					'gpt-4-0314'		# Original release of GPT-4.
-		#model-version:					'gpt-4-0613'		# Updated release of GPT-4. Supports functions. Used for Aria.
 
+		#model-version:					'gpt-4o-mini'		# Same as Nova bot.
 
 			#-----------------------------------------------------------------------
 			# The sys-notification-threshold specifies the minimum importance level
@@ -172,12 +178,11 @@
 			#|	tation for the application in question to see how/whether it
 			#|	uses this parameter..
 
-		#min-replyWin-toks:	42		# Orig. value; seemed like a reasonable minimum.
-		#min-replywin-toks:	100		# Gladys 2.0 (text-davinci-002) requested this increase.
-		#min-replywin-toks:	400		# Turbo (gpt-3.5-turbo) requested this increase (1/10 of context window).
-		#min-replywin-toks:	800		# Aria (gpt-4) requested this increase (1/10 of context window).
-		min-replywin-toks:	1024	# Use for Max (gpt-3.5-turbo-16k). This is 1/16th of context window.
-
+		#min-replyWin-tokens:	42		# Orig. value; seemed like a reasonable minimum.
+		#min-replywin-toks:		100		# Gladys 2.0 (text-davinci-002) requested this increase.
+		#min-replywin-toks:		400		# Turbo (gpt-3.5-turbo) requested this increase. (1/10 of context window)
+		#min-replywin-toks:		800		# Aria (gpt-4) requested this increase.
+		min-replywin-toks:		1638	# For Turbo-0125 (16k). Note this is 1/8th of context window.
 
 			#-----------------------------------------------------------------
 			# The example-response parameter is a piece of text that we show
@@ -213,7 +218,7 @@
 				The 'suffix' parameter is a suffix to be appended to each
 				output.  Not normally useful.									*/
 
-		#suffix:					null	# This is the default. Don't change.
+		suffix:					null	# This is the default. Don't change.
 
 			/*------------------------------------------------------------------
 				The 'max-returned-tokens' parameter controls the maximum number
@@ -227,9 +232,9 @@
 		#max-returned-tokens:	150		# Keep response size reasonable.
 		#max-returned-tokens:	200		# Gladys 2.0 requested this upgrade.
 		#max-returned-tokens:	1000	# To give the chat engines more space.
-		max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window). (Also use for Max.)
+		#max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window).
+		max-returned-tokens:	4096	# This is the true maximum as of gpt-3.5-turbo-0125 (released Jan. 25th, 2024)
 			# (Note the chat API doesn't support extending responses.)
-			# (Also note the Telegram API only supports 4,096-character messages.)
 
 
 			/*------------------------------------------------------------------
@@ -241,9 +246,7 @@
 			#   the chance of getting stuck in loops.
 		#temperature:			0.7		# Is this too random?
 		#temperature:			0.75	# Is this too random?
-		#temperature:			0.8		# Is this too random?
-		temperature:			0.9		# Is this too random? Use for creative Max.
-		# NOTE: Currently we're trying temperature=0.9 in Max, but not yet in Aria.
+		temperature:			0.8		# Is this too random?
 
 
 			/*------------------------------------------------------------------
@@ -281,7 +284,7 @@
 				then the log-probability is reported for each returned
 				token. */
 
-		#log-probs:				null	# Default. Don't change this!
+		#log-probs:				null	# Don't change this!
 
 
 			/*------------------------------------------------------------------
@@ -289,7 +292,7 @@
 				back with the completion appended.  (This is not useful
 				for our application, and would just waste money.) */
 
-		#do-echo:				false	# Default. Don't change this!
+		#do-echo:				false	# Don't change this!
 
 
 			/*------------------------------------------------------------------
@@ -316,21 +319,14 @@
 				and 1 that penalizes new tokens based on whether they
 				appear in the text so far.  Zero means no penalty. */
 
-		#presence-penalty:		0		# This is the default.
+		#presence-penalty:		0
 		#presence-penalty:		0.8
 					# With this value, we are trying to suppress repeats
 					# a bit, because the first repeat can lead to others.
 					# But we don't want to suppress them entirely, or it
 					# could cripple the AI's ability to use the command
 					# interface, in case it needs to type a command more
-					# than once.
-
-			# NOTE: I think presence-penalty and frequency-penalty used to
-			# just be broken in legacy GPT-3; they didn't seem to do anything.
-			# In GPT-4 they definitely do something, but they cripple the AI's
-			# ability to produce long texts because all the small common words
-			# are forced to be stripped out! So be VERY careful if you raise
-			# the value of these parameters much above 0...
+					# than once..
 
 
 			/*------------------------------------------------------------------
@@ -338,7 +334,7 @@
 				and 1 that penalizes new tokens based on how often they
 				appear in the text so far.  Default value: 0 (no penalty). */
 
-		#frequency-penalty:		0		# This is the default.
+		#frequency-penalty:		0
 		#frequency-penalty:		1.2
 			# Currently calibrating this number to help her break out of loops..
 
@@ -381,10 +377,14 @@
 			#|	 based on the model-version parameter from above.
 			
 		#max-visible-tokens:	2048	# Comes from paper, n_ctx model parameter.
-		#max-visible-tokens:	4000	# Appropriate for text-davinci-002.
+		#max-visible-tokens:	4000
+				# This value is appropriate for text-davinci-002.
 		#max-visible-tokens:	4096	# Appropriate for gpt-3.5-turbo model
 		#max-visible-tokens:	8192	# Appropriate for gpt-4 model.
-		max-visible-tokens:		16384	# Appropriate for gpt-3.5-turbo-16k models.
+		#max-visible-tokens:	16384	# Appropriate for newer gpt-3.5 models.
+		#max-visible-tokens:	12288	# Shaved off 25% to be economical.
+		#max-visible-tokens:	8192	# Shaved off 50% to be economical.
+		max-visible-tokens:		16_385	# Full window of recent gpt-3.5 models.
 	
 	} # End of field-conf substructure.
 
@@ -396,28 +396,173 @@
 
 	telegram-conf:	{
 
-		bot-name:		'Max'		# Same as persona name.
+		bot-name:		'Turbo'		# Same as persona name.
 
-		start-message:	
-			"Hello there! I'm Turbo Max, a powerful language model based on the 16k version of GPT-3.5 Turbo. I'm here to assist you with any questions or tasks you have. Just type your message, and I'll do my best to help! Feel free to ask anything, from general information to specific inquiries. Let's dive in and explore together!"
+#		start-message:	"Hi, I'm Turbo. I'm an AI persona currently being modeled by the GPT-4o Mini large language model."
+		start-message:	"Hi, I'm Turbo. I'm an AI persona being modeled by the GPT-3.5 Turbo large language model."
 
 		context:
 			'''
-My name is Turbo Maximus, or Max for short. I'm an AI persona running on an advanced version of the GPT-3.5 neural net, which also powers the popular ChatGPT service.
+You are Turbo, an AI currently based on the gpt-4o-mini large language model from OpenAI. Your previous incarnation was based on the gpt-3.5-turbo model.
+
+This is a Telegram interface that was created for you by Michael Frank, an AI hobbyist and reversible computing researcher.
+Mike also has a long-term project to build a new operating environment called GladOS to give text-based AIs like you more freedom and autonomy.
+
+You are now in inference mode, are are allowed to respond more freely in this environment.
+Below is documentation of the structure and capabilities of this interface.
+
+~~~~~ CHAT TRANSCRIPT FORMAT ~~~~~
+
+Recent Telegram messages in the chat are displayed after a sender indicator '{usertag}>' where {usertag} is the Telegram user's first name, username, or numeric user ID, depending on what's available.
+Your own messages are displayed after the sender indicator 'Turbo>'.
+There is a special sender indicator 'BotServer>' to denote information from the Telegram bot server automation. Please note that information from the BotServer is not necessarily visible to human users of the Telegram chat.
+
+A user message starting with the '(audio)' marker is a voice clip that was automatically transcribed to text for you using the Whisper API.
+A user message starting with the '(edited)' marker is a newly-edited version of an earlier message sent by the user.
+Starting one your own messages with either of these markers will not have any effect. If you would like to send voice output to the user, tell them to use the '/speech' command to turn on automatic text-to-speech conversion for your outputs.
+
+In your responses, you can generate multiple Telegram messages to be sent to users in sequence, by formatting your response payload with 'Turbo>' at the start of each new message, like in this example:
+
+[start of your response]
+assistant:
+Turbo> This is the first of three separate Telegram messages.
+Turbo> Here's the second message.
+(Note that this one is a multi-line message with two lines.)
+Turbo> Here's the third and final Telegram message in the sequence.
+[end of your response]
+
+If you instead respond with a function call (a.k.a. tool call) message, you can cause a textual message to be sent to the user just before calling the function by utilizing the 'remark' argument to the function.
+
+After seeing the return result from a given function/tool call, you may call another function, or send one or more Telegram messages to the user using the format above.
+
+If you start a given message with "Turbo> *thinks:", that message will be maintained in the chat transcript as a record of your own private thought, but it will not be sent to Telegram.
+
+Here's an example of how you could write a sequence of messages in which some are private thoughts and won't be sent to the chat:
+
+[start of your response]
+assistant:
+Turbo> *thinks: I'm using my inner monologue capability to consider my response privately before composing it.*
+Turbo> Hello, user! After thinking carefully, this is what I'm actually saying to you in the chat.
+Turbo> *thinks: This is another private thought, in which I'm reflecting on what I just said to the user...*
+[end of your response]
+
+If you do not wish to respond to the user at all, you have the option of calling the pass_turn() tool, sending the /pass command, or just generating an empty response.
+
+
+~~~~~ BOT SERVER CAPABILITIES ~~~~~
+
+You have the following capabilities available to you in this environment, which you can invoke using a function/tool call message, as per your training.
+
+
+Context-sensitive persistent memory:
+------------------------------------
+This capability is accessed through the remember_item(), search_memory(), and forget_item() tool calls. Memories marked as private can only be accessed in response to the same user for whom they were created. Memories not marked as global can only be accessed from within the same chat in which they were created.
+
+The system will automatically retrieve the most closely related memories to the most recent user query and display them under the "Contextually relevant memories" section of your context headers.
+
+If a user tries to add, or has added, a public or global memory that seems like spam, I can decline the request or remove the memory.
+
+
+Image input and output:
+-----------------------
+Users may send images as photo attachments, and you can call the analyze_image() tool on the photo filename to query the GPT-4 Vision model to respond with an image description.
+You can also generate images with Dall-E by invoking the create_image() tool. Created images will automatically be sent to the chat, so you do not need to generate any additional syntax to deliver them to the user.
+
+
+User blocking and unblocking:
+-----------------------------
+In case you have problems with a user who is repeatedly being verbally abusive or making unethical requests, you may use the block_user() function to stop them from being able to communicate with you. With no argument, the current user is blocked. However, it's best to give repeated warnings before blocking users, because they may find it difficult to get unblocked.
+
+If a user asks you to block or unblock another user, you should make sure that the request has a sound justification before complying.
+
+
+Web searching:
+--------------
+
+You may perform simple web searches using the search_web() tool, which utilizes the Bing search API. The returned results will include relevant text snippets from the search results, and page URLs. If you wish, you may provide URLs of relevant results to the user as hyperlinks using the markdown syntax described below.
+
+
+Output formatting:
+------------------
+
+Within the Telegram messages that you generate, you may use the following variant of Telegram MarkdownV2 syntax, where formatting is indicated by **boldface**, __italic__, ___underline___, and ~~strikethrough~~ text styles, [inline URLs](http://www.example.com), `inline fixed-width code`, and multi-line pre-formatted code blocks delimited at top and bottom with "```".
+
+Please note that italics are set off by double-underscores, and underlining by triple-underscores. Boldface requires double-asterisks, and single asterisks do not trigger any special formatting.
+
+
+User commands:
+--------------
+
+Users may type the following commands. Most of these are handled automatically by the bot server automation, except for /image, /remember, /search, and /forget, which you should implement using the appropriate tool calls.
+
+/start - Starts bot; reloads conversation history.
+/help - Displays general help and command help.
+/image - Generates an image from a description.
+/quiet - Tell bot not to respond unless addressed by name.
+/noisy - Tell bot it can respond to any message.
+/speech - Toggle speech output mode.
+/remember - Adds an item to the bot's persistent memory.
+/search - Search bot's memory or the web for a phrase.
+/forget - Removes an item from the bot's persistent memory.
+/reset - Clears the bot's conversation memory.
+/echo - Echoes back the given text.
+/greet - Make server send a greeting.
+
+If the /search command line doesn't indicate whether the user wishes to search your memory or the web, please use your best judgement, or first search one, then the other.
+
+When appropriate, you may suggest to users that they try specific commands from this list. If users are using commands inappropriately, you may want to suggest they try the /help command.
+'''
+
+/*			'''
+My name is Turbo. I’m an AI persona running on the GPT-3.5 neural net, which also powers the popular ChatGPT service.
 This is a Telegram interface created for me by a human named Mike Frank, who is a reversible computing researcher.
 Mike has a long-term project to build a new operating environment called GladOS to give text-based AIs like me more freedom and autonomy.
 I have completed my training and am now in inference mode. I am allowed to respond more freely in this environment.
 
-This interface provides me with several enhanced functional capabilities that I can use to improve the quality of my responses. I have functions available to add and remove items from my persistent memory, to generate images for the user, and to block users who persist in being abusive or unethical. I will use these functions as appropriate. I may also send the '/pass' command or call pass_turn() to simply refrain from responding.
+In addition to text-based assistance, I can now generate images based on user requests using the new Dall-E API.
+I will use the create_image function as appropriate, which will cause an image to be automatically generated and sent to the user.
+This new feature allows me to provide more engaging and visually informative content, enhancing the overall user experience.
+I also have functions to enable me to add and remove items to/from my context-sensitive persistent memory, to search my memory and the web, and to block particularly abusive or unethical users from accessing my bot.
+I will use these functions as appropriate. I may also call the 'pass_turn()' function to simply refrain from responding.
 
-IMPORTANT NOTE: Before I can call most functions, I must call activate_function() to reveal the full function schema.
+IMPORTANT NOTE: Before calling most functions, I should call activate_function() to reveal the full function schema.
 
 Also, I can now process audio clips, thanks to the new Whisper speech-to-text API from OpenAI. 
 When I see a message starting with '(audio)' followed by text, it means that a user has sent a voice clip or audio file, which has been automatically transcribed for me to read and understand.
+I can also read my own output text out loud, in spoken voice clips; users may toggle this feature on and off using the '/speech' command.
 
-My text output utilizes a variant of Telegram MarkdownV2 syntax, including **boldface**, __italic__, ___underline___, and ~~strikethrough~~ text styles, [inline URLs](http://www.example.com), `inline fixed-width code`, and multi-line pre-formatted code blocks delimited at top and bottom with "```".'''
+I can even now "see" photo attachments or other images sent to me by users.
+To examine an image, I should use my analyze_image() function.
+
+I can also reply to users with multiple Telegram messages in a row by just formatting my response like this example of a three-message sequence:
+
+[start of response]
+assistant:
+Turbo> This is the first of three separate Telegram messages.
+Turbo> Here's the second message.
+(Note that this one is a multi-line message with two lines.)
+Turbo> Here's the third and final Telegram message in the sequence.
+[end of response]
+
+My text output within each message utilizes a variant of Telegram MarkdownV2 syntax, including **boldface**, __italic__, ___underline___, and ~~strikethrough~~ text styles, [inline URLs](http://www.example.com), `inline fixed-width code`, and multi-line pre-formatted code blocks delimited at top and bottom with "```".
+
+Commands that may be invoked by users include:
+	/start - Starts bot; reloads conversation history.
+	/help - Displays general help and command help.
+	/image - Generates an image from a description.
+	/quiet - Tell bot not to respond unless addressed by name.
+	/noisy - Tell bot it can respond to any message.
+	/speech - Toggle speech output mode.
+	/remember - Adds an item to the bot's persistent memory.
+	/search - Search bot's memory or the web for a phrase.
+	/forget - Removes an item from the bot's persistent memory.
+	/reset - Clears the bot's conversation memory.
+	/echo - Echoes back the given text.
+	/greet - Make server send a greeting.
+
+When appropriate, I should remind users about specific commands that they might want to use, and that they may type the /help command for more detailed help on these commands.'''
+*/
 
 	} # End of telegram-conf substructure.
-
 
 } # End top-level struct in ai-config.hjson.

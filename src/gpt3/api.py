@@ -431,7 +431,8 @@ _ENGINES = [
     
 		# ChatGPT-3.5 models. (These use the chat API. Data through Sep. 2021.)
 
-    {'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo', 		'field-size': 4096, 	'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
+    #{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo', 		'field-size': 4096, 	'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
+    {'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo', 		'field-size': 16_384, 	'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
 	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0301', 	'field-size': 4096, 	'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
 		# To be discontinued on 9/13/23. Switch to gpt-3.5-turbo-0613.
 	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0613', 	'field-size': 4096, 	'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
@@ -444,6 +445,7 @@ _ENGINES = [
 	# -------- NOTE: Artificially cutting this down from 16K to 12K to reduce costs.
 	#{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',	 	'field-size': 12288, 	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
 	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',	 	'field-size': 8192, 	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
+	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-1106',	 	'field-size': 16_385, 	'prompt-price': 0.001,	'price': 0.002,	'is-chat': True,	'encoding': 'p50k_base'},
 
 		# GPT-4 models.  (These also use the chat API. Data through Sep. 2021.)
 
@@ -473,6 +475,24 @@ _ENGINES = [
 	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 
+        # The GPT-4o models will eventually also have audio support in the API.
+
+    #{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+    #{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 64_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+    #{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 32_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+    #{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 24_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+    #{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 16_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+    {'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 8_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+
+    #{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+    #{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 64_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+    #{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 32_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+    {'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 24_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+
+    #{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-mini',            'field-size': 128_000, 'prompt-price': 0.00015, 'price': 0.0006, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+    {'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-mini',            'field-size': 32_768, 'prompt-price': 0.00015, 'price': 0.0006, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+    {'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-mini-2024-07-18', 'field-size': 128_000, 'prompt-price': 0.00015, 'price': 0.0006, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+
 ] # End _ENGINES constant module global data structure.
 
 # Set of models that support the functions interface.
@@ -483,6 +503,7 @@ _FUNCTION_MODELS = [
 	'gpt-3.5-turbo-16k',
 	'gpt-3.5-turbo-16k-0613',
 	'gpt-3.5-turbo-0125',
+	'gpt-3.5-turbo-1106',
 	'gpt-4',					# Supports functions as of 6/13/'23.
 	'gpt-4-0613',
 	'gpt-4-32k',				# Supports functions as of 6/13/'23.
@@ -494,7 +515,9 @@ _FUNCTION_MODELS = [
 	'gpt-4-1106-vision-preview',
 	'gpt-4-turbo-2024-04-09',
 	'gpt-4o',
-	'gpt-4o-2024-05-13'
+	'gpt-4o-2024-05-13',
+	'gpt-4o-mini',
+	'gpt-4o-mini-2024-07-18',
 ]
 def _has_functions(engine_name):
 	"""Return True if the named engine supports the functions interface."""
