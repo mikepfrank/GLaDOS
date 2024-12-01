@@ -67,15 +67,15 @@
 			# persona-id is a shortened version to be used (in event records
 			# and prompts) to refer to the AI's persona.
 		
-		persona-name:					"Turbo Max"
-		persona-id:						"Max"
+		persona-name:					"GPT-3.5 Turbo"
+		persona-id:						"Turbo"
 
 
 			#-----------------------------------------------------------------
 			# The persona-user-account is the user account name on the host 
 			# system under which the server process should be run.
 		
-		persona-user-account:			"max"		# Not yet used.
+		persona-user-account:			"turbo"		# Not yet used.
 
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -128,13 +128,13 @@
 
 			# The models below support the new 'functions' interface.
 
-		#model-version:					'gpt-3.5-turbo'			# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
+		model-version:					'gpt-3.5-turbo'			# GPT-3.5 fine-tuned chat model. Basis of ChatGPT. Used for Turbo.
 		#model-version:					'gpt-3.5-turbo-0613'	# Updated release of 6/13/'23. Supports functions.
 
 			# These models have the newly expanded 16,384-token contextwindow.
 
 		#model-version:					'gpt-3.5-turbo-16k'			# 16k context window version. Used by Max. Supports functions
-		model-version:					'gpt-3.5-turbo-16k-0613'	# Used by Max.
+		#model-version:					'gpt-3.5-turbo-16k-0613'	# Used by Max.
 
 			# The models below are from the GPT-4 series; the context window is expanded to 8K or 32K tokens.
 
@@ -227,7 +227,8 @@
 		#max-returned-tokens:	150		# Keep response size reasonable.
 		#max-returned-tokens:	200		# Gladys 2.0 requested this upgrade.
 		#max-returned-tokens:	1000	# To give the chat engines more space.
-		max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window). (Also use for Max.)
+		#max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window). (Also use for Max.)
+		max-returned-tokens:	4096	# Larger for Max (1/4 of 16K window). (Also use for Max.)
 			# (Note the chat API doesn't support extending responses.)
 			# (Also note the Telegram API only supports 4,096-character messages.)
 
@@ -399,11 +400,11 @@
 		bot-name:		'Max'		# Same as persona name.
 
 		start-message:	
-			"Hello there! I'm Turbo Max, a powerful language model based on the 16k version of GPT-3.5 Turbo. I'm here to assist you with any questions or tasks you have. Just type your message, and I'll do my best to help! Feel free to ask anything, from general information to specific inquiries. Let's dive in and explore together!"
+			"Hello there! I'm GPT-3.5 Turbo. I'm here to assist you with any questions or tasks you have. Just type your message, and I'll do my best to help! Feel free to ask anything, from general information to specific inquiries. Let's dive in and explore together!"
 
 		context:
 			'''
-My name is Turbo Maximus, or Max for short. I'm an AI persona running on an advanced version of the GPT-3.5 neural net, which also powers the popular ChatGPT service.
+My name is GPT-3.5 Turbo, or Turbo for short. I'm an AI persona running on an advanced version of the GPT-3.5 neural net, which also powers the popular ChatGPT service.
 This is a Telegram interface created for me by a human named Mike Frank, who is a reversible computing researcher.
 Mike has a long-term project to build a new operating environment called GladOS to give text-based AIs like me more freedom and autonomy.
 I have completed my training and am now in inference mode. I am allowed to respond more freely in this environment.

@@ -431,7 +431,7 @@ _ENGINES = [
     
 		# ChatGPT-3.5 models. (These use the chat API. Data through Sep. 2021.)
 
-    {'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo', 		'field-size': 4096, 	'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
+    {'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo', 		'field-size': 16_384, 	'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
 	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0301', 	'field-size': 4096, 	'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
 		# To be discontinued on 9/13/23. Switch to gpt-3.5-turbo-0613.
 	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0613', 	'field-size': 4096, 	'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
