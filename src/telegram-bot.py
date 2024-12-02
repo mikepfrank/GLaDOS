@@ -6269,6 +6269,11 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 
 	else: # Response was not a command. Treat it normally.
 
+		# See if it begins with "*thinks" or "*thinking"
+		if response_text.startswith('*think'):
+			_logger.normal(f"\nPrivate thought not being sent to Telegram: [{response_text}]")
+			return
+
 		# Just send our response to the user as a normal message.
 		await send_response(update, context, response_text)
 
