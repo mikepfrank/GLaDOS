@@ -1956,7 +1956,7 @@ class BotConversation:
 			#"bot. You may include multiple such messages in your response, but each one "
 			#"should begin on a new line. "
 			"You may include multiple Telegram messages in your response, but each one "
-			f"must begin on a new line starting with '{botName}>'"
+			f"must begin on a new line starting with '{botName}>'. "
 			"(Or, alternatively to just sending messages, you can activate "
 			"an available function and then call that function, if appropriate.)"
 		)
@@ -6063,7 +6063,7 @@ async def process_raw_response(
 	response_oaiMsg = chatCompletion.message
 
 	# In case there's a function call in the response, display it.
-	_logger.debug(f"RETURNED MESSAGE = [{pformat(response_oaiMsg)}]")
+	_logger.debug(f"RETURNED MESSAGE = [{pformat(str(response_oaiMsg))}]")
 
 	# Get the text field of the response. (Could be None, if function call.)
 	response_text = chatCompletion.text
@@ -6092,7 +6092,7 @@ async def process_raw_response(
 
 	## Another diagnostic; this one post-surgery.
 	# In case there's a function call in the response, display it.
-	_logger.normal(f"RETURNED MESSAGE = \n" + pformat(str(response_oaiMsg)))
+	_logger.info("RETURNED MESSAGE = \n" + pformat(str(response_oaiMsg)))
 
 	# Now, we check to see if the OpenAI message object returned by the AI has a
 	# 'function_call' property, in which case it means the AI is trying to call
@@ -6168,7 +6168,7 @@ async def process_raw_response(
 	# send an empty message anyway.)
 	if response_text == "":
 
-		_logger.warn("AI's text response was null. Ignoring...")
+		_logger.warn(f"AI's text response was null. Ignoring user {user_tag} in chat {chat_id}...")
 
 		## No longer needed because we don't add an empty message.
 		# Delete the last message from the conversation.

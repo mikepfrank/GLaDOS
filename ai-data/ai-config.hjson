@@ -78,6 +78,17 @@
 		persona-user-account:			"turbo"		# Not yet used.
 
 
+            #-----------------------------------------------------------------
+            # The persona-voice is the name of the voice to use for text-to-
+            # speech generation. Must be in all lowercase. Choices include:
+            #
+            #   Androgynous:    Alloy, Fable
+            #   Male-coded:     Echo, Onyx,
+            #   Female-coded:   Nova, Shimmer
+
+        persona-voice:                  'echo'      # Male voice for Turbo.
+
+
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#|	The model-family is a symbol specifying the general architecture
 			#|	of the underlying AI.  Choices are:  
@@ -177,7 +188,7 @@
 		#min-replywin-toks:	400		# Turbo (gpt-3.5-turbo) requested this increase (1/10 of context window).
 		#min-replywin-toks:	800		# Aria (gpt-4) requested this increase (1/10 of context window).
 		#min-replywin-toks:	1024	# Use for Max (gpt-3.5-turbo-16k). This is 1/16th of context window.
-		min-replywin-toks:	4096	# New Turbo: 1/4th of 16k context window.
+		min-replywin-toks:	2048	# New Turbo: 1/8th of 16k context window.
 
 
 			#-----------------------------------------------------------------
@@ -229,7 +240,7 @@
 		#max-returned-tokens:	200		# Gladys 2.0 requested this upgrade.
 		#max-returned-tokens:	1000	# To give the chat engines more space.
 		#max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window). (Also use for Max.)
-		max-returned-tokens:	4096	# Larger for Max (1/4 of 16K window). (Also use for Max.)
+		max-returned-tokens:	4096	# Larger for Max (1/4 of 16K window). (Also for new Turbo.)
 			# (Note the chat API doesn't support extending responses.)
 			# (Also note the Telegram API only supports 4,096-character messages.)
 
@@ -386,6 +397,7 @@
 		#max-visible-tokens:	4000	# Appropriate for text-davinci-002.
 		#max-visible-tokens:	4096	# Appropriate for gpt-3.5-turbo model
 		#max-visible-tokens:	8192	# Appropriate for gpt-4 model.
+
 		max-visible-tokens:		16384	# Appropriate for gpt-3.5-turbo-16k models.
 	
 	} # End of field-conf substructure.
@@ -445,9 +457,11 @@ FUNCTION CALLS:
 
 If, instead of sending text content of normal Telegram message(s), you instead respond with a function call (a.k.a. tool call) message, you can still cause a textual message to be sent to the user just before calling the function by utilizing the 'remark' argument to the function.
 
-Please note that before calling most functions, you should first invoke the 'activate_function' tool to reveal the full schema of the desired function.
+IMPORTANT NOTE: Before calling most functions, you should first invoke the 'activate_function' tool to reveal the full schema of the desired function.
 
 After seeing the return result from a given function/tool call, you may call another function, or send one or more Telegram messages to the user using the format above.
+
+Note that this interface DOES NOT SUPPORT invoking multiple tool calls in a single tool_calls message; you may only perform one tool (function) call at a time, and you must wait to see the return result of each function before calling the next one. You may wish to use the 'remark' parameter of each function call in a sequence to express your plan for subsequent calls.
 
 INNER MONOLOGUE:
 
