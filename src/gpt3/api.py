@@ -1231,8 +1231,8 @@ class PromptTooLargeException(Exception):
 		e.byHowMuch 	= byHowMuch
 
 		# Generate a human-readable error message.
-		msg = (f"GPT-3 API prompt string is {promptToks} tokens," +
-			   f" max is {promptToks}, too large by {byHowMuch}.")
+		msg = (f"LLM API prompt string is {promptToks} tokens," +
+			   f" max is {maxToks}, too large by {byHowMuch}.")
 
 		super(PromptTooLargeException, e).__init__(msg)
 			# Call the base class constructor with the generated message.
@@ -2360,7 +2360,8 @@ class ChatCompletion(Completion):
 			# Estimate the length in tokens of the input prompt -
 			# but don't actually update our usage statistics yet!
 
-		estInputLen = chatCompl._estimateInputLen(apiArgs)
+		SLOP = 200	# Extra margin to be more conservative in our estimates.
+		estInputLen = chatCompl._estimateInputLen(apiArgs) + SLOP
 
 		#_logger.debug(f"In ._createChatComplStruct(), estInputLen={estInputLen}.")
 
@@ -2420,12 +2421,12 @@ class ChatCompletion(Completion):
 
 				#_logger.debug(f"In ._createChatComplStruct(), effMax={effMax}.")
 
-				_logger.debug("[GPT chat API] Prompt length of "
+				_logger.debug("[GPT chat API] Estimated prompt length of "
 							  f"{estInputLen} exceeds our effective "
 							  f"maximum of {effMax}. Requesting "
 							  "message list shrink.")
 
-				e = PromptTooLargeException(_inputLength, effMax)
+				e = PromptTooLargeException(estInputLen, effMax)
 				raise e		# Complain to our caller hierarchy.
 
 			#__/ End if too little space left.
@@ -2462,58 +2463,64 @@ class ChatCompletion(Completion):
 			# If we get here, we know we have enough space for our query + result,
 			# so we can proceed with the request to the actual underlying API.
 
-		#try:
+		try:
+			# New style chat completion call:
+			chatComplObj = _client.chat.completions.create(**apiArgs)
 
-		# New style chat completion call:
-		chatComplObj = _client.chat.completions.create(**apiArgs)
+			# Old style:
+			#chatComplStruct = openai.ChatCompletion.create(**apiArgs)
 
-		# Old style:
-		#chatComplStruct = openai.ChatCompletion.create(**apiArgs)
+		except openai.BadRequestError as e:
+			errStr = str(e)
 
-		# This exception type seems to have disappeared in 1.x
-		# except openai.InvalidRequestError as e:
-		# 	errStr = str(e)		# Get the error as a string.
+			_logger.error(f"Got an OpenAI BadRequestError: [{errStr}].")
 
-		# 	_logger.error(f"Got an OpenAI InvalidRequestError: [{errStr}].")
+			# Example error string format:
+			#	"This model's maximum context length is 16385 tokens. However,
+			#	 you requested 16531 tokens (14351 in the messages, 132 in the 
+			#	 functions, and 2048 in the completion). Please reduce the
+			#	 length of the messages, functions, or completion."
 
-		# 	# Example error string format:
-		# 	#	"This model's maximum context length is 8192 tokens.
-		# 	#	 However, you requested 8194 tokens (7244 in the
-		# 	#	 messages, 950 in the completion). Please reduce the
-		# 	#	 length of the messages or completion."
+			# Extract the substrings that are numbers.
+			numStrs = re.findall(r'\d+', errStr)
 
-		# 	# Extract the substrings that are numbers.
-		# 	numStrs = re.findall(r'\d+', errStr)
+			# Convert them to actual numbers.
+			numbers = [int(n) for n in numStrs]
 
-		# 	# Convert them to actual numbers.
-		# 	numbers = [int(n) for n in numStrs]
+			_logger.error(f"Extracted the following numbers: {numbers}")
 
-		# 	_logger.error(f"Extracted the following numbers: {numbers}")
-
-		# 	if len(numbers) == 4:
-		# 		maxConLen, reqToks, msgsLen, compLen = numbers
+			# Case for 4 is present (but commented out) in older commits.
 			
-		# 		maxPrompt = maxConLen - reqToks
+			if len(numbers) == 6:
+				errCode, maxConLen, reqToks, msgsLen, funcLen, compLen = numbers
 
-		# 		e = PromptTooLargeException(msgsLen, maxPrompt)
+				_logger.error(f"errCode={errCode}, maxConLen={maxConLen}, "
+					f"reqToks={reqToks}, msgsLen={msgsLen}, funcLen={funcLen}, "
+					f"compLen={compLen}")
 
-		# 		raise e
+				_logger.error(f"NOTE: msgsLen+funcLen = {msgsLen+funcLen}, "
+							  f"but we had estimated {estInputLen}.")
 
-		# 	elif len(numbers) == 5:
-		# 		maxConLen, reqToks, msgsLen, funcsLen, compLen = numbers
-			
-		# 		_logger.error(f"maxConLen={maxConLen}, reqToks={reqToks}, msgsLen={msgsLen}, funcsLen={funcsLen}, compLen={compLen}")
-		# 		_logger.error(f"NOTE: msgsLen+funcsLen = {msgsLen+funcsLen}, but we estimated {estInputLen}.")
+				excess = reqToks - maxConLen
 
-		# 		maxPrompt = maxConLen - reqToks
+				_logger.error(f"The request was too large by {excess} tokens!")
 
-		# 		e = PromptTooLargeException(msgsLen, maxPrompt)
+				maxPrompt = msgsLen - excess
+					# The maximum length that the prompt (messages) could
+					# have been is the actual length of the messages,
+					# minus the amount by which the total request length
+					# exceeded the maximum context length.
 
-		# 		raise e
+				_logger.error(f"The messages should have been at most {maxPrompt} "
+							  f"tokens, instead of {msgsLen}.")
 
-		# 	else:	# Maybe this isn't a length issue at all?
-		# 		_logger.error("I don't know what to do with that.")
-		# 		raise e
+				new_e = PromptTooLargeException(msgsLen, maxPrompt)
+
+				raise new_e
+
+			else:	# Maybe this isn't a length issue at all?
+				_logger.error("I don't know what to do with that.")
+				raise e
 
 		# If we get here, there was a successful return from the API call.
 		_logger.debug("ChatCompletion._createChatComplStruct(): Got raw chat completion struct:"

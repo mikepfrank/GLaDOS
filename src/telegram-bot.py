@@ -3785,7 +3785,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 
 			except PromptTooLargeException as e:				# Imported from gpt3.api module.
 
-				_logger.debug("The prompt was too large by {e.byHowMuch} tokens! Trimming...")
+				_logger.debug(f"The prompt was too large by {e.byHowMuch} tokens! Trimming...")
 
 				# The prompt is too long.  We need to expunge the oldest message from the conversation.
 				# However, we need to do this within a try/except clause in case the only message left
@@ -5221,7 +5221,7 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 	#| (However, we try to do our best to trim it down before the call.)
 	#|
 	#| Exceptions handled:
-	#|	If we get a PromptTooLongException, then we'll try again with a
+	#|	If we get a PromptTooLargeException, then we'll try again with a
 	#|		shorter prompt.
 	#|	If we get a RateLimitError, then we'll emit a diagnostic reponse
 	#|		message.
@@ -5430,7 +5430,14 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 			break
 		#__/ End main body of 'try' clause for getting results from GPT.
 
-		except PromptTooLargeException:				# Imported from gpt3.api module.
+		except PromptTooLargeException as e:
+			#   ^ Imported from gpt3.api module.
+
+			# This gives pretty detailed information, so put it at INFO level.
+			_logger.info(f"Caught a PromptTooLargeException: {str(e)}")
+
+			# We'll do this at INFO too, but it can be changed to WARNING level.
+			_logger.info(f"The prompt was too large by {e.byHowMuch} tokens! Trimming...")
 
 			# Are we using a raw message list that was passed in to us from
 			# process_function_call()? If so, then we need to trim that one;
@@ -5515,7 +5522,10 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 			
 			await _report_error(botConvo, tgMsg, f"Exception while "
 								f"getting API response: {type(e).__name__} "
-								f"({e})")
+								f"({e}).")
+
+			_logger.error(traceback.format_exc())
+
 			return
 		#__/
 
