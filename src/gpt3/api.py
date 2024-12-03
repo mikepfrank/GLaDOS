@@ -3166,7 +3166,7 @@ class GPT3ChatCore(GPT3Core):
 		
 		chatConf = chatCore.chatConf	# Get our current chat configuration.
 
-		apiargs['model'] = chatConf.engineId	# This API arg. is required. Can't skip it.
+		apiargs['model'] = model = chatConf.engineId	# This API arg. is required. Can't skip it.
 			# NOTE: OpenAI used to call this parameter 'engine' but now calls it 'model'.
 			# The old name still works, but is deprecated; we use the new name here in
 			# case they ever remove the old name.
@@ -3207,6 +3207,51 @@ class GPT3ChatCore(GPT3Core):
 		else:
 			functionCall		= kwargs.get('functionCall', None)	# Default is 'auto'
 
+		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#| Going forwards, we wish to migrate to use the new 'tools' format for
+		#| function (now tool) calls, in preparation for OpenAI removing support
+		#| for the deprecated functions interface.
+
+			# Do this for forwards compatibility to when we finish switching the
+			# rest of our own codebase to support the new tools interface.
+
+		toolList			= kwargs.get('toolList')	# Defaults to None.
+		toolChoice			= kwargs.get('toolChoice')	# Default is 'auto'.
+
+			# The next part is for backwards compatibility with existing
+			# application code that still uses the legacy functions interface.
+
+		if toolList is None:
+			
+			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			#| Turn the functionList into a list of tool objects
+
+			toolList = []
+			for func in functionList:
+
+				if model == 'gpt-4-turbo-2024-04-09':
+					if 'returns' in func:
+						del func['returns']		# No longer supported?
+
+				# Do some error checking.
+				#if 'returns' not in func:
+				#	_logger.error(f"FUNCTION {func['name']} IS MISSING 'returns' FIELD")
+
+				tool = {
+					'type':			'function',
+					'function':		func
+				}
+
+				toolList.append(tool)
+
+			#__/ End for func in functionList.
+		#__/ End if toolList not yet set.
+
+		if toolChoice is None:
+			toolChoice = functionCall	# If none, API treats it as 'auto'.
+		#__/
+
+
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| Now, add the selected (non-None) parameter values to the argument list.
 		#| (Note below we have to match the exact keyword argument names supported 
@@ -3228,9 +3273,14 @@ class GPT3ChatCore(GPT3Core):
 		if logitBias		!= None:	apiargs['logit_bias']		= logitBias
 		if user				!= None:	apiargs['user']				= user
 
-			# Available only in 0613 (June 13, 2023) or later releases of chat models.
-		if functionList		!= None:	apiargs['functions']		= functionList
-		if functionCall		!= None:	apiargs['function_call']	= functionCall
+            # Available only in 0613 (June 13, 2023) or later releases of chat models.
+
+		#if functionList        != None:    apiargs['functions']        = functionList
+		#if functionCall        != None:    apiargs['function_call']    = functionCall
+
+		if toolList     != None:    apiargs['tools']        = toolList
+		if toolChoice   != None:    apiargs['tool_choice']  = toolChoice
+
 
 		#if 'messages' in apiargs:
 		#	_logger.info(f"In genChatArgs(), set apiargs['messages']=[list of {len(apiargs['messages'])} messages]")

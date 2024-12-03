@@ -1861,7 +1861,7 @@ class BotConversation:
 				f"  search_memory(query_phrase:str, max_results:int={DEFAULT_SEARCHMEM_NITEMS}, remark:str=None) -> results:list\n" + \
 				"  forget_item(text:str=None, item_id:str=None, remark:str=None) -> status:str\n" + \
 				"  analyze_image(filename:str, verbosity:str='medium', query:str=None, remark:str=None) -> result:str\n" + \
-				"  create_image(description:str, shape:str='square', style:str='vivid', caption:str=None, remark:str=None) -> status:str\n" + \
+				"  create_image(description:str, shape:str='square', style:str='vivid', quality:str='standard', caption:str=None, remark:str=None) -> status:str\n" + \
 				f"  block_user(user_name:str='{userTag}', remark:str=None) -> status:str\n" + \
 				"  unblock_user(user_name:str, remark:str=None) -> status:str\n" + \
 				"  search_web(query:str, locale:str='en-US', sections:list=['webPages'], remark:str=None) -> results:dict\n" + \
@@ -5757,12 +5757,35 @@ async def process_function_call(
 	botConvo = tgContext.chat_data['conversation']
 	chat_id = botConvo.chat_id
 
-	# Retrieve the function call object from the OpenAI message containing it.
-	funCall = funcall_oaiMsg.function_call
+	# Handle either function_call or tool_calls format
+	if funcall_oaiMsg.function_call:
+		funCall = funcall_oaiMsg.function_call
+	else:
+		# Assume it's tool_calls. But, we can only handle 1 call at a time.
+		if len(funcall_oaiMsg.tool_calls) > 1:
+			_logger.warn("Multiple tool calls received - only processing first one!")
+			# Also tell the AI.
+			botConvo.add_message(BotMessage(SYS_NAME, "[WARNING: Multiple tool calls "
+				"were received; ignoring all but the first. Please wait for the result of "
+				"each tool call before generating the next.]"))
+		#__/ End if too many tool calls.
+		
+		toolCall = funcall_oaiMsg.tool_calls[0]
 
-	# Retrieve the function name and arguments from the function call object.
+		if toolCall.type != 'function':
+			errmsg = f"Unexpected tool type '{toolCall.type}' - expected 'function'"
+			_logger.error(errmsg)
+			botConvo.add_message(BotMessage(SYS_NAME, f"[ERROR: {errmsg}]"))
+			return
+
+		# Assume it's type 'function', although really we should check...
+		funCall = toolCall.function
+
+	#__/ End if function call vs. tool call.
+
 	function_name = funCall.name
 	function_argStr = funCall.arguments
+
 
 	try:
 		function_args = json.loads(function_argStr)		# This could fail!
@@ -6069,14 +6092,18 @@ async def process_raw_response(
 
 	## Another diagnostic; this one post-surgery.
 	# In case there's a function call in the response, display it.
-	#_logger.normal(f"RETURNED MESSAGE = \n" + pformat(response_message))
+	_logger.normal(f"RETURNED MESSAGE = \n" + pformat(str(response_oaiMsg)))
 
 	# Now, we check to see if the OpenAI message object returned by the AI has a
 	# 'function_call' property, in which case it means the AI is trying to call
 	# a function.  If it is, we'll dispatch out to the process_function_call()
 	# function to handle this case.
+	#
+	# NOTE: This code now also accepts tool call rather than function call 
+	# messages, but we retain compatibility in case the legacy function call
+	# message type is still used.
 
-	funCall = response_oaiMsg.function_call
+	funCall = response_oaiMsg.function_call or response_oaiMsg.tool_calls
 	if funCall:
 		
 		await process_function_call(response_oaiMsg, tgUpdate, tgContext)
