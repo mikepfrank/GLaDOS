@@ -205,6 +205,8 @@
 
 #from	sys			import	stderr	# Not currently used.
 
+import	ast		# Abstract Syntax Tree
+
 import	random
 
 import	re	# Regex
@@ -2360,7 +2362,7 @@ class ChatCompletion(Completion):
 			# Estimate the length in tokens of the input prompt -
 			# but don't actually update our usage statistics yet!
 
-		SLOP = 200	# Extra margin to be more conservative in our estimates.
+		SLOP = 500	# Extra margin to be more conservative in our estimates.
 		estInputLen = chatCompl._estimateInputLen(apiArgs) + SLOP
 
 		#_logger.debug(f"In ._createChatComplStruct(), estInputLen={estInputLen}.")
@@ -2473,7 +2475,30 @@ class ChatCompletion(Completion):
 		except openai.BadRequestError as e:
 			errStr = str(e)
 
+			_logger.normal('')
 			_logger.error(f"Got an OpenAI BadRequestError: [{errStr}].")
+
+			errJsonStr = errStr[len("Error code: 400 - "):]
+				# Skips "Error code: 400 - " at start. Rest is Json?
+			#errStruct = json.loads(errJsonStr)	# Make it a dict.
+			errStruct = ast.literal_eval(errJsonStr)	# Make it a dict.
+			errObj	= errStruct['error']
+
+			errMsg		= errObj['message']	# E.g., Invalid 'messages[40].name':
+				# string too long. Expected a string with maximum length 64, but
+				# got a string with length 107 instead."
+			errType		= errObj['type']	# E.g., 'invalid_request_error'
+			errParam	= errObj['param']	# E.g., 'messages[40].name'
+			errCode		= errObj['code']	# E.g., 'string_above_max_length'
+
+			if errCode == 'string_above_max_length':
+				match = re.search(r'messages\[(\d+)\]', errParam)
+				if match:
+					msg_index = int(match.group(1))
+					msg = apiArgs['messages'][msg_index]
+					name = msg['name']
+					_logger.error(f"The following message sender name is too long: [{name}]")
+					_logger.error(f"The full message object was:\n{pformat(msg)}\n")
 
 			# Example error string format:
 			#	"This model's maximum context length is 16385 tokens. However,
@@ -2512,7 +2537,7 @@ class ChatCompletion(Completion):
 					# exceeded the maximum context length.
 
 				_logger.error(f"The messages should have been at most {maxPrompt} "
-							  f"tokens, instead of {msgsLen}.")
+							  f"tokens, instead of {msgsLen}.\n")
 
 				new_e = PromptTooLargeException(msgsLen, maxPrompt)
 
@@ -4318,6 +4343,9 @@ def _msg_tokens(msg:dict, model:str=None) -> int:
 	#| ':' and '\n' are the single tokens for colon and newline; and
 	#| <end_msg_token> is some unknown token; we'll assume [RS], the
 	#| ASCII Record Separator control character (ctrl-^, 0x1e).
+	#|
+	#| Note: The above scheme does not yet account properly for
+	#| function/tool call messages.
 	#\~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	msgToks = tiktokenCount(_msg_repr(msg), model=model)

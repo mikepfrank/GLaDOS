@@ -7060,7 +7060,8 @@ def _get_user_tag(user) -> str:
 
 	# If we're using the GPT-3 Chat API, we'll also need to make sure that the user's name
 	# is a valid identifier that's accepted by that API as a user name.
-	if user_name is not None and global_gptCore.isChat:
+	if user_name and global_gptCore.isChat:
+
 		# If the user's first name contains characters the GPT-3 Chat API won't accept 
 		# (or is too long or an empty string), we'll invalidate it by setting it to None.
 		if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", user_name):
@@ -7068,11 +7069,28 @@ def _get_user_tag(user) -> str:
 
 	# If the user's first name wasn't valid, we'll try to use their username.
 	if user_name is None:
-		user_name = user.username
-		_which_name = 'username'
 
-		# But, if that name isn't valid either, we'll use their ID.
+		tgUsername = user.username
+		if tgUsername:
+
+			user_name = tgUsername[0:64]		# Not too long
+			_which_name = 'username'
+
+			# First, strip out all nonprintable characters from user_name.
+			stripped = ''.join(c for c in user_name if c.isprintable())
+
+			if stripped != user_name:
+				_logger.warn("Stripped nonprintable characters out of username '{stripped}'.")
+				user_name = stripped
+
+			# If the user's username contains characters the GPT-3 Chat API won't accept 
+			# (or is too long or an empty string), we'll invalidate it by setting it to None.
+			if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", user_name):
+				user_name = None
+
+		# But, if that name isn't valid either, we'll use their numeric ID.
 		if user_name is None or user_name == '':
+
 			user_name = str(user.id)
 			_which_name = 'user ID'
 
