@@ -2362,7 +2362,7 @@ class ChatCompletion(Completion):
 			# Estimate the length in tokens of the input prompt -
 			# but don't actually update our usage statistics yet!
 
-		SLOP = 500	# Extra margin to be more conservative in our estimates.
+		SLOP = 650	# Extra margin to be more conservative in our estimates.
 		estInputLen = chatCompl._estimateInputLen(apiArgs) + SLOP
 
 		#_logger.debug(f"In ._createChatComplStruct(), estInputLen={estInputLen}.")
