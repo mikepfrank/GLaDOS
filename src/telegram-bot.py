@@ -4853,7 +4853,7 @@ async def ai_block(updateMsg:TgMsg, conversation:BotConversation,
 			# If there are no matches, try searching by display name instead.
 			if len(matchingUsers) == 0:
 
-				matchingUsers = _lookup_user_by_dispname(userToUnblock)
+				matchingUsers = _lookup_user_by_dispname(userToBlock)
 
 				if len(matchingUsers) != 1:
 					_logger.warn(f"\tUser name '{userToBlock}' wasn't found or isn't unique.")
@@ -9296,7 +9296,8 @@ def _lookup_user_by_username(username):
     c = conn.cursor()
 
     # Execute a SQL command to select rows with the given username.
-    c.execute("SELECT * FROM users WHERE username = ?", (username,))
+    c.execute("SELECT * FROM users WHERE LOWER(username) = LOWER(?)", (username,))
+		# Note this does a case-insensitive lookup.
 
     # Fetch all rows
     rows = c.fetchall()
