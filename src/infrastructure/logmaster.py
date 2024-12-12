@@ -731,7 +731,7 @@ LOG_FORMATSTR = (	# Current time.
 				 "%%(threadrole)-%ds | "	% THREADROLE_FIELDWIDTH		+
 					# Source code file, line #, and function/method name.
 				 "%%(module)%ds.py:"		% MODULE_FIELDWIDTH			+	
-				 "%(lineno)-4d: "										+
+				 "%(lineno)-5d: "										+
 				 "%%(funcName)-%ds | "		% FUNCNAME_FIELDWIDTH		+
 					# Log level and log message.
 				 "%%(levelname)%ds: "		% LEVELNAME_FIELDWIDTH		+	
@@ -3436,9 +3436,9 @@ def configLogMaster(sysname:str = None, appname:str = None,
 
 	with open(LOG_FILENAME,'a') as tmp_file:
 		tmp_file.write(
-			"========================+==========================+========================================+===========================================+===========================================================================================\n"
-    		"YYYY-MM-DD hh:mm:ss,msc | SysName.appName.pkgName  |   ThreadName:      Component role      | srcModuleName.py:ln# : functionName()     | LOGLEVEL: Message text\n"
-    		"------------------------+--------------------------+----------------------------------------+-------------------------------------------+-------------------------------------------------------------------------------------------\n")
+			"========================+==========================+========================================+============================================+===========================================================================================\n"
+    		"YYYY-MM-DD hh:mm:ss,msc | SysName.appName.pkgName  |   ThreadName:      Component role      | srcModuleName.py:ln#  : functionName()     | LOGLEVEL: Message text\n"
+    		"------------------------+--------------------------+----------------------------------------+--------------------------------------------+-------------------------------------------------------------------------------------------\n")
 
 		# Figure out the file and console log levels based on user
 		# selections.  (Verbose in this call is turned on for now,

@@ -496,7 +496,8 @@ _ENGINES = [
 	{'model-family': 'Claude-3.5',	'engine-name': 'claude-3-5-sonnet-20240620',	'field-size': 32_768,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 	#{'model-family': 'Claude-3.5',	'engine-name': 'claude-3-5-sonnet-20240620',	'field-size': 200_000,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 
-	{'model-family': 'Claude-3.5',	'engine-name': 'claude-3-5-sonnet-20241022',	'field-size': 32_768,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+	{'model-family': 'Claude-3.5',	'engine-name': 'claude-3-5-sonnet-20241022',	'field-size': 24_576,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+	#{'model-family': 'Claude-3.5',	'engine-name': 'claude-3-5-sonnet-20241022',	'field-size': 32_768,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 	#{'model-family': 'Claude-3.5',	'engine-name': 'claude-3-5-sonnet-20241022',	'field-size': 49_152,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 	#{'model-family': 'Claude-3.5',	'engine-name': 'claude-3-5-sonnet-20241022',	'field-size': 200_000,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 
@@ -2614,7 +2615,7 @@ class ChatCompletion(Completion):
 				contents = msg['content']
 				if isinstance(contents, list):
 
-					_logger.info(f"\tFound a message containing {len(contents)} content items...")
+					_logger.debug(f"\tFound a message containing {len(contents)} content items...")
 					if len(contents) > 1000:
 						_logger.info(f"Anomalous message content: {contents}")
 						#quit()
@@ -4268,10 +4269,10 @@ def _displayStats(doWrite:bool=True):
 		#  if the contents start to overflow.
 
 		_statLine(doWrite, "")
-		_statLine(doWrite, "                          |         Token Counts          |")
-		_statLine(doWrite, "                          | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ |")
-		_statLine(doWrite, "Engine Name               |    Input |  Output |    Total |  USD Cost")
-		_statLine(doWrite, "==========================|==========|=========|==========|==========")
+		_statLine(doWrite, "                           |         Token Counts          |")
+		_statLine(doWrite, "                           | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ |")
+		_statLine(doWrite, "Engine Name                |    Input |  Output |    Total |  USD Cost")
+		_statLine(doWrite, "===========================|==========|=========|==========|==========")
 		
 		# Cumulative input, output, and total token counts.
 		cumIn = cumOut = cumTot = 0
@@ -4297,7 +4298,8 @@ def _displayStats(doWrite:bool=True):
 	
 			cost = "$%8.4f" % _expenditures[engine]
 	
-			_statLine(doWrite, f"{engStr} | {inTokStr} | {outTokStr} | {totStr} | {cost}")
+			if total > 0:
+				_statLine(doWrite, f"{engStr} | {inTokStr} | {outTokStr} | {totStr} | {cost}")
 	
 			cumIn  = cumIn  + inToks
 			cumOut = cumOut + outToks
@@ -4312,8 +4314,8 @@ def _displayStats(doWrite:bool=True):
 	
 		totStr = "$%8.4f" % _totalCost
 	
-		_statLine(doWrite,  "~~~~~~~~~~~~~~~~~~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~~")
-		_statLine(doWrite, f"TOTALS:                   | {cumInStr} | {cumOutStr} | {cumTotStr} | {totStr}")
+		_statLine(doWrite,  "~~~~~~~~~~~~~~~~~~~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~~")
+		_statLine(doWrite, f"TOTALS:                    | {cumInStr} | {cumOutStr} | {cumTotStr} | {totStr}")
 		_statLine(doWrite, "")
 	
 		# If doWrite=True, then we were writing to the file, and we need to close it.

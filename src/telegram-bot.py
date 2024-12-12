@@ -6985,9 +6985,16 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 	# Make sure we haven't hit the message limit.
 
-	if user_name == 'Michael' or user_name == 'Jiff':	# Michaels are exempt from the rate limit.
+	if user_name == 'Michael' or user_name == 'Jiff':
+			# Michael and his friends are exempt from the rate limit.
+
 		daily_message_limit = float('inf')
 		#daily_message_limit = int(DAILY_MESSAGE_LIMIT/2)		# Temporary, for testing
+
+	elif user_name == 'Dereck':
+
+		daily_message_limit = 50
+
 	else:
 		daily_message_limit = DAILY_MESSAGE_LIMIT
 
@@ -7756,6 +7763,12 @@ async def process_raw_response(
 
 			if response_text:
 
+				# Trim XML crud off the start of the response text, if present.
+				xml_crud = f'<message sender="{BOT_NAME}">'
+				if response_text.startswith(xml_crud):
+					_logger.warning("Trimming XML crud from the start of output message...")
+					response_text = response_text[len(xml_crud):]
+
 				# Go ahead and record the first part as a message from the
 				# AI and send it to the user as a Telegram message.
 
@@ -8170,7 +8183,7 @@ def _parse_response(text_response:str, verbose=True):
 
 	if not properly_formatted:
 		# Handle unadorned blocks of text as normal messages
-		elements = [ET.Element('message', {'sender': 'Claude'})]
+		elements = [ET.Element('message', {'sender': BOT_NAME})]
 		elements[0].text = text_response.strip()
 
 	return properly_formatted, elements
@@ -8431,6 +8444,12 @@ async def process_single_response_msg(tgUpdate, tgContext, botConvo, response_ms
 	if response_msg == "":	# Skip empty messages.
 		return
 	
+	# Trim XML crud off the start of the response text, if present.
+	xml_crud = f'<message sender="{BOT_NAME}">'
+	if response_msg.startswith(xml_crud):
+		_logger.warning("Trimming XML crud from the start of output message...")
+		response_msg = response_msg[len(xml_crud):]
+
 	# Note we don't need to check for function calls here because we already
 	# determined that there are none in this normal text response.
 
@@ -10478,7 +10497,7 @@ def _searchMemories(userID, chatID, searchPhrase,
 			# ^ Note the double negative here is just doing an int->bool conversion.
 
 	for itemDict in results:
-		_logger.info(f"Got item at distance {itemDict['distance']}: [{itemDict['itemText']}]")
+		_logger.info(f"Got item at distance {itemDict['distance']}: [{itemDict['itemText'][:80]}]")
 
 	return results
 

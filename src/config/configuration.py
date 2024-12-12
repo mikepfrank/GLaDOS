@@ -1192,7 +1192,7 @@ class	TheAIPersonaConfig:
 		if 'example-response' in mindConf:
 			theAIConfig.exampleResponse = exampleResponse = mindConf['example-response']
 			_logger.normal("    [Config/AI]     AI config:     The example response "
-						   f" is: [{exampleResponse}].")
+						   f"is: [{exampleResponse[:50]}].")
 		else:
 			theAIConfig.exampleResponse = None	# Default
 
@@ -1207,7 +1207,7 @@ class	TheAIPersonaConfig:
 			theAIConfig.apiConf = apiConf = conf['api-conf']
 				# TODO: Make sure value given is valid.
 			_logger.normal(f"    [Config/AI]     AI config: Retrieved the AI's API configuration.")
-			_logger.info(f"    [Config/AI]     AI config: The AI's API configuration is {apiConf}.")
+			_logger.info(f"    [Config/AI]     AI config: The AI's API configuration is {str(apiConf)[:60]}.")
 		else:
 			_logger.warn("parseConf(): The required api-conf parameter "
 							"was not provided.")
@@ -1388,7 +1388,7 @@ class	TheAIPersonaConfig:
 
 		if 'start-message' in telegramConf:
 			theAIConfig.startMsg = startMessage = telegramConf['start-message']
-			_logger.normal(f"    [Config/AI]     AI config:     The AI persona's Telegram start message is [{startMessage}].")
+			_logger.normal(f"    [Config/AI]     AI config:     The AI persona's Telegram start message is [{startMessage[:40]}].")
 		else:
 			theAIConfig.startMsg = None	# No default value provided in config file.
 
@@ -1398,7 +1398,8 @@ class	TheAIPersonaConfig:
 			if not context.endswith('\n'):
 				context += '\n'
 			theAIConfig.context = context
-			_logger.normal(f"    [Config/AI]     AI config: The AI persona's Telegram context data is [{context.strip()}].")
+			#_logger.normal(f"    [Config/AI]     AI config: The AI persona's Telegram context data is [{context.strip()}].")
+			_logger.normal(f"    [Config/AI]     AI config: The AI persona's Telegram context data is a {len(context)}-character string.")
 		else:
 			theAIConfig.context = None	# No default value provided in config file.
 
