@@ -2904,7 +2904,7 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 		await conversation.add_message(BotMessage(conversation.bot_name, START_MESSAGE))
 
 		# Now try to also send it to the user.
-		if await _reply_user(tgMessage, conversation, START_MESSAGE) != 'success':
+		if await _reply_user(tgMessage, conversation, START_MESSAGE, markup=True) != 'success':
 			return	# Connection broken; failure; abort.
 
 	else:	# Two or more messages? We must be continuing an existing conversation.
@@ -4258,7 +4258,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		if got_image:
 			await conversation.add_message(BotMessage(SYS_NAME,
 				#f"[NOTE: {BOT_NAME}, please use analyze_image() to inspect the photo attachment]"))
-				f"[NOTE: {BOT_NAME}, please inform the user that image input isn't yet implemented."))
+				f"[NOTE: {BOT_NAME}, please inform the user that image input isn't yet implemented.]"))
 
 	# Get the current user object, stash it in convo temporarily.
 	# (This may be needed later if we decide to block the current user.)

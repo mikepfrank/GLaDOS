@@ -500,8 +500,12 @@ _ENGINES = [
 
 		# Llama models served by Hyperbolic
 
-	{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/Meta-Llama-3.1-405B', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'}
+	{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/Meta-Llama-3.1-405B', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'},
 
+		# DeepSeek-V3 model served by Hyperbolic
+
+	{'model-family': 'DeepSeek', 'engine-name': 'deepseek-ai/DeepSeek-V3', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'},
+	
 ] # End _ENGINES constant module global data structure.
 
 # Set of models that support the functions interface.
@@ -3602,7 +3606,7 @@ def tiktokenCount(text:str=None, encoding:str='gpt2', model:str=None):
 	# If the model argument is provided, use it to get the encoding.
 
 	if model != None:
-		if model.startswith('meta'):
+		if model.startswith('meta') or model.startswith('deepseek'):
 			# This is a hack. When using Meta's Llama models, we throw up
 			# our hands about the tokenizer and don't care. Default to this.
 			encodingObj = tiktoken.encoding_for_model('gpt-4o')
@@ -3805,7 +3809,8 @@ def describeImage(filename:str, verbosity:str='medium', query:str=None, user:str
 
 	# Construct POST payload.
 	payload = {
-		"model": "gpt-4-vision-preview",
+		#"model": "gpt-4-vision-preview",
+		"model": "gpt-4o",
 		"user": user,
 		"messages": [
 			{
@@ -3839,7 +3844,7 @@ def describeImage(filename:str, verbosity:str='medium', query:str=None, user:str
 
 	if 'choices' not in response_json:
 		_logger.error("The preceding JSON object did not have a 'choices' field.")
-		return "[VISION ERROR: The expected 'choices' field was not included in the raw JSON response: [{response_json}]]"
+		return f"[VISION ERROR: The expected 'choices' field was not included in the raw JSON response: [{response_json}]]"
 
 	description = response_json['choices'][0]['message']['content']
 	_logger.info(f"Got image description: [{description}]")

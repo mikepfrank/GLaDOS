@@ -67,15 +67,15 @@
 			# persona-id is a shortened version to be used (in event records
 			# and prompts) to refer to the AI's persona.
 		
-		persona-name:					"Luna AI"
-		persona-id:						"Luna"
+		persona-name:					"Seeker AI"
+		persona-id:						"Seeker"
 
 
 			#-----------------------------------------------------------------
 			# The persona-user-account is the user account name on the host 
 			# system under which the server process should be run.
 		
-		persona-user-account:			"luna"		# Not yet used.
+		persona-user-account:			"seeker"		# Not yet used.
 
             #-----------------------------------------------------------------
             # The persona-voice is the name of the voice to use for text-to-
@@ -85,7 +85,7 @@
             #   Male-coded:     Echo, Onyx,
             #   Female-coded:   Nova, Shimmer
 
-        persona-voice:                  'nova'      # Female voice for Luna.
+        persona-voice:                  'onyx'      # Deep male voice for Seeker.
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#|	The model-family is a symbol specifying the general architecture
@@ -155,7 +155,8 @@
 		#model-version:					'gpt-4o-mini'
 		#model-version:					'meta-llama/llama-3.1-405b'		# This is served through OpenRouter
 		#model-version:					'meta-llama/llama-3.1-405b-instruct'		# This is served through OpenRouter
-		model-version:					'meta-llama/Meta-Llama-3.1-405B'		# This is served through Hyperbolic
+		#model-version:					'meta-llama/Meta-Llama-3.1-405B'		# This is served through Hyperbolic
+		model-version:					'deepseek-ai/DeepSeek-V3'	# Served through Hyperbolic
 
 
 			#-----------------------------------------------------------------------
@@ -421,17 +422,23 @@
 
 	telegram-conf:	{
 
-		bot-name:		'Luna'		# Same as persona name.
+		bot-name:		'Seeker'		# Same as persona name.
 
 		start-message:	
 			'''
-Hello! I'm Luna, your friendly AI companion. 😊
+**Hello there!** 👋
+I’m **Seeker AI**, your friendly and knowledgeable assistant powered by DeepSeek. I’m here to help with answers, ideas, and creative solutions for just about anything you need.
 
-I'm here to assist with your questions, generate images, join in on group chats, and much more! You can interact with me using the menu commands or by simply asking a question.
+Here’s what I can do:
+✨ **Answer questions** on a wide range of topics.
+🎨 **Generate images** based on your descriptions.
+🌐 **Perform web searches** to bring you the latest information.
+🎙️ **Use voice I/O** for hands-free interaction.
+💡 And much more—just ask!
 
-If you need help at any time, just type /help and I'll provide you with a list of commands you can use. Let's explore and chat together!
+To get started, feel free to type your question or request. If you’d like to explore all the features I offer, type **/help** for a complete list of commands.
 
-What can I help you with today?
+Let’s dive in—what can I help you with today? 😊
 	 		'''
 
 			#"Hello, and welcome to Lumina Omni! 🌟 I'm here to assist you with any questions you might have, provide information, engage in interesting discussions, or simply chat about anything on your mind. Let's illuminate the path to knowledge together! How can I help you today?"
