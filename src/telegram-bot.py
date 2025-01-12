@@ -651,13 +651,31 @@ def _msg_to_xml(msg:str, sender:str) -> str:
 		automatically escaped so that they won't interfere with
 		parsing of the message element."""
 
-	elem = ET.Element('message', {'sender': sender})
-	elem.text = msg
-	#xml = ET.tostring(elem).decode('utf-8')
-	xml = ET.tostring(elem, encoding='unicode', method='xml')
+	# New method doesn't do XML escaping if not needed.
+	raw_wrap = f'<message sender="{sender}">{msg}</message>'
+
+	# See if it XML-parses OK in that form.
+	try:
+		root = ET.fromstring(raw_wrap)
+		return raw_wrap
+
+	# Nope, there was some parse error. We'll do escaping of the
+	# contents instead.
+	except ET.ParseError:
+
+		# The problem with always doing the following is that it
+		# over-aggressively HTML-escapes everything in the message,
+		# when it really shouldn't, since there might be embedded
+		# thoughts in there.
+
+		elem = ET.Element('message', {'sender': sender})
+		elem.text = msg
+		#xml = ET.tostring(elem).decode('utf-8')
+		xml = ET.tostring(elem, encoding='unicode', method='xml')
 
 	return xml
 #__/
+
 
 def _thought_to_xml(content:str, sender:str) -> str:
 	
@@ -762,7 +780,7 @@ def _anthropize(msgDict):
 		if not ok:
 
 			msg_content = msgDict['content']
-			if msg_content.startswith("*thinks*") or msg_content.startswith("*thinking*"):
+			if msg_content.startswith("*thinks") or msg_content.startswith("*thinking"):
 				msgDict['content'] = _thought_to_xml(msg_content, BOT_NAME)
 				CHECK_FOR_ANOMALOUS_MSGS([msgDict], 6)
 			else:
@@ -6991,9 +7009,9 @@ async def process_chat_message(update:Update, context:Context) -> None:
 		daily_message_limit = float('inf')
 		#daily_message_limit = int(DAILY_MESSAGE_LIMIT/2)		# Temporary, for testing
 
-	elif user_name == 'Dereck':
+	elif user_name == 'Dereck' or user_name == 'Derek' or user_name == 'Craig' or user_name == 'Hee':
 
-		daily_message_limit = 50
+		daily_message_limit = 25
 
 	else:
 		daily_message_limit = DAILY_MESSAGE_LIMIT
@@ -7047,6 +7065,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 	_logger.info(f"A total of {context.chat_data['nmsgs_today']} user messages "
 				 f"have been responded to in chat {chat_id} today ({today}).")
 
+	# We don't actually need to return anything.
 	return result
 
 #__/ End definition of async function process_chat_message().
@@ -7336,6 +7355,7 @@ async def process_function_call(
 #__/ End definition of function process_function_call().
 
 import xml.etree.ElementTree as ET
+import html
 
 class FunctionCallError(Exception): pass
 
@@ -7829,128 +7849,128 @@ async def process_raw_response(
 	await process_text_response(chatCompletion, response_text, tgUpdate, tgContext)
 	return
 
-	## BELOW CODE HAS BEEN MOVED OUT TO process_text_response().
-
-	# Strip off any leading or trailing whitespace (Telegram won't display it
-	# anyway.).
-	response_text = response_text.strip()
-	
-	# Now we check for the case of an empty response text.
-
-	# If the response is empty, then return early. (Because, like, we can't even
-	# send an empty message anyway.)
-	if response_text == "":
-
-		_logger.warn("AI's text response was null. Ignoring...")
-
-		## No longer needed because we don't add an empty message.
-		# Delete the last message from the conversation.
-		#conversation.delete_last_message()
-
-		## Commenting this out for production.
-		# # Send the user a diagnostic message indicating that the response was empty.
-		# # (Doing this temporarily during development.)
-		#diagMsg = "Response was empty."
-		#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
-		
-		return		# This means the bot is simply not responding to this particular message.
-	
-	# Generate a debug-level log message to indicate that we're starting a new response.
-	_logger.debug('='*80 + "\nCreating new ordinary (non-function-call) response from "
-				  f"{botConvo.bot_name} with text:\n[{response_text}].")
-
-	# At this point, according to our new protocol for allowing the AI to send multiple
-	# messages, we check for additional instances of "\n{BOT_NAME}>" in the response, and
-	# if they exist, we split the response on those, and process each one as if it were 
-	# a separate response.
-
-	split_str = f"\n{botConvo.bot_name}> "
-	if split_str in response_text:
-		response_msgs = response_text.split(split_str)
-		#_logger.normal("Detected multiple Telegram messages in response:")
-		#i=1
-		#for msg in response_msgs:
-		#	_logger.normal(f"\tMessage #{i}: [{msg}]")
-		#	i += 1
-	else:
-		response_msgs = [response_text]
-
-	for response_msg in response_msgs:
-		response_msg = response_msg.strip()		# Trim leading/trailing whitespace.
-		
-		# This sub-message could be a function call! Check for that.
-		if isinstance(global_gptCore.client, Anthropic):
-			if _is_function_call(response_msg):
-				function_calls = list(_parse_function_call(response_msg))
-				if len(function_calls) >= 1:
-					for funcname, params in function_calls:
-
-						# This just wraps the data into an object with the interface we're expecting.
-
-						funCall_obj = DummyFunCall()
-						funCall_obj.name = funcname
-						funCall_obj.arguments = args = json.dumps(params)
-
-						print(f"========= FOUND A {funcname} FUNCTION CALL WITH ARGUMENTS: ===========")
-						print(args)
-
-						await process_function_call(response_oaiMsg, tgUpdate, tgContext, funCall=funCall_obj)
-					#__/ End loop over function calls.
-
-					continue	# Go to next sub-message
-
-		# Create a new Message object.
-		response_botMsg = BotMessage(botConvo.bot_name, response_msg)
-
-		# If this message is already in the conversation, then we'll suppress it, so
-		# as not to exacerbate the AI's tendency to repeat itself.  (So, as a user,
-		# if you see that the AI isn't responding to a message, this may mean that
-		# it has the urge to just repeat something that it already said earlier, but
-		# is holding its tongue.)
-
-		if response_msg.lower() != '/pass' and \
-		   botConvo.is_repeated_message(response_botMsg):
-
-			# Generate an info-level log message to indicate that we're suppressing
-			# the response.
-			_logger.normal(f"Suppressing response [{response_text}]; it's a repeat.")
-
-			# Delete the last message from the conversation.
-			#botConvo.delete_last_message()
-
-			## Send the user a diagnostic message (doing this temporarily during development).
-			#diagMsg = f"Suppressing response [{response_text}]; it's a repeat."
-			#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
-		
-			continue		# This means the bot is simply not responding to the message
-
-		#__/ End check for repeated messages.
-
-		# It isn't a repeat, so we'll add it to the conversation.
-		botConvo.add_message(response_botMsg)
-
-		# Update the message object, and the context.
-		response_botMsg.text = response_msg
-		botConvo.expand_context()	 
-
-		# If we get here, then we have a non-empty message that's also not a repeat.
-		# It's finally OK at this point to archive the message and send it to the user.
-
-		# Make sure the response message has been finalized (this also archives it).
-		botConvo.finalize_message(response_botMsg)
-
-		# If we get here, we have finally obtained a non-empty, non-repeat,
-		# already-archived message that we can go ahead and send to the user. This
-		# function will also check to see if the message is a textual command line,
-		# and will process the command if so.
-
-		await process_response(tgUpdate, tgContext, response_botMsg)	   # Defined below.
-
-	#__/ End for loop over Telegram messages in the response.
-
-	# If we get here, then we have finished processing the AI's text response,
-	# and we can just return.
-
+#	## BELOW CODE HAS BEEN MOVED OUT TO process_text_response().
+#
+#	# Strip off any leading or trailing whitespace (Telegram won't display it
+#	# anyway.).
+#	response_text = response_text.strip()
+#	
+#	# Now we check for the case of an empty response text.
+#
+#	# If the response is empty, then return early. (Because, like, we can't even
+#	# send an empty message anyway.)
+#	if response_text == "":
+#
+#		_logger.warn("AI's text response was null. Ignoring...")
+#
+#		## No longer needed because we don't add an empty message.
+#		# Delete the last message from the conversation.
+#		#conversation.delete_last_message()
+#
+#		## Commenting this out for production.
+#		# # Send the user a diagnostic message indicating that the response was empty.
+#		# # (Doing this temporarily during development.)
+#		#diagMsg = "Response was empty."
+#		#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
+#		
+#		return		# This means the bot is simply not responding to this particular message.
+#	
+#	# Generate a debug-level log message to indicate that we're starting a new response.
+#	_logger.debug('='*80 + "\nCreating new ordinary (non-function-call) response from "
+#				  f"{botConvo.bot_name} with text:\n[{response_text}].")
+#
+#	# At this point, according to our new protocol for allowing the AI to send multiple
+#	# messages, we check for additional instances of "\n{BOT_NAME}>" in the response, and
+#	# if they exist, we split the response on those, and process each one as if it were 
+#	# a separate response.
+#
+#	split_str = f"\n{botConvo.bot_name}> "
+#	if split_str in response_text:
+#		response_msgs = response_text.split(split_str)
+#		#_logger.normal("Detected multiple Telegram messages in response:")
+#		#i=1
+#		#for msg in response_msgs:
+#		#	_logger.normal(f"\tMessage #{i}: [{msg}]")
+#		#	i += 1
+#	else:
+#		response_msgs = [response_text]
+#
+#	for response_msg in response_msgs:
+#		response_msg = response_msg.strip()		# Trim leading/trailing whitespace.
+#		
+#		# This sub-message could be a function call! Check for that.
+#		if isinstance(global_gptCore.client, Anthropic):
+#			if _is_function_call(response_msg):
+#				function_calls = list(_parse_function_call(response_msg))
+#				if len(function_calls) >= 1:
+#					for funcname, params in function_calls:
+#
+#						# This just wraps the data into an object with the interface we're expecting.
+#
+#						funCall_obj = DummyFunCall()
+#						funCall_obj.name = funcname
+#						funCall_obj.arguments = args = json.dumps(params)
+#
+#						print(f"========= FOUND A {funcname} FUNCTION CALL WITH ARGUMENTS: ===========")
+#						print(args)
+#
+#						await process_function_call(response_oaiMsg, tgUpdate, tgContext, funCall=funCall_obj)
+#					#__/ End loop over function calls.
+#
+#					continue	# Go to next sub-message
+#
+#		# Create a new Message object.
+#		response_botMsg = BotMessage(botConvo.bot_name, response_msg)
+#
+#		# If this message is already in the conversation, then we'll suppress it, so
+#		# as not to exacerbate the AI's tendency to repeat itself.  (So, as a user,
+#		# if you see that the AI isn't responding to a message, this may mean that
+#		# it has the urge to just repeat something that it already said earlier, but
+#		# is holding its tongue.)
+#
+#		if response_msg.lower() != '/pass' and \
+#		   botConvo.is_repeated_message(response_botMsg):
+#
+#			# Generate an info-level log message to indicate that we're suppressing
+#			# the response.
+#			_logger.normal(f"Suppressing response [{response_text}]; it's a repeat.")
+#
+#			# Delete the last message from the conversation.
+#			#botConvo.delete_last_message()
+#
+#			## Send the user a diagnostic message (doing this temporarily during development).
+#			#diagMsg = f"Suppressing response [{response_text}]; it's a repeat."
+#			#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
+#		
+#			continue		# This means the bot is simply not responding to the message
+#
+#		#__/ End check for repeated messages.
+#
+#		# It isn't a repeat, so we'll add it to the conversation.
+#		botConvo.add_message(response_botMsg)
+#
+#		# Update the message object, and the context.
+#		response_botMsg.text = response_msg
+#		botConvo.expand_context()	 
+#
+#		# If we get here, then we have a non-empty message that's also not a repeat.
+#		# It's finally OK at this point to archive the message and send it to the user.
+#
+#		# Make sure the response message has been finalized (this also archives it).
+#		botConvo.finalize_message(response_botMsg)
+#
+#		# If we get here, we have finally obtained a non-empty, non-repeat,
+#		# already-archived message that we can go ahead and send to the user. This
+#		# function will also check to see if the message is a textual command line,
+#		# and will process the command if so.
+#
+#		await process_response(tgUpdate, tgContext, response_botMsg)	   # Defined below.
+#
+#	#__/ End for loop over Telegram messages in the response.
+#
+#	# If we get here, then we have finished processing the AI's text response,
+#	# and we can just return.
+#
 #__/ End definition of function process_raw_response().
 
 
@@ -8079,6 +8099,56 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 
 	else: # Response was not a command. Treat it normally.
 
+		# Just in case some embedded <thought> elements made it into
+		# the message text, let's strip them out before sending the message
+		# text to the user.
+
+		# 1. Wrap in temporary root element
+		wrapped_text = f"<message_text>{response_text}</message_text>"
+
+		# 2. Parse into ElementTree
+		try:
+			root = ET.fromstring(wrapped_text)
+    
+			# 3. Remove immediate thought children while preserving surrounding text
+			for thought in root.findall('./thought'):
+
+				# Print diagnostic message
+				thought_text = thought.text
+				_logger.normal(f"Stripping private thought [{thought_text}] from Telegram message.")
+
+				# Save the tail text if any exists
+				tail_text = thought.tail
+
+				# Remove the thought element
+				root.remove(thought)
+        
+				# If there was tail text, add it back as text content
+				if tail_text:
+					tail_text = tail_text.lstrip(" ")
+						# The .lstrip() is to prevent spaces after the thought from appearing in output.
+						# (Tabs or newlines after the thought will appear, however.)
+					if root.text:
+						root.text = root.text.rstrip()
+							# Prevents whitespace before the thought from appearing in output.
+						root.text += " " + tail_text
+							# This ensures there is at least *one* space between before & after text.
+					else:
+						root.text = tail_text
+        
+			# 4. Convert back to text, stripping the wrapper element
+			response_text = ET.tostring(root, encoding='unicode', method='xml')
+			response_text = response_text.replace('<message_text>', '').replace('</message_text>', '')
+			
+			# 5. Unescape any remaining HTML entities.
+			response_text = html.unescape(response_text)
+
+		except ET.ParseError as e:
+			# If parsing fails, leave response_text unchanged
+			_logger.warn("Failed to XML-parse message text: {e}")
+			conversation.add_message(BotMessage(SYS_NAME, 
+				f"[WARNING: {BOT_NAME}, your previous message failed XML parsing, please be careful.]"))
+	
 		# Just send our response to the user as a normal message.
 		await send_response(update, context, response_text)
 
@@ -8297,7 +8367,7 @@ async def process_text_response(
 		
 		properly_formatted, elements = _parse_response(text_response)
 
-		_logger.normal(f"Was text response properly formatted? --> {properly_formatted}")
+		_logger.normal(f"\tWas text response properly formatted? --> {properly_formatted}")
 		_logger.normal(f"\tThere were {len(elements)} elements in the response.")
 
 		# Go through all the elements in the response, processing them individually.
@@ -8335,19 +8405,23 @@ async def process_text_response(
 				# Check to see if the thought contained embedded image callouts to process.
 				await check_for_image_callouts(tgUpdate, tgContext, thought_botMsg)
 
-			else:	# Element tag should be 'message'::
+			else:	# Element tag should be 'message':
 
+				tag		= element.tag	# Should be 'message'
 				# Sender should always be BOT_NAME, but we don't bother to check...
-
-				tag		= element.tag
 				sender	= element.get('sender')
-				text	= element.text
 
+				open_tag = f'<{tag} sender="{sender}">'
+
+				msg_xml = ET.tostring(element, encoding='unicode', method='xml')
+				msg_body = msg_xml.replace(open_tag, '').replace(f'</{tag}>', '')
+
+				text	 = msg_body
 				text_str = text or "None"
 
 				_logger.normal(f"\nElement tag: {tag}, "
 							   f"sender: {sender}, "
-							   f"text: [{text_str[:30].strip()}...]")
+							   f"text: [{text_str[:50].strip()}...]")
 
 				response_msg = text
 
