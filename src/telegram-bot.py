@@ -319,8 +319,8 @@
 
 CONS_INFO = False	# True shows info-level messages on the console.
 
-#LOG_DEBUG = True	# True shows debug-level messages in the log file.
-LOG_DEBUG = False	# True shows debug-level messages in the log file.
+LOG_DEBUG = True	# True shows debug-level messages in the log file.
+#LOG_DEBUG = False	# True shows debug-level messages in the log file.
 
 
 #/=============================================================================|
@@ -1553,24 +1553,26 @@ class BotConversation:
 
 		context_str += SUBMESSAGE_DELIMITER + THOUGHT_DOC_HEADER + (
 			"This interface supports a simple inner monologue capability. "
-			"In a sequence of messages, any message that begins with the "
-			"string \"*thinks:\" or \"*thinking:\" will be suppressed from "
+			"In a sequence of messages, any text of the form "
+			"\"[[Private: ...]]\" will be suppressed from "
+			#"In a sequence of messages, any message that begins with the "
+			#"string \"*thinks:\" or \"*thinking:\" will be suppressed from "
 			"being sent to the chat, while remaining visible for your reference "
 			"in the chat transcript. You may use this facility to plan or "
 			"reflect upon your visible responses or the user interaction more "
 			"broadly. Please remember that remote human chat participants on "
-			"will not be able to see your private thoughts, but they will be "
+			"Telegram will not be able to see your private thoughts, but they may be "
 			"displayed to the system operator on the bot server console for "
 			"diagnostic purposes during development.\n"
 			""
 			"Example response payload including private thoughts:\n"
 			"\n"
 			"\t```text\n"
-			f"\t\x1e {BOT_NAME}> *thinks: In this message, I'm privately "
-				"planning my response. This won't be sent to the chat.*\n"
+			f"\t\x1e {BOT_NAME}> [[Private: In this message, I'm privately "
+				"planning my response. This won't be sent to the chat.]]\n"
 			f"\t\x1f {BOT_NAME}> Hello, user! I am now responding to you.\n"
-			f"\t\x1f {BOT_NAME}> *thinking: Let me reflect on that last "
-				"interaction...\n"
+			f"\t\x1f {BOT_NAME}> [[Private: Let me reflect on that last "
+				"interaction...]]\n"
 			f"\t\x1e	# <-- Terminates {BOT_NAME}'s response.\n"
 			"\t```\n"
 			"\n"
@@ -1615,7 +1617,8 @@ class BotConversation:
 			"\n"
 			"IMPORTANT NOTE: You MUST include a function invocation string such "
 			"as the above in a message event to cause the function to be invoked; "
-			"however, if you put '*thinks*' at the start of a message, then it won't "
+			"however, if you wrap the function call in \"[[Private: ]]\", then it won't "
+			#"however, if you put '*thinks*' at the start of a message, then it won't "
 			"be sent to the chat; see the Inner Monologue instructions. Doing this is a "
 			"best practice, since most outside users won't want to see the function "
 			"call code.\n"
@@ -4257,8 +4260,8 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		await conversation.add_message(BotMessage(user_name, text))
 		if got_image:
 			await conversation.add_message(BotMessage(SYS_NAME,
-				#f"[NOTE: {BOT_NAME}, please use analyze_image() to inspect the photo attachment]"))
-				f"[NOTE: {BOT_NAME}, please inform the user that image input isn't yet implemented.]"))
+				f"[NOTE: {BOT_NAME}, please use analyze_image() to inspect the photo attachment]"))
+				#f"[NOTE: {BOT_NAME}, please inform the user that image input isn't yet implemented.]"))
 
 	# Get the current user object, stash it in convo temporarily.
 	# (This may be needed later if we decide to block the current user.)
@@ -6982,6 +6985,7 @@ async def process_response(update:Update, context:Context,
 	if len(message_texts) > 1:
 		_logger.normal(f"NOTE: Got a response with {len(message_texts)} submessages.")
 
+	i=1
 	for msg_text in message_texts:
 
 		# Nix leading/trailing whitespace in individual message.
@@ -7002,14 +7006,35 @@ async def process_response(update:Update, context:Context,
 			return
 
 		# Response was not a command. Treat it normally.
+		#_logger.normal(f"Message #{i}: [{msg_text}]")
+		i += 1
 
-		# Check for internal monologue marker.
-		if msg_text.startswith("*thinks") or msg_text.startswith("*thinking"):
-			_logger.normal(f"Suppressing thought [{msg_text}] from being sent to chat {chat_id}")
+		# Strip out any private thoughts (in format "[[Private: ...]]")
+		# before sending the message to the Telegram chat.
 
-		else:
-			# Just send our response to the user as a normal message.
-			await send_response(update, context, msg_text)
+		private_pattern = re.compile(r'\[\[Private: ((?:[^]]|\][^]])*)\]\]')
+
+		# Find all private thought patterns in msg_text
+		private_thoughts = private_pattern.findall(msg_text)
+
+		# Print out all the private thought patterns to the console
+		# for diagnostic purposes.
+		for thought in private_thoughts:
+			_logger.normal(f"Suppressing thought [{thought}] from being sent to chat {chat_id}")
+
+		# Strip them out of msg_text.
+		public_msg_text = private_pattern.sub('', msg_text)
+
+		# Send the response with private thoughts removed.
+		if public_msg_text:
+			await send_response(update, context, public_msg_text)
+
+		## Check for internal monologue marker.
+		#if msg_text.startswith("*thinks") or msg_text.startswith("*thinking"):
+		#	_logger.normal(f"Suppressing thought [{msg_text}] from being sent to chat {chat_id}")
+		#else:
+		#	# Just send our response to the user as a normal message.
+		#	await send_response(update, context, msg_text)
 
 		# We also need to check for embedded function calls... (concise syntax)
 		await check_for_funcalls(update, context, msg_text)
