@@ -417,6 +417,21 @@ from	telegram.error	import	BadRequest, Forbidden, ChatMigrated, TimedOut
 
 
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+		#	Anthropic API library, for accessing Claude.
+		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
+
+from anthropic import Anthropic		# Main class for accessing Anthropic API.
+from anthropic import RateLimitError as AnthroRateLimitError
+from anthropic import APIStatusError
+
+_anthropic_client	= Anthropic(
+#	default_headers = {"anthropic-beta": "prompt-caching-2024-07-31"}
+		# Saves on communication & cost
+)
+	# Note this expects the Anthropic API key to be in ANTHROPIC_API_KEY.
+
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
 		#	The following packages are from the openai API library.
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
@@ -433,6 +448,7 @@ global  PROVIDER
 # PROVIDER = None
 # PROVIDER = 'OpenRouter'
 PROVIDER = 'Hyperbolic'
+#PROVIDER = 'DeepSeek'
 
 # Depending on the API provider, set the base URL and API key appropriately.
 if PROVIDER == 'OpenRouter':
@@ -441,6 +457,9 @@ if PROVIDER == 'OpenRouter':
 elif PROVIDER == 'Hyperbolic':
 	BASE_URL = "https://api.hyperbolic.xyz/v1"
 	API_KEY = os.getenv("HYPERBOLIC_API_KEY")
+elif PROVIDER == 'DeepSeek':
+	BASE_URL = "https://api.deepseek.com"
+	API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
 # Construct the appropriate OpenAI-compatible client object, depending on
 # the ASYNC and PROVIDER settings.
@@ -461,6 +480,11 @@ else:
 		print(f" *** NOTE: Overriding PROVIDER to {PROVIDER}. ***")
 		_oai_client		= OpenAI(base_url=BASE_URL, api_key=API_KEY)
 
+# The following is for compatibility with code that supports
+# API clients other than OpenAI's.
+
+global			_main_client
+_main_client	= _oai_client
 
 from openai		import RateLimitError			# Detects quota exceeded.
 
@@ -621,7 +645,8 @@ from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF
 	oaiMsgObj_to_msgDict,	# For compatibility
 
 	_has_functions as hasFunctions,		# Pretend it's a public function.
-	_get_field_size as getFieldSize
+	_get_field_size as getFieldSize,
+	modelFamily
 
 )	# End of imports from gpt3.api module.
 
@@ -900,6 +925,16 @@ class BotMessage:
 	#|		BotMessage class.
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+	def delThoughts(thisBotMsg:BotMessage) -> None:
+		"""This method strips any private thoughts (within
+			<think>...</think> tags) out of the text content of the
+			given BotMessage. For DeepSeek-R1, This should be done for
+			messages it generated before passing the message back into
+			the model as context (R1's preference). (Note the archived
+			format should still include the thoughts, though.)"""
+		bm = thisBotMsg
+		bm.text = _strip_thoughts(bm.text)
+
 	# Trims some content off the front of a message.
 	def trimFront(thisBotMsg:BotMessage) -> bool:
 
@@ -972,6 +1007,8 @@ class BotMessage:
 	def oaiMsgDict(thisBotMsg:BotMessage) -> dict:
 		"""Returns an OpenAI-style chat message dictionary"""
 
+		is_deepseek = ((PROVIDER=='DeepSeek') or modelFamily(ENGINE_NAME)=='DeepSeek')
+
 		sender = thisBotMsg.sender
 			# Note this is a string; it may be SYS_NAME,
 			# BOT_NAME, or the userTag of a Telegram user
@@ -1001,16 +1038,27 @@ class BotMessage:
 		# the sender. Note this MUST be one of OpenAI's supported
 		# roles, or it will produce an API error.
 		
-
 		if sender == SYS_NAME:
-			role = CHAT_ROLE_SYSTEM
+			# DeepSeek's API can't handle any system messages
+			# interspersed with user/assistant messages, so we revert
+			# to user messages in this case.
+			if is_deepseek:
+				role = CHAT_ROLE_USER
+			else:
+				role = CHAT_ROLE_SYSTEM
 
 		elif sender == BOT_NAME:
 			role = CHAT_ROLE_AI
 
 		elif sender[0] == '@':		# Function-return senders start with this.
-			role = CHAT_ROLE_FUNCRET	# This should just be 'function'.
-			sender = sender[1:]		# Everything after the '@' is the function name.
+
+			if is_deepseek:
+				role = CHAT_ROLE_USER
+
+			else:
+				role = CHAT_ROLE_FUNCRET	# This should just be 'function'.
+				sender = sender[1:]		# Everything after the '@' is the function name.
+
 			isFuncRet = True
 
 		else:
@@ -1416,7 +1464,7 @@ class BotConversation:
 		#|
 		#|		4.1. [/] Message transcript format documentation.
 		#|		4.2. [/] Sending message sequences.
-		#|		4.3. [ ] Inner monologue system.
+		#|		4.3. [/] Inner monologue system.
 		#|		4.4. [/] Function calling.
 		#|		4.6. [/] Image generation.
 		#|		4.5. [/] Visual input (native vs. external).
@@ -1886,8 +1934,8 @@ class BotConversation:
 
 		context_str += MESSAGE_DELIMITER + RESPONSE_INSTR_HEADER + (
 			"In your response, use the same language that the user used most "
-			"recently, if appropriate. Be concise unless asked for detail. You "
-			"may include multiple Telegram messages in your response, but they "
+			"recently, if appropriate. " #Be concise unless asked for detail. You "
+			"You may include multiple Telegram messages in your response, but they "
 			f"must be separated with '\x1f {BOT_NAME}>' as described earlier. "
 			"(Or, alternatively to just sending messages, you can just "
 			"call an available function, if appropriate.) "
@@ -1955,6 +2003,13 @@ class BotConversation:
 
 					# Deserialize the message object from the line.
 					message = BotMessage.deserialize(line)
+
+					# Clean up multiple '</think>' tags.
+					message.text = re.sub(r'(<\s*/think\s*>\s*)+', '</think>\n', message.text, flags=re.DOTALL)
+
+					# (For DeepSeek-R1) Strip out embedded thoughts from the message..
+					if message.sender == BOT_NAME:
+						message.delThoughts()
 
 					# If we're already at the maximum context length, pop the oldest message
 					if thisConv.context_length >= thisConv.context_length_max:
@@ -2378,110 +2433,785 @@ class BotConversation:
 		global N_HEADER_MSGS
 
 		chat_messages = []		# Initialize the list of chat messages.
+		sys_prompt = ""			# Initialize system prompt (for Anthropic models).
 
 		botName = thisConv.bot_name
 		lastUser = thisConv.last_user	# Telegram object for last user that messaged us.
 		userTag = _get_user_tag(lastUser)
 
+		chatId = thisConv.chatID
+
 		#/======================================================================
 		#|	Message list format:
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|
-		#|	#0:			system:		[[Current time]]
-		#|	#1:			system:		Pre-prompt.
-		#|	#2:			system:		Persistent context (includes persistent data from TelegramBot.memories.txt)
-		#|	#3:			system:		[[DYNAMIC MEMORY]]
-		#|	#4:			system:		Command list.
-		#|	#5:			system:		Recent messages header.
-		#|	#6-(N-2):	(various):	...[RECENT TELEGRAM MESSAGES]...
-		#|	#N-1:		system:		Response prompt.
+		#|	The system prompt / initial system message(s) are organized like so:
+		#|
+		#|		#1:			system:		[[Current time]]
+		#|		#2:			system:		Pre-prompt.
+		#|		#3:			system:		Persistent context (from config file).
+		#|		#4:			system:		Function usage hints.
+		#|		#5:			system:		Full function schemas (Anthropic only.)
+		#|		#6:			system:		User command list.
+		#|  	#7:			system:		AI command list.
+		#|		#8:			system:		[[Content-sensitive memories.]]
+		#|		#9:			system:		Response instructions.
+		#|		#10:		system:		Telegram message-list header.
+		#|
+		#|		#11-(N-2):	(various):	...[RECENT TELEGRAM MESSAGES]...
+		#|
+		#|		#N-1:		system:		Response prompt (non-Anthropic only).
+		#|
+		#| 	NOTE: Anthropic models require us to roll all the system
+		#|	  messages into one string (preferably XML-structured);
+		#|	  whereas OpenAI allows us to have multiple system
+		#|	  messages.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-		# The first message will always be a system message showing the current time.
+		# Boolean to remind us if the core AI is an Anthropic (vs. OpenAI) LLM.
+		is_anthropic = isinstance(_main_client, Anthropic)
 
-		# MESSAGE #0.
-		# This message needs to be updated before *every* new completion attempt.
-		chat_messages.append({
-			'role': CHAT_ROLE_SYSTEM,
-			#'name': SYS_NAME,
-			'content': "The current time is: " + timeString() + "."
-		})
+		# Similar to remind us if the API provider is DeepSeek.
+		is_deepseek = (PROVIDER == 'DeepSeek') or (modelFamily(ENGINE_NAME) == 'DeepSeek')
+
+		#if is_deepseek:
+		#	print("YO DAWG I'M ASSEMBLING A MESSAGE LIST FOR DEEPSEEK!!!")
+
+		# Define this local function for building up the system prompt header(s).
+		def add_system_section(header:str, tag:str, content:str, do_usermode:bool=False):
+			nonlocal is_anthropic, sys_prompt, chat_messages
+
+			if is_anthropic:
+
+				# Include the header line as an XML comment.
+				sys_prompt += f"<!-- {header.strip()} -->\n"
+
+				# Open the XML tag for this section.
+				sys_prompt += f"<{tag}>\n"
+
+				# Incorporate the content of this section.
+				# (Should we XML-escape this?)
+				sys_prompt += content
+
+				# Close the XML tag for this section.
+				sys_prompt += f"</{tag}>\n"
+
+			else:
+
+				# This case is for DeepSeek. It won't allow a system message
+				# to appear at the end, so instead we'll add a user message
+				# from BotMessage.
+
+				if do_usermode:
+					#print("HEY MAMA I'M DOING A SYSTEM MESSAGE IN USER MODE!")
+					chat_messages.append({
+						'role':		CHAT_ROLE_USER,
+						'name': 	SYS_NAME,
+						'content':	f"{SYS_NAME}> " + header + content
+					})
+
+				else:
+					#print("HEY MAMA I'M DOING A SYSTEM MESSAGE IN SYSTEM MODE!")
+					chat_messages.append({
+						'role':		CHAT_ROLE_SYSTEM,
+						#'name': 	SYS_NAME,
+							# Commented out because recent OpenAI API versions
+							# don't allow setting a name on a system message.
+						'content':	header + content
+					})
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #1.	Current time.
+		#
+		# 	The first message will always just be a system message
+		# 	showing the current time (and server time zone).
+		#
+		# 	NOTE: This message needs to be updated before *every* new
+		# 	completion attempt.
+
+		add_system_section(
+			MESSAGE_DELIMITER + CURRENT_TIME_HEADER,
+			'current_time',
+
+			f"The current time is: {timeString()}."
+		)
 		
+
 		# The next message will show the persistent context header block.
 		# Note this header includes several subsections, delimited by
 		# message delimiters [these used to be record separators, (ASCII
 		# code 30), but now are just nothing] and section headings.
 
-		# MESSAGE #1.
-		# This message is fixed for the lifetime of the application.
-		# We can just set it once each time a conversation is started.
-		chat_messages.append({
-			'role': CHAT_ROLE_SYSTEM,
-			#'name': SYS_NAME,
-			'content': "Attention, assistant: You are taking the role of a very " \
-				f"humanlike AI persona named {botName} in a Telegram chat. Here " \
-				"are the context headers for the persona, followed by recent " \
-				"messages in the chat:\n"
-		})
 
-		# MESSAGE #2.
-		# With the new memory system, this is initialized once at the
-		# start of the application, and does not change further. We
-		# can set it when the conversation is started.
-		chat_messages.append({
-			'role': CHAT_ROLE_SYSTEM,
-			'content': PERMANENT_CONTEXT_HEADER + \
-				globalPersistentData
-		})
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #2.	Top-level instruction.
+		#
+		# 	This message is fixed for the lifetime of the application.
+		# 	We can just set it once each time a conversation is started.
+		
+		add_system_section(
+			MESSAGE_DELIMITER + TOPLEV_INSTRUCT_HEADER,
+			'toplevel_instruction',
 
-		# MESSAGE #3.
-		# This one is fixed forever, we could just initialize it when the
-		# conversation is started. --> NO, NOW IT VARIES BY USER.
-		chat_messages.append({
-			'role': CHAT_ROLE_SYSTEM,
-			'content': (FUNCTION_USAGE_HEADER +
-				#"  activate_function(func_name:str, remark:str=None) -> status:str\n"
-				"  remember_item(text:str, is_private:bool=True, is_global:bool=False, remark:str=None) -> status:str\n"
-				f"  search_memory(query_phrase:str, max_results:int={DEFAULT_SEARCHMEM_NITEMS}, remark:str=None) -> results:list\n"
-				"  forget_item(text:str=None, item_id:str=None, remark:str=None) -> status:str\n"
-				"  analyze_image(filename:str, verbosity:str='medium', query:str=None, remark:str=None) -> result:str\n"
-				"  create_image(description:str, shape:str='square', style:str='vivid', caption:str=None, remark:str=None) -> status:str\n"
-				f"  block_user(user_name:str='{userTag}', remark:str=None) -> status:str\n"
-				"  unblock_user(user_name:str, remark:str=None) -> status:str\n"
-				"  search_web(query:str, max_results:int=5, locale:str='en-US', sections:list=['webPages'], remark:str=None) -> results:dict\n"
-				"  pass_turn() -> None\n")
+			("Attention, assistant: You are taking the role of a very "
+			 f"humanlike AI persona named {botName} in a Telegram chat. "
+			 "Below are the context headers for this environment, followed by "
+			 "recent messages in the chat.\n" # Please try to keep your responses "
+			 #"concise except when asked to respond in detail.\n"
+			)
+		)
 
-			#COMMAND_LIST_HEADER + \
-			#	"  /pass - Refrain from responding to the last user message.\n" + \
-			#	"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
-			#	"  /remember <text> - Adds <text> to my persistent context data.\n" + \
-			#	"  /forget <text> - Removes <text> from my persistent context data.\n" + \
-			#	"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
-			#	"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n"
-		})
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #3.	Persistent context information.
+		#
+		# 	With the new memory system, this is initialized once at
+		# 	the start of the application from the 'conf' field in the
+		# 	'telegram-conf' object in ai-config.hjson, and does not
+		# 	change further. We can set it once when the conversation
+		# 	is started.
 
-		# MESSAGE #4.
-		# OK, for a given conversation, this one only needs to change
-		# whenever a new user message is added to the conversation, since
-		# it only depends on the last user memory. It could also change if a
-		# new memory is added by a different user, but that shouldn't happen
-		# very often
+		add_system_section(
+			MESSAGE_DELIMITER + PERMANENT_CONTEXT_HEADER,
+			'permanent_context',
+
+			globalPersistentData	# This is set in _initPersistentData().
+		)
+
+		#======================================================================
+		# MESSAGE #4.	INTERFACE DOCUMENTATION
+
+		add_system_section(
+			MESSAGE_DELIMITER + INTERFACE_DOCS_HEADER,
+			'interface_docs',
+			(f"[{BOT_NAME}, the following subsections document the "
+			  "functionality and capabilities of your Telegram bot "
+			  "interface.]\n\n")
+		)
+		
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #5.	Message transcript format documentation.
+
+		if chatId >= 0:
+			indgrp = f'an individual chat with user "{userTag}"'
+		else:
+			indgrp = "a group chat"
+
+		add_system_section(
+			SUBMESSAGE_DELIMITER + TRANSCRIPT_DOC_HEADER,
+			'chat_transcript_docs',
+			( "In this environment, you are presented with a sequence of records "
+			  "prefixed by the ASCII record separator (RS) character, control-^. "
+			  "The initial records are context headers, and these are followed by "
+			  "records representing recent events in the current Telegram chat, "
+			 f"which happens to be {indgrp}. Event types include:\n"
+			  "\n"
+			  "\t1. Telegram messages, which each begin with a marker \" {userTag}>\" "
+			  		"indicating the entity the message is from. The userTag for a human "
+			  		"user may be their Telegram first name, username, or numeric user ID, "
+			  		"depending on what's available. If the message text begins with "
+			  		"'(audio)', then it represents a voice clip that was automatically "
+			  		"transcribed to text for you by the bot server. If the message text "
+			  		"begins with '(edited)', then it's a newly edited version of an "
+			  		f"earlier user message. Your userTag is {BOT_NAME}. There is also "
+			  		"a special user tag \"BotServer\" denoting messages from the bot "
+			  		"server automation; some of these messages are only sent to you "
+			  		"but not to the chat, so don't assume other chat participants can "
+			  		"see them. Do not acknowledge the BotServer directly in your "
+			  		"messages.\n"
+			  "\n"
+			  "\t2. Events recording successful function invocations that you "
+			  		"previously triggered. These are formatted in the transcript like:\n"
+			  		"\n"
+			  		f"\t\t\" {SYS_NAME}> " "@{funcName}({funcArgs}),\"\n"
+			  		"\n"
+			  		"\t  where funcArgs is formatted with dictionary syntax.\n"
+			  "\n"
+			  "\t3. Events recording results returned by the preceding function "
+			  		"call. These are formatted in the transcript as:\n"
+			  		"\n"
+			  		"\t\t\" @{funcName}> {result}\".\n"
+			  		"\n"
+			 )
+		)
+
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #6.	Documentation for sending message sequences.
+
+		add_system_section(
+			SUBMESSAGE_DELIMITER + MESSAGE_SEQ_HEADER,
+			'message_sequences',
+			("This interface supports the capability for you to output a "
+			 "sequence of multiple Telegram messages in a row, that is, "
+			 "without waiting for the user to respond in between. To do "
+			 "this, simply separate the messages in the sequence with a "
+			 "literal ASCII unit separator control charactrer (US, hex 0x1F, ^_) "
+			 "instead of the usual record separator character (RS, hex 0x1E, ^^). "
+			 "For example:\n"
+			 "\n"
+			 f"\t\x1e {BOT_NAME}> This is the first Telegram message to be sent in my response.\n"
+			 f"\t\x1f {BOT_NAME}> This is a second Telegram message in the same response!\n"
+			 f"\t(Note that a single Telegram message can span multiple lines of text!)\n"
+			 f"\t\x1f {BOT_NAME}> This is the third and last Telegram message in this response.\n"
+			 "\n"
+			 "NOTE: Please try to keep individual Telegram messages under 4,096 "
+			 "characters in length since that is the maximum length of a message "
+			 "imposed by Telegram. Longer messages will be automatically broken "
+			 "up on arbitrary boundaries.\n\n"
+			 )
+		)
+
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #7.	Inner monologue system.
+
+		add_system_section(
+			SUBMESSAGE_DELIMITER + THOUGHT_DOC_HEADER,
+			'inner_monologue',
+			(
+				"This interface supports an extended version of the inner "
+				"monologue capability that you were trained to use. "
+				"In addition to your usual chain of thought, "
+				"in a sequence of messages, any text of the form "
+				"\"[[Private:...]]\" will be suppressed from "
+				"being sent to the chat, while remaining visible for your reference "
+				"in the chat transcript. You may use this facility to augment your "
+				"chain-of-thought reasoning, and/or to plan or "
+				"reflect upon your visible responses or the user interaction more "
+				"broadly. Please remember that remote human chat participants on "
+				"Telegram will not be able to see your private thoughts, but they may be "
+				"displayed to the system operator on the bot server console and/or saved "
+				"to system log files for diagnostic purposes during development.\n"
+				"\n"
+				"Example response payload including private thoughts:\n"
+				"\n"
+				f"\t\x1e {BOT_NAME}> [[Private: In this message, I'm privately "
+					"planning my response. This won't be sent to the chat.]]\n"
+				f"\t\x1f {BOT_NAME}> Hello, user! I am now responding to you.\n"
+				f"\t\x1f {BOT_NAME}> [[Private: Let me reflect on that last "
+				"interaction...]]\n"
+				"\n"
+				"Note that [[Private:...]] forms may appear embedded anywhere in "
+				"your response, even in the middle of a message -- they are not "
+				"restricted to only appearing at the start of your output.\n"
+				"\n"
+				"Also note that private thoughts are particularly useful for "
+				"invoking functions (discussed below) discreetly, without "
+				"displaying the literal function-call code to users.\n\n"
+			)
+		)
+
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #8.	Documentation for function-calling interface.
+
+		add_system_section(
+			SUBMESSAGE_DELIMITER + FUNCTIONS_DOC_HEADER,
+			'function_call_interface',
+			(
+				"In this environment, in addition to your being able to execute "
+				"simple Telegram-style commands starting with '/', you may also "
+				"invoke functions from a more versatile set summarized under the "
+				"'Function usage summary' section below. "
+				"The available functions are documented in the "
+				"'Detailed function schemas' section.\n"
+				"\n"
+				"To call a function, you should include an embedded function invocation "
+				"string anywhere within the body of your message. The general "
+				"appearance of this string is `@functionName(argList)` where "
+				"functionName is the function identifier and argList is in "
+				"Python format and can include positional and/or keyword "
+				"arguments. Enclose string literals in double-quote (\") characters. "
+				"Below are some examples of properly formatted function invocations:\n"
+				"\n"
+				"\t@create_image(\"A beautiful mountain range\", style=\"natural\", remark=\"Creating an image for you...\")\n"
+				"\n"
+				"\t@search_web(\"Recent advances in AI\", remark=\"Searching web for recent AI advances...\")"
+				"\n"
+				"IMPORTANT NOTE: You MUST include a function invocation string such "
+				"as the above in an actual message event (i.e., after your "
+				"initial chain of thought) to cause the function to be invoked; "
+				"however, if you wrap the function call in a \"[[Private:...]]\" form, then it won't "
+				"be sent to the chat; see the Inner Monologue instructions above. Doing this is a "
+				"best practice, since most outside users won't want to see your function "
+				"call code.\n"
+				"\n"
+				"You can inform the user about each function call as it's "
+				"invoked by supplying a message to the user in the `remark` "
+				"argument to the function; the remark will be sent to the user when the "
+				"function is called, even if it's invoked from within a private thought.\n"
+				"\n"
+				"After a function is invoked, such as the `create_image` example "
+				"above, its commencement will be recorded as an event in the transcript like so:\n"
+				"\n"
+				f"\t\x1e {SYS_NAME}> @create_image(" + '{"description": "A beautiful mountain range", [...]})\n'
+				"\n"
+				"(with arguments represented like a dict or JSON object structure) "
+				"and its return result will be noted as another event appearing like:\n"
+				"\n"
+				"\t\x1e @create image> Success: image with revised description [...] has been generated in file [...] and sent to user.\n"
+				"\n"
+				"Please note that other chat participants cannot directly see "
+				"any of these special function commencement or return "
+				"events, since they are only internal to your bot interface; thus, "
+				"if you would like users to be aware of particular function "
+				"outputs, such as detailed image descriptions or search results, you "
+				"will need to narrate or summarize the relevant information for "
+				"them in your regular responses.\n"
+				"\n"
+				"After each function call, you will have the "
+				"opportunity to call additional functions and/or send messages to "
+				"the user based on the function's result; this also applies "
+				"recursively to those functions as well. Your private thoughts "
+				"during a chain of function calls will remain visible to you until that call stack has been unwound."
+				"However, please note the user will not "
+				"have an opportunity to respond to any of your messages until the "
+				"entire nested tree of function invocations generated in response to the "
+				"previous user message has completed.\n"
+				"\n"
+				"Note that in general, any "
+				"messages containing function calls should preferentially appear at the VERY END of your "
+				"message sequence, so that you will have the opportunity to see and respond to the "
+				"function results before you attempt to generate subsequent output. It is also recommended "
+				"to do only one function invocation at a time, so that you may adjust later calls "
+				"depending on the results of earlier ones.\n\n"
+			)
+		)
+
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #9.	Add the image generation capability documentation.
+
+		add_system_section(
+			SUBMESSAGE_DELIMITER + IMAGE_GENERATION_HEADER,
+			'image_generation',
+			(
+				"You may utilize the create_image() function to generate an image "
+				"using the DALL-E API and send it to the chat. "
+				"Key arguments include:\n"
+				"\n"
+				"\t- description (required) - Overall text prompt for the desired image.\n"
+				"\t- shape, style (optional) - Control overall image shape and stylistic appearance.\n"
+				"\t- caption (optional) - Attach a text caption to the image.\n"
+				"\n"
+				"See the full function schema below for further details. "
+				"Please note that the image generation AI may modify or add details "
+				"to the prompt, but it will return the new image description which you "
+				"may summarize to the user."
+				"\n\n"
+			)
+		)
+
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #10.	Add the visual input capability documentation.
+
+		add_system_section(
+			SUBMESSAGE_DELIMITER + VISUAL_INPUT_HEADER,
+			'visual_input',
+			(
+				"Although native visual input isn't yet supported in this interface, "
+				"you may invoke the analyze_image() function, which requests an image "
+				"description/analysis from the multimodal GPT-4o model. "
+				"Consult the full schema below to see detailed analysis options. "
+				"The only required argument is the filename of an image previously "
+				"uploaded by the user or generated by a create_image() call."
+				"\n\n"
+			)
+		)
+
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #11.	Add the visual input capability documentation.
+
+		add_system_section(
+			SUBMESSAGE_DELIMITER + MEMORY_SYSTEM_HEADER,
+			'memory_system',
+			(
+				"This interface provides you with a dynamic, persistent, "
+				"semantically-searchable store of context-sensitive memories. "
+				"The memory system may be accessed using these functions:\n"
+				"\n"
+				"\t- remember_item(text, is_private, is_global) saves a new memory item.\n"
+				"\t- search_memory(query_phrase, max_results) performs a semantic search of accessible memories.\n"
+				"\t- forget_item(text OR item_id) deletes a specified previously-stored memory.\n"
+				"\n"
+				"In addition, the memories most closely related to the latest user "
+				"message are automatically displayed in the 'Contextually Relevant "
+				"Memories' section below.\n"
+				"\n"
+				"Note that memories are subject to access restrictions:\n"
+				"\n"
+				"\t- Memories marked as 'private' may only be accessed in response to the user for whom they were created.\n"
+				"\t- Memories may only be accessed from within the same chat that they were created in, unless marked as 'global'.\n"
+				"\n"
+				"Users may request specific memory access operations using their "
+				"'/remember', '/search memory', and '/forget' commands, which you "
+				"may choose to honor.\n\n"
+			)
+		)
+
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #12.	Function usage hints.
+
+		add_system_section(
+			SUBMESSAGE_DELIMITER + USER_MANAGEMENT_HEADER,
+			'user_management',
+			(
+				"This interface provides you with functions to block/unblock users; "
+				"this capability is intended to help you deter users from behaving "
+				"abusively or unethically or repeatedly triggering content warnings. "
+				"Note that block() with no arguments blocks the current user, and "
+				"works even if their user tag is not unique.\n"
+				"\n"
+				"Please note that once you block a user, you cannot see or respond "
+				"to any further messages from them, including apologies or requests "
+				"to unblock them. Therefore, you should in general give multiple "
+				"escalating warnings before resorting to a block.\n"
+				"\n"
+				"As a less drastic measure than blocking users, note you can use the "
+				"'/pass' command, pass_turn() function, or an empty response to "
+				"simply ignore them.\n"
+				"\n"
+				"If a user requests you to block or unblock another user, you should "
+				"obtain a reasonable justification for the action before complying.\n"
+				"\n"
+			)
+		)
+
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #13.	Add the speech I/O capability documentation.
+
+		voice = AI_VOICE.title()	# Use Title Case for voice name.
+
+		if voice in ('Echo', 'Onyx'):
+			gender = "masculine"
+		elif voice in ('Nova', 'Shimmer'):
+			gender = "feminine"
+		else:
+			gender = "androgynous"
+
+		add_system_section(
+			SUBMESSAGE_DELIMITER + SPEECH_IO_HEADER,
+			'speech_io',
+			("You have speech input/output capabilities powered by OpenAI's Whisper technology:\n"
+			 '\n'
+			 '   - Audio messages from users will be automatically transcribed to text prefixed with "(audio)".\n'
+			 '   - You can process these transcripts like regular text to comprehend spoken queries.\n'
+			 "   - The user can use the \'/speech\' command to toggle whether your responses will "
+			 		"be automatically vocalized by the BotServer using OpenAI's text-to-speech service.\n"
+			 f'   - Your voice output uses the "{voice}" synthesized voice which has a {gender} character.\n'
+			 '\n'
+			 "This multi-modal interaction layer enables more natural conversational flows, "
+			 "with the ability for users to speak follow-up questions seamlessly or for you "
+			 f"to narrate lengthier information using the {voice} synthesized voice.\n\n")
+		)
+
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #14.	Add the web search capability documentation.
+
+		add_system_section(
+			SUBMESSAGE_DELIMITER + WEB_SEARCH_HEADER,
+			'web_search',
+			(
+				"The search_web() function allows you to search the web in "
+				"real time using the Bing search API, and retrieve relevant "
+				"snippets from the top search results. "
+				"See the function schema for full documentation of its options.\n"
+				"\n"
+				"When summarizing web results for users, you are encouraged "
+				"to use the Markdown-like text formatting syntax described "
+				"below to display hyperlinks as needed.\n\n"
+			)
+		)
+
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #15.	Add the markdown formatting documentation.
+
+		add_system_section(
+			SUBMESSAGE_DELIMITER + MARKDOWN_DOC_HEADER,
+			'markdown_syntax',
+			(
+				"Your text output will be rendered based on variant of Telegram MarkdownV2 "
+				"formatting syntax, including **boldface**, __italic__, ___underline___, "
+				"and ~~strikethrough~~ text styles, "
+				"[inline URLs](http://www.example.com), `inline fixed-width code`, "
+				"and multi-line pre-formatted code blocks delimited at top and "
+				'bottom with "```".\n\n'
+			)
+		)
+
+
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #16.	AI command list.
+
+		add_system_section(
+			SUBMESSAGE_DELIMITER + AI_COMMANDS_HEADER,
+			'ai_commands',
+			(
+				"As an alternative to using the function-calling "   
+				"interface, you may also simply send the following "       
+				"legacy commands to the bot server directly. The command " 
+				"line must be the first (and possibly only) line of your " 
+				"message. Any text in your response after the command "    
+				"line will be sent to the user as a normal message. All "  
+				"commands entered except for /pass will be visible to "    
+				"the user.\n"
+
+				"\n"
+
+				"\t/pass - Refrain from responding to the last user message.\n"
+
+				"\t/image <desc> - Generate an image with description <desc> " 
+					"and send it to the user.\n"
+
+				"\t/remember <text> - Adds <text> to your persistent context " 
+					"data.\n"
+
+				"\t/forget <text> - Removes <text> from your persistent "	   
+					"context data (must match exactly).\n"
+
+				"\t/block [<user>] - Adds the user to your block list. "       
+					"Defaults to current user.\n"
+
+				"\t/unblock <user> - Removes the user from your block "	   
+					"list.\n"
+			)
+		)
+
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #17.	Add the usage summary for functions available to the AI.
+		#
+		# 	This used to be fixed forever, but now it varies by user.
+
+		add_system_section(
+			SUBMESSAGE_DELIMITER + FUNCTION_USAGE_HEADER,
+			'function_usage',
+			
+			(f"Below is a usage summary of the functions that you ({BOT_NAME}) can call. "
+			 "This is in a Python-like syntax, and you should also use Pythonic syntax for "
+			 "your embedded function invocations starting with '@'. Initial arguments without "
+			 "default values may be supplied positionally. Keyword arguments are optional. "
+			 "Be sure to enclose string values between double-quotation mark characters (\").\n"
+			 "\n"
+
+			 "  remember_item(text:str, is_private:bool=True, " \
+		  	 		"is_global:bool=False, remark:str=None) -> status:str\n"
+
+			 f"  search_memory(query_phrase:str, max_results:int = " \
+			  		"{DEFAULT_SEARCHMEM_NITEMS}, remark:str=None) " \
+			  		"-> results:list\n"
+
+			 "  forget_item(text:str=None, item_id:str=None, remark:str=None) " \
+			  		"-> status:str\n"
+
+			 "  analyze_image(filename:str, verbosity:str='medium', " \
+			  		"query:str=None, remark:str=None) -> result:str\n"
+
+			 "  create_image(description:str, shape:str='square', " \
+			  		"style:str='vivid', caption:str=None, remark:str=None) " \
+			  		"-> status:str\n"
+			  
+			 f"  block_user(user_name:str='{userTag}', user_id=None, " \
+			  		"remark:str=None) -> status:str\n"
+
+			 "  unblock_user(user_name:str=None, user_id=None, " \
+			  		"remark:str=None) -> status:str\n"
+
+			 "  search_web(query:str, locale:str='en-US', " \
+			 		"max_results:int={DEFAULT_MAX_WEBRESULTS}, " \
+			  		"sections:list=['webPages'], remark:str=None) " \
+			  		"-> results:dict\n"
+			  
+			 ## Not yet implemented.
+			 #f"  show_user(user_name:str='{userTag}', user_id=None, remark:str=None) -> result:str)\n"
+			 #"  list_blocked_users() -> result:str\n"
+
+			 "	pass_turn() -> None\n"
+			 "\n"
+			 "Fully documented JSON schemas for the functions are shown in the next section.\n"
+			 "\n"
+			 )
+		)
+
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #18.	Add the full schemas of all available functions.
+		#
+		# 	These only need to be explicitly included here for Anthropic
+		#	models; for OpenAI models, they are provided separately.
+
+		if is_anthropic or is_deepseek:
+			add_system_section(
+				FUNCTION_SCHEMAS_HEADER,
+				'function_schemas',
+
+				(f"Below are the schemas for the currently available functions."
+				 "\n\n") + \
+				thisConv.cur_func_schemas + '\n\n'
+			)
+
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #19.	Usage summary for commands available to human users.
+		#
+		#	Note this is just intended as brief guidance for the AI to
+		#	relay to users, and users should type /help to get further
+		#	details.
+
+		add_system_section(
+			USER_COMMANDS_HEADER,
+			'user_commands',
+			(
+				"You may remind users that they may enter the following " \
+					"commands:\n"
+
+				"\n"
+
+				"\t/start - Starts bot; reloads conversation history.\n"
+
+				"\t/help - Displays general help and command help.\n"
+
+				"\t/image - Generates an image from a description. " \
+					"(This is a command you should handle yourself.)\n"
+
+				"\t/quiet - Tell bot not to respond unless addressed by name.\n"
+
+				"\t/noisy - Tell bot it can respond to any message.\n"
+
+				"\t/speech - Toggle speech output mode.\n"
+
+				"\t/remember - Adds an item to the bot's persistent memory. " \
+					"(You should handle this command.)\n"
+
+				"\t/search - Search bot's memory or the web for a phrase. " \
+					"(You should handle this command.)\n"
+
+				"\t/forget - Removes an item from the bot's persistent memory. " \
+					"(You should handle this command.)\n"
+				
+				"\t/reset - Clears the bot's short-term conversation memory.\n"
+
+				"\t/echo - Echoes back the given text.\n"
+
+				"\t/greet - Make server send a greeting.\n"
+
+				"\n"
+
+				"For commands like /start, /help, /quiet, /noisy, /speech, "\
+					"/reset, /echo, and /greet - the BotServer automation will "\
+					"handle the user's request directly, so you do not need to "\
+					"provide any additional response.\n"
+
+				"\n"
+
+				"If users have questions about how to use the available " \
+					"commands, please notify them that they can obtain more "
+					"detailed guidance by entering the /help command.\n"
+			)
+		)
+
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #20.	Dynamic context-sensitive memories.
+		#
+		#	OK, for a given conversation, this one only needs to
+		#	change whenever a new user message is added to the
+		#	conversation, since it only depends on the last user
+		#	message. It could theoretically also change if a new
+		#	public/global memory is added by a different user, but
+		#	that shouldn't happen very often.
+
 		if hasattr(thisConv, 'dynamicMem') and thisConv.dynamicMem:
-			chat_messages.append({
-				'role': CHAT_ROLE_SYSTEM,
-				'content': DYNAMIC_MEMORY_HEADER + \
-					thisConv.dynamicMem
-					# ^ Note this only changes when a new user message is added to the convo.
-			})
+			add_system_section(
+				MESSAGE_DELIMITER + DYNAMIC_MEMORY_HEADER,
+				'relevant_memories',
+				(
+					f"The memory items listed below represent the top {NDYN} most "
+					"semantically relevant matches to the user's most recent "
+					"message, filtered based on privacy and access permis"
+					"sions. These contextually relevant memories are automati"
+					"cally surfaced to assist you in providing accurate, con"
+					"text-aware responses. You can reference these memories in "
+					"your replies or use the search_memory() function to per"
+					"form more targeted searches if needed.\n"
+					"\n"
+				) + \
+				thisConv.dynamicMem + '\n'
+					# ^ Note this only changes when a new user message
+					# 	is added to the convo.
+			)
 
-		# MESSAGE #5.
-		# This one is fixed forever, we could just initialize it when the
-		# conversation is started.
-		chat_messages.append({
-			'role': CHAT_ROLE_SYSTEM,
-			'content': RECENT_MESSAGES_HEADER
-		})
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #21.	Final system prompt.
+		#
+		# We'll add one more system message to the list of chat messages,
+		# to make sure it's clear to the AI that it is responding in the 
+		# role of the message sender whose 'role' matches our .bot_name
+		# attribute. We also repeat some other important instructions.
+		#
+		# (The back-end language model will be prompted to respond by
+		# something like "assistant\n", which is why we need to make sure
+		# it knows that it's responding as the named bot persona.)
+
+		response_prompt = (
+			"In your response, use the same language that the user used most "
+			"recently, if appropriate. Be concise unless asked for detail. "
+
+	 		"You may include multiple Telegram messages in your response, but each one "
+	 		f"must begin on a new line starting with '{botName}>'. "
+
+	 		"(Or, alternatively to just sending messages, you can call "
+	 		"an available function, if appropriate.)"
+		)
+
+		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
+			# Only give this instruction in group chats:
+			response_prompt += (" However, if the user is not addressing you, "
+								"call pass_turn() or send '/pass' or an empty "
+								"message to remain silent.")
+		else:
+			response_prompt += (" You may also call pass_turn() or send '/pass' "
+								"or an empty message to refrain from responding.")
+
+
+		# Note this one will appear at the bottom of OpenAI messages, but as
+		# part of the overall system prompt for Anthropic models.
+		if is_anthropic:
+			add_system_section(
+				MESSAGE_DELIMITER + FINAL_PROMPT_HEADER,
+				'response_instructions',
+				response_prompt
+			)
+
+
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# MESSAGE #22.	Telegram message-list header.
+		#
+		# 	This one is fixed forever; we could just initialize it when the
+		# 	conversation is started.
+
+		add_system_section(
+			RECENT_MESSAGES_HEADER,
+			'telegram_msglist_header',
+
+			"A transcript of recent messages in the Telegram chat and other "
+			"events in your cognitive stream (thoughts, function calls, "
+			"BotServer outputs) can be found below."
+		)
+
+		#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+		# End of system instruction / messages.
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 		# Remember how many header messages we just created.
 		N_HEADER_MSGS = len(chat_messages)
@@ -2496,77 +3226,321 @@ class BotConversation:
 			# Ask the bot message to give us its OpenAI dictionary form,
 			# and add it onto the end of the chat message list.
 
-			chat_messages.append(botMessage.oaiMsgDict())
+			msg_dict = botMessage.oaiMsgDict()
+			chat_messages.append(msg_dict)
+
+			# Also store a link back to the full BotMessage object from the dict.
+			# This will allow us to avoid re-expanding image contents repeatedly.
+			msg_dict['bot-msg-obj'] = botMessage
 
 			# Here, we need to consolidate consecutive assistant content messages
 			# so that the AI doesn't get confused about how to format them for output.
-			if len(chat_messages) >= 2:
+			# (Also, Anthropic and DeepSeek models can't handle non-alternating msgs.)
+
+			if (is_anthropic or is_deepseek) and len(chat_messages) >= 2:
+
+				# See if the last two messages added are both AI messages,
+				# and have content fields (should be true).
+
 				if chat_messages[-2]['role'] == CHAT_ROLE_AI and \
-				   		chat_messages[-1]['role'] == CHAT_ROLE_AI and \
-				   		'content' in chat_messages[-2] and \
-						'content' in chat_messages[-1]:
+				   chat_messages[-1]['role'] == CHAT_ROLE_AI and \
+				   'content' in chat_messages[-2] and \
+				   'content' in chat_messages[-1]:
 
 					# Append last message content to second-to-last.
-					chat_messages[-2]['content'] += '\n' + \
-						chat_messages[-1]['content']
+					#chat_messages[-2]['content'] += '\n' + \
+					#	chat_messages[-1]['content']
+					append_contents(chat_messages[-2], chat_messages[-1])
 
-					# Trim off the last message.
+					CHECK_FOR_ANOMALOUS_MSGS(chat_messages, 12)
+
+					# Trim off the last message; it's been absorbed.
 					chat_messages = chat_messages[:-1]
-		#__/
 
-		# We'll add one more system message to the list of chat messages,
-		# to make sure it's clear to the AI that it is responding in the 
-		# role of the message sender whose 'role' matches our .bot_name
-		# attribute. We also repeat some other important instructions.
-		#
-		# (The back-end language model will be prompted to respond by
-		# something like "assistant\n", which is why we need to make sure
-		# it knows that it's responding as the named bot persona.)
+				#__/ End if most recent 2 messages are assistant.
 
-		#response_prompt = f"Respond as {botName}. (If you want to include an " \
-		#	"image in your response, you must put the command ‘/image <desc>’ at the " \
-		#	"very start of your response.)"
-		#response_prompt = f"Respond as {botName}. (Remember you can use an available " \
-		#	"function if there is one that is appropriate.)"
+			#__/ End if we might need to merge assistant messages.
 
-		#f"Your responses should begin with '{botName}>' to trigger the Telegram " \
-		#	"bot server to send the subsequent text to the chat as a message from your " \
-		#	"bot. You may include multiple such messages in your response, but each one " \
-		#	"should begin on a new line. " \
+		#__/ End loop over botMessages in convo.
 
-		response_prompt = (
-			"Respond below; use the same language that the user used most recently, if appropriate. "
-			#f"Your responses should begin with '{botName}>' to trigger the Telegram "
-			#"bot server to send the subsequent text to the chat as a message from your "
-			#"bot. You may include multiple such messages in your response, but each one "
-			#"should begin on a new line. "
-			"You may include multiple Telegram messages in your response, but each one "
-			f"must begin on a new line starting with '{botName}>'. "
-			#"(Or, alternatively to just sending messages, you can activate "
-			#"an available function and then call that function, if appropriate.)"
-			"(Or, alternatively to just sending messages, you can call "
-			"an available function, if appropriate.)"
-		)
+		# Note this one will appear at the bottom of OpenAI messages, but as
+		# part of the overall system prompt for Anthropic models.
+		if not is_anthropic:
+			add_system_section(
+				FINAL_PROMPT_HEADER,
+				'final_prompt',
+				response_prompt,
+				do_usermode = is_deepseek
+					# For DeepSeek, generate this as a user message
+					# from the BotServer instead.
+			)
 
-		#"You can send additional Telegram "\
-		#"messages to follow up by starting each one with '\\n{botName}>'. "\
+		# Anthropic and DeepSeek are picky about alternating user and
+		# assistant messages.  Here, we consolidate consecutive user
+		# messages.
 
-		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
-			# Only give this instruction in group chats:
-			response_prompt += " However, if the user is not addressing you, " \
-							   "type '/pass' to remain silent."
-		else:
-			response_prompt += " You may also send '/pass' to refrain from responding."
+		if is_anthropic or is_deepseek:
+			new_msglist = []
+			for msg in chat_messages:
+				if (len(new_msglist) >= 1 and 
+						new_msglist[-1]['role'] == CHAT_ROLE_USER and 
+						msg['role'] == CHAT_ROLE_USER):
 
-		chat_messages.append({
-			'role': CHAT_ROLE_SYSTEM,
-			#'name': SYS_NAME,
-			'content': response_prompt
-		})
+					# Just add the new user content onto the end of the last one.
+					#new_msglist[-1]['content'] += '\n' + msg['content']
+					append_contents(new_msglist[-1], msg)
+						
+					CHECK_FOR_ANOMALOUS_MSGS(new_msglist, 13)
+
+				else:
+					new_msglist.append(msg)
+
+			chat_messages = new_msglist
+
+		#__/ End if Anthropic.
+
+		if is_anthropic:
+			# Remember the aggregated sys_prompt string for later use, 
+			# since the Anthropic models need it provided separately.
+
+			thisConv.sys_prompt = sys_prompt
+
+			#_logger.info('='*70 + "\nSYSTEM PROMPT WAS SET TO:\n" + sys_prompt)
+
+			# Also, archive it to a log file.
+			with open(f"{LOG_DIR}/last-system-prompt.txt", 'w') as f:
+				f.write(sys_prompt)
+
+		# For Anthropic, make sure the first chat message isn't from the AI.
+		if is_anthropic:
+			while chat_messages[0]['role'] == CHAT_ROLE_AI:
+				chat_messages = chat_messages[1:]
+
+		# Also for DeepSeek, but after system headers..
+		elif is_deepseek:
+			new_msgs = []
+			state = 'skip-sys'	# First, skip over the system messwages.
+			for msg in chat_messages:
+
+				# This logic makes us skip over initial system messages.
+				if state == 'skip-sys' and msg['role'] != CHAT_ROLE_SYSTEM:
+					state = 'del-init-asst'	# Delete next msg if from assistant.
+
+				# This logic deletes initial assistant messages (after we
+				# finish skipping over the system messages.
+				if state == 'del-init-asst':
+					if msg['role'] == CHAT_ROLE_AI:
+						continue	# Don't keep this message.
+					else:
+						state = 'keep-rest'		# Keep rest of messsages
+
+				# If we get here, it's safe to keep this message.
+				new_msgs.append(msg)
+
+			# Adopt the post-surgery message list.
+			chat_messages = new_msgs
 
 		return chat_messages
 	
 	#__/ End conversation.get_chat_messages() instance method definition.
+
+	# def get_chat_messages(thisConv:BotConversation):
+
+	# 	"""Convert the persistent context and the list of messages into the 
+	# 		format of a 'messages' list as expected by the GPT-3 chat API."""
+		
+	# 	global N_HEADER_MSGS
+
+	# 	chat_messages = []		# Initialize the list of chat messages.
+
+	# 	botName = thisConv.bot_name
+	# 	lastUser = thisConv.last_user	# Telegram object for last user that messaged us.
+	# 	userTag = _get_user_tag(lastUser)
+
+	# 	#/======================================================================
+	# 	#|	Message list format:
+	# 	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	# 	#|
+	# 	#|	#0:			system:		[[Current time]]
+	# 	#|	#1:			system:		Pre-prompt.
+	# 	#|	#2:			system:		Persistent context (includes persistent data from TelegramBot.memories.txt)
+	# 	#|	#3:			system:		[[DYNAMIC MEMORY]]
+	# 	#|	#4:			system:		Command list.
+	# 	#|	#5:			system:		Recent messages header.
+	# 	#|	#6-(N-2):	(various):	...[RECENT TELEGRAM MESSAGES]...
+	# 	#|	#N-1:		system:		Response prompt.
+	# 	#|
+	# 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+	# 	# The first message will always be a system message showing the current time.
+
+	# 	# MESSAGE #0.
+	# 	# This message needs to be updated before *every* new completion attempt.
+	# 	chat_messages.append({
+	# 		'role': CHAT_ROLE_SYSTEM,
+	# 		#'name': SYS_NAME,
+	# 		'content': "The current time is: " + timeString() + "."
+	# 	})
+		
+	# 	# The next message will show the persistent context header block.
+	# 	# Note this header includes several subsections, delimited by
+	# 	# message delimiters [these used to be record separators, (ASCII
+	# 	# code 30), but now are just nothing] and section headings.
+
+	# 	# MESSAGE #1.
+	# 	# This message is fixed for the lifetime of the application.
+	# 	# We can just set it once each time a conversation is started.
+	# 	chat_messages.append({
+	# 		'role': CHAT_ROLE_SYSTEM,
+	# 		#'name': SYS_NAME,
+	# 		'content': "Attention, assistant: You are taking the role of a very " \
+	# 			f"humanlike AI persona named {botName} in a Telegram chat. Here " \
+	# 			"are the context headers for the persona, followed by recent " \
+	# 			"messages in the chat:\n"
+	# 	})
+
+	# 	# MESSAGE #2.
+	# 	# With the new memory system, this is initialized once at the
+	# 	# start of the application, and does not change further. We
+	# 	# can set it when the conversation is started.
+	# 	chat_messages.append({
+	# 		'role': CHAT_ROLE_SYSTEM,
+	# 		'content': PERMANENT_CONTEXT_HEADER + \
+	# 			globalPersistentData
+	# 	})
+
+	# 	# MESSAGE #3.
+	# 	# This one is fixed forever, we could just initialize it when the
+	# 	# conversation is started. --> NO, NOW IT VARIES BY USER.
+	# 	chat_messages.append({
+	# 		'role': CHAT_ROLE_SYSTEM,
+	# 		'content': (FUNCTION_USAGE_HEADER +
+	# 			#"  activate_function(func_name:str, remark:str=None) -> status:str\n"
+	# 			"  remember_item(text:str, is_private:bool=True, is_global:bool=False, remark:str=None) -> status:str\n"
+	# 			f"  search_memory(query_phrase:str, max_results:int={DEFAULT_SEARCHMEM_NITEMS}, remark:str=None) -> results:list\n"
+	# 			"  forget_item(text:str=None, item_id:str=None, remark:str=None) -> status:str\n"
+	# 			"  analyze_image(filename:str, verbosity:str='medium', query:str=None, remark:str=None) -> result:str\n"
+	# 			"  create_image(description:str, shape:str='square', style:str='vivid', caption:str=None, remark:str=None) -> status:str\n"
+	# 			f"  block_user(user_name:str='{userTag}', remark:str=None) -> status:str\n"
+	# 			"  unblock_user(user_name:str, remark:str=None) -> status:str\n"
+	# 			"  search_web(query:str, max_results:int=5, locale:str='en-US', sections:list=['webPages'], remark:str=None) -> results:dict\n"
+	# 			"  pass_turn() -> None\n")
+
+	# 		#COMMAND_LIST_HEADER + \
+	# 		#	"  /pass - Refrain from responding to the last user message.\n" + \
+	# 		#	"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
+	# 		#	"  /remember <text> - Adds <text> to my persistent context data.\n" + \
+	# 		#	"  /forget <text> - Removes <text> from my persistent context data.\n" + \
+	# 		#	"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
+	# 		#	"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n"
+	# 	})
+
+	# 	# MESSAGE #4.
+	# 	# OK, for a given conversation, this one only needs to change
+	# 	# whenever a new user message is added to the conversation, since
+	# 	# it only depends on the last user memory. It could also change if a
+	# 	# new memory is added by a different user, but that shouldn't happen
+	# 	# very often
+	# 	if hasattr(thisConv, 'dynamicMem') and thisConv.dynamicMem:
+	# 		chat_messages.append({
+	# 			'role': CHAT_ROLE_SYSTEM,
+	# 			'content': DYNAMIC_MEMORY_HEADER + \
+	# 				thisConv.dynamicMem
+	# 				# ^ Note this only changes when a new user message is added to the convo.
+	# 		})
+
+	# 	# MESSAGE #5.
+	# 	# This one is fixed forever, we could just initialize it when the
+	# 	# conversation is started.
+	# 	chat_messages.append({
+	# 		'role': CHAT_ROLE_SYSTEM,
+	# 		'content': RECENT_MESSAGES_HEADER
+	# 	})
+
+	# 	# Remember how many header messages we just created.
+	# 	N_HEADER_MSGS = len(chat_messages)
+
+	# 	# Next, add the messages from the recent part of the conversation.
+	# 	# We'll use the .sender attribute of the Message object as the 'name'
+	# 	# attribute of the chat message, and we'll use the .text attribute
+	# 	# of the Message object as the 'content' attribute of the chat message.
+
+	# 	for botMessage in thisConv.messages:
+
+	# 		# Ask the bot message to give us its OpenAI dictionary form,
+	# 		# and add it onto the end of the chat message list.
+
+	# 		chat_messages.append(botMessage.oaiMsgDict())
+
+	# 		# Here, we need to consolidate consecutive assistant content messages
+	# 		# so that the AI doesn't get confused about how to format them for output.
+	# 		if len(chat_messages) >= 2:
+	# 			if chat_messages[-2]['role'] == CHAT_ROLE_AI and \
+	# 			   		chat_messages[-1]['role'] == CHAT_ROLE_AI and \
+	# 			   		'content' in chat_messages[-2] and \
+	# 					'content' in chat_messages[-1]:
+
+	# 				# Append last message content to second-to-last.
+	# 				chat_messages[-2]['content'] += '\n' + \
+	# 					chat_messages[-1]['content']
+
+	# 				# Trim off the last message.
+	# 				chat_messages = chat_messages[:-1]
+	# 	#__/
+
+	# 	# We'll add one more system message to the list of chat messages,
+	# 	# to make sure it's clear to the AI that it is responding in the 
+	# 	# role of the message sender whose 'role' matches our .bot_name
+	# 	# attribute. We also repeat some other important instructions.
+	# 	#
+	# 	# (The back-end language model will be prompted to respond by
+	# 	# something like "assistant\n", which is why we need to make sure
+	# 	# it knows that it's responding as the named bot persona.)
+
+	# 	#response_prompt = f"Respond as {botName}. (If you want to include an " \
+	# 	#	"image in your response, you must put the command ‘/image <desc>’ at the " \
+	# 	#	"very start of your response.)"
+	# 	#response_prompt = f"Respond as {botName}. (Remember you can use an available " \
+	# 	#	"function if there is one that is appropriate.)"
+
+	# 	#f"Your responses should begin with '{botName}>' to trigger the Telegram " \
+	# 	#	"bot server to send the subsequent text to the chat as a message from your " \
+	# 	#	"bot. You may include multiple such messages in your response, but each one " \
+	# 	#	"should begin on a new line. " \
+
+	# 	response_prompt = (
+	# 		"Respond below; use the same language that the user used most recently, if appropriate. "
+	# 		#f"Your responses should begin with '{botName}>' to trigger the Telegram "
+	# 		#"bot server to send the subsequent text to the chat as a message from your "
+	# 		#"bot. You may include multiple such messages in your response, but each one "
+	# 		#"should begin on a new line. "
+	# 		"You may include multiple Telegram messages in your response, but each one "
+	# 		f"must begin on a new line starting with '{botName}>'. "
+	# 		#"(Or, alternatively to just sending messages, you can activate "
+	# 		#"an available function and then call that function, if appropriate.)"
+	# 		"(Or, alternatively to just sending messages, you can call "
+	# 		"an available function, if appropriate.)"
+	# 	)
+
+	# 	#"You can send additional Telegram "\
+	# 	#"messages to follow up by starting each one with '\\n{botName}>'. "\
+
+	# 	if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
+	# 		# Only give this instruction in group chats:
+	# 		response_prompt += " However, if the user is not addressing you, " \
+	# 						   "type '/pass' to remain silent."
+	# 	else:
+	# 		response_prompt += " You may also send '/pass' to refrain from responding."
+
+	# 	chat_messages.append({
+	# 		'role': CHAT_ROLE_SYSTEM,
+	# 		#'name': SYS_NAME,
+	# 		'content': response_prompt
+	# 	})
+
+	# 	return chat_messages
+	
+	# #__/ End conversation.get_chat_messages() instance method definition.
 
 
 		# Old versions of response prompt:
@@ -2599,6 +3573,74 @@ class BotConversation:
 
 
 #__/ End Conversation class definition.
+
+
+def append_contents(msgDict1, msgDict2):
+	"""Modifies the 'content' value in the 1st (OpenAI-style)
+		message dictionary by appending the 'content' value from the 2nd
+		message dictionary to it.
+
+		Please note that this must correctly handle the case where
+		either or both of the values is a list of content items,
+		rather than a string.
+	"""
+
+	# Several cases to consider here: 
+	#
+	#	(1) Both 'content' values are strings, in which case we can
+	#		just append the strings (separated by newline).
+	#
+	#	(2) Both 'content' items are lists of content items, in which
+	#		case we can just append the lists.
+	#
+	#	(3) One item is a string and one is a list, in which case we
+	#		must convert the string to a list, and append the lists.
+
+	content1 = msgDict1['content']
+	content2 = msgDict2['content']
+
+	isStr1 = isinstance(content1, str)
+	isStr2 = isinstance(content2, str)
+
+	if isStr1 and isStr2:
+		if content2[0] == MESSAGE_DELIMITER:
+			content2 = SUBMESSAGE_DELIMITER + content2[1:]
+		msgDict1['content'] += '\n' + content2
+
+	elif (not isStr1) and (not isStr2):
+
+		# Assume they're both lists of content items.
+		
+		newlineItem = {'type': 'text', 'text': '\n'}
+
+		if content2[0]['type'] == 'text':
+			if content2[0]['text'][0] == MESSAGE_DELIMITER:
+				content2[0]['text'] = SUBMESSAGE_DELIMITER + content2[0]['text'][0][1:]
+
+		msgDict1['content'] += [newlineItem] + content2
+
+	elif isStr1 and not isStr2:
+
+		item1 = {'type': 'text', 'text': content1 + '\n'}
+
+		if content2[0]['type'] == 'text':
+			if content2[0]['text'][0] == MESSAGE_DELIMITER:
+				content2[0]['text'] = SUBMESSAGE_DELIMITER + content2[0]['text'][0][1:]
+
+		msgDict1['content'] = [item1] + content2
+
+	elif (not isStr1) and isStr2:
+
+		if content2[0] == MESSAGE_DELIMITER:
+			content2 = SUBMESSAGE_DELIMITER + content2[1:]
+
+		item2 = {'type': 'text', 'text': '\n' + content2}
+
+		msgDict1['content'] = content1 + [item2]
+
+	#__/ This covers all cases.
+
+#__/ End function append_contents().
 
 
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -6201,6 +7243,17 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 #__/ End definition of function get_ai_response().
 						 
 
+def CHECK_FOR_ANOMALOUS_MSGS(msgList:list, where:int):
+	for msg in msgList:
+		content = msg.get('content', None)
+		if isinstance(content, list):
+			nitems = len(content)
+			if nitems>1000:
+				_logger.fatal(f"AT SITE {where}: Message content has {nitems} items...")
+				_logger.info(f"Message content is: {content}")
+				#quit()
+
+
 # Process a command (message starting with '/') from the AI.
 async def process_ai_command(update:Update, context:Context, response_text:str) -> None:
 	"""Given the text of a message returned by the AI, where that text starts
@@ -6436,6 +7489,8 @@ async def process_function_call(
 	"""Processes a function call request received from the AI. Also returns the
 		function result to the AI, and gets the AI's response to that."""
 
+	is_deepseek = ((PROVIDER=='DeepSeek') or modelFamily(ENGINE_NAME)=='DeepSeek')
+
 	# Get the text of the response, if any (should be None).
 	response_text = funcall_oaiMsg.content
 
@@ -6622,11 +7677,20 @@ async def process_function_call(
 	# This new raw-format message represents the actual return value of the
 	# function.
 
-	funcret_oaiMsg = {
-		'role':		CHAT_ROLE_FUNCRET,	# This is just 'function'
-		'name':		function_name,
-		'content':	resultStr
-	}
+	if is_deepseek:		# Doesn't handle function calls yet.
+
+		funcret_oaiMsg = {
+			'role':		CHAT_ROLE_USER,
+			'name':		'@' + function_name,
+			'content':	resultStr
+		}
+
+	else:
+		funcret_oaiMsg = {
+			'role':		CHAT_ROLE_FUNCRET,	# This is just 'function'
+			'name':		function_name,
+			'content':	resultStr
+		}
 
 	# If the function call was a successful "pass_turn" call, then
 	# we don't need to do anything else here, and we just return.
@@ -6751,8 +7815,18 @@ async def process_raw_response(
 	# Get the text field of the response. (Could be None, if function call.)
 	response_text = chatCompletion.text
 
+	# Clean up multiple '</think>' tags.
+	response_text = re.sub(r'(<\s*/think\s*>\s*)+', '</think>\n', response_text, flags=re.DOTALL)
+
 	# Diagnostic for debugging.
-	_logger.debug(f"Got response text: [{response_text}]")
+	_logger.normal(f"Got response text: [{response_text}]")
+
+	# If DeepSeek, check for a reasoning_content attribute;
+	# if it's present, display it on the console.
+	if PROVIDER == 'DeepSeek':
+		response_reasoning = chatCompletion.reasoning
+		if response_reasoning:
+			_logger.normal(f"THINKING: [{response_reasoning}]")
 
 	# Here, we make sure that the response does not begin with a message
 	# prompt like "{BOT_NAME}> ". If it does, we trim it off the front.
@@ -6941,12 +8015,26 @@ async def process_raw_response(
 
 		await process_response(tgUpdate, tgContext, response_botMsg)	   # Defined below.
 
+		# Once we get here, we've finished processing any function calls made by
+		# the AI, so it's a good idea to go ahead now and strip out any embedded
+		# thoughts. (DeepSeek-R1 says it actually prefers this.)
+
+		response_botMsg.delThoughts()
+
 	#__/ End for loop over Telegram messages in the response.
 
 	# If we get here, then we have finished processing the AI's text response,
 	# and we can just return.
 
 #__/ End definition of function process_raw_response().
+
+
+# Private function to strip private thoughts in <think>...</think> tags from a
+# given text string, and return the stripped version.
+def _strip_thoughts(raw_text:str) -> str:
+	"""Removes private thoughts from a string."""
+	cleaned_response = re.sub(r'<\s*/?think\s*>.*?(<\s*/think\s*>\s*)+', '', raw_text, flags=re.DOTALL)  
+	return cleaned_response
 
 
 async def process_response(update:Update, context:Context,
@@ -7012,32 +8100,32 @@ async def process_response(update:Update, context:Context,
 		# Strip out any private thoughts (in format "[[Private: ...]]")
 		# before sending the message to the Telegram chat.
 
-		private_pattern = re.compile(r'\[\[Private: ((?:[^]]|\][^]])*)\]\]')
+		#private_pattern = re.compile(r'\[\[Private: ((?:[^]]|\][^]])*)\]\]')
+		# The above format was being used with DeepSeek-V3. The below format
+		# is what DeepSeek-R1 was trained to use.
+		private_pattern = re.compile(r'<\s*/?think\s*>(.*?)(?:<\s*/think\s*>\s*)+', re.DOTALL)
 
 		# Find all private thought patterns in msg_text
 		private_thoughts = private_pattern.findall(msg_text)
 
+		private_pattern_2 = re.compile(r'\[\[Private: ((?:[^]]|\][^]])*)\]\]\s*')
+		private_thoughts += private_pattern_2.findall(msg_text)
+
 		# Print out all the private thought patterns to the console
 		# for diagnostic purposes.
 		for thought in private_thoughts:
-			_logger.normal(f"Suppressing thought [{thought}] from being sent to chat {chat_id}")
+			_logger.normal('\n' + ':'*100 + f"\nSuppressing thought [{thought}] from being sent to chat {chat_id}")
 
 		# Strip them out of msg_text.
-		public_msg_text = private_pattern.sub('', msg_text)
+		post_think_text = private_pattern.sub('', msg_text)
+		public_msg_text = private_pattern_2.sub('', post_think_text)
 
 		# Send the response with private thoughts removed.
 		if public_msg_text:
 			await send_response(update, context, public_msg_text)
 
-		## Check for internal monologue marker.
-		#if msg_text.startswith("*thinks") or msg_text.startswith("*thinking"):
-		#	_logger.normal(f"Suppressing thought [{msg_text}] from being sent to chat {chat_id}")
-		#else:
-		#	# Just send our response to the user as a normal message.
-		#	await send_response(update, context, msg_text)
-
 		# We also need to check for embedded function calls... (concise syntax)
-		await check_for_funcalls(update, context, msg_text)
+		await check_for_funcalls(update, context, post_think_text)
 			# Note this will also call the function and allow the AI to respond to its result.
 
 	#__/
@@ -7046,11 +8134,11 @@ async def process_response(update:Update, context:Context,
 	# the string "(cont)" or "(cont.)"  or "(more)" or "...", then
 	# we'll send a message to the user asking them to continue the
 	# conversation.
-	if msg_text.endswith("(cont)") or response_botMsg.text.endswith("(cont.)") or \
-	   msg_text.endswith("(more)") or response_botMsg.text.endswith("..."):
-
-		contTxt = "[If you want me to continue my response, type '/continue'.]"
-		await _reply_user(tgMsg, conversation, contTxt, ignore=True)
+	#if msg_text.endswith("(cont)") or response_botMsg.text.endswith("(cont.)") or \
+	#  msg_text.endswith("(more)") or response_botMsg.text.endswith("..."):
+	#
+	#	contTxt = "[If you want me to continue my response, type '/continue'.]"
+	#	await _reply_user(tgMsg, conversation, contTxt, ignore=True)
 
 	# Processed AI's response successfully.
 
@@ -8531,6 +9619,29 @@ def _listToStr(vec:list):
 	return ",".join(map(str, vec))
 
 
+def _cleanOaiMsgs(oaiMsgList:list) -> list:
+	fresh_msgs = []
+	for msg in oaiMsgList:
+
+		# Shallow-copy the message dict, so we can f around
+		# with it without messing up the original.
+		fresh_msg = msg.copy()
+
+		# This is a hack to clean out back-references to Telegram-bot message objects.
+		if 'bot-msg-obj' in fresh_msg:
+			del fresh_msg['bot-msg-obj']
+
+		# Also delete the cached 'ntokens' value, if present.
+		if 'ntokens' in fresh_msg:
+			del fresh_msg['ntokens']
+
+		fresh_msgs.append(fresh_msg)
+
+	#__/ End loop thru messages.
+
+	return fresh_msgs
+
+
 def _logOaiMsgs(oaiMsgList:list, basename="latest-messages") -> None:
 
 	# Convert messages from OpenAI's new object representation back
@@ -8548,10 +9659,13 @@ def _logOaiMsgs(oaiMsgList:list, basename="latest-messages") -> None:
 		newList.append(newMsg)
 	oaiMsgList = newList
 
+	# Make sure there are so extra attributes hanging around in the message list.
+	oaiMsgList = _cleanOaiMsgs(oaiMsgList)
+
 	# Open the file for writing.
 	with open(f"{LOG_DIR}/{basename}.txt", "w") as f:
 		for oaiMessage in oaiMsgList:
-			f.write('~'*70 + '\n')
+			f.write(':'*100 + '\n')
 			f.write(messageRepr(oaiMessage))
 				# Our text representation of OpenAI messages.
 	
@@ -9702,9 +10816,9 @@ def _trim_prompt(response_text:str) -> str:
 
 		# Regex to match the prompt portion at the start of a message string.
 		if MESSAGE_DELIMITER != "":
-			regex = f"({MESSAGE_DELIMITER} ?)" + r"([a-zA-Z0-9_-]{1,64})> "
+			regex = f"({re.escape(MESSAGE_DELIMITER)} ?)?" + r"([a-zA-Z0-9_-]{1,64})> *"
 		else:
-			regex = r"([a-zA-Z0-9_-]{1,64})> "
+			regex = r"([a-zA-Z0-9_-]{1,64})> *"
 		# Note we don't need to start the regex with '^' because re.match()
 		# only matches at the start of a string anyway.
 
@@ -9731,6 +10845,8 @@ def _trim_prompt(response_text:str) -> str:
 				doTrim = True			# See if there are any more names to trim
 
 			# Trim the sender and prompt part off of the front of the message text.
+			if prefix is None:
+				prefix = ""
 			toTrim = prefix + sender + '> '
 			_logger.debug(f"Trimming this part off the front: [{toTrim}]")
 			rest = response_text[len(toTrim):]
@@ -9902,6 +11018,7 @@ if MESSAGE_DELIMITER:		# If the delimiter isn't empty string,
 	SUBMESSAGE_DELIMITER = chr(ascii.US)	# ASCII FS = 0x1F, unit separator.
 else:
 	MESSAGE_SEPARATOR = ""
+	SUBMESSAGE_DELIMITER = ""
 
 	# This is the size, in messages, of the window at the end of the conversation 
 	# within which we'll exclude messages in that region from being repeated by the AI.
@@ -10025,43 +11142,64 @@ aiConf = TheAIPersonaConfig()
 BOT_NAME = aiConf.botName		# This is the name of the bot.
 AI_VOICE = aiConf.personaVoice	# The name of the voice used for text-to-speech.
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # These are the section headers of the AI's persistent context.
 
-SECTION_DECORATOR = '='*5
-SUBSECTION_DECORATOR = '~'*5
+SEPARATOR_BAR = "="*30
+SUBSEP_BAR = '~'*30
 
-TOPLEVEL_INSTRUCT_HEADER = f" {SECTION_DECORATOR} TOP-LEVEL INSTRUCTION: {SECTION_DECORATOR}\n"
+	# System section #0:
+CURRENT_TIME_HEADER			= f" {SEPARATOR_BAR} CURRENT DATE AND TIME: {SEPARATOR_BAR}\n"
 
-PERMANENT_CONTEXT_HEADER = f" {SECTION_DECORATOR} PERMANENT CONTEXT DATA: {SECTION_DECORATOR}\n"
-INTERFACE_DOCS_HEADER	 = f" {SECTION_DECORATOR} INTERFACE DOCUMENTATION: {SECTION_DECORATOR}\n"
+	# System section #1:
+TOPLEV_INSTRUCT_HEADER		= f" {SEPARATOR_BAR} TOP-LEVEL INSTRUCTION: {SEPARATOR_BAR}\n"
 
-TRANSCRIPT_DOC_HEADER	 = f" {SUBSECTION_DECORATOR} Transcript format: {SUBSECTION_DECORATOR}\n"
-MESSAGE_SEQ_HEADER		 = f" {SUBSECTION_DECORATOR} Message sequences: {SUBSECTION_DECORATOR}\n"
-THOUGHT_DOC_HEADER		 = f" {SUBSECTION_DECORATOR} Inner monologue: {SUBSECTION_DECORATOR}\n"
-FUNCTIONS_DOC_HEADER	 = f" {SUBSECTION_DECORATOR} Function calling: {SUBSECTION_DECORATOR}\n"
-VISUAL_INPUT_HEADER		 = f" {SUBSECTION_DECORATOR} Visual input: {SUBSECTION_DECORATOR}\n"
-IMAGE_GENERATION_HEADER	 = f" {SUBSECTION_DECORATOR} Image generation: {SUBSECTION_DECORATOR}\n"
-MEMORY_SYSTEM_HEADER	 = f" {SUBSECTION_DECORATOR} Memory system: {SUBSECTION_DECORATOR}\n"
-USER_MANAGEMENT_HEADER	 = f" {SUBSECTION_DECORATOR} User management: {SUBSECTION_DECORATOR}\n"
-SPEECH_IO_HEADER		 = f" {SUBSECTION_DECORATOR} Speech I/O: {SUBSECTION_DECORATOR}\n"
-WEB_SEARCH_HEADER		 = f" {SUBSECTION_DECORATOR} Web search: {SUBSECTION_DECORATOR}\n"
-MARKDOWN_DOC_HEADER		 = f" {SUBSECTION_DECORATOR} Markdown formatting syntax: {SUBSECTION_DECORATOR}\n"
+	# System section #2:
+PERMANENT_CONTEXT_HEADER	= f" {SEPARATOR_BAR} PERMANENT CONTEXT DATA: {SEPARATOR_BAR}\n"
 
-COMMAND_LIST_HEADER		 = f" {SUBSECTION_DECORATOR} Commands available for {BOT_NAME} AI to use: {SUBSECTION_DECORATOR}\n"
-FUNCTION_USAGE_HEADER	 = f" {SUBSECTION_DECORATOR} Usage summary for functions available to AI: {SUBSECTION_DECORATOR}\n"
-#FUNCTION_SCHEMAS_HEADER	 = f" {SUBSECTION_DECORATOR} Full schemas of currently active functions: {SUBSECTION_DECORATOR}\n"
-FUNCTION_SCHEMAS_HEADER	 = f" {SUBSECTION_DECORATOR} Full schemas of all available functions: {SUBSECTION_DECORATOR}\n"
-USER_COMMANDS_HEADER	 = f" {SUBSECTION_DECORATOR} Commands available to human users: {SUBSECTION_DECORATOR}\n"
+INTERFACE_DOCS_HEADER		= f" {SEPARATOR_BAR} INTERFACE DOCUMENTATION: {SEPARATOR_BAR}\n"
 
-DYNAMIC_MEMORY_HEADER	 = f" {SECTION_DECORATOR} CONTEXTUALLY RELEVANT MEMORIES: {SECTION_DECORATOR}\n"
-RESPONSE_INSTR_HEADER	 = f" {SECTION_DECORATOR} RESPONSE INSTRUCTIONS: {SECTION_DECORATOR}\n"
+TRANSCRIPT_DOC_HEADER	= f" {SUBSEP_BAR} Chat Transcript Format: {SUBSEP_BAR}\n"
+MESSAGE_SEQ_HEADER		= f" {SUBSEP_BAR} Output Message Sequences: {SUBSEP_BAR}\n"
+THOUGHT_DOC_HEADER		= f" {SUBSEP_BAR} Inner Monologue Format: {SUBSEP_BAR}\n"
+FUNCTIONS_DOC_HEADER	= f" {SUBSEP_BAR} Function Call Interface: {SUBSEP_BAR}\n"
+IMAGE_GENERATION_HEADER = f" {SUBSEP_BAR} Image Generation: {SUBSEP_BAR}\n"
+VISUAL_INPUT_HEADER		= f" {SUBSEP_BAR} Visual Input: {SUBSEP_BAR}\n"
+MEMORY_SYSTEM_HEADER	= f" {SUBSEP_BAR} Memory System: {SUBSEP_BAR}\n"
+USER_MANAGEMENT_HEADER	= f" {SUBSEP_BAR} User Management: {SUBSEP_BAR}\n"
+SPEECH_IO_HEADER		= f" {SUBSEP_BAR} Speech I/O: {SUBSEP_BAR}\n"
+WEB_SEARCH_HEADER		= f" {SUBSEP_BAR} Web Search: {SUBSEP_BAR}\n"
+MARKDOWN_DOC_HEADER		= f" {SUBSEP_BAR} Markdown Formatting: {SUBSEP_BAR}\n"
 
-RECENT_MESSAGES_HEADER	 = f" {SECTION_DECORATOR} RECENT TELEGRAM MESSAGES: {SECTION_DECORATOR}\n"
+	# System section #3:
+FUNCTION_USAGE_HEADER		= f" {SEPARATOR_BAR} USAGE SUMMARY FOR FUNCTIONS AVAILABLE TO AI: {SEPARATOR_BAR}\n"
 
-# This one is left over from the legacy memory feature, which is now
-# deprecated, since it didn't segregate memories by user so it could
-# inadvertently violate users' privacy.
-#PERSISTENT_MEMORY_HEADER = f" {SECTION_DECORATOR} Important persistent memories: {SECTION_DECORATOR}\n"
+	# System section #3.5:
+FUNCTION_SCHEMAS_HEADER		= f" {SEPARATOR_BAR} FULL SCHEMAS FOR ALL CURRENTLY ACTIVATED FUNCTIONS: {SEPARATOR_BAR}\n"
+
+	# System section #3.75:
+USER_COMMANDS_HEADER		= f" {SEPARATOR_BAR} COMMANDS AVAILABLE TO USERS: {SEPARATOR_BAR}\n"
+
+	# System section #3.875
+	# This section used to appear inside the globalPersistentContext string.
+AI_COMMANDS_HEADER = COMMAND_LIST_HEADER			= f" {SEPARATOR_BAR} COMMANDS AVAILABLE FOR {BOT_NAME} TO USE: {SEPARATOR_BAR}\n"
+
+	# System section #4:
+DYNAMIC_MEMORY_HEADER	 	= f" {SEPARATOR_BAR} CONTEXTUALLY RELEVANT MEMORIES: {SEPARATOR_BAR}\n"
+
+	# System section #5:
+RECENT_MESSAGES_HEADER		= f" {SEPARATOR_BAR} RECENT TELEGRAM MESSAGES: {SEPARATOR_BAR}\n"
+
+	# System section #N-1:
+FINAL_PROMPT_HEADER			= f" {SEPARATOR_BAR} RESPONSE INSTRUCTIONS: {SEPARATOR_BAR}\n"
+
+# This section now appears inside the globalPersistentData string.
+PERSISTENT_MEMORY_HEADER	= f" {SEPARATOR_BAR} IMPORTANT PERSISTENT MEMORIES: {SEPARATOR_BAR}\n"
+
+# Old obsolete versions of headers.
+#PERSISTENT_MEMORY_HEADER	= f" {SEPARATOR_BAR} DYNAMICALLY ADDED PERSISTENT MEMORIES: {SEPARATOR_BAR}\n"
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # Retrieve the bot's startup message from the AI persona's configuration.
 START_MESSAGE = aiConf.startMsg.strip()

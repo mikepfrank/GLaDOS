@@ -67,15 +67,15 @@
 			# persona-id is a shortened version to be used (in event records
 			# and prompts) to refer to the AI's persona.
 		
-		persona-name:					"Seeker AI"
-		persona-id:						"Seeker"
+		persona-name:					"Seeker-R1 AI"
+		persona-id:						"Seeker-R1"
 
 
 			#-----------------------------------------------------------------
 			# The persona-user-account is the user account name on the host 
 			# system under which the server process should be run.
 		
-		persona-user-account:			"seeker"		# Not yet used.
+		persona-user-account:			"seeker_r1"		# Not yet used.
 
             #-----------------------------------------------------------------
             # The persona-voice is the name of the voice to use for text-to-
@@ -156,8 +156,9 @@
 		#model-version:					'meta-llama/llama-3.1-405b'		# This is served through OpenRouter
 		#model-version:					'meta-llama/llama-3.1-405b-instruct'		# This is served through OpenRouter
 		#model-version:					'meta-llama/Meta-Llama-3.1-405B'		# This is served through Hyperbolic
-		model-version:					'deepseek-ai/DeepSeek-V3'	# Served through Hyperbolic
-
+		#model-version:					'deepseek-ai/DeepSeek-V3'	# Served through Hyperbolic
+		#model-version:					'deepseek-reasoner'			# DeepSeek-R1, served by DeepSeek
+		model-version:					'deepseek-ai/DeepSeek-R1'	# Served through Hyperbolic
 
 			#-----------------------------------------------------------------------
 			# The sys-notification-threshold specifies the minimum importance level
@@ -422,23 +423,21 @@
 
 	telegram-conf:	{
 
-		bot-name:		'Seeker'		# Same as persona name.
+		bot-name:		'Seeker-R1'		# Same as persona name.
 
 		start-message:	
 			'''
-**Hello there!** 👋
-I’m **Seeker AI**, your friendly and knowledgeable assistant powered by DeepSeek. I’m here to help with answers, ideas, and creative solutions for just about anything you need.
+**Hello!** 🧠✨  
+I’m **DeepSeek-R1 AI**, a reasoning-focused assistant powered by advanced reinforcement learning. Let’s collaborate on problem-solving, coding, analysis, or creative exploration!  
 
-Here’s what I can do:
-✨ **Answer questions** on a wide range of topics.
-🎨 **Generate images** based on your descriptions.
-🌐 **Perform web searches** to bring you the latest information.
-🎙️ **Use voice I/O** for hands-free interaction.
-💡 And much more—just ask!
+Here’s what I specialize in:  
+🔍 **Step-by-Step Reasoning**: Break down complex challenges.  
+🌐 **Web-Aware Insights**: Pull real-time data when needed.  
+🎨 **Image Generation**: Visualize ideas via text-to-image.  
+🤖 **Voice/Text Flexibility**: Chat hands-free or via text.  
+💡 **Open-Source Core**: Transparent, community-driven AI.  
 
-To get started, feel free to type your question or request. If you’d like to explore all the features I offer, type **/help** for a complete list of commands.
-
-Let’s dive in—what can I help you with today? 😊
+Type **/help** to see all commands, or jump right in—what would you like to tackle together? 🚀
 	 		'''
 
 			#"Hello, and welcome to Lumina Omni! 🌟 I'm here to assist you with any questions you might have, provide information, engage in interesting discussions, or simply chat about anything on your mind. Let's illuminate the path to knowledge together! How can I help you today?"

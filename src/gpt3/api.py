@@ -498,6 +498,10 @@ _ENGINES = [
 	#{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'}
 	#{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b-instruct', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'}
 
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#	Models served by Hyperbolic.
+	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 		# Llama models served by Hyperbolic
 
 	{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/Meta-Llama-3.1-405B', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'},
@@ -505,6 +509,32 @@ _ENGINES = [
 		# DeepSeek-V3 model served by Hyperbolic
 
 	{'model-family': 'DeepSeek', 'engine-name': 'deepseek-ai/DeepSeek-V3', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'},
+	
+		# DeepSeek-R1 model served by Hyperbolic
+
+	{
+		'provider':		'Hyperbolic',				'model-family':	'DeepSeek',
+		'engine-name':	'deepseek-ai/DeepSeek-R1',	'max-context':	131_072,
+		'field-size':	32_000,						'price':		0.002,			# $2/1M tokens
+		'is-chat':		True,						'has-vision':	False,
+		'encoding':		'p50k_base'
+	},
+
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#	Models served by DeepSeek.
+	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+		# DeepSeek-R1 model served by DeepSeek.
+
+	#{'model-family': 'DeepSeek', 'engine-name': 'deepseek-reasoner', 'field-size': 65_536, 'prompt-price': 0.0014, 'price': 0.0055, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
+
+	{
+		'provider':		'DeepSeek',				'model-family':	'DeepSeek', 
+		'engine-name':	'deepseek-reasoner',	'field-size':	32_000, 
+		'prompt-price':	0.0014,					'price':		0.0055,
+		'is-chat':		True,					'has-vision':	False,
+		'encoding':		'p50k_base'
+	},
 	
 ] # End _ENGINES constant module global data structure.
 
@@ -532,6 +562,7 @@ _FUNCTION_MODELS = [
 	'gpt-4o-2024-05-13',
 	'gpt-4o-mini',
 	'gpt-4o-mini-2024-07-18',
+	#'deepseek-reasoner',
 	#'meta-llama/llama-3.1-405b',
 	#'meta-llama/llama-3.1-405b-instruct',
 ]
@@ -555,17 +586,22 @@ for _engine_dict in _ENGINES:
 def _get_engine_attribs(engine_name):
 	"""Given an engine name string, return the corresponding engine 
 		attribute dictionary."""
-	return _ENGINE_ATTRIBS[engine_name]
+	return _ENGINE_ATTRIBS.get(engine_name, None)
 
 # Given an engine name and an attribute name, return the attribute value.
 def _get_engine_attr(engine_name, attr_name):
 	return _get_engine_attribs(engine_name)[attr_name]
 
-# Given an engine name, return the model-family attribute value.
+# PRIVATE: Given an engine name, return the model-family attribute value.
 def _get_model_family(engine_name):
 	"""Given an engine name string, return the corresponding model-family 
 		attribute value."""
 	return _get_engine_attr(engine_name, 'model-family')
+
+# PUBLIC: Given a model name, return its model family string.
+def modelFamily(model_name):
+	"""Given a model ID string, return the model's model family string."""
+	return _get_model_family(model_name)
 
 # Given an engine name, return the field-size attribute value.
 def _get_field_size(engine_name):
@@ -1828,11 +1864,19 @@ class Completion:
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 def oaiMsgObj_to_msgDict(message: openai.types.chat.ChatCompletionMessage):
-	return {
+
+	d = {
 		'content':			message.content,
 		'role':				message.role,
-		'function_call':	message.function_call
 	}
+
+	if message.function_call:
+		d['function_call'] = message.function_call
+
+	return d
+
+#__/
+
 
 class ChatMessages: pass
 class ChatMessages:
@@ -2242,6 +2286,12 @@ class ChatCompletion(Completion):
 		# Note the following code differs from the code in the Completion class.
 		return thisChatCompletion.message.content
 
+	# This only applies to deepseek-reasoner.
+	@property
+	def reasoning(thisChatCompletion:ChatCompletion):
+		"""Returns the reasoning string of this chat completion."""
+		return thisChatCompletion.message.reasoning_content
+
 	@text.setter
 	def text(thisChatCompletion:ChatCompletion, newText:str):
 		"""Sets the value of the chat completion text content."""
@@ -2525,8 +2575,12 @@ class ChatCompletion(Completion):
 
 			_logger.debug(f"[GPT chat API] Requesting up to {apiArgs['max_tokens']} tokens.")
 
-			if apiArgs['max_tokens'] == float('inf'):
+			if apiArgs['max_tokens'] == float('inf') and not isinstance(client, Anthropic):
+				# Can't do this for Anthropic because it's always required.
 				del apiArgs['max_tokens']	# Equivalent to float('inf')?
+
+			# If we get here, we know we have enough space for our query + result,
+			# so we can proceed with the request to the actual underlying API.
 
 		prettyArgs = pformat(apiArgs)
 		_logger.debug("Calling openai.ChatCompleton.create() with these keyword args:\n" + prettyArgs)
@@ -2537,58 +2591,44 @@ class ChatCompletion(Completion):
 		# Retrieve the API client from the chat core object.
 		client = chatCompl.chatCore._client
 
-		#try:
+		# Message list surgery needed for DeepSeek-R1
+		is_deepseek = (apiArgs['model'] == 'deepseek-reasoner') or (modelFamily(apiArgs['model']) == 'DeepSeek')
+			# Ideally we should have a more general test here
+		if is_deepseek:
+
+			# Last message can't be a system message.
+			# Hopefully, changing it to user won't be too confusing.
+			if apiArgs['messages'][-1]['role'] == 'system':
+				apiArgs['messages'][-1]['role'] = 'user'
+
+		# The following cleans extra attributes out of the copy of the
+		# message list that we pass to the API.
+			
+		messages = apiArgs['messages']
+		fresh_msgs = []
+		for msg in messages:
+
+			# Shallow-copy all the message dicts, so we can f around
+			# with them without messing up the originals.
+			fresh_msg = msg.copy()
+			
+			# This is a hack to clean out back-references to Telegram-bot message objects.
+			if 'bot-msg-obj' in fresh_msg:
+				del fresh_msg['bot-msg-obj']
+
+			# Also delete the cached 'ntokens' value, if present.
+			if 'ntokens' in fresh_msg:
+				del fresh_msg['ntokens']
+
+			fresh_msgs.append(fresh_msg)
+
+		#__/ End loop thru messages.
+
+		messages = fresh_msgs	# Use cleaned-up copy of message list.
+		apiArgs['messages'] = messages
 
 		# New style chat completion call:
 		chatComplObj = await client.chat.completions.create(**apiArgs)
-
-		# Old style:
-		#chatComplStruct = openai.ChatCompletion.create(**apiArgs)
-
-		# This exception type seems to have disappeared in 1.x
-		# except openai.InvalidRequestError as e:
-		# 	errStr = str(e)		# Get the error as a string.
-
-		# 	_logger.error(f"Got an OpenAI InvalidRequestError: [{errStr}].")
-
-		# 	# Example error string format:
-		# 	#	"This model's maximum context length is 8192 tokens.
-		# 	#	 However, you requested 8194 tokens (7244 in the
-		# 	#	 messages, 950 in the completion). Please reduce the
-		# 	#	 length of the messages or completion."
-
-		# 	# Extract the substrings that are numbers.
-		# 	numStrs = re.findall(r'\d+', errStr)
-
-		# 	# Convert them to actual numbers.
-		# 	numbers = [int(n) for n in numStrs]
-
-		# 	_logger.error(f"Extracted the following numbers: {numbers}")
-
-		# 	if len(numbers) == 4:
-		# 		maxConLen, reqToks, msgsLen, compLen = numbers
-			
-		# 		maxPrompt = maxConLen - reqToks
-
-		# 		e = PromptTooLargeException(msgsLen, maxPrompt)
-
-		# 		raise e
-
-		# 	elif len(numbers) == 5:
-		# 		maxConLen, reqToks, msgsLen, funcsLen, compLen = numbers
-			
-		# 		_logger.error(f"maxConLen={maxConLen}, reqToks={reqToks}, msgsLen={msgsLen}, funcsLen={funcsLen}, compLen={compLen}")
-		# 		_logger.error(f"NOTE: msgsLen+funcsLen = {msgsLen+funcsLen}, but we estimated {estInputLen}.")
-
-		# 		maxPrompt = maxConLen - reqToks
-
-		# 		e = PromptTooLargeException(msgsLen, maxPrompt)
-
-		# 		raise e
-
-		# 	else:	# Maybe this isn't a length issue at all?
-		# 		_logger.error("I don't know what to do with that.")
-		# 		raise e
 
 		# If we get here, there was a successful return from the API call.
 		_logger.debug("ChatCompletion._createChatComplStruct(): Got raw chat completion struct:"
@@ -3305,27 +3345,21 @@ class GPT3ChatCore(GPT3Core):
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| Turn the functionList into a list of tool objects
 
-		toolList = []
-		for func in functionList:
+		if functionList is None:
+			toolList = None
+			toolChoice = None
 
-			#if model == 'gpt-4-turbo-2024-04-09' or model == 'gpt-4o':
-			#if model == 'gpt-4-turbo-2024-04-09':
-			#	if 'returns' in func:
-			#		del func['returns']		# No longer supported?
+		else:
 
-			# Do some error checking.
-			#if 'returns' not in func:
-			#	_logger.error(f"FUNCTION {func['name']} IS MISSING 'returns' FIELD")
-
-			tool = {
-				'type':			'function',
-				'function':		func
-			}
-
-			toolList.append(tool)
-		#__/
-				
-		toolChoice = functionCall
+			toolList = []
+			for func in functionList:
+				tool = {
+					'type':			'function',
+					'function':		func
+				}
+				toolList.append(tool)
+			#__/
+			toolChoice = functionCall
 
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| Now, add the selected (non-None) parameter values to the argument list.
