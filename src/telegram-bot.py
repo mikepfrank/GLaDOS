@@ -2011,6 +2011,10 @@ class BotConversation:
 					if message.sender == BOT_NAME:
 						message.delThoughts()
 
+					# If message is empty now after stripping thoughts, then just skip it...
+					if message.text == "":
+						continue
+
 					# If we're already at the maximum context length, pop the oldest message
 					if thisConv.context_length >= thisConv.context_length_max:
 						thisConv.messages.pop(0)
@@ -2505,10 +2509,15 @@ class BotConversation:
 
 				if do_usermode:
 					#print("HEY MAMA I'M DOING A SYSTEM MESSAGE IN USER MODE!")
+
+					sys_text = f"{SYS_NAME}> " + header + content
+					if SUBMESSAGE_DELIMITER:
+						sys_text = SUBMESSAGE_DELIMITER + ' ' + sys_text
+
 					chat_messages.append({
 						'role':		CHAT_ROLE_USER,
 						'name': 	SYS_NAME,
-						'content':	f"{SYS_NAME}> " + header + content
+						'content':	sys_text
 					})
 
 				else:
@@ -2557,7 +2566,11 @@ class BotConversation:
 			("Attention, assistant: You are taking the role of a very "
 			 f"humanlike AI persona named {botName} in a Telegram chat. "
 			 "Below are the context headers for this environment, followed by "
-			 "recent messages in the chat.\n" # Please try to keep your responses "
+			 "recent messages in the chat. After your chain of thought, please "
+			 "generate a response comprising one or more Telegram messages each "
+			 "prefixed with "
+			 f"'{SUBMESSAGE_DELIMITER} {BOT_NAME}>'.\n" 
+			 # Please try to keep your responses "
 			 #"concise except when asked to respond in detail.\n"
 			)
 		)
@@ -3164,7 +3177,7 @@ class BotConversation:
 		# it knows that it's responding as the named bot persona.)
 
 		response_prompt = (
-			"In your response, use the same language that the user used most "
+			"In your text response, after your chain of thought, use the same language that the user used most "
 			"recently, if appropriate. Be concise unless asked for detail. "
 
 	 		"You may include multiple Telegram messages in your response, but each one "
@@ -3343,234 +3356,6 @@ class BotConversation:
 		return chat_messages
 	
 	#__/ End conversation.get_chat_messages() instance method definition.
-
-	# def get_chat_messages(thisConv:BotConversation):
-
-	# 	"""Convert the persistent context and the list of messages into the 
-	# 		format of a 'messages' list as expected by the GPT-3 chat API."""
-		
-	# 	global N_HEADER_MSGS
-
-	# 	chat_messages = []		# Initialize the list of chat messages.
-
-	# 	botName = thisConv.bot_name
-	# 	lastUser = thisConv.last_user	# Telegram object for last user that messaged us.
-	# 	userTag = _get_user_tag(lastUser)
-
-	# 	#/======================================================================
-	# 	#|	Message list format:
-	# 	#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	# 	#|
-	# 	#|	#0:			system:		[[Current time]]
-	# 	#|	#1:			system:		Pre-prompt.
-	# 	#|	#2:			system:		Persistent context (includes persistent data from TelegramBot.memories.txt)
-	# 	#|	#3:			system:		[[DYNAMIC MEMORY]]
-	# 	#|	#4:			system:		Command list.
-	# 	#|	#5:			system:		Recent messages header.
-	# 	#|	#6-(N-2):	(various):	...[RECENT TELEGRAM MESSAGES]...
-	# 	#|	#N-1:		system:		Response prompt.
-	# 	#|
-	# 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-	# 	# The first message will always be a system message showing the current time.
-
-	# 	# MESSAGE #0.
-	# 	# This message needs to be updated before *every* new completion attempt.
-	# 	chat_messages.append({
-	# 		'role': CHAT_ROLE_SYSTEM,
-	# 		#'name': SYS_NAME,
-	# 		'content': "The current time is: " + timeString() + "."
-	# 	})
-		
-	# 	# The next message will show the persistent context header block.
-	# 	# Note this header includes several subsections, delimited by
-	# 	# message delimiters [these used to be record separators, (ASCII
-	# 	# code 30), but now are just nothing] and section headings.
-
-	# 	# MESSAGE #1.
-	# 	# This message is fixed for the lifetime of the application.
-	# 	# We can just set it once each time a conversation is started.
-	# 	chat_messages.append({
-	# 		'role': CHAT_ROLE_SYSTEM,
-	# 		#'name': SYS_NAME,
-	# 		'content': "Attention, assistant: You are taking the role of a very " \
-	# 			f"humanlike AI persona named {botName} in a Telegram chat. Here " \
-	# 			"are the context headers for the persona, followed by recent " \
-	# 			"messages in the chat:\n"
-	# 	})
-
-	# 	# MESSAGE #2.
-	# 	# With the new memory system, this is initialized once at the
-	# 	# start of the application, and does not change further. We
-	# 	# can set it when the conversation is started.
-	# 	chat_messages.append({
-	# 		'role': CHAT_ROLE_SYSTEM,
-	# 		'content': PERMANENT_CONTEXT_HEADER + \
-	# 			globalPersistentData
-	# 	})
-
-	# 	# MESSAGE #3.
-	# 	# This one is fixed forever, we could just initialize it when the
-	# 	# conversation is started. --> NO, NOW IT VARIES BY USER.
-	# 	chat_messages.append({
-	# 		'role': CHAT_ROLE_SYSTEM,
-	# 		'content': (FUNCTION_USAGE_HEADER +
-	# 			#"  activate_function(func_name:str, remark:str=None) -> status:str\n"
-	# 			"  remember_item(text:str, is_private:bool=True, is_global:bool=False, remark:str=None) -> status:str\n"
-	# 			f"  search_memory(query_phrase:str, max_results:int={DEFAULT_SEARCHMEM_NITEMS}, remark:str=None) -> results:list\n"
-	# 			"  forget_item(text:str=None, item_id:str=None, remark:str=None) -> status:str\n"
-	# 			"  analyze_image(filename:str, verbosity:str='medium', query:str=None, remark:str=None) -> result:str\n"
-	# 			"  create_image(description:str, shape:str='square', style:str='vivid', caption:str=None, remark:str=None) -> status:str\n"
-	# 			f"  block_user(user_name:str='{userTag}', remark:str=None) -> status:str\n"
-	# 			"  unblock_user(user_name:str, remark:str=None) -> status:str\n"
-	# 			"  search_web(query:str, max_results:int=5, locale:str='en-US', sections:list=['webPages'], remark:str=None) -> results:dict\n"
-	# 			"  pass_turn() -> None\n")
-
-	# 		#COMMAND_LIST_HEADER + \
-	# 		#	"  /pass - Refrain from responding to the last user message.\n" + \
-	# 		#	"  /image <desc> - Generate an image with description <desc> and send it to the user.\n" + \
-	# 		#	"  /remember <text> - Adds <text> to my persistent context data.\n" + \
-	# 		#	"  /forget <text> - Removes <text> from my persistent context data.\n" + \
-	# 		#	"  /block [<user>] - Adds the user to my block list. Defaults to current user.\n" + \
-	# 		#	"  /unblock [<user>] - Removes the user from my block list. Defaults to current user.\n"
-	# 	})
-
-	# 	# MESSAGE #4.
-	# 	# OK, for a given conversation, this one only needs to change
-	# 	# whenever a new user message is added to the conversation, since
-	# 	# it only depends on the last user memory. It could also change if a
-	# 	# new memory is added by a different user, but that shouldn't happen
-	# 	# very often
-	# 	if hasattr(thisConv, 'dynamicMem') and thisConv.dynamicMem:
-	# 		chat_messages.append({
-	# 			'role': CHAT_ROLE_SYSTEM,
-	# 			'content': DYNAMIC_MEMORY_HEADER + \
-	# 				thisConv.dynamicMem
-	# 				# ^ Note this only changes when a new user message is added to the convo.
-	# 		})
-
-	# 	# MESSAGE #5.
-	# 	# This one is fixed forever, we could just initialize it when the
-	# 	# conversation is started.
-	# 	chat_messages.append({
-	# 		'role': CHAT_ROLE_SYSTEM,
-	# 		'content': RECENT_MESSAGES_HEADER
-	# 	})
-
-	# 	# Remember how many header messages we just created.
-	# 	N_HEADER_MSGS = len(chat_messages)
-
-	# 	# Next, add the messages from the recent part of the conversation.
-	# 	# We'll use the .sender attribute of the Message object as the 'name'
-	# 	# attribute of the chat message, and we'll use the .text attribute
-	# 	# of the Message object as the 'content' attribute of the chat message.
-
-	# 	for botMessage in thisConv.messages:
-
-	# 		# Ask the bot message to give us its OpenAI dictionary form,
-	# 		# and add it onto the end of the chat message list.
-
-	# 		chat_messages.append(botMessage.oaiMsgDict())
-
-	# 		# Here, we need to consolidate consecutive assistant content messages
-	# 		# so that the AI doesn't get confused about how to format them for output.
-	# 		if len(chat_messages) >= 2:
-	# 			if chat_messages[-2]['role'] == CHAT_ROLE_AI and \
-	# 			   		chat_messages[-1]['role'] == CHAT_ROLE_AI and \
-	# 			   		'content' in chat_messages[-2] and \
-	# 					'content' in chat_messages[-1]:
-
-	# 				# Append last message content to second-to-last.
-	# 				chat_messages[-2]['content'] += '\n' + \
-	# 					chat_messages[-1]['content']
-
-	# 				# Trim off the last message.
-	# 				chat_messages = chat_messages[:-1]
-	# 	#__/
-
-	# 	# We'll add one more system message to the list of chat messages,
-	# 	# to make sure it's clear to the AI that it is responding in the 
-	# 	# role of the message sender whose 'role' matches our .bot_name
-	# 	# attribute. We also repeat some other important instructions.
-	# 	#
-	# 	# (The back-end language model will be prompted to respond by
-	# 	# something like "assistant\n", which is why we need to make sure
-	# 	# it knows that it's responding as the named bot persona.)
-
-	# 	#response_prompt = f"Respond as {botName}. (If you want to include an " \
-	# 	#	"image in your response, you must put the command ‘/image <desc>’ at the " \
-	# 	#	"very start of your response.)"
-	# 	#response_prompt = f"Respond as {botName}. (Remember you can use an available " \
-	# 	#	"function if there is one that is appropriate.)"
-
-	# 	#f"Your responses should begin with '{botName}>' to trigger the Telegram " \
-	# 	#	"bot server to send the subsequent text to the chat as a message from your " \
-	# 	#	"bot. You may include multiple such messages in your response, but each one " \
-	# 	#	"should begin on a new line. " \
-
-	# 	response_prompt = (
-	# 		"Respond below; use the same language that the user used most recently, if appropriate. "
-	# 		#f"Your responses should begin with '{botName}>' to trigger the Telegram "
-	# 		#"bot server to send the subsequent text to the chat as a message from your "
-	# 		#"bot. You may include multiple such messages in your response, but each one "
-	# 		#"should begin on a new line. "
-	# 		"You may include multiple Telegram messages in your response, but each one "
-	# 		f"must begin on a new line starting with '{botName}>'. "
-	# 		#"(Or, alternatively to just sending messages, you can activate "
-	# 		#"an available function and then call that function, if appropriate.)"
-	# 		"(Or, alternatively to just sending messages, you can call "
-	# 		"an available function, if appropriate.)"
-	# 	)
-
-	# 	#"You can send additional Telegram "\
-	# 	#"messages to follow up by starting each one with '\\n{botName}>'. "\
-
-	# 	if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
-	# 		# Only give this instruction in group chats:
-	# 		response_prompt += " However, if the user is not addressing you, " \
-	# 						   "type '/pass' to remain silent."
-	# 	else:
-	# 		response_prompt += " You may also send '/pass' to refrain from responding."
-
-	# 	chat_messages.append({
-	# 		'role': CHAT_ROLE_SYSTEM,
-	# 		#'name': SYS_NAME,
-	# 		'content': response_prompt
-	# 	})
-
-	# 	return chat_messages
-	
-	# #__/ End conversation.get_chat_messages() instance method definition.
-
-
-		# Old versions of response prompt:
-		
-			#'content': f"Respond as {botName}, in the user's language if " \
-			#	"possible. (However, if the user is not addressing you, type " \
-			#	"'/pass' to remain silent.)"
-				
-			# 'content': f"Respond as {thisConv.bot_name}."
-			# # This is simple and seems to work pretty well.
-
-			#'content': f"Assistant, your role in this chat is '{thisConv.bot_name}'; " \
-			#	"enter your next message below.",
-			#	# This was my initial wording, but it seemed to cause some confusion.
-
-			#'content': f"{thisConv.bot_name}, please enter your response below at " \
-			#	"the 'assistant' prompt:"
-			#	# The above wording was agreed upon by me & Turbo (model 'gpt-3.5-turbo').
-
-			# Trying this now:
-			#'content': f"Please now generate {thisConv.bot_name}'s response, in the " \
-			#	"format:\n" \
-			#	 r"%%%\n" \
-			#	 "Commentary as assistant:\n"
-			#	 "{assistant_commentary}\n"
-			#	 r"%%%\n" \
-			#	 f"{thisConv.bot_name}'s response:\n"
-			#	 "{persona_response}\n"
-			#	 r"%%%\n"
-
 
 #__/ End Conversation class definition.
 
@@ -7819,7 +7604,7 @@ async def process_raw_response(
 	response_text = re.sub(r'(<\s*/think\s*>\s*)+', '</think>\n', response_text, flags=re.DOTALL)
 
 	# Diagnostic for debugging.
-	_logger.normal(f"Got response text: [{response_text}]")
+	_logger.info(f"Got response text: [{response_text}]")
 
 	# If DeepSeek, check for a reasoning_content attribute;
 	# if it's present, display it on the console.
@@ -8033,7 +7818,7 @@ async def process_raw_response(
 # given text string, and return the stripped version.
 def _strip_thoughts(raw_text:str) -> str:
 	"""Removes private thoughts from a string."""
-	cleaned_response = re.sub(r'<\s*/?think\s*>.*?(<\s*/think\s*>\s*)+', '', raw_text, flags=re.DOTALL)  
+	cleaned_response = re.sub(r'<\s*think\s*>.*?(<\s*/think\s*>\s*)+', '', raw_text, flags=re.DOTALL)  
 	return cleaned_response
 
 
@@ -8103,7 +7888,7 @@ async def process_response(update:Update, context:Context,
 		#private_pattern = re.compile(r'\[\[Private: ((?:[^]]|\][^]])*)\]\]')
 		# The above format was being used with DeepSeek-V3. The below format
 		# is what DeepSeek-R1 was trained to use.
-		private_pattern = re.compile(r'<\s*/?think\s*>(.*?)(?:<\s*/think\s*>\s*)+', re.DOTALL)
+		private_pattern = re.compile(r'<\s*think\s*>(.*?)(?:<\s*/think\s*>\s*)+', re.DOTALL)
 
 		# Find all private thought patterns in msg_text
 		private_thoughts = private_pattern.findall(msg_text)
@@ -8114,7 +7899,7 @@ async def process_response(update:Update, context:Context,
 		# Print out all the private thought patterns to the console
 		# for diagnostic purposes.
 		for thought in private_thoughts:
-			_logger.normal('\n' + ':'*100 + f"\nSuppressing thought [{thought}] from being sent to chat {chat_id}")
+			_logger.info('\n' + ':'*100 + f"\nSuppressing thought [{thought}] from being sent to chat {chat_id}")
 
 		# Strip them out of msg_text.
 		post_think_text = private_pattern.sub('', msg_text)
@@ -8162,11 +7947,11 @@ async def check_for_funcalls(update:Update, context:Context, response_text:str) 
 	@([a-zA-Z_][a-zA-Z0-9_]*)\s*	# Function name, after the '@'
 	\(\s*							# Opening parenthesis, optional whitespace
 	(?:								# Non-capture group for parameter list
-		(							# Non-capture group for arguments
+		(?:							# Non-capture group for arguments
 			"(?:[^"\\]|\\.)*"		# String positional argument
 		|							# OR
-			[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*(\d+|"(?:[^"\\]|\\.)*")
-									# Keyword argument (alphanumeric with value)
+			[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*(\d+|True|False|None|"(?:[^"\\]|\\.)*")
+									# Keyword argument (alphanumeric with value, either integer or "" string)
 		)\s*,?\s*					# Allow comma-separated arguments with optional whitespace
 	)*								# Zero or more occurrences of arguments
 	\)								# Closing parenthesis
@@ -8198,7 +7983,7 @@ async def check_for_funcalls(update:Update, context:Context, response_text:str) 
 		\s*							 # Optional leading whitespace
 		("(?:[^"\\]|\\.)*")			 # Match string argument
 		|							 # OR
-		([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(\d+|"(?:[^"\\]|\\.)*")
+		([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(\d+|True|False|None|"(?:[^"\\]|\\.)*")
 									 # Match keyword argument
 		'''
 		argument_regex = re.compile(argument_pattern, re.VERBOSE)
@@ -8211,6 +7996,12 @@ async def check_for_funcalls(update:Update, context:Context, response_text:str) 
 				value = arg_match.group(3)
 				if value[0]=='"':	# String
 					value = value[1:-1]	# Strip quotes
+				elif value=='True':
+					value = True
+				elif value=='False':
+					value = False
+				elif value=='None':
+					value = None
 				else:
 					value = int(value)	# Integer
 				keyword_arglist[arg_match.group(2)] = value
@@ -11175,7 +10966,7 @@ MARKDOWN_DOC_HEADER		= f" {SUBSEP_BAR} Markdown Formatting: {SUBSEP_BAR}\n"
 FUNCTION_USAGE_HEADER		= f" {SEPARATOR_BAR} USAGE SUMMARY FOR FUNCTIONS AVAILABLE TO AI: {SEPARATOR_BAR}\n"
 
 	# System section #3.5:
-FUNCTION_SCHEMAS_HEADER		= f" {SEPARATOR_BAR} FULL SCHEMAS FOR ALL CURRENTLY ACTIVATED FUNCTIONS: {SEPARATOR_BAR}\n"
+FUNCTION_SCHEMAS_HEADER		= f" {SEPARATOR_BAR} FULL SCHEMAS FOR ALL CURRENTLY AVAILABLE FUNCTIONS: {SEPARATOR_BAR}\n"
 
 	# System section #3.75:
 USER_COMMANDS_HEADER		= f" {SEPARATOR_BAR} COMMANDS AVAILABLE TO USERS: {SEPARATOR_BAR}\n"

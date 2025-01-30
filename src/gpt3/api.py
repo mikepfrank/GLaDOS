@@ -515,7 +515,7 @@ _ENGINES = [
 	{
 		'provider':		'Hyperbolic',				'model-family':	'DeepSeek',
 		'engine-name':	'deepseek-ai/DeepSeek-R1',	'max-context':	131_072,
-		'field-size':	32_000,						'price':		0.002,			# $2/1M tokens
+		'field-size':	64_000,						'price':		0.002,			# $2/1M tokens
 		'is-chat':		True,						'has-vision':	False,
 		'encoding':		'p50k_base'
 	},
@@ -4307,7 +4307,7 @@ def _msg_repr(msg:dict) -> str:
 		(for GPT-4, at least) it's probably something like this:
 
 			<role> ':' [ <name> ':' ] '\n'
-			<content> [RS] '\n
+			<content> '\n'
 
 		where <role>, <name> (if present), and <content> are the values
 		of the 'role', 'name' and 'content' fields of the message dict,
@@ -4372,7 +4372,7 @@ def _msg_repr(msg:dict) -> str:
 
 	if content is not None:
 		rep = role + '\n' + \
-			  content + chr(RS) + '\n'
+			  content + '\n'
 
 	elif fcall is not None:		# This is just a damn guess as to how function
 		#calls *might* be formatted at the back end. It's probably wrong.
@@ -4389,8 +4389,7 @@ def _msg_repr(msg:dict) -> str:
 			fargs = fcall['arguments']
 
 		rep = role + '\n' + \
-			  '@' + fname + '(' + fargs + ')' \
-			  + chr(RS) + '\n'
+			  '@' + fname + '(' + fargs + ')' + '\n'
 
 	return rep
 
