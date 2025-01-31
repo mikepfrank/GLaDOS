@@ -319,8 +319,8 @@
 
 CONS_INFO = False	# True shows info-level messages on the console.
 
-LOG_DEBUG = True	# True shows debug-level messages in the log file.
-#LOG_DEBUG = False	# True shows debug-level messages in the log file.
+#LOG_DEBUG = True	# True shows debug-level messages in the log file.
+LOG_DEBUG = False	# True shows debug-level messages in the log file.
 
 
 #/=============================================================================|
@@ -3148,7 +3148,7 @@ class BotConversation:
 				MESSAGE_DELIMITER + DYNAMIC_MEMORY_HEADER,
 				'relevant_memories',
 				(
-					f"The memory items listed below represent the top {NDYN} most "
+					f"The memory items listed below represent the top (up to {NDYN}) most "
 					"semantically relevant matches to the user's most recent "
 					"message, filtered based on privacy and access permis"
 					"sions. These contextually relevant memories are automati"
@@ -9041,8 +9041,14 @@ async def _ensure_convo_loaded(update:Update, context:Context) -> bool:
 #__/
 
 
+global NDYN
+NDYN = 5		# Initial default value
+
+
 # This could be a method of class Conversation.
 async def _getDynamicMemory(convo:BotConversation):
+
+	global NDYN
 
 	# Get current context (user & chat IDs).
 	user = convo.last_user
@@ -9063,8 +9069,10 @@ async def _getDynamicMemory(convo:BotConversation):
 	elif fieldSize >= 4000:		# GPT-3.5 and up
 		nItems = 3
 	else:
-		_logger.warn(f"This model has only {fieldSize} tokens. Dynamic memory  may overwhelm it.")
+		_logger.warn(f"This model has only {fieldSize} tokens. Dynamic memory may overwhelm it.")
 		nItems = 2
+
+	NDYN = nItems
 
 	# We'll get the best-matching N items (based on field size).
 	memList = await _searchMemories(userID, chatID, searchPhrase, nItems=nItems)
