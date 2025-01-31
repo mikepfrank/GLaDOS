@@ -3265,7 +3265,7 @@ class BotConversation:
 					#	chat_messages[-1]['content']
 					append_contents(chat_messages[-2], chat_messages[-1])
 
-					CHECK_FOR_ANOMALOUS_MSGS(chat_messages, 12)
+					#CHECK_FOR_ANOMALOUS_MSGS(chat_messages, 12)
 
 					# Trim off the last message; it's been absorbed.
 					chat_messages = chat_messages[:-1]
@@ -3303,7 +3303,7 @@ class BotConversation:
 					#new_msglist[-1]['content'] += '\n' + msg['content']
 					append_contents(new_msglist[-1], msg)
 						
-					CHECK_FOR_ANOMALOUS_MSGS(new_msglist, 13)
+					#CHECK_FOR_ANOMALOUS_MSGS(new_msglist, 13)
 
 				else:
 					new_msglist.append(msg)
