@@ -49,7 +49,7 @@
 			of in-context chat messages.
 		
 		ChatMessages - This object maintains a list of chat messages that 
-			can be used as context for a chat API call.  It also provides
+			can be used as context for a chat API call.	 It also provides
 			methods for adding new messages to the list and counting the
 			number of tokens in the message list.
 		
@@ -99,7 +99,7 @@
 	PUBLIC FUNCTIONS:
 	=================
 	
-			countTokens()	- Counts tokens in a string using the API.  Note 
+			countTokens()	- Counts tokens in a string using the API.	Note 
 				that this operation is expensive since it calls the subscription-
 				based REST service from OpenAI.	For most applications, you should
 				use one of the below two functions instead. [DEPRECATED]
@@ -114,8 +114,8 @@
 				one of the chat engines, False otherwise.
 
 			local_countTokens() - Counts tokens in a string using the local
-				tokenizer.  This is much faster than the above function, but
-				requires GPT-2 to be installed locally.  It is also not as
+				tokenizer.	This is much faster than the above function, but
+				requires GPT-2 to be installed locally.	 It is also not as
 				accurate as the below function in all cases, since it does 
 				not use the correct tokenizer encoding for all GPT models.
 				[DEPRECATED]
@@ -132,21 +132,21 @@
 			stats() - Returns a human-readable table of usage statistics, as
 				a string. Example table appearance:
 
-									 	  Token Counts
+										  Token Counts
 									 ~~~~~~~~~~~~~~~~~~~~~~~
-					Engine Name      Input   Output  Total    USD Cost
+					Engine Name		 Input	 Output	 Total	  USD Cost
 					================ ======= ======= ======= =========
-								 ada       0       0       0 $  0.0000
-							 babbage       0       0       0 $  0.0000
-							   curie 7410900    6146 7417046 $ 44.5023
-							 davinci       0       0       0 $  0.0000
-						text-ada-001       0       0       0 $  0.0000
-					text-babbage-001       0       0       0 $  0.0000
-					  text-curie-001       0       0       0 $  0.0000
-					text-davinci-001       0       0       0 $  0.0000
-					text-davinci-002       0       0       0 $  0.0000
+								 ada	   0	   0	   0 $	0.0000
+							 babbage	   0	   0	   0 $	0.0000
+							   curie 7410900	6146 7417046 $ 44.5023
+							 davinci	   0	   0	   0 $	0.0000
+						text-ada-001	   0	   0	   0 $	0.0000
+					text-babbage-001	   0	   0	   0 $	0.0000
+					  text-curie-001	   0	   0	   0 $	0.0000
+					text-davinci-001	   0	   0	   0 $	0.0000
+					text-davinci-002	   0	   0	   0 $	0.0000
 					~~~~~~~~~~~~~~~~ ~~~~~~~ ~~~~~~~ ~~~~~~~ ~~~~~~~~~
-					TOTALS:          7410900    6146 7417046 $ 44.5023
+					TOTALS:			 7410900	6146 7417046 $ 44.5023
 
 				NOTE: The table formatting algorithm used is currently very 
 				brittle, and needs significant improvement.
@@ -190,7 +190,7 @@
 
 #/==============================================================================
 #|
-#|	 1. Module imports.								   	   [module code section]
+#|	 1. Module imports.									   [module code section]
 #|
 #|			Load and import names of (and/or names from) various
 #|			other python modules and pacakges for use from within
@@ -237,11 +237,11 @@ import	tiktoken	# A fast standalone tokenizer module for GPT-3.
 import	backoff		# Utility module for exponential backoff on failures.
 
 	#/==========================================================================
-	#|	1.3. Imports of custom application modules. 	[module code subsection]
+	#|	1.3. Imports of custom application modules.		[module code subsection]
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	1.3.1.  The following modules, although custom, are generic
+		#|	1.3.1.	The following modules, although custom, are generic
 		#|		utilities, not specific to the present application.
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -300,90 +300,95 @@ global __all__
 __all__ = [
 
 
-		#|~~~~~~~~~~~~~~~~~~~~~~~
-		#| Module public globals.
+	#|~~~~~~~~~~~~~~~~~~~~~~~
+	#| Module public globals.
 
-			# Module public global parameters. (May be modified by user.)
+		# Module public global parameters. (May be modified by user.)
 
-		'DEF_ENGINE',		# Parameter: Default GPT-3 engine name ('davinci').
-		'DEF_TOKENS',		# Parameter: Default number of tokens to return (100).
-		'DEF_TEMP',			# Parameter: Default temperature value (normally 0.75).
-		'DEF_STOP',			# Parameter: Default stop string ("\n\n\n") or list of strings.
+	'DEF_ENGINE',		# Parameter: Default GPT-3 engine name ('davinci').
+	'DEF_TOKENS',		# Parameter: Default number of tokens to return (100).
+	'DEF_TEMP',			# Parameter: Default temperature value (normally 0.75).
+	'DEF_STOP',			# Parameter: Default stop string ("\n\n\n") or list of strings.
 
-			# Module public global constants.
+		# Module public global constants.
 
-		'CHAT_ROLE_SYSTEM',	# Constant: Role name for the system in a chat session.
-		'CHAT_ROLE_USER',	# Constant: Role name for the user in a chat session.
-		'CHAT_ROLE_AI',		# Constant: Role name for the AI in a chat session.
+	'CHAT_ROLE_SYSTEM',	# Constant: Role name for the system in a chat session.
+	'CHAT_ROLE_USER',	# Constant: Role name for the user in a chat session.
+	'CHAT_ROLE_AI',		# Constant: Role name for the AI in a chat session.
 		
-		'CHAT_ROLE_FUNCALL',	# Constant: Role name for function calls issues by the AI.
-		'CHAT_ROLE_FUNCRET',	# Constant: Role name for function results returned to the AI.
+	'CHAT_ROLE_FUNCALL',	# Constant: Role name for function calls issues by the AI.
+	'CHAT_ROLE_FUNCRET',	# Constant: Role name for function results returned to the AI.
 
 
-		#|~~~~~~~~~~~~~~~~~~~~~~~
-		#| Module public classes.
+	#|~~~~~~~~~~~~~~~~~~~~~~~
+	#| Module public classes.
 
-			# Module public classes for the regular GPT-3 completions API.
+		# Module public classes for the regular GPT-3 completions API.
 
-		'GPT3APIConfig',	# Class: A collection of API parameter settings.
-		'GPT3Core',			# Class: Instance of the API that remembers its config.
-		'Completion',		# Class: An object for a result returned by the API.
+	'GPT3APIConfig',	# Class: A collection of API parameter settings.
+	'GPT3Core',			# Class: Instance of the API that remembers its config.
+	'Completion',		# Class: An object for a result returned by the API.
 
-			# Module public classes for the GPT chat API.
+		# Module public classes for the GPT chat API.
 
-		'GPT3ChatAPIConfig',	# Class: A collection of chat API parameter settings.
-		'ChatMessages',			# Class: Maintains a list of chat messages.
-		'GPT3ChatCore',			# Class: Instance of the chat API that remembers its config & messages.
-		'ChatCompletion',		# Class: An object for a result returned by the chat API.
+	'GPT3ChatAPIConfig',	# Class: A collection of chat API parameter settings.
+	'ChatMessages',			# Class: Maintains a list of chat messages.
+	'GPT3ChatCore',			# Class: Instance of the chat API that remembers its config & messages.
+	'ChatCompletion',		# Class: An object for a result returned by the chat API.
 	
-			# Exception classes.
+		# Exception classes.
 
-		'PromptTooLargeException',	# Exception: Prompt is too long to fit in GPT-3's receptive field.
+	'PromptTooLargeException',	# Exception: Prompt is too long to fit in GPT-3's receptive field.
 		
 
-		#|~~~~~~~~~~~~~~~~~~~~~~~~~
-		#| Module public functions.
+	#|~~~~~~~~~~~~~~~~~~~~~~~~~
+	#| Module public functions.
 
-		'countTokens',			# Function: Counts tokens in a string. (Costs!)
-			# NOTE: This function is deprecated; use the local_countTokens()
-			# or preferably the tiktokenCount() function instead.
+	'countTokens',			# Function: Counts tokens in a string. (Costs!)
+		# NOTE: This function is deprecated; use the local_countTokens()
+		# or preferably the tiktokenCount() function instead.
 		
-		'createAPIConfig',		# Function: Creates a GPT-3 API configuration object.
-			# NOTE: This could return either a GPT3APIConfig or a 
-			# GPT3ChatAPIConfig object, depending on the selected engine type.
+	'createAPIConfig',		# Function: Creates a GPT-3 API configuration object.
+		# NOTE: This could return either a GPT3APIConfig or a 
+		# GPT3ChatAPIConfig object, depending on the selected engine type.
 
-		'createCoreConnection',	# Function: Creates a GPT-3 API connection object.
-			# NOTE: This could return either a GPT3Core or a GPT3ChatCore object,
-			# depending on the selected engine type.
+	'createCoreConnection',	# Function: Creates a GPT-3 API connection object.
+		# NOTE: This could return either a GPT3Core or a GPT3ChatCore object,
+		# depending on the selected engine type.
 
-		'isChatEngine',			# Function: Returns True if the engine is a chat engine.
+	'isChatEngine',			# Function: Returns True if the engine is a chat engine.
 
-		'loadStatsIfNeeded',	# Function: Loads the GPT-3 usage statistics file 
-			# if not already loaded.
+	'loadStatsIfNeeded',	# Function: Loads the GPT-3 usage statistics file 
+		# if not already loaded.
 
-#		'local_countTokens',	# Function: Counts tokens in a string. (No cost.)
-			# NOTE: This function is deprecated since it creates a dependency on
-			# GPT-2 having been installed; use the tiktokenCount() function instead.
+#	'local_countTokens',	# Function: Counts tokens in a string. (No cost.)
+		# NOTE: This function is deprecated since it creates a dependency on
+		# GPT-2 having been installed; use the tiktokenCount() function instead.
 
-		'messageRepr',			# Function: Returns a string representation of a chat message.
+	'messageRepr',			# Function: Returns a string representation of a chat message.
 
-		'tiktokenCount',		# Function: Counts tokens in a string. (No cost, fast.)
-			# NOTE: This is the recommended token-counting function.
+	'tiktokenCount',		# Function: Counts tokens in a string. (No cost, fast.)
+		# NOTE: This is the recommended token-counting function.
 
-		'stats',				# Function: Returns the GPT-3 usage statistics.
+	'stats',				# Function: Returns the GPT-3 usage statistics.
 
-		'genImage',				# Function: Generate an image from a description.
-		'transcribeAudio',		# Function: Transcribe an audio file to text.
-		'describeImage',		# Function: Generate a text description of an image.
+	'genImage',				# Function: Generate an image from a description.
+	'transcribeAudio',		# Function: Transcribe an audio file to text.
+	'describeImage',		# Function: Generate a text description of an image.
 
-	]
+	# Functions to retrieve certain engine attributes given the engine identifier.
+	'provider',				# Function: Returns the name of the default API provider.
+	'modelFamily',			# Function: Returns the name of the model family (e.g., "GPT-3").
+	'isChatEngine',			# Function: Returns True if this model uses the chat API.
+
+]
 
 
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	#|  _ENGINE_ATTRIBS				[module global private constant structure]
+	#|	_ENGINE_ATTRIBS				[module global private constant structure]
 	#|
-	#|	    This is a dictionary mapping GPT-3 engine names to their 
-	#|		associated attributes.  So far, we mainly care about the
+	#|		This is a dictionary mapping GPT-3 engine names to their 
+	#|		associated attributes.	So far, we mainly care about the
 	#|		'field-size' attribute, which is the number of tokens in
 	#|		the GPT-3 receptive field, and the 'price' attribute,
 	#|		which is the cost (per 1,000 tokens) to use the engine.
@@ -410,93 +415,111 @@ __all__ = [
 _ENGINES = [
 		# OG GPT-3 models; data through Oct. 2019.
 
-    {'model-family': 'GPT-3',	'engine-name': 'ada', 					'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
-    {'model-family': 'GPT-3',	'engine-name': 'babbage',				'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
-    {'model-family': 'GPT-3',	'engine-name': 'curie',	    			'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
-    {'model-family': 'GPT-3',	'engine-name': 'davinci',				'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
-    {'model-family': 'GPT-3',	'engine-name': 'davinci:2020-05-03',	'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
-    
+	{'provider': 'OpenAI', 'model-family': 'GPT-3',	'engine-name': 'ada',					'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-3',	'engine-name': 'babbage',				'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-3',	'engine-name': 'curie',					'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-3',	'engine-name': 'davinci',				'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-3',	'engine-name': 'davinci:2020-05-03',	'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
+	
 		# Early InstructGPT models. (RLHF trained; data through Oct. 2019.)
 
-    {'model-family': 'GPT-3/Instruct',	'engine-name': 'text-ada-001',		'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
-    {'model-family': 'GPT-3/Instruct',	'engine-name': 'text-babbage-001',	'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
-    {'model-family': 'GPT-3/Instruct',	'engine-name': 'text-curie-001',	'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
-    {'model-family': 'GPT-3/Instruct',	'engine-name': 'text-davinci-001',	'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-3/Instruct',	'engine-name': 'text-ada-001',		'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-3/Instruct',	'engine-name': 'text-babbage-001',	'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-3/Instruct',	'engine-name': 'text-curie-001',	'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-3/Instruct',	'engine-name': 'text-davinci-001',	'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
 
 		# GPT-3.5 models. (Increased context length; data through June 2021.)
 
-    {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06,		'is-chat': False,	'encoding': 'p50k_base'},
-    {'model-family': 'GPT-3.5',	'engine-name': 'code-davinci-002', 'field-size': 8001, 'price': 0,			'is-chat': False,	'encoding': 'p50k_base'},
-    {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02,		'is-chat': False,	'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06,		'is-chat': False,	'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-3.5',	'engine-name': 'code-davinci-002', 'field-size': 8001, 'price': 0,			'is-chat': False,	'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02,		'is-chat': False,	'encoding': 'p50k_base'},
 		# GPT-3.5-turbo-instruct. (Speed & pricing like GPT-3.5 Turbo, trained like GPT-3 Instruct.)
-	{'model-family': 'GPT-3.5', 'engine-name': 'gpt-3.5-turbo-instruct', 'field-size': 4000, 'prompt-price': 0.0015, 'price': 0.002, 'is-chat': False,  'encoding': 'p50k_base'},
-    
+	{'provider': 'OpenAI', 'model-family': 'GPT-3.5', 'engine-name': 'gpt-3.5-turbo-instruct', 'field-size': 4000, 'prompt-price': 0.0015, 'price': 0.002, 'is-chat': False,  'encoding': 'p50k_base'},
+	
 		# ChatGPT-3.5 models. (These use the chat API. Data through Sep. 2021.)
 
-    {'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo', 		'field-size': 4096, 	'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
-	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0301', 	'field-size': 4096, 	'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo',			'field-size': 4096,		'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0301',	'field-size': 4096,		'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
 		# To be discontinued on 9/13/23. Switch to gpt-3.5-turbo-0613.
-	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0613', 	'field-size': 4096, 	'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
-    
+	{'provider': 'OpenAI', 'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0613',	'field-size': 4096,		'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
+	
 		# 16k ChatGPT-3.5 models. (Context window size increased to 16,384.)
 
-	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-16k', 		'field-size': 16384, 	'prompt-price': 0.003,	'price': 0.004,		'is-chat': True,	'encoding': 'p50k_base'},
-	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-16k-0613', 	'field-size': 16384, 	'prompt-price': 0.003,	'price': 0.004,		'is-chat': True,	'encoding': 'p50k_base'},
-	#{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',	 	'field-size': 16384, 	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-16k',			'field-size': 16384,	'prompt-price': 0.003,	'price': 0.004,		'is-chat': True,	'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-16k-0613',	'field-size': 16384,	'prompt-price': 0.003,	'price': 0.004,		'is-chat': True,	'encoding': 'p50k_base'},
+	#{'provider': 'OpenAI', 'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',		'field-size': 16384,	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
 	# -------- NOTE: Artificially cutting this down from 16K to 12K to reduce costs.
-	#{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',	 	'field-size': 12288, 	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
-	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',	 	'field-size': 8192, 	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
+	#{'provider': 'OpenAI', 'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',		'field-size': 12288,	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',		'field-size': 8192,		'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
 
-		# GPT-4 models.  (These also use the chat API. Data through Sep. 2021.)
+		# GPT-4 models.	 (These also use the chat API. Data through Sep. 2021.)
 
-	{'model-family': 'GPT-4',	'engine-name': 'gpt-4',			'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
-	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-0314',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-4',	'engine-name': 'gpt-4',			'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-4',	'engine-name': 'gpt-4-0314',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
 		# To be discontinued on 9/13/23. Switch to gpt-4-0613.
-	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-0613',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'provider': 'OpenAI', 'model-family': 'GPT-4',	'engine-name': 'gpt-4-0613',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
 		# NOTE: In these models, prompt tokens are discounted, so there's a new field 'prompt-price'.
 
 		# 32k GPT-4 models. (Context window size increased to 32,768 tokens.)
-	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-32k',			'field-size': 32768, 'price': 0.12,	'prompt-price': 0.06,	'is-chat': True,	'encoding': 'p50k_base'},
-	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-32k-0613',	'field-size': 32768, 'price': 0.12,	'prompt-price': 0.06,	'is-chat': True,	'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-4',	'engine-name': 'gpt-4-32k',			'field-size': 32768, 'price': 0.12,	'prompt-price': 0.06,	'is-chat': True,	'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-4',	'engine-name': 'gpt-4-32k-0613',	'field-size': 32768, 'price': 0.12,	'prompt-price': 0.06,	'is-chat': True,	'encoding': 'p50k_base'},
 
 		# 128k GPT-4 models. (Context window size increased to 128,000 tokens; data through Apr. 2023.)
-	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-turbo-preview',  'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
-	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-1106-preview',   'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
-	#{'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',   'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-4', 'engine-name': 'gpt-4-turbo-preview',  'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-4', 'engine-name': 'gpt-4-1106-preview',   'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
+	#{'provider': 'OpenAI', 'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',	'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	# -------- NOTE: Artificially cutting this down from 128K to 96K to reduce costs.
-	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',   'field-size': 96_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',   'field-size': 96_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	
 		# 128k GPT-4V models. (Vision capability added.)
-	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-vision-preview',      'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
-	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-1106-vision-preview', 'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
-	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-turbo-2024-04-09', 'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
-	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-turbo-2024-04-09', 'field-size': 96_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-4V', 'engine-name': 'gpt-4-vision-preview',		 'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-4V', 'engine-name': 'gpt-4-1106-vision-preview', 'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'provider': 'OpenAI', 'model-family': 'GPT-4V', 'engine-name': 'gpt-4-turbo-2024-04-09', 'field-size': 128_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-4V', 'engine-name': 'gpt-4-turbo-2024-04-09', 'field-size': 96_000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 
 		# The GPT-4o models will eventually also have audio support in the API.
 
-	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
-	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 64_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
-	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 32_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
-	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 24_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
-	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 16_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
-	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',            'field-size': 8_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'provider': 'OpenAI', 'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',			  'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'provider': 'OpenAI', 'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',			  'field-size': 64_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'provider': 'OpenAI', 'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',			  'field-size': 32_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'provider': 'OpenAI', 'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',			  'field-size': 24_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'provider': 'OpenAI', 'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',			  'field-size': 16_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-4V', 'engine-name': 'gpt-4o',			 'field-size': 8_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 
-	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
-	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 64_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
-	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 32_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
-	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 24_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'provider': 'OpenAI', 'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'provider': 'OpenAI', 'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 64_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'provider': 'OpenAI', 'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 32_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-05-13', 'field-size': 24_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 
-	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-mini',            'field-size': 128_000, 'prompt-price': 0.00015, 'price': 0.0006, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-mini',			  'field-size': 128_000, 'prompt-price': 0.00015, 'price': 0.0006, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 
-	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-mini-2024-07-18', 'field-size': 128_000, 'prompt-price': 0.00015, 'price': 0.0006, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-mini-2024-07-18', 'field-size': 128_000, 'prompt-price': 0.00015, 'price': 0.0006, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#	Models served by OpenRouter.
+	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		# Llama models (under OpenRouter)
 
-	#{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': True, 'encoding': 'p50k_base'}
-	{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'provider': 'OpenRouter', 'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': True, 'encoding': 'p50k_base'}
+	{'provider': 'OpenRouter', 'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': True, 'encoding': 'p50k_base'},
 
-	#{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'}
-	#{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b-instruct', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'}
+	#{'provider': 'OpenRouter', 'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'}
+	#{'provider': 'OpenRouter', 'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/llama-3.1-405b-instruct', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'}
+
+	{	# DeepSeek-R1 model, served through OpenRouter.
+		
+		'provider':		'OpenRouter',				'model-family':		'DeepSeek',
+		'engine-name':	'deepseek/deepseek-r1',		'max-context':		164_000,
+		'field-size':	64_000,						
+		'price':		0.0024,		# $2.40/M output tokens
+		'prompt-price':	0.008,		# $0.80/M input tokens
+		'is-chat':		True,
+		'has-vision':	False,
+		'encoding':		'p50k_base'
+
+	},
+	# NOTE: Sort by throughput for best performance.
 
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#	Models served by Hyperbolic.
@@ -504,18 +527,18 @@ _ENGINES = [
 
 		# Llama models served by Hyperbolic
 
-	{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/Meta-Llama-3.1-405B', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'},
+	{'provider': 'Hyperbolic', 'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/Meta-Llama-3.1-405B', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'},
 
 		# DeepSeek-V3 model served by Hyperbolic
 
-	{'model-family': 'DeepSeek', 'engine-name': 'deepseek-ai/DeepSeek-V3', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'},
+	{'provider': 'Hyperbolic', 'model-family': 'DeepSeek', 'engine-name': 'deepseek-ai/DeepSeek-V3', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'},
 	
 		# DeepSeek-R1 model served by Hyperbolic
 
 	{
 		'provider':		'Hyperbolic',				'model-family':	'DeepSeek',
 		'engine-name':	'deepseek-ai/DeepSeek-R1',	'max-context':	131_072,
-		'field-size':	64_000,						'price':		0.002,			# $2/1M tokens
+		'field-size':	64_000,						'price':		0.002,			# $2/1M output tokens
 		'is-chat':		True,						'has-vision':	False,
 		'encoding':		'p50k_base'
 	},
@@ -592,16 +615,15 @@ def _get_engine_attribs(engine_name):
 def _get_engine_attr(engine_name, attr_name):
 	return _get_engine_attribs(engine_name)[attr_name]
 
+# Given an engine name, return the provider name.
+def _get_provider(engine_name):
+	return _get_engine_attr(engine_name, 'provider')
+
 # PRIVATE: Given an engine name, return the model-family attribute value.
 def _get_model_family(engine_name):
 	"""Given an engine name string, return the corresponding model-family 
 		attribute value."""
 	return _get_engine_attr(engine_name, 'model-family')
-
-# PUBLIC: Given a model name, return its model family string.
-def modelFamily(model_name):
-	"""Given a model ID string, return the model's model family string."""
-	return _get_model_family(model_name)
 
 # Given an engine name, return the field-size attribute value.
 def _get_field_size(engine_name):
@@ -632,12 +654,6 @@ def _is_chat(engine_name):
 		attribute value."""
 	return _get_engine_attr(engine_name, 'is-chat')
 
-# Expose _is_chat() as a public function.
-def isChatEngine(engineId:str):
-	"""Given an engine name string, return a Boolean value which is
-		True if and only if the engine uses the ChatCompletion API."""
-	return _is_chat(engineId)
-
 # Given an engine name, return the encoding attribute value.
 # DEPRECATED; use tiktoken.encoding_for_model() instead.
 def _get_encoding(engine_name):
@@ -645,17 +661,35 @@ def _get_encoding(engine_name):
 		attribute value. [DEPRECATED]"""
 	return _get_engine_attr(engine_name, 'encoding')
 
-
 	# The following private constants are initialized based on the above.
 
 global			_ENGINE_NAMES		# List of engine names.
 # Retrieve this from the keys of the '_ENGINE_ATTRIBS' dictionary.
 _ENGINE_NAMES	= list(_ENGINE_ATTRIBS.keys())
 
-global 			_STATS_FILENAME		# Name of file for saving/loading API usage statistics.
+global			_STATS_FILENAME		# Name of file for saving/loading API usage statistics.
 _STATS_FILENAME = 'api-stats.json'	# This file is saved in the AI's data directory.
 	# Note this is just hardcoded for now; eventually we may want to
 	# make this configurable through the AI's configuration file.
+
+
+	#----------------------------------------------------------------------
+	# Public functions to retrieve certain model properties from the engine attributes.
+	
+def provider(model_name):
+	return _get_provider(model_name)
+
+# PUBLIC: Given a model name, return its model family string.
+def modelFamily(model_name):
+	"""Given a model ID string, return the model's model family string."""
+	return _get_model_family(model_name)
+
+# Expose _is_chat() as a public function.
+def isChatEngine(engineId:str):
+	"""Given an engine name string, return a Boolean value which is
+		True if and only if the engine uses the ChatCompletion API."""
+	return _is_chat(engineId)
+
 
 
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -672,7 +706,7 @@ DEF_CHAT_ENGINE		= 'gpt-3.5-turbo'	# OpenAI updates this model periodically.
 
 global			DEF_TOKENS	# Default minimum space (in tokens) provided for the return.
 #DEF_TOKENS		= 42		# Of course.
-DEF_TOKENS  	= 100		# Gladys requested this.
+DEF_TOKENS		= 100		# Gladys requested this.
 
 global			DEF_TEMP	# Default temperature value.
 #DEF_TEMP		= 0.5		# Is this reasonable?
@@ -709,7 +743,7 @@ CHAT_ROLE_FUNCRET	= 'function'
 
 
 #|==============================================================================
-#|	Module-level global variables.							  	[code section]
+#|	Module-level global variables.								[code section]
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -722,21 +756,21 @@ global		_client			# The OpenAI API client object.
 _client		= AsyncOpenAI()		# Creates the client (we only need 1).
 
 
-global 		_aiPath		# Path to the AI's data directory.
-_aiPath 	= None		# Not yet initialized.
+global		_aiPath		# Path to the AI's data directory.
+_aiPath		= None		# Not yet initialized.
 
 
 	#--------------------------------------------------------------
 	# The following globals are used for tracking usage statistics.
 
-global 			_statFile	# File object for saving/loading API usage statistics.
-_statFile 		= None		# Not yet initialized.
+global			_statFile	# File object for saving/loading API usage statistics.
+_statFile		= None		# Not yet initialized.
 
-global 			_statsLoaded	# Have we attempted to load stats from the file?
-_statsLoaded 	= False			# We haven't tried to load stats from the file yet.
+global			_statsLoaded	# Have we attempted to load stats from the file?
+_statsLoaded	= False			# We haven't tried to load stats from the file yet.
 
-global 			_inputLength	# Length of the input string.
-_inputLength 	= 0				# Will be modified when processing a query.
+global			_inputLength	# Length of the input string.
+_inputLength	= 0				# Will be modified when processing a query.
 
 
 # Initialize two separate dicts to hold cumulative input & output token counts.
@@ -750,10 +784,10 @@ global _inputToks, _outputToks	# These are dictionaries of token counts.
 global _expenditures
 
 # This global variable tracks the total cost in dollars across all engines.
-global 			_totalCost
+global			_totalCost
 
 # String containing a formatted multi-line table showing the current statistics.
-global 			_statStr		
+global			_statStr		
 
 # Function to reinitialize the stats variables. We do this daily.
 def _clearStats():
@@ -772,9 +806,9 @@ def _clearStats():
 		_outputToks[engId] = 0
 		_expenditures[engId] = 0
 
-	_totalCost 		= 0				# Initialize at stats load/save time.
+	_totalCost		= 0				# Initialize at stats load/save time.
 
-	_statStr 		= ""		# Will be modified after processing a query.
+	_statStr		= ""		# Will be modified after processing a query.
 
 _clearStats()	# Initialize the stats variables.
 
@@ -783,7 +817,7 @@ _clearStats()	# Initialize the stats variables.
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	# This object represents an API connection to the GPT-3 core
-	# system that is used for counting tokens.  It is not actually
+	# system that is used for counting tokens.	It is not actually
 	# created unless/until the GPT3Core.countTokens() method is 
 	# called. Note that method is currently deprecated.
 
@@ -976,10 +1010,10 @@ class GPT3APIConfig:
 
 	def __init__(inst, 
 					engineId:str=DEF_ENGINE,
-				 	client=None,				# API client object, if not our default.
+					client=None,				# API client object, if not our default.
 				 
-				 	maxTokens:int=DEF_TOKENS,	# API's default value for maxTokens is 16 (if not set here).
-					temperature:float=DEF_TEMP, topP:float=None, 	# API's default temperature would be 1 (if not set here).
+					maxTokens:int=DEF_TOKENS,	# API's default value for maxTokens is 16 (if not set here).
+					temperature:float=DEF_TEMP, topP:float=None,	# API's default temperature would be 1 (if not set here).
 					nCompletions:int=None,		stream:bool=None,	# Defaults used to be: nCompletions=1, stream=False. (API defaults anyway.)
 					logProbs:int=None,			echo:bool=False,	# I believe these values are the API default values anyway.
 					stop=DEF_STOP,				presPen:float=None, # Used to set presPen to 0 here, but that's the default anyway, I think?
@@ -1089,14 +1123,14 @@ class GPT3APIConfig:
 				frequency_penalty = {self.frequencyPenalty}
 				best_of			  = {self.bestOf}"""[1:]	# [1:] removes the leading newline.
 		# NOTE: .stop is printed using repr() in order to show the 
-		# 	escape codes for any special characters.
+		#	escape codes for any special characters.
 	
 	#__/ End string conversion method for class GPT3APIConfig.
 
 #__/ End class GPT3APIConfig.
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		#|	Subclass GPT3ChatAPIConfig.				   	   [module public class]
+		#|	Subclass GPT3ChatAPIConfig.					   [module public class]
 		#|
 		#|		This class extends the normal GPT-3 API configuration class
 		#|		to add parameters needed for the chat completions endpoint.
@@ -1172,9 +1206,9 @@ class GPT3ChatAPIConfig(GPT3APIConfig):
 
 	def __init__(newGPT3ChatAPIConf:GPT3ChatAPIConfig, 
 					engineId:str=DEF_CHAT_ENGINE,	maxTokens:int=None,		# Used to set maxTokens=DEF_TOKENS. But the API's default value for maxTokens is float('inf').
-					temperature:float=DEF_TEMP, 	topP:float=None, 
+					temperature:float=DEF_TEMP,		topP:float=None, 
 					nCompletions:int=None,			stream:bool=None,		# Used to set nCompletions=1, stream=False here. But default anyway.
-					stop=DEF_STOP,					presPen:float=None, 	# Used to set presPen=0 here, but default anyway.
+					stop=DEF_STOP,					presPen:float=None,		# Used to set presPen=0 here, but default anyway.
 					freqPen:float=None,				messages:list=None,		# Used to set freqPen=0 here, but default anyway.
 					logitBias:dict=None,			user:str=None,
 					name=None):
@@ -1285,18 +1319,18 @@ class GPT3ChatAPIConfig(GPT3APIConfig):
 		
 		return f"""
 			GPT3 Chat Configuration{namestr}:
-				engine_id         = {chatConf.engineId}
-				max_tokens        = {chatConf.maxTokens}
-				temperature       = {chatConf.temperature}
-				top_p             = {chatConf.topP}
-				n                 = {chatConf.nCompletions}
-				stream            = {chatConf.stream}
-				stop              = {repr(chatConf.stop)}
+				engine_id		  = {chatConf.engineId}
+				max_tokens		  = {chatConf.maxTokens}
+				temperature		  = {chatConf.temperature}
+				top_p			  = {chatConf.topP}
+				n				  = {chatConf.nCompletions}
+				stream			  = {chatConf.stream}
+				stop			  = {repr(chatConf.stop)}
 				presence_penalty  = {chatConf.presencePenalty}
 				frequency_penalty = {chatConf.frequencyPenalty}
-				messages          = {chatConf.messages}
-				logitBias         = {chatConf.logitBias}
-				user              = {chatConf.user}"""[1:]	# [1:] removes the leading newline.
+				messages		  = {chatConf.messages}
+				logitBias		  = {chatConf.logitBias}
+				user			  = {chatConf.user}"""[1:]	# [1:] removes the leading newline.
 		# NOTE: .stop is printed using repr() in order to show the 
 		# escape codes for any special characters.
 
@@ -1317,9 +1351,9 @@ class PromptTooLargeException(Exception):
 		byHowMuch = promptToks - maxToks	# The prompt is too large by this many tokens.
 
 		# Store the above values in the exception object for later reference.
-		e.promptToks 	= promptToks
-		e.maxToks 		= maxToks
-		e.byHowMuch 	= byHowMuch
+		e.promptToks	= promptToks
+		e.maxToks		= maxToks
+		e.byHowMuch		= byHowMuch
 
 		# Generate a human-readable error message.
 		msg = (f"GPT-3 API prompt string is {promptToks} tokens," +
@@ -1758,7 +1792,7 @@ class Completion:
 
 
 	# Make these regular functions? 
-	# 	-- No, because they're different for the chat API.
+	#	-- No, because they're different for the chat API.
 	
 	def _accountForInput(self, apiArgs):
 
@@ -1827,7 +1861,7 @@ class Completion:
 #|	gpt3.api.ChatMessages								[module public class]
 #|
 #|		This class is a simple wrapper for the 'messages' list that gets
-#|		passed to the chat API.  Maybe we'll add more functionality to it
+#|		passed to the chat API.	 Maybe we'll add more functionality to it
 #|		later.
 #|
 #|	Public interface to class ChatMessages:
@@ -1839,7 +1873,7 @@ class Completion:
 #|			Create a new ChatMessages object.  Initially empty.
 #|
 #|
-#|		chatMsgs.messageList			 	[read-only instance public property]
+#|		chatMsgs.messageList				[read-only instance public property]
 #|
 #|			Return the underlying list of individual message dicts.
 #|
@@ -2007,12 +2041,24 @@ class ChatMessages:
 #__/ End class ChatMessages.
 
 
+from types import SimpleNamespace
+
+def dict_to_obj(d):
+	if isinstance(d, dict):
+		# Recursively convert each key/value pair
+		return SimpleNamespace(**{k: dict_to_obj(v) for k, v in d.items()})
+	elif isinstance(d, list):
+		return [dict_to_obj(item) for item in d]
+	else:
+		return d
+
+
 #/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #|	gpt3.api.ChatCompletion								[module public class]
 #|
 #|		This class is a wrapper for the completion data structure 
 #|		returned by the underlying GPT chat API.  The constructor 
-#|		calls the API to create this structure.  Various properties 
+#|		calls the API to create this structure.	 Various properties 
 #|		allow easy access to information contained in the structure.
 #|
 #|
@@ -2038,29 +2084,29 @@ class ChatMessages:
 #|			This is usable as a dict with the following keys:
 #|
 #|				role		- The role of the message (one of the
-#|						  		CHAT_ROLE_* constants defined above).
+#|								CHAT_ROLE_* constants defined above).
 #|
 #|				content		- The text of the message.
 #|
 #|
-#|		text = chatCompl.text				   	   [read-only instance property]
+#|		text = chatCompl.text					   [read-only instance property]
 #|
 #|			Returns just the text of the completion as a single
 #|			string.
 #|
 #|
-#|		nToks = chatCompl.nTokens			   	   [read-only instance property]
+#|		nToks = chatCompl.nTokens				   [read-only instance property]
 #|
 #|			Returns the total number of tokens in the completion,
 #|			including the prompt.
 #|
 #|
-#|		promptLen = chatCompl.promptLen		   	   [read-only instance property]
+#|		promptLen = chatCompl.promptLen			   [read-only instance property]
 #|
 #|			Returns the length of the prompt in tokens.
 #|		
 #|
-#|		complLen = chatCompl.resultLen	   	   	   [read-only instance property]
+#|		complLen = chatCompl.resultLen			   [read-only instance property]
 #|
 #|			Returns the length of the result message content text
 #|			(i.e., not including the prompt) in tokens.
@@ -2070,7 +2116,7 @@ class ChatMessages:
 class ChatCompletion: pass
 class ChatCompletion(Completion):
 	# NOTE: We are subclassing this class from Completion mainly just so that
-	# we can inherit miscellaneous methods that are unchanged.  However, we need
+	# we can inherit miscellaneous methods that are unchanged.	However, we need
 	# to be careful to override any methods that really do need to be overridden.
 	#
 	# The following is a list of methods we are inheriting from Completion and
@@ -2078,7 +2124,7 @@ class ChatCompletion(Completion):
 	#
 	#		.__str__()		- This just retrieves our .text property.
 	#
-	#		.finishReason 	- This part of the completion structure is not
+	#		.finishReason	- This part of the completion structure is not
 	#						  any different for chat completions.
 	#
 	# And the following methods from Completion are simply not relevant for chat
@@ -2116,7 +2162,7 @@ class ChatCompletion(Completion):
 	#|		This takes a general argument list, and parses it to extract
 	#|		the text of a prompt and the GPT3ChatCore object that is 
 	#|		provided.  Then are then used to call the underlying chat API 
-	#|		to create the actual completion data structure.  (Alternatively, 
+	#|		to create the actual completion data structure.	 (Alternatively, 
 	#|		if a structure is already provided, we just remember it.)
 	#|
 	#|	Usage:
@@ -2290,7 +2336,25 @@ class ChatCompletion(Completion):
 	@property
 	def reasoning(thisChatCompletion:ChatCompletion):
 		"""Returns the reasoning string of this chat completion."""
-		return thisChatCompletion.message.reasoning_content
+
+		message = thisChatCompletion.message
+
+		if hasattr(message, 'reasoning_content'):
+			reasoning_content = message.reasoning_content
+		else:
+			reasoning_content = None
+
+		if hasattr(message, 'reasoning'):
+			reasoning = message.reasoning
+		else:
+			reasoning = None
+
+		print("REASONING_CONTENT = ", reasoning_content)
+		print("REASONING = ", reasoning)
+
+		reasoning_text = reasoning_content or reasoning
+
+		return reasoning_text
 
 	@text.setter
 	def text(thisChatCompletion:ChatCompletion, newText:str):
@@ -2327,7 +2391,7 @@ class ChatCompletion(Completion):
 		#| chatCompletion.promptLen					  [public instance property]
 		#|
 		#|		Returns the length of the completion's prompt string, in 
-		#|		tokens.  The chat API makes this very easy.
+		#|		tokens.	 The chat API makes this very easy.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -2346,7 +2410,7 @@ class ChatCompletion(Completion):
 		#| chatCompletion.resultLen					  [public instance property]
 		#|
 		#|		Returns the length of the completion's result string, in 
-		#|		tokens.  The chat API makes this very easy.
+		#|		tokens.	 The chat API makes this very easy.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -2437,24 +2501,23 @@ class ChatCompletion(Completion):
 		#|		apiArgs [dict] - API arguments as a single dict structure.
 		#|
 		#|		minRepWin [int] (OPTIONAL) - Requested space, in tokens, 
-		#|			for the completion result.  Note that if the prompt 
+		#|			for the completion result.	Note that if the prompt 
 		#|			takes up too much of the context window, the actual 
 		#|			available result space is less than this value, and
 		#|			currently this is handled by raising a PromptTooLarge-
-		#|			Exception.  If no value is provided, the default of
+		#|			Exception.	If no value is provided, the default of
 		#|			100 tokens will be used.
 		#|
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		# This decorator performs automatic exponential backoff on REST failures.
 
-	#@backoff.on_exception(backoff.expo,
-	#					  (openai.error.APIError))
-						  
+	@backoff.on_exception(backoff.expo,
+						  (json.JSONDecodeError))
 	async def _createChatComplStruct(thisChatCompletion:ChatCompletion, apiArgs:dict, 
 				minRepWin:int=DEF_TOKENS):
 			# By default, we'll throw an exception if the estimated result space
-			# is less than 100 tokens.  This can be overridden by the caller
+			# is less than 100 tokens.	This can be overridden by the caller
 			# by explicitly setting the minRepWin argument to a different value.
 
 		"""Private instance method to retrieve a chat completion from the core
@@ -2463,6 +2526,9 @@ class ChatCompletion(Completion):
 		if 'messages' in apiArgs:
 			_logger.debug(f"In _createChatComplStruct(), apiArgs['messages']="
 						  f"[list of {len(apiArgs['messages'])} messages]")
+		else:
+			_logger.error(f"In _createChatComplStruct(), no 'messages' parameter in apiArgs! Aborting.")
+			return None
 
 		chatCompl = thisChatCompletion	# For convenience.
 
@@ -2598,7 +2664,7 @@ class ChatCompletion(Completion):
 
 			# Last message can't be a system message.
 			# Hopefully, changing it to user won't be too confusing.
-			if apiArgs['messages'][-1]['role'] == 'system':
+			if 'messages' in apiArgs and apiArgs['messages'][-1]['role'] == 'system':
 				apiArgs['messages'][-1]['role'] = 'user'
 
 		# The following cleans extra attributes out of the copy of the
@@ -2627,8 +2693,39 @@ class ChatCompletion(Completion):
 		messages = fresh_msgs	# Use cleaned-up copy of message list.
 		apiArgs['messages'] = messages
 
-		# New style chat completion call:
-		chatComplObj = await client.chat.completions.create(**apiArgs)
+		# If we're using OpenRouter, sort providers by throughput.
+		is_openrouter = (provider(apiArgs['model']) == 'OpenRouter')
+		if is_openrouter:
+			apiArgs['provider'] = {
+				'sort':	 'throughput'
+			}
+			apiArgs['include_reasoning'] = True
+
+		try:
+
+			if is_openrouter:	# We have to bypass the OpenAI client library...
+
+				headers = {
+					"Authorization": f"Bearer {getenv('OPENROUTER_API_KEY')}",
+					"Content-Type": "application/json"
+				}
+				url = "https://openrouter.ai/api/v1/chat/completions"
+				response = requests.post(url, headers=headers, data=json.dumps(apiArgs))
+				if response.ok:
+					result_json = response.json()
+					_logger.normal("Got back this response JSON:\n" + json.dumps(result_json, indent=4))
+					chatComplObj = dict_to_obj(result_json)
+				else:
+					_logger.error("Failed request")
+					response.raise_for_status()
+				
+			else:
+				# New style chat completion call:
+				chatComplObj = await client.chat.completions.create(**apiArgs)
+
+		except json.JSONDecodeError as e:
+			_logger.error("JSONDecodeError; assuming this is really a CloudFlare error page, doing backoff.")
+			raise	# Re-raise the exception so backoff can handle it.
 
 		# If we get here, there was a successful return from the API call.
 		_logger.debug("ChatCompletion._createChatComplStruct(): Got raw chat completion struct:"
@@ -2684,6 +2781,7 @@ class ChatCompletion(Completion):
 						  f"[list of {len(apiArgs['messages'])} messages]")
 		else:
 			_logger.error("Missing 'messages' API argument in _estimateInputLen()!")
+			return 0
 
 		chatCompl = thisChatCompl	# For convenience.
 		
@@ -2958,7 +3056,7 @@ class GPT3Core:
 		# Generate the argument list for calling the core API.
 	def genArgs(self, prompt=None) -> dict:
    
-		kwargs = {} 	# Initially empty dict for building up argument list.
+		kwargs = {}		# Initially empty dict for building up argument list.
 		
 		conf = self.conf	# Get our current configuration.
 
@@ -3185,14 +3283,14 @@ class GPT3ChatCore(GPT3Core):
 			# Create our ChatMessages object to manage the list of messages.
 
 		# First, see if the user provided a list of messages to start with as part of
-		# the configuration.  If so, use that list.  Otherwise, specify no messages.
+		# the configuration.  If so, use that list.	 Otherwise, specify no messages.
 
 		msgList = None	# Default to no messages.
 		if chatConf.messages != None:
 			msgList = chatConf.messages
 
 		chatCore.messages = ChatMessages(msgList)		# Create our message list.
-			# Note:  We use the property setter here to ensure the list is a ChatMessages 
+			# Note:	 We use the property setter here to ensure the list is a ChatMessages 
 			# object and perform other necessary bookkeeping.
 
 	#__/ End GPT3Core instance initializer.
@@ -3217,7 +3315,7 @@ class GPT3ChatCore(GPT3Core):
 		self._messages = newMessages
 
 			# Here, we need to also update the chatConf object to reflect the new
-			# list of messages.  This is because the chatConf object is what is
+			# list of messages.	 This is because the chatConf object is what is
 			# used to generate the JSON request to the API, and the API requires
 			# that the list of messages be included in the request.
 		
@@ -3297,7 +3395,7 @@ class GPT3ChatCore(GPT3Core):
 
 		chatCore = thisChatCore		# For convenience.
 
-		apiargs = {} 	# Initially empty dict for building up API argument list.
+		apiargs = {}	# Initially empty dict for building up API argument list.
 		
 		chatConf = chatCore.chatConf	# Get our current chat configuration.
 
@@ -3321,19 +3419,19 @@ class GPT3ChatCore(GPT3Core):
 		#| Select the parameter values to use from either the chat configuration
 		#| or the keyword arguments provided to this method, as appropriate.
 
-		maxTokens 			= kwargs.get('maxTokens',			chatConf.maxTokens)
-		temperature 		= kwargs.get('temperature',			chatConf.temperature)
-		topP 				= kwargs.get('topP',				chatConf.topP)
+		maxTokens			= kwargs.get('maxTokens',			chatConf.maxTokens)
+		temperature			= kwargs.get('temperature',			chatConf.temperature)
+		topP				= kwargs.get('topP',				chatConf.topP)
 		nCompletions		= kwargs.get('nCompletions',		chatConf.nCompletions)
-		stream 				= kwargs.get('stream',				chatConf.stream)
-		stop 				= kwargs.get('stop',				chatConf.stop)
-		presencePenalty 	= kwargs.get('presencePenalty',		chatConf.presencePenalty)
-		frequencyPenalty 	= kwargs.get('frequencyPenalty',	chatConf.frequencyPenalty)
+		stream				= kwargs.get('stream',				chatConf.stream)
+		stop				= kwargs.get('stop',				chatConf.stop)
+		presencePenalty		= kwargs.get('presencePenalty',		chatConf.presencePenalty)
+		frequencyPenalty	= kwargs.get('frequencyPenalty',	chatConf.frequencyPenalty)
 
 			# Unique to chat API:
-		messages 			= kwargs.get('messages',	chatConf.messages)
-		logitBias 			= kwargs.get('logitBias',	chatConf.logitBias)
-		user 				= kwargs.get('user',		chatConf.user)
+		messages			= kwargs.get('messages',	chatConf.messages)
+		logitBias			= kwargs.get('logitBias',	chatConf.logitBias)
+		user				= kwargs.get('user',		chatConf.user)
 
 			# Available only in 0613 (June 13, 2023) or later releases of chat models.
 		functionList		= kwargs.get('functionList')			# Default is None.
@@ -3411,8 +3509,8 @@ class GPT3ChatCore(GPT3Core):
 		#|		We do graceful backoff and retry in case of REST call 
 		#|		failures.
 		#|
-		#|		NOTE: This method does not update the messages object!  It
-		#|		only returns the completion object.  The caller is
+		#|		NOTE: This method does not update the messages object!	It
+		#|		only returns the completion object.	 The caller is
 		#|		responsible for updating the messages object if and when
 		#|		they wish to do so.
 		#|
@@ -3487,7 +3585,7 @@ class GPT3ChatCore(GPT3Core):
 		#|		To do: Provide the option to do a temporary modification of
 		#|		one or more API parameters in the call's argument list.
 		#|
-		#|		NOTE: This method does not update the messages object!  It
+		#|		NOTE: This method does not update the messages object!	It
 		#|		only returns the completion content.  The caller is
 		#|		responsible for updating the messages object if and when
 		#|		they wish to do so.
@@ -3791,8 +3889,8 @@ import requests
 api_key = getenv('OPENAI_API_KEY')
 
 def encode_image(image_path):
-  with open(image_path, "rb") as image_file:
-    return base64.b64encode(image_file.read()).decode('utf-8')
+	with open(image_path, "rb") as image_file:
+		return base64.b64encode(image_file.read()).decode('utf-8')
 
 def describeImage(filename:str, verbosity:str='medium', query:str=None, user:str=None):
 	"""Given the path to a JPEG image, use the GPT-4V model
@@ -4049,12 +4147,12 @@ def _loadStats():
 			try:
 				with open(statsPath) as inFile:
 					
-					stats 			= json.load(inFile)
+					stats			= json.load(inFile)
 
-					_inputToks 		= stats['input-tokens']
-					_outputToks 	= stats['output-tokens']
-					_expenditures 	= stats['expenditures']
-					_totalCost 		= stats['total-cost']
+					_inputToks		= stats['input-tokens']
+					_outputToks		= stats['output-tokens']
+					_expenditures	= stats['expenditures']
+					_totalCost		= stats['total-cost']
 			
 					#_logger.normal(f"Loaded API usage stats from {statsPath}: \n{pformat(stats, width=25)}")
 
@@ -4166,9 +4264,9 @@ def _displayStats(doWrite:bool=True):
 		#  if the contents start to overflow.
 
 		_statLine(doWrite, "")
-		_statLine(doWrite, "                          |         Token Counts          |")
-		_statLine(doWrite, "                          | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ |")
-		_statLine(doWrite, "Engine Name               |    Input |  Output |    Total |  USD Cost")
+		_statLine(doWrite, "						  |			Token Counts		  |")
+		_statLine(doWrite, "						  | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ |")
+		_statLine(doWrite, "Engine Name				  |	   Input |	Output |	Total |	 USD Cost")
 		_statLine(doWrite, "==========================|==========|=========|==========|==========")
 		
 		# Cumulative input, output, and total token counts.
@@ -4177,7 +4275,7 @@ def _displayStats(doWrite:bool=True):
 		# Generate a table row for each engine.
 		for engine in _ENGINE_NAMES:
 			
-			engStr 	= "%25s" % engine
+			engStr	= "%25s" % engine
 
 			# If stats structures are out of date, expand them as needed.
 			if not engine in _inputToks:
@@ -4185,19 +4283,19 @@ def _displayStats(doWrite:bool=True):
 				_outputToks[engine] = 0
 				_expenditures[engine] = 0
 
-			inToks 	= _inputToks[engine]
+			inToks	= _inputToks[engine]
 			outToks = _outputToks[engine]
-			total 	= inToks + outToks
+			total	= inToks + outToks
 	
 			inTokStr  = "%8d" % inToks
 			outTokStr = "%7d" % outToks
-			totStr 	  = "%8d" % total
+			totStr	  = "%8d" % total
 	
 			cost = "$%8.4f" % _expenditures[engine]
 	
 			_statLine(doWrite, f"{engStr} | {inTokStr} | {outTokStr} | {totStr} | {cost}")
 	
-			cumIn  = cumIn  + inToks
+			cumIn  = cumIn	+ inToks
 			cumOut = cumOut + outToks
 			cumTot = cumTot + total
 		
@@ -4210,8 +4308,8 @@ def _displayStats(doWrite:bool=True):
 	
 		totStr = "$%8.4f" % _totalCost
 	
-		_statLine(doWrite,  "~~~~~~~~~~~~~~~~~~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~~")
-		_statLine(doWrite, f"TOTALS:                   | {cumInStr} | {cumOutStr} | {cumTotStr} | {totStr}")
+		_statLine(doWrite,	"~~~~~~~~~~~~~~~~~~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~|~~~~~~~~~~|~~~~~~~~~~")
+		_statLine(doWrite, f"TOTALS:				   | {cumInStr} | {cumOutStr} | {cumTotStr} | {totStr}")
 		_statLine(doWrite, "")
 	
 		# If doWrite=True, then we were writing to the file, and we need to close it.
@@ -4443,3 +4541,4 @@ def _msg_tokens(msg:dict, model:str=None) -> int:
 #|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #|	END FILE:	gpt3/api.py
 #|%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ 

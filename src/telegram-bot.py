@@ -436,7 +436,11 @@ _anthropic_client	= Anthropic(
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
 import openai
-from openai		import	OpenAI, AsyncOpenAI	# New in 1.x
+from openai		import	(
+	OpenAI,
+	AsyncOpenAI,	# New in 1.x
+	RateLimitError	# Detects quota exceeded.
+)
 
 # Turn on this flag to use the asynchronous I/O version of the OpenAI library.
 global	ASYNC
@@ -446,9 +450,9 @@ ASYNC = True
 # Set this global to non-None to utilize an alternate API provider. Default is OpenAI.
 global  PROVIDER
 # PROVIDER = None
-# PROVIDER = 'OpenRouter'
-PROVIDER = 'Hyperbolic'
-#PROVIDER = 'DeepSeek'
+PROVIDER = 'OpenRouter'
+# PROVIDER = 'Hyperbolic'
+# PROVIDER = 'DeepSeek'
 
 # Depending on the API provider, set the base URL and API key appropriately.
 if PROVIDER == 'OpenRouter':
@@ -485,8 +489,6 @@ else:
 
 global			_main_client
 _main_client	= _oai_client
-
-from openai		import RateLimitError			# Detects quota exceeded.
 
 ## The below is for embeddings-related functionality.
 
@@ -832,7 +834,7 @@ class BotMessage:
 		# message, and if so, parse it appropriately.
 
 		# Look for function calls.
-		if sender == BOT_NAME:
+		if sender == BOT_NAME or sender == SYS_NAME:
 			pattern = r'$@(\w+)\((.*)\)'
 			match = re.search(pattern, text)
 			if match:
@@ -1023,6 +1025,11 @@ class BotMessage:
 			# identifier for the function.
 
 		text = thisBotMsg.text
+			# If the text is an empty string, this could mean that
+			# this message only contained a private thought (either
+			# a <think> element or a [[Private: ...]] form that got
+			# stripped out by a .delThoughts() method call. The
+			# caller should check for this case, if they care.
 
 		# The following is to support old conversation archive
 		# files in which SYS_NAME used to be rendered as 'SYSTEM'
@@ -2614,7 +2621,8 @@ class BotConversation:
 		add_system_section(
 			SUBMESSAGE_DELIMITER + TRANSCRIPT_DOC_HEADER,
 			'chat_transcript_docs',
-			( "In this environment, you are presented with a sequence of records "
+			( "\n"
+			  "In this environment, you are presented with a sequence of records "
 			  "prefixed by the ASCII record separator (RS) character, control-^. "
 			  "The initial records are context headers, and these are followed by "
 			  "records representing recent events in the current Telegram chat, "
@@ -2649,6 +2657,39 @@ class BotConversation:
 			 )
 		)
 
+		add_system_section(
+			SUBMESSAGE_DELIMITER + RESPONSE_FORMAT_HEADER,
+			'response_format',
+
+			("\n"
+			 "After the BotServer prompts you to respond to the most recent "
+			 "user message, you should structure your response in the following "
+			 "format:\n"
+			 "\n"
+			 "First, generate your usual chain of thought as per your training; "
+			 "this will be delivered by your API to the bot server wrapped in "
+			 "an XML-like <think>...</think> element, but you should structure "
+			 "your chain of thought in the usual way you're comfortable with.\n"
+			 "\n"
+			 "After your chain of thought, you should prefix your text response "
+			 "with ASCII record separator (RS, hex 0x1e, ^^) to begin your "
+			 "actual output message, followed by a space and your sender tag "
+			 f"'{BOT_NAME}>', like so:\n"
+			 "\n"
+			 "\t<think>(You will generate your chain of thought first in your response "
+			 		"as per usual, and it will get transmitted to your bot server in a "
+			 		"'think' element like this; but, it will not be forwarded to the "
+			 		"external Telegram chat.)</think>\n"
+			 "\t\n"
+			 f"\t\x1e {BOT_NAME}> [Addressing the user...] Well, now I've finished "
+			 		"thinking about that, so then, let me say this to you in response: ...\n"
+			 "\n"
+			 "(That is just an example; of course, you can say whatever you like.)\n"
+			 "You may also include multiple telegram messages in your response, "
+			 "and intersperse additional private thoughts embedded within "
+			 "[[Private: ...]] forms; see the next two sections for further details.\n\n"
+			 )
+		)
 
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# MESSAGE #6.	Documentation for sending message sequences.
@@ -2656,7 +2697,8 @@ class BotConversation:
 		add_system_section(
 			SUBMESSAGE_DELIMITER + MESSAGE_SEQ_HEADER,
 			'message_sequences',
-			("This interface supports the capability for you to output a "
+			("\n"
+			 "This interface supports the capability for you to output a "
 			 "sequence of multiple Telegram messages in a row, that is, "
 			 "without waiting for the user to respond in between. To do "
 			 "this, simply separate the messages in the sequence with a "
@@ -2684,15 +2726,17 @@ class BotConversation:
 			SUBMESSAGE_DELIMITER + THOUGHT_DOC_HEADER,
 			'inner_monologue',
 			(
+				"\n"
 				"This interface supports an extended version of the inner "
 				"monologue capability that you were trained to use. "
-				"In addition to your usual chain of thought, "
-				"in a sequence of messages, any text of the form "
+				"In addition to your usual chain of thought, you may also "
+				"utilize the following embedded thought capability, namely: "
+				"In a sequence of messages, any text of the form "
 				"\"[[Private:...]]\" will be suppressed from "
-				"being sent to the chat, while remaining visible for your reference "
+				"being sent to the chat, while remaining visible for your future reference "
 				"in the chat transcript. You may use this facility to augment your "
-				"chain-of-thought reasoning, and/or to plan or "
-				"reflect upon your visible responses or the user interaction more "
+				"usual pre-response chain-of-thought reasoning, and/or to plan or "
+				"reflect upon your visible responses or on the user interaction more "
 				"broadly. Please remember that remote human chat participants on "
 				"Telegram will not be able to see your private thoughts, but they may be "
 				"displayed to the system operator on the bot server console and/or saved "
@@ -2700,9 +2744,10 @@ class BotConversation:
 				"\n"
 				"Example response payload including private thoughts:\n"
 				"\n"
+				"<think>My usual pre-response chain of thought is here.</think>"
 				f"\t\x1e {BOT_NAME}> [[Private: In this message, I'm privately "
 					"planning my response. This won't be sent to the chat.]]\n"
-				f"\t\x1f {BOT_NAME}> Hello, user! I am now responding to you.\n"
+				f"\t\x1f {BOT_NAME}> Hello, user! [[Private: I can insert embedded thoughts like this.]] I am now responding to you.\n"
 				f"\t\x1f {BOT_NAME}> [[Private: Let me reflect on that last "
 				"interaction...]]\n"
 				"\n"
@@ -2724,6 +2769,7 @@ class BotConversation:
 			SUBMESSAGE_DELIMITER + FUNCTIONS_DOC_HEADER,
 			'function_call_interface',
 			(
+				"\n"
 				"In this environment, in addition to your being able to execute "
 				"simple Telegram-style commands starting with '/', you may also "
 				"invoke functions from a more versatile set summarized under the "
@@ -2801,6 +2847,7 @@ class BotConversation:
 			SUBMESSAGE_DELIMITER + IMAGE_GENERATION_HEADER,
 			'image_generation',
 			(
+				"\n"
 				"You may utilize the create_image() function to generate an image "
 				"using the DALL-E API and send it to the chat. "
 				"Key arguments include:\n"
@@ -2825,6 +2872,7 @@ class BotConversation:
 			SUBMESSAGE_DELIMITER + VISUAL_INPUT_HEADER,
 			'visual_input',
 			(
+				"\n"
 				"Although native visual input isn't yet supported in this interface, "
 				"you may invoke the analyze_image() function, which requests an image "
 				"description/analysis from the multimodal GPT-4o model. "
@@ -2843,6 +2891,7 @@ class BotConversation:
 			SUBMESSAGE_DELIMITER + MEMORY_SYSTEM_HEADER,
 			'memory_system',
 			(
+				"\n"
 				"This interface provides you with a dynamic, persistent, "
 				"semantically-searchable store of context-sensitive memories. "
 				"The memory system may be accessed using these functions:\n"
@@ -2874,6 +2923,7 @@ class BotConversation:
 			SUBMESSAGE_DELIMITER + USER_MANAGEMENT_HEADER,
 			'user_management',
 			(
+				"\n"
 				"This interface provides you with functions to block/unblock users; "
 				"this capability is intended to help you deter users from behaving "
 				"abusively or unethically or repeatedly triggering content warnings. "
@@ -2911,7 +2961,8 @@ class BotConversation:
 		add_system_section(
 			SUBMESSAGE_DELIMITER + SPEECH_IO_HEADER,
 			'speech_io',
-			("You have speech input/output capabilities powered by OpenAI's Whisper technology:\n"
+			("\n"
+			 "You have speech input/output capabilities powered by OpenAI's Whisper technology:\n"
 			 '\n'
 			 '   - Audio messages from users will be automatically transcribed to text prefixed with "(audio)".\n'
 			 '   - You can process these transcripts like regular text to comprehend spoken queries.\n'
@@ -2932,6 +2983,7 @@ class BotConversation:
 			SUBMESSAGE_DELIMITER + WEB_SEARCH_HEADER,
 			'web_search',
 			(
+				"\n"
 				"The search_web() function allows you to search the web in "
 				"real time using the Bing search API, and retrieve relevant "
 				"snippets from the top search results. "
@@ -2951,6 +3003,7 @@ class BotConversation:
 			SUBMESSAGE_DELIMITER + MARKDOWN_DOC_HEADER,
 			'markdown_syntax',
 			(
+				"\n"
 				"Your text output will be rendered based on variant of Telegram MarkdownV2 "
 				"formatting syntax, including **boldface**, __italic__, ___underline___, "
 				"and ~~strikethrough~~ text styles, "
@@ -2969,6 +3022,7 @@ class BotConversation:
 			SUBMESSAGE_DELIMITER + AI_COMMANDS_HEADER,
 			'ai_commands',
 			(
+				"\n"
 				"As an alternative to using the function-calling "   
 				"interface, you may also simply send the following "       
 				"legacy commands to the bot server directly. The command " 
@@ -3009,11 +3063,14 @@ class BotConversation:
 			SUBMESSAGE_DELIMITER + FUNCTION_USAGE_HEADER,
 			'function_usage',
 			
-			(f"Below is a usage summary of the functions that you ({BOT_NAME}) can call. "
-			 "This is in a Python-like syntax, and you should also use Pythonic syntax for "
-			 "your embedded function invocations starting with '@'. Initial arguments without "
-			 "default values may be supplied positionally. Keyword arguments are optional. "
-			 "Be sure to enclose string values between double-quotation mark characters (\").\n"
+			("\n"
+			 f"Below is a usage summary of the functions that you ({BOT_NAME}) "
+			 "can call. This is in a Python-like syntax, and you should also "
+			 "use Pythonic syntax for your embedded function invocations "
+			 "starting with '@'. Initial arguments without default values may "
+			 "be supplied positionally. Keyword arguments are optional. Be "
+			 "sure to enclose string values between double-quotation mark "
+			 "characters (\").\n"
 			 "\n"
 
 			 "  remember_item(text:str, is_private:bool=True, " \
@@ -3067,7 +3124,8 @@ class BotConversation:
 				FUNCTION_SCHEMAS_HEADER,
 				'function_schemas',
 
-				(f"Below are the schemas for the currently available functions."
+				("\n"
+				 f"Below are the schemas for the currently available functions."
 				 "\n\n") + \
 				thisConv.cur_func_schemas + '\n\n'
 			)
@@ -3084,6 +3142,7 @@ class BotConversation:
 			USER_COMMANDS_HEADER,
 			'user_commands',
 			(
+				"\n"
 				"You may remind users that they may enter the following " \
 					"commands:\n"
 
@@ -3148,14 +3207,15 @@ class BotConversation:
 				MESSAGE_DELIMITER + DYNAMIC_MEMORY_HEADER,
 				'relevant_memories',
 				(
-					f"The memory items listed below represent the top (up to {NDYN}) most "
-					"semantically relevant matches to the user's most recent "
-					"message, filtered based on privacy and access permis"
-					"sions. These contextually relevant memories are automati"
-					"cally surfaced to assist you in providing accurate, con"
-					"text-aware responses. You can reference these memories in "
-					"your replies or use the search_memory() function to per"
-					"form more targeted searches if needed.\n"
+					"\n"
+					"The memory items listed below represent the top (up to "
+					f"{NDYN}) most semantically relevant matches to the user's "
+					"most recent message, filtered based on privacy and access "
+					"permissions. These contextually relevant memories are "
+					"automatically surfaced to assist you in providing accurate, "
+					"context-aware responses. You can reference these memories "
+					"in your replies or use the search_memory() function to "
+					"perform more targeted searches if needed.\n"
 					"\n"
 				) + \
 				thisConv.dynamicMem + '\n'
@@ -3178,7 +3238,7 @@ class BotConversation:
 
 		response_prompt = (
 			"In your text response, after your chain of thought, use the same language that the user used most "
-			"recently, if appropriate. Be concise unless asked for detail. "
+			"recently, if appropriate. "	#Be concise unless asked for detail. "
 
 	 		"You may include multiple Telegram messages in your response, but each one "
 	 		f"must begin on a new line starting with '{botName}>'. "
@@ -3240,6 +3300,30 @@ class BotConversation:
 			# and add it onto the end of the chat message list.
 
 			msg_dict = botMessage.oaiMsgDict()
+
+			# Here, we need to check whether the 'content' property is
+			# an empty string. If so, and we're DeepSeek, then we want
+			# to just skip this message -- it was probably just a chain
+			# of thought that got removed earlier.
+			if not msg_dict.get('content', None):
+				# Unless maybe it was a function call...
+				if modelFamily == 'DeepSeek' and 'function_call' in msg_dict:
+					fcall = msg_dict['function_call']
+					fname = fcall['name']
+					fargs = fcall['arguments']
+					
+					# Assemble the text content.
+					msg_dict['content'] = ""
+					if MESSAGE_DELIMITER:
+						msg_dict['content'] += MESSAGE_DELIMITER + ' '
+					msg_dict['content'] += msg_dict['name'] + '>'
+
+					# Delete old function-call content.
+					del msg_dict['function_call']
+				else:
+					continue
+
+			# Add the bot message's OAI dict to the message list now.
 			chat_messages.append(msg_dict)
 
 			# Also store a link back to the full BotMessage object from the dict.
@@ -3387,6 +3471,24 @@ def append_contents(msgDict1, msgDict2):
 	isStr1 = isinstance(content1, str)
 	isStr2 = isinstance(content2, str)
 
+	# First, if the role2 is CHAT_ROLE_USER ('user'), and the first
+	# character of the content is '@', then this is a function call,
+	# and we need to make sure it's prefixed with the SYS_NAME marker.
+
+	if msgDict2['role'] == CHAT_ROLE_USER and isStr2 and content2[0] == '@':
+		name2 = msgDict2.get('name', SYS_NAME)
+		content2 = MESSAGE_DELIMITER + f" {name2}>" + content2
+
+	# Next, if the role2 is CHAT_ROLE_USER and the first character
+	# of the name is '@', then this is a function return, and we need
+	# to make sure it's prefixed with the @<func_name> marker.
+
+	if msgDict2['role'] == CHAT_ROLE_USER:
+		name2 = msgDict2.get('name', None)
+		if name2 and name2[0] == '@':
+			content2 = MESSAGE_DELIMITER + f" {name2}>" + content2
+
+	# Both strings: Append them.
 	if isStr1 and isStr2:
 		if content2[0] == MESSAGE_DELIMITER:
 			content2 = SUBMESSAGE_DELIMITER + content2[1:]
@@ -6563,6 +6665,73 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 #__/ End definition of private function ai_call_function().
 
 
+def _make_alternating(oaiMsgList:list) -> list:
+	"""Puts the message list in alternating user/assistant format."""
+	
+	# First, combine consecutive assistant messages.
+
+	new_msgs = []
+	for oaiMsgDict in oaiMsgList:
+
+		new_msgs.append(oaiMsgDict)
+
+		if not oaiMsgDict.get('content', None):
+
+			if modelFamily(ENGINE_NAME) == 'DeepSeek':
+
+				# OK, this is probably a function call message, and DeepSeek doesn't 
+				# understand those anyway, so let's convert it to our text representation.
+				if 'function_call' in oaiMsgDict:
+					fcall = oaiMsgDict['function_call']
+					fname = fcall['name']
+					fargs = fcall['arguments']
+					
+					# Assemble the text content.
+					oaiMsgDict['content'] = ""
+					if MESSAGE_DELIMITER:
+						oaiMsgDict['content'] += MESSAGE_DELIMITER + ' '
+					oaiMsgDict['content'] += oaiMsgDict['name'] + '>'
+
+					# Delete old function-call content.
+					del oaiMsgDict['function_call']
+				else:
+					_logger.error("Unexpected condition #42")
+
+			else:
+				print("WARNING: Found a message with no content: ", oaiMsgDict)
+				continue
+
+		if len(new_msgs) >= 2:
+
+			if new_msgs[-2]['role'] == CHAT_ROLE_AI and \
+			   new_msgs[-1]['role'] == CHAT_ROLE_AI and \
+			   'content' in new_msgs[-2] and \
+			   'content' in new_msgs[-1]:
+
+				append_contents(new_msgs[-2], new_msgs[-1])
+
+				# Trim off the last message; it's been absorbed.
+				new_msgs = new_msgs[:-1]
+			
+	oaiMsgList = new_msgs
+
+	# Next, combine consecutive user messages.
+	
+	new_msgs = []
+	for oaiMsgDict in oaiMsgList:
+		if (len(new_msgs) >= 1 and 
+			new_msgs[-1]['role'] == CHAT_ROLE_USER and 
+			oaiMsgDict['role'] == CHAT_ROLE_USER):
+
+			# Just add the new user content onto the end of the last one.
+			append_contents(new_msgs[-1], oaiMsgDict)
+						
+		else:
+			new_msgs.append(oaiMsgDict)
+		
+	return new_msgs
+
+
 		#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#|	get_ai_response()							[public async function]
 		#|
@@ -6651,6 +6820,8 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 		usingRawMsgs = False	# Our input wasn't a raw messsage list.
 	else:
 		usingRawMsgs = True		# Our input *was* a raw message list.
+		oaiMsgList = _make_alternating(oaiMsgList)
+
 
 	# Also, stash it in the convo structure so we don't have to keep passing it
 	# around everywhere.
@@ -7324,7 +7495,10 @@ async def process_function_call(
 
 	# This generates a new-format bot message for the function call action.
 	if global_gptCore.isChat:
-		who = BOT_NAME	# Make it look like function commencement is from the AI.
+		if modelFamily(ENGINE_NAME) == 'DeepSeek':
+			who = SYS_NAME	# This is to discourage the AI from trying to generate these strings directly.
+		else:
+			who = BOT_NAME	# Make it look like function commencement is from the AI.
 	else:
 		who = SYS_NAME	# Make it look like function commencement is from the BotServer.
 
@@ -7601,17 +7775,26 @@ async def process_raw_response(
 	response_text = chatCompletion.text
 
 	# Clean up multiple '</think>' tags.
-	response_text = re.sub(r'(<\s*/think\s*>\s*)+', '</think>\n', response_text, flags=re.DOTALL)
+	if response_text:
+		response_text = re.sub(r'(<\s*/think\s*>\s*)+', '</think>\n', response_text, flags=re.DOTALL)
 
 	# Diagnostic for debugging.
 	_logger.info(f"Got response text: [{response_text}]")
 
 	# If DeepSeek, check for a reasoning_content attribute;
 	# if it's present, display it on the console.
-	if PROVIDER == 'DeepSeek':
+	if PROVIDER == 'DeepSeek' or PROVIDER == 'OpenRouter':
 		response_reasoning = chatCompletion.reasoning
 		if response_reasoning:
 			_logger.normal(f"THINKING: [{response_reasoning}]")
+
+			# We also prepend the reasoning inside <think> tags
+			# at the front of the response. This is so that it
+			# will get archived in the chat transcript.
+
+			if response_text is None: 
+				response_text = ""
+			response_text = f"<think>{response_reasoning}</think>\n" + response_text
 
 	# Here, we make sure that the response does not begin with a message
 	# prompt like "{BOT_NAME}> ". If it does, we trim it off the front.
@@ -7641,10 +7824,13 @@ async def process_raw_response(
 	# a function.  If it is, we'll dispatch out to the process_function_call()
 	# function to handle this case.
 
-	if response_oaiMsg.tool_calls:
-		funCall = response_oaiMsg.tool_calls[0].function
+	if modelFamily(ENGINE_NAME) == 'DeepSeek':	# Doesn't return these attributes.
+		funCall = None
 	else:
-		funCall = response_oaiMsg.function_call
+		if response_oaiMsg.tool_calls:
+			funCall = response_oaiMsg.tool_calls[0].function
+		else:
+			funCall = response_oaiMsg.function_call
 	
 	if funCall:
 		
@@ -7734,15 +7920,52 @@ async def process_raw_response(
 	_logger.debug("Creating new ordinary (non-function-call) response from "
 				  f"{botConvo.bot_name} with text: [{response_text}].")
 
+## NOT DOING THIS BECAUSE WE WANT THOUGHTS TO GET ARCHIVED
+#
+#	# Next, we want to strip out any complete <think> or <thought> constructs before
+#	# we even try to split messages, just in case the AI tries to think about the
+#	# message delimiters. NOTE: We won't check for function calls in these guys.
+#
+#	think_pattern = re.compile(r'<\s*think\s*>(.*?)(?:<\s*/think\s*>\s*)+', re.DOTALL)
+#	thinks = think_pattern.findall(response_text)
+#
+#	thought_pattern = re.compile(r'<\s*thought\s*>(.*?)(?:<\s*/thought\s*>\s*)+', re.DOTALL)
+#	thoughts = thought_pattern.findall(response_text)
+#	
+#	thinks_and_thoughts = thinks + thoughts
+#	for thunk in thinks_and_thoughts:
+#		_logger.normal('\n' + ':'*100 + f"\nSuppressing thought [{thunk}] from being sent to chat {chat_id}")
+#		
+#	# Actually strip them out of the response text now.
+#	response_text = think_pattern.sub('', response_text)
+#	response_text = thought_pattern.sub('', response_text)
+
 	# At this point, according to our new protocol for allowing the AI to send multiple
 	# messages, we check for additional instances of "\n{BOT_NAME}>" in the response, and
 	# if they exist, we split the response on those, and process each one as if it were 
-	# a separate response.
+	# a separate response. (Now accepts optional message delimiters too.)
 
-	split_str = f"\n{botConvo.bot_name}> "
-	if split_str in response_text:
-		response_msgs = response_text.split(split_str)
-		_logger.info("\nDetected multiple Telegram messages in response:")
+	#split_str = '\n'
+	#if MESSAGE_DELIMITER:
+	#	split_str += MESSAGE_DELIMITER + ' '
+	#split_str += f"{botConvo.bot_name}> "
+
+	## Assemble the regex for message splitting.
+
+	# First, we must match a newline.
+	split_regex = r'\n'
+
+	# Next comes an optional message delimiter.
+	if MESSAGE_DELIMITER:
+		split_regex += repr(MESSAGE_DELIMITER)[1:-1] + '?'
+
+	# Then optional whitespace
+	split_regex += f"\s*{botConvo.bot_name}> "
+
+	if re.search(split_regex, response_text):
+		#response_msgs = response_text.split(split_str)
+		response_msgs = re.split(split_regex, response_text)
+		_logger.info(f"\nIn chat {chat_id}, detected multiple Telegram messages in response:")
 		i=1
 		for msg in response_msgs:
 			_logger.info(f"\tMessage #{i}: [{msg}]")
@@ -7818,7 +8041,14 @@ async def process_raw_response(
 # given text string, and return the stripped version.
 def _strip_thoughts(raw_text:str) -> str:
 	"""Removes private thoughts from a string."""
-	cleaned_response = re.sub(r'<\s*think\s*>.*?(<\s*/think\s*>\s*)+', '', raw_text, flags=re.DOTALL)  
+	cleaned_response = re.sub(r'(?:<\s*think\s*>.*?(<\s*/think\s*>\s*)+|<\s*thought\s*>.*?(<\s*/thought\s*>\s*)+)', '', raw_text, flags=re.DOTALL)  
+		# The structure here is:
+		# (?:											# Non-capturing group.
+		#	<\s*think\s*>.*?(<\s*/think\s*>\s*)+		#	Open-think-tag, anything (non-greedy), close-think-tag(s).
+		#  |											#		-OR-
+		#	<\s*thought\s*>.*?(<\s*/thought\s*>\s*)+	#	Open-thought-tag, anything (non-greedy), close-thought-tag(s).
+		# )												# Close non-capturing group.
+
 	return cleaned_response
 
 
@@ -7853,10 +8083,12 @@ async def process_response(update:Update, context:Context,
 	# sequence of multiple Telegram messages; if so, then we need to
 	# break it up and process each one separately.
 
+	# TODO: Generalize this to use a regex like in process_raw_response().
+
 	resp_delim = SUBMESSAGE_DELIMITER + f" {BOT_NAME}>"
 	message_texts = response_text.split(resp_delim)
 	if len(message_texts) > 1:
-		_logger.normal(f"NOTE: Got a response with {len(message_texts)} submessages.")
+		_logger.normal(f"\tNOTE: Got a response with {len(message_texts)} submessages in chat {chat_id}.")
 
 	i=1
 	for msg_text in message_texts:
@@ -7893,16 +8125,22 @@ async def process_response(update:Update, context:Context,
 		# Find all private thought patterns in msg_text
 		private_thoughts = private_pattern.findall(msg_text)
 
+		# Also check this, in case the AI uses the wrong tag.
+		private_pattern_1 = re.compile(r'<\s*thought\s*>(.*?)(?:<\s*/thought\s*>\s*)+', re.DOTALL)
+		private_thoughts += private_pattern_1.findall(msg_text)
+
+		# And this, our form for embedded thoughts.
 		private_pattern_2 = re.compile(r'\[\[Private: ((?:[^]]|\][^]])*)\]\]\s*')
 		private_thoughts += private_pattern_2.findall(msg_text)
 
 		# Print out all the private thought patterns to the console
 		# for diagnostic purposes.
 		for thought in private_thoughts:
-			_logger.info('\n' + ':'*100 + f"\nSuppressing thought [{thought}] from being sent to chat {chat_id}")
+			_logger.normal('\n' + ':'*100 + f"\nSuppressing thought [{thought}] from being sent to chat {chat_id}")
 
 		# Strip them out of msg_text.
 		post_think_text = private_pattern.sub('', msg_text)
+		post_think_text = private_pattern_1.sub('', post_think_text)
 		public_msg_text = private_pattern_2.sub('', post_think_text)
 
 		# Send the response with private thoughts removed.
@@ -10615,9 +10853,17 @@ def _trim_prompt(response_text:str) -> str:
 
 		# Regex to match the prompt portion at the start of a message string.
 		if MESSAGE_DELIMITER != "":
-			regex = f"({re.escape(MESSAGE_DELIMITER)} ?)?" + r"([a-zA-Z0-9_-]{1,64})> *"
+			escaped_delimiter = re.escape(MESSAGE_DELIMITER)
+			regex = f"(\s*{escaped_delimiter}?" + r"\s*)" + f"({BOT_NAME})>"
+				# Two match groups here:
+				#	(1) Prefix: Optional whitespace, optional message delimiter, optional whitespace.
+				#	(2) Sender name (before '>').
 		else:
-			regex = r"([a-zA-Z0-9_-]{1,64})> *"
+			regex = r"(\s*)" + f"({BOT_NAME})>"
+				# Two match groups here:
+				#	(1) Prefix: Optional whitespace.
+				#	(2) Sender name (before '>').
+			#regex = r"([a-zA-Z0-9_-]{1,64})> *"
 		# Note we don't need to start the regex with '^' because re.match()
 		# only matches at the start of a string anyway.
 
@@ -10631,12 +10877,8 @@ def _trim_prompt(response_text:str) -> str:
 
 		if match:
 
-			if MESSAGE_DELIMITER != "":
-				prefix = match.group(1)
-				sender = match.group(2)
-			else:
-				prefix = ""
-				sender = match.group(1)
+			prefix = match.group(1)
+			sender = match.group(2)
 
 			_logger.debug(f"AI output a message from [{sender}]...")
 
@@ -10652,7 +10894,6 @@ def _trim_prompt(response_text:str) -> str:
 			response_text = rest
 			
 			_logger.debug(f"Now we are left with [{response_text}]...")
-			
 
 		#__/
 	#__/
@@ -10959,6 +11200,7 @@ PERMANENT_CONTEXT_HEADER	= f" {SEPARATOR_BAR} PERMANENT CONTEXT DATA: {SEPARATOR
 INTERFACE_DOCS_HEADER		= f" {SEPARATOR_BAR} INTERFACE DOCUMENTATION: {SEPARATOR_BAR}\n"
 
 TRANSCRIPT_DOC_HEADER	= f" {SUBSEP_BAR} Chat Transcript Format: {SUBSEP_BAR}\n"
+RESPONSE_FORMAT_HEADER	= f" {SUBSEP_BAR} Response Payload Format: {SUBSEP_BAR}\n"
 MESSAGE_SEQ_HEADER		= f" {SUBSEP_BAR} Output Message Sequences: {SUBSEP_BAR}\n"
 THOUGHT_DOC_HEADER		= f" {SUBSEP_BAR} Inner Monologue Format: {SUBSEP_BAR}\n"
 FUNCTIONS_DOC_HEADER	= f" {SUBSEP_BAR} Function Call Interface: {SUBSEP_BAR}\n"

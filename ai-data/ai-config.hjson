@@ -153,12 +153,15 @@
 		#model-version:					'gpt-4-0613'		# Updated release of GPT-4. Supports functions. Used for Aria.
 		#model-version:					'gpt-4o'
 		#model-version:					'gpt-4o-mini'
+
 		#model-version:					'meta-llama/llama-3.1-405b'		# This is served through OpenRouter
 		#model-version:					'meta-llama/llama-3.1-405b-instruct'		# This is served through OpenRouter
 		#model-version:					'meta-llama/Meta-Llama-3.1-405B'		# This is served through Hyperbolic
+
 		#model-version:					'deepseek-ai/DeepSeek-V3'	# Served through Hyperbolic
 		#model-version:					'deepseek-reasoner'			# DeepSeek-R1, served by DeepSeek
-		model-version:					'deepseek-ai/DeepSeek-R1'	# Served through Hyperbolic
+		#model-version:					'deepseek-ai/DeepSeek-R1'	# Served through Hyperbolic
+		model-version:					'deepseek/deepseek-r1'		# Served through OpenRouter
 
 			#-----------------------------------------------------------------------
 			# The sys-notification-threshold specifies the minimum importance level
