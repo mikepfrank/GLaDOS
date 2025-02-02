@@ -2349,8 +2349,8 @@ class ChatCompletion(Completion):
 		else:
 			reasoning = None
 
-		print("REASONING_CONTENT = ", reasoning_content)
-		print("REASONING = ", reasoning)
+		#print("REASONING_CONTENT = ", reasoning_content)
+		#print("REASONING = ", reasoning)
 
 		reasoning_text = reasoning_content or reasoning
 
@@ -2700,6 +2700,11 @@ class ChatCompletion(Completion):
 				'sort':	 'throughput'
 			}
 			apiArgs['include_reasoning'] = True
+			del apiArgs['stop']
+				# It's important not to use our usual start-message delimiter
+				# "\n\x1e" in reasoning models, because the model may try to
+				# generate it in between the reasoning trace and its first
+				# actual output message.
 
 		try:
 

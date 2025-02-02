@@ -1310,6 +1310,11 @@ class BotConversation:
 			# message objects.  This differs from .messages in that it's in
 			# OpenAI format (not BotMessage format) and may include function
 			# call and function return objects.
+			#	ADDENDUM: In the case of DeepSeek, which doesn't fully support
+			# OpenAI format, it's in BotMessage format but still differs from
+			# the usual message list in that it includes <thought> elements in
+			# the current function-call stack, to help orient the AI as to what
+			# it's trying to do.
 
 		# This keeps track of the last user who interacted with us in the current chat.
 		newConv.last_user = creator		# The user who caused this convo to be created.
@@ -1377,7 +1382,53 @@ class BotConversation:
 			tracked for a convo. Returns the new
 			trimmed list."""
 
-		thisConv.raw_oaiMsgs = thisConv.raw_oaiMsgs[:-1]
+		# First, we need to check .last_final_prompt, to see if it
+		# matches a suffix of the last message in the message list.
+		# If so, then we trim that message back.
+		if hasattr(thisConv, 'last_final_prompt'):
+			lfp = thisConv.last_final_prompt[1:]
+				# Here we are skipping the first character, because
+				# we don't know if it's a message delimiter or a
+				# submessage delimiter, and it might have changed
+				# since it was added, during a message merge.
+			if 'content' in thisConv.raw_oaiMsgs[-1]:
+				content = thisConv.raw_oaiMsgs[-1]['content']
+				if content.endswith(lfp):
+
+					# OK, now trim those characters off the end of the content.
+					content = content[:-len(lfp)]
+
+					# If previous character is a message delimiter or submessage delimiter, trim that too.
+					if len(content) >= 1:
+						c = content[-1]
+						if c in (MESSAGE_DELIMITER, SUBMESSAGE_DELIMITER):
+							content = content[:-1]
+
+					# If previous character is a newline, trim that too.
+					if len(content) >= 1:
+						if content[-1] == '\n':
+							content = content[:-1]
+
+					# If the content is now zero length, we can remove the entire last message;
+					# otherwise, we just update its content.
+
+					if content:
+
+						# Content isn't the empty string yet, so just update it.
+						thisConv.raw_oaiMsgs[-1]['content'] = content
+
+					else:
+
+						# Content is the empty string, so this entire message is no longer needed.
+						thisConv.raw_oaiMsgs = thisConv.raw_oaiMsgs[:-1]
+
+					#__/ End if content ... else ...
+
+				#__/ End if the content string ends with the last final prompt...
+
+			#__/ End if the last message even has a content field...
+
+		#__/ End if we have a record of what the last final prompt was...
 
 		return thisConv.raw_oaiMsgs
 
@@ -1544,7 +1595,7 @@ class BotConversation:
 
 		context_str += SUBMESSAGE_DELIMITER + TRANSCRIPT_DOC_HEADER + (
 			"In this environment, you are presented with a sequence of records "
-			"separated by the ASCII record separator (RS) character, control-^. "
+			"separated by the white heart emoji ('🤍') character. "
 			"The initial records are context headers, and these are followed by "
 			"records representing recent events in the current Telegram chat, "
 			f"which happens to be {indgrp}. Event types include:\n"
@@ -1585,16 +1636,17 @@ class BotConversation:
 			 "sequence of multiple Telegram messages in a row, that is, "
 			 "without waiting for the user to respond in between. To do "
 			 "this, simply separate the messages in the sequence with a "
-			 "literal ASCII unit separator control charactrer (US, hex 0x1F, ^_) "
-			 "instead of the usual record separator character (RS, hex 0x1E, ^^). "
+			 "literal Unicode rotated floral heart bullet charactrer ('❧', U+2767) "
+			 "instead of the usual white heart emoji message delimiter character ('🤍', U+1F90D). "
 			 "For example:\n"
 			 "\n"
 			 "\t```text\n"
-			 f"\t\x1e {BOT_NAME}> This is the first Telegram message to be sent in my response.\n"
-			 f"\t\x1f {BOT_NAME}> This is a second Telegram message in the same response!\n"
+			 f"\t🤍<think>Your usual reasoning chain could appear here.</think>"
+			 f"\t❧ {BOT_NAME}> This is the first Telegram message to be sent in my response.\n"
+			 f"\t❧ {BOT_NAME}> This is a second Telegram message in the same response!\n"
 			 f"\t(Note that a single Telegram message can span multiple lines of text!)\n"
-			 f"\t\x1f {BOT_NAME}> This is the third and last Telegram message in this response.\n"
-			 f"\t\x1e	# <-- Note the record separator here ends {BOT_NAME}'s response.\n"
+			 f"\t❧ {BOT_NAME}> This is the third and last Telegram message in this response.\n"
+			 f"\t🤍	# <-- Note a white heart after newline ends {BOT_NAME}'s response.\n"
 			 "\t```\n"
 			 "\n"
 			 "NOTE: Please try to keep individual Telegram messages under 4,096 "
@@ -1623,12 +1675,12 @@ class BotConversation:
 			"Example response payload including private thoughts:\n"
 			"\n"
 			"\t```text\n"
-			f"\t\x1e {BOT_NAME}> [[Private: In this message, I'm privately "
+			f"\t🤍 {BOT_NAME}> [[Private: In this message, I'm privately "
 				"planning my response. This won't be sent to the chat.]]\n"
-			f"\t\x1f {BOT_NAME}> Hello, user! I am now responding to you.\n"
-			f"\t\x1f {BOT_NAME}> [[Private: Let me reflect on that last "
+			f"\t❧ {BOT_NAME}> Hello, user! I am now responding to you.\n"
+			f"\t❧ {BOT_NAME}> [[Private: Let me reflect on that last "
 				"interaction...]]\n"
-			f"\t\x1e	# <-- Terminates {BOT_NAME}'s response.\n"
+			f"\t🤍	# <-- Terminates {BOT_NAME}'s response.\n"
 			"\t```\n"
 			"\n"
 			"Please note that private thoughts are particularly useful for "
@@ -1686,11 +1738,11 @@ class BotConversation:
 			"After a function is invoked, such as the `create_image` example "
 			"above, its commencement will be noted as an event in the transcript like so:\n"
 			"\n"
-			f"\t\x1e {SYS_NAME}> @create_image(" + '{"description": "A beautiful mountain range", [...]})\n'
+			f"\t🤍 {SYS_NAME}> @create_image(" + '{"description": "A beautiful mountain range", [...]})\n'
 			"\n"
 			"and its return result will be noted as another event appearing like:\n"
 			"\n"
-			"\t\x1e @create image> Success: image with revised description [...] has been generated in file [...] and sent to user.\n"
+			"\t🤍 @create image> Success: image with revised description [...] has been generated in file [...] and sent to user.\n"
 			"\n"
 			"Please note that other chat participants cannot directly see any these function commencement or return "
 			"events, since they are only internal to your bot interface; thus, "
@@ -1943,7 +1995,7 @@ class BotConversation:
 			"In your response, use the same language that the user used most "
 			"recently, if appropriate. " #Be concise unless asked for detail. You "
 			"You may include multiple Telegram messages in your response, but they "
-			f"must be separated with '\x1f {BOT_NAME}>' as described earlier. "
+			f"must be separated with '❧ {BOT_NAME}>' as described earlier. "
 			"(Or, alternatively to just sending messages, you can just "
 			"call an available function, if appropriate.) "
 			#"activate "
@@ -2623,7 +2675,8 @@ class BotConversation:
 			'chat_transcript_docs',
 			( "\n"
 			  "In this environment, you are presented with a sequence of records "
-			  "prefixed by the ASCII record separator (RS) character, control-^. "
+			  "prefixed by the white heart emoji ('🤍') character, U+2767, used "
+			  "here as a message delimiter. "
 			  "The initial records are context headers, and these are followed by "
 			  "records representing recent events in the current Telegram chat, "
 			 f"which happens to be {indgrp}. Event types include:\n"
@@ -2666,26 +2719,26 @@ class BotConversation:
 			 "user message, you should structure your response in the following "
 			 "format:\n"
 			 "\n"
-			 "First, generate your usual chain of thought as per your training; "
+			 "First, you may generate your usual chain of thought as per your training; "
 			 "this will be delivered by your API to the bot server wrapped in "
 			 "an XML-like <think>...</think> element, but you should structure "
 			 "your chain of thought in the usual way you're comfortable with.\n"
 			 "\n"
-			 "After your chain of thought, you should prefix your text response "
-			 "with ASCII record separator (RS, hex 0x1e, ^^) to begin your "
-			 "actual output message, followed by a space and your sender tag "
-			 f"'{BOT_NAME}>', like so:\n"
+			 "After your chain of thought, you may prefix your text response "
+			 "with a rotated Unicode floral heart bullet ('❧', U+2767) "
+			 "to begin your actual output message text, followed by a space "
+			 f"and your sender tag '{BOT_NAME}>', like so:\n"
 			 "\n"
-			 "\t<think>(You will generate your chain of thought first in your response "
+			 "\t🤍 <think>(You will generate your chain of thought first in your response "
 			 		"as per usual, and it will get transmitted to your bot server in a "
 			 		"'think' element like this; but, it will not be forwarded to the "
 			 		"external Telegram chat.)</think>\n"
 			 "\t\n"
-			 f"\t\x1e {BOT_NAME}> [Addressing the user...] Well, now I've finished "
+			 f"\t❧ {BOT_NAME}> [Addressing the user...] Well, now I've finished "
 			 		"thinking about that, so then, let me say this to you in response: ...\n"
 			 "\n"
 			 "(That is just an example; of course, you can say whatever you like.)\n"
-			 "You may also include multiple telegram messages in your response, "
+			 "You may also include multiple similarly-structured telegram messages in your response, "
 			 "and intersperse additional private thoughts embedded within "
 			 "[[Private: ...]] forms; see the next two sections for further details.\n\n"
 			 )
@@ -2702,14 +2755,14 @@ class BotConversation:
 			 "sequence of multiple Telegram messages in a row, that is, "
 			 "without waiting for the user to respond in between. To do "
 			 "this, simply separate the messages in the sequence with a "
-			 "literal ASCII unit separator control charactrer (US, hex 0x1F, ^_) "
-			 "instead of the usual record separator character (RS, hex 0x1E, ^^). "
+			 "literal rotated Unicode floral heart bullet ('❧', U+2767) "
+			 "instead of the usual white heart character ('🤍', U+1F90D). "
 			 "For example:\n"
 			 "\n"
-			 f"\t\x1e {BOT_NAME}> This is the first Telegram message to be sent in my response.\n"
-			 f"\t\x1f {BOT_NAME}> This is a second Telegram message in the same response!\n"
+			 f"\t🤍 {BOT_NAME}> This is the first Telegram message to be sent in my response.\n"
+			 f"\t❧ {BOT_NAME}> This is a second Telegram message in the same response!\n"
 			 f"\t(Note that a single Telegram message can span multiple lines of text!)\n"
-			 f"\t\x1f {BOT_NAME}> This is the third and last Telegram message in this response.\n"
+			 f"\t❧ {BOT_NAME}> This is the third and last Telegram message in this response.\n"
 			 "\n"
 			 "NOTE: Please try to keep individual Telegram messages under 4,096 "
 			 "characters in length since that is the maximum length of a message "
@@ -2728,27 +2781,36 @@ class BotConversation:
 			(
 				"\n"
 				"This interface supports an extended version of the inner "
-				"monologue capability that you were trained to use. "
-				"In addition to your usual chain of thought, you may also "
+				"monologue capability that you were trained to use.\n"
+				"\n"
+				"Your usual chain-of-thought reasoning trace may be "
+				"the first thing that you generate, as usual; it may appear temporarily "
+				"in the chat transcript wrapped in \"<think>...</think>\" tags, but "
+				"it will not be shown to the user, and old reasoning may be removed "
+				"from your view of the chat transcript, for conciseness.\n"
+				"\n"
+				"In addition, you may also "
 				"utilize the following embedded thought capability, namely: "
-				"In a sequence of messages, any text of the form "
+				"Within a sequence of Telegram messages, any text of the form "
 				"\"[[Private:...]]\" will be suppressed from "
 				"being sent to the chat, while remaining visible for your future reference "
 				"in the chat transcript. You may use this facility to augment your "
-				"usual pre-response chain-of-thought reasoning, and/or to plan or "
+				"usual pre-response chain-of-thought reasoning, such to plan or "
 				"reflect upon your visible responses or on the user interaction more "
 				"broadly. Please remember that remote human chat participants on "
 				"Telegram will not be able to see your private thoughts, but they may be "
 				"displayed to the system operator on the bot server console and/or saved "
-				"to system log files for diagnostic purposes during development.\n"
+				"to system log files for diagnostic purposes during development. The "
+				"[[Private: ...]] blocks will also be preserved in your view of the "
+				"transcript of previous chat messages\n"
 				"\n"
 				"Example response payload including private thoughts:\n"
 				"\n"
-				"<think>My usual pre-response chain of thought is here.</think>"
-				f"\t\x1e {BOT_NAME}> [[Private: In this message, I'm privately "
+				"\t🤍<think>My usual pre-response chain-of-thought reasoning trace appears here temporarily.</think>"
+				f"\t❧ {BOT_NAME}> [[Private: In this message, I'm privately "
 					"planning my response. This won't be sent to the chat.]]\n"
-				f"\t\x1f {BOT_NAME}> Hello, user! [[Private: I can insert embedded thoughts like this.]] I am now responding to you.\n"
-				f"\t\x1f {BOT_NAME}> [[Private: Let me reflect on that last "
+				f"\t❧ {BOT_NAME}> Hello, user! [[Private: I can insert embedded thoughts like this.]] I am now responding to you.\n"
+				f"\t❧ {BOT_NAME}> [[Private: Let me reflect on that last "
 				"interaction...]]\n"
 				"\n"
 				"Note that [[Private:...]] forms may appear embedded anywhere in "
@@ -2805,12 +2867,12 @@ class BotConversation:
 				"After a function is invoked, such as the `create_image` example "
 				"above, its commencement will be recorded as an event in the transcript like so:\n"
 				"\n"
-				f"\t\x1e {SYS_NAME}> @create_image(" + '{"description": "A beautiful mountain range", [...]})\n'
+				f"\t🤍 {SYS_NAME}> @create_image(" + '{"description": "A beautiful mountain range", [...]})\n'
 				"\n"
 				"(with arguments represented like a dict or JSON object structure) "
 				"and its return result will be noted as another event appearing like:\n"
 				"\n"
-				"\t\x1e @create image> Success: image with revised description [...] has been generated in file [...] and sent to user.\n"
+				"\t🤍 @create image> Success: image with revised description [...] has been generated in file [...] and sent to user.\n"
 				"\n"
 				"Please note that other chat participants cannot directly see "
 				"any of these special function commencement or return "
@@ -3366,11 +3428,19 @@ class BotConversation:
 			add_system_section(
 				FINAL_PROMPT_HEADER,
 				'final_prompt',
-				response_prompt,
+				f"[[{response_prompt}]]",	# Double brackets to suggest out-of-band communication.
 				do_usermode = is_deepseek
 					# For DeepSeek, generate this as a user message
 					# from the BotServer instead.
 			)
+			# Remember the content we just added to make it easier to remove it
+			# from a merged messasge later. This is necessary because system
+			# messages at the end of the message list have to be rendered as
+			# user message for DeepSeek.
+			thisConv.last_final_prompt = chat_messages[-1]['content']
+				# Note we have to do this before we merge it into the previous
+				# user message so we can separate it back out again later.
+			
 
 		# Anthropic and DeepSeek are picky about alternating user and
 		# assistant messages.  Here, we consolidate consecutive user
@@ -5189,7 +5259,7 @@ async def handle_message(update:Update, context:Context, isNewMsg=True) -> None:
 		await conversation.add_message(BotMessage(user_name, text))
 		if got_image:
 			await conversation.add_message(BotMessage(SYS_NAME,
-				f"[NOTE: {BOT_NAME}, please use analyze_image() to inspect the photo attachment]"))
+				f"[[NOTE: {BOT_NAME}, please use analyze_image() to inspect the photo attachment]]"))
 				#f"[NOTE: {BOT_NAME}, please inform the user that image input isn't yet implemented.]"))
 
 	# Get the current user object, stash it in convo temporarily.
@@ -7679,10 +7749,14 @@ async def process_function_call(
 		# ^ We really wouldn't need to do this either if we hadn't skipped this earlier.
 	temp_chat_oaiMsgs += [{
 		'role':		'system',
-		'content':	f"Instructions from bot server: {BOT_NAME}, you " \
+		'content':	f"🤍 BotServer> [[{BOT_NAME}, you " \
 					"may now provide your response, if any, to the " \
-					"function's return value above.",
+					"function's return value above.]]",
+			# NOTE: Double square brackets suggest out-of-band comms.
 	}]
+	# Remember that last message so we can trim it later.
+	botConvo.last_final_prompt = temp_chat_oaiMsgs[-1]['content']
+	
 
 	# Diagnostic: Display the most recent 10 chat messages from temp list.
 	_logger.info(f"Last few chat messages are [\n{pformat(temp_chat_oaiMsgs[-10:])}\n].")
@@ -7786,7 +7860,7 @@ async def process_raw_response(
 	if PROVIDER == 'DeepSeek' or PROVIDER == 'OpenRouter':
 		response_reasoning = chatCompletion.reasoning
 		if response_reasoning:
-			_logger.normal(f"THINKING: [{response_reasoning}]")
+			_logger.info(f"THINKING: [{response_reasoning}]")
 
 			# We also prepend the reasoning inside <think> tags
 			# at the front of the response. This is so that it
@@ -7957,10 +8031,14 @@ async def process_raw_response(
 
 	# Next comes an optional message delimiter.
 	if MESSAGE_DELIMITER:
-		split_regex += repr(MESSAGE_DELIMITER)[1:-1] + '?'
+		split_regex += r'(?:\s*' + repr(MESSAGE_DELIMITER)[1:-1] + r')?'
 
-	# Then optional whitespace
-	split_regex += f"\s*{botConvo.bot_name}> "
+	# Next comes an optional non-matching group, whitespace followed by a submessage delimiter.
+	if SUBMESSAGE_DELIMITER:
+		split_regex += r'(?:\s*' + repr(SUBMESSAGE_DELIMITER)[1:-1] + r')?'
+
+	# Then optional whitespace, and bot's sender marker, with optional '**' around it.
+	split_regex += f"\s*(?:\*\*)?{botConvo.bot_name}(?:\*\*)?> "
 
 	if re.search(split_regex, response_text):
 		#response_msgs = response_text.split(split_str)
@@ -8080,13 +8158,20 @@ async def process_response(update:Update, context:Context,
 		return
 
 	# This is the right place to see if the AI sent its response as a
-	# sequence of multiple Telegram messages; if so, then we need to
+	# sequence of multiple Telegram sub-messages; if so, then we need to
 	# break it up and process each one separately.
 
-	# TODO: Generalize this to use a regex like in process_raw_response().
+	# First, require a newline.
+	submsg_regex = '\n'
+	
+	# Next comes an optional non-matching group, whitespace followed by a submessage delimiter.
+	if SUBMESSAGE_DELIMITER:
+		submsg_regex += r'(?:\s*' + repr(SUBMESSAGE_DELIMITER)[1:-1] + r')?'
 
-	resp_delim = SUBMESSAGE_DELIMITER + f" {BOT_NAME}>"
-	message_texts = response_text.split(resp_delim)
+	# And finally, optional whitespace, and bot's sender marker, with optional '**' around it.
+	submsg_regex += f"\s*(?:\*\*)?{BOT_NAME}(?:\*\*)?> "
+
+	message_texts = re.split(submsg_regex, response_text)
 	if len(message_texts) > 1:
 		_logger.normal(f"\tNOTE: Got a response with {len(message_texts)} submessages in chat {chat_id}.")
 
@@ -10852,9 +10937,16 @@ def _trim_prompt(response_text:str) -> str:
 		# trim the prompt part off the front.
 
 		# Regex to match the prompt portion at the start of a message string.
-		if MESSAGE_DELIMITER != "":
+		regex = ""
+		if MESSAGE_DELIMITER != "" or SUBMESSAGE_DELIMITER != "":
 			escaped_delimiter = re.escape(MESSAGE_DELIMITER)
-			regex = f"(\s*{escaped_delimiter}?" + r"\s*)" + f"({BOT_NAME})>"
+			escaped_delimiter2 = re.escape(SUBMESSAGE_DELIMITER)
+			regex = r'('
+			if MESSAGE_DELIMITER:
+				regex += r'\s*' + f"{escaped_delimiter}?"
+			if SUBMESSAGE_DELIMITER:
+				regex += r'\s*' + f"{escaped_delimiter2}"
+				regex += r'\s*)' + f"({BOT_NAME})>"
 				# Two match groups here:
 				#	(1) Prefix: Optional whitespace, optional message delimiter, optional whitespace.
 				#	(2) Sender name (before '>').
@@ -11040,9 +11132,9 @@ def _unblockUserByID(userID:int) -> bool:
 
 	# We'll use this to delimit the start of each new message event in the AI's receptive field.
 
-#MESSAGE_DELIMITER = '🤍'	# A Unicode character. Gladys selected the white heart emoji.
+MESSAGE_DELIMITER = '🤍'	# A Unicode character, \u1f90d. Gladys selected the white heart emoji.
 	# We're temporarily trying a different delimiter that's less likely to appear in message text:
-MESSAGE_DELIMITER = chr(ascii.RS)	# (Gladys agreed to try this.)
+#MESSAGE_DELIMITER = chr(ascii.RS)	# (Gladys agreed to try this.)
 	# A control character.	(ASCII RS = 0x1E, record separator.)
 #MESSAGE_DELIMITER = chr(ascii.ETX)	# End-of-text control character.
 #MESSAGE_DELIMITER = chr(ascii.ETB)	# End-of-transmission-block control character.
@@ -11055,7 +11147,8 @@ MESSAGE_DELIMITER = chr(ascii.RS)	# (Gladys agreed to try this.)
 
 if MESSAGE_DELIMITER:		# If the delimiter isn't empty string,
 	MESSAGE_SEPARATOR = MESSAGE_DELIMITER + ' '		# Add a space after it (for benefit of tokenizer)
-	SUBMESSAGE_DELIMITER = chr(ascii.US)	# ASCII FS = 0x1F, unit separator.
+	#SUBMESSAGE_DELIMITER = chr(ascii.US)	# ASCII FS = 0x1F, unit separator.
+	SUBMESSAGE_DELIMITER = '❧'	# Right heart bullet, \u2767
 else:
 	MESSAGE_SEPARATOR = ""
 	SUBMESSAGE_DELIMITER = ""
@@ -11088,9 +11181,13 @@ PASS_TURN_RESULT = "Success: Noted that the AI is not responding to the last use
 	#  Sets the stop sequence (terminates response when encountered).
 
 # Configure the stop sequence appropriate for this application.
-#stop_seq = MESSAGE_DELIMITER	# This is appropriate given the RS delimiter.
+stop_seq = MESSAGE_DELIMITER	# This is appropriate given the RS delimiter.
 
-stop_seq = ['\n' + MESSAGE_DELIMITER]	# Needed if delimiter might be in text.
+# For DeepSeek, because it outputs a reasoning trace before the first message,
+# we can't use the below stop sequence.
+# stop_seq = None
+
+#stop_seq = ['\n' + MESSAGE_DELIMITER]	# Needed if delimiter might be in text.
 	# NOTE: The stop parameter is used to tell the API to stop generating 
 	# tokens when it encounters the specified string(s). We set it to stop 
 	# when it encounters the message delimiter string at the start of a new 
