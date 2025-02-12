@@ -5017,7 +5017,7 @@ async def handle_audio(update:Update, context:Context) -> None:
 		text = f"[Audio transcription error: {e}]"
 		# We could also do a traceback here. Should we bother?
 
-	_logger.normal(f'\tUser {user_name} said: "{text}"')
+	_logger.info(f'\tUser {user_name} said: "{text}"')
 
 	# Store the text in the audio_text attribute of the context object for later reference.
 	context.user_data['audio_text'] = text
@@ -5570,19 +5570,20 @@ async def process_text_message(update:Update, context:Context):
 		# not to exacerbate the AI's tendency to repeat itself.	 (So, as a user, if you 
 		# see that the AI isn't responding to a message, this may mean that it has the 
 		# urge to repeat something it said earlier, but is holding its tongue.)
-		if response_text.lower() != '/pass' and conversation.is_repeated_message(response_botMsg):
 
-			# Generate a normal-level log message to indicate that we're suppressing the response.
-			_logger.normal(f"Suppressing response [{response_text}]; it's a repeat.")
-
-			# Delete the last message from the conversation.
-			conversation.delete_last_message()
-
-			## Send the user a diagnostic message (doing this temporarily during development).
-			#diagMsg = f"Suppressing response [{response_text}]; it's a repeat."
-			#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
-
-			return		# This means the bot is simply not responding to the message
+		#if response_text.lower() != '/pass' and conversation.is_repeated_message(response_botMsg):
+		#
+		#	# Generate a normal-level log message to indicate that we're suppressing the response.
+		#	_logger.normal(f"Suppressing response [{response_text}]; it's a repeat.")
+		#
+		#	# Delete the last message from the conversation.
+		#	conversation.delete_last_message()
+		#
+		#	## Send the user a diagnostic message (doing this temporarily during development).
+		#	#diagMsg = f"Suppressing response [{response_text}]; it's a repeat."
+		#	#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
+		#
+		#	return		# This means the bot is simply not responding to the message
 
 
 		# If we get here, then we have a non-empty message that's also not a repeat.
@@ -7422,7 +7423,8 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 #__/ End function process_ai_command().
 
 # Adjusting this as needed to try to hit target daily expenditures.
-DAILY_MESSAGE_LIMIT = 500
+#DAILY_MESSAGE_LIMIT = 25
+DAILY_MESSAGE_LIMIT = 15
 
 async def process_chat_message(update:Update, context:Context) -> None:
 
@@ -7702,7 +7704,7 @@ async def process_function_call(
 		_logger.info("Oops, our funcall message has text content?? "
 					 f"[\n{pformat(funcall_oaiMsg)}\n]")
 		funcall_oaiMsg['content'] = None
-	
+
 	# This new raw-format message represents the actual return value of the
 	# function.
 
@@ -8063,23 +8065,23 @@ async def process_raw_response(
 		# it has the urge to just repeat something that it already said earlier, but
 		# is holding its tongue.)
 
-		if response_msg.lower() != '/pass' and \
-		   botConvo.is_repeated_message(response_botMsg):
-
-			# Generate an info-level log message to indicate that we're suppressing
-			# the response.
-			_logger.normal(f"Suppressing response [{response_text}]; it's a repeat.")
-
-			# Delete the last message from the conversation.
-			#botConvo.delete_last_message()
-
-			## Send the user a diagnostic message (doing this temporarily during development).
-			#diagMsg = f"Suppressing response [{response_text}]; it's a repeat."
-			#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
-		
-			continue		# This means the bot is simply not responding to the message
-
-		#__/ End check for repeated messages.
+		#if response_msg.lower() != '/pass' and \
+		#   botConvo.is_repeated_message(response_botMsg):
+		#
+		#	# Generate an info-level log message to indicate that we're suppressing
+		#	# the response.
+		#	_logger.normal(f"Suppressing response [{response_text}]; it's a repeat.")
+		#
+		#	# Delete the last message from the conversation.
+		#	#botConvo.delete_last_message()
+		#
+		#	## Send the user a diagnostic message (doing this temporarily during development).
+		#	#diagMsg = f"Suppressing response [{response_text}]; it's a repeat."
+		#	#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
+		#
+		#	continue		# This means the bot is simply not responding to the message
+		#
+		##__/ End check for repeated messages.
 
 		# It isn't a repeat, so we'll add it to the conversation.
 		await botConvo.add_message(response_botMsg)
@@ -8221,7 +8223,7 @@ async def process_response(update:Update, context:Context,
 		# Print out all the private thought patterns to the console
 		# for diagnostic purposes.
 		for thought in private_thoughts:
-			_logger.normal('\n' + ':'*100 + f"\nSuppressing thought [{thought}] from being sent to chat {chat_id}")
+			_logger.info('\n' + ':'*100 + f"\nSuppressing thought [{thought}] from being sent to chat {chat_id}")
 
 		# Strip them out of msg_text.
 		post_think_text = private_pattern.sub('', msg_text)
@@ -8233,7 +8235,7 @@ async def process_response(update:Update, context:Context,
 			await send_response(update, context, public_msg_text)
 
 		# We also need to check for embedded function calls... (concise syntax)
-		await check_for_funcalls(update, context, post_think_text)
+		ncalls = await check_for_funcalls(update, context, post_think_text)
 			# Note this will also call the function and allow the AI to respond to its result.
 
 	#__/
@@ -8256,7 +8258,17 @@ async def process_response(update:Update, context:Context,
 # check_for_funcalls() -- Checks the AI's text response for embedded
 # function calls (in concise syntax) and if so, then process them.
 
-async def check_for_funcalls(update:Update, context:Context, response_text:str) -> None:
+################################################################################
+async def check_for_funcalls(update:Update, context:Context, response_text:str) -> int:
+	"""
+		This function checks the given text string from the AI for function
+		invocations in concise Python-style format @funcName(args) where args
+		may include positional and/or keyword arguments. Any functions found
+		are then called, in the order in which they appear.
+
+		Returns the number of function calls found -- note this does not imply
+		that they all executed successfully. There could have been errors during
+		argument parsing or evaluation of the function."""
 
 	# Get the user message, or edited message from the update.
 	(tgMsg, edited) = _get_update_msg(update)
@@ -8286,13 +8298,17 @@ async def check_for_funcalls(update:Update, context:Context, response_text:str) 
 	# Search for matches
 	matches = invocation_regex.finditer(response_text)
 
-	# Print matches
+	# Go through matches
+	ncalls = 0
 	for match in matches:
 		full_call = match.group(0)
 		func_name = match.group(1)
 
+		# Increment number of matches.
+		ncalls += 1
+
 		# Diagnostic output to console
-		_logger.normal(f"Found a '{func_name}' invocation: {full_call}")
+		_logger.normal(f"({ncalls}) Found a '{func_name}' invocation: {full_call}")
 
 		# Extract the argument list part from the full_call
 		arguments_str = full_call[full_call.find('(') + 1 : full_call.rfind(')')]
@@ -8392,6 +8408,8 @@ async def check_for_funcalls(update:Update, context:Context, response_text:str) 
 
 	_logger.debug("Finished scanning for function invocations in response "
 				  f"to {_get_user_tag(tgMsg.from_user)} in chat {tgMsg.chat.id}.")
+
+	return ncalls
 
 #__/ End async function check_for_funcalls().
 

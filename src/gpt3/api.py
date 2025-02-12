@@ -511,7 +511,7 @@ _ENGINES = [
 		
 		'provider':		'OpenRouter',				'model-family':		'DeepSeek',
 		'engine-name':	'deepseek/deepseek-r1',		'max-context':		164_000,
-		'field-size':	64_000,						
+		'field-size':	24_576,						# 64_000,						
 		'price':		0.0024,		# $2.40/M output tokens
 		'prompt-price':	0.008,		# $0.80/M input tokens
 		'is-chat':		True,
@@ -2697,10 +2697,12 @@ class ChatCompletion(Completion):
 		is_openrouter = (provider(apiArgs['model']) == 'OpenRouter')
 		if is_openrouter:
 			apiArgs['provider'] = {
-				'sort':	 'throughput'
+				'sort':		'price'				# Cheap, but slow.
+				#'sort':	 'throughput'		# Fast, but expensive.
 			}
 			apiArgs['include_reasoning'] = True
-			del apiArgs['stop']
+			if 'stop' in apiArgs:
+				del apiArgs['stop']
 				# It's important not to use our usual start-message delimiter
 				# "\n\x1e" in reasoning models, because the model may try to
 				# generate it in between the reasoning trace and its first
@@ -2718,7 +2720,7 @@ class ChatCompletion(Completion):
 				response = requests.post(url, headers=headers, data=json.dumps(apiArgs))
 				if response.ok:
 					result_json = response.json()
-					_logger.normal("Got back this response JSON:\n" + json.dumps(result_json, indent=4))
+					_logger.info("Got back this response JSON:\n" + json.dumps(result_json, indent=4))
 					chatComplObj = dict_to_obj(result_json)
 				else:
 					_logger.error("Failed request")
