@@ -10546,7 +10546,9 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 				await convo.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram exception " \
 					f"{exType} ({e}) while sending to user {user_name}.]"))
 	
-			if isinstance(e, BadRequest) and "Not enough rights to send" in e.message:
+			# If we were kicked from the chat, or blocked by the user, then bail.
+			if ((isinstance(e, BadRequest) and "Not enough rights to send" in e.message) or
+				(isinstance(e, Forbidden) and "bot was blocked by the user" in e.message)):
 				try:
 					await app.bot.leave_chat(chat_id)
 					_logger.normal(f"Left chat {chat_id} due to insufficient permissions.")
