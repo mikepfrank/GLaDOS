@@ -1790,7 +1790,7 @@ class BotConversation:
 		context_str += SUBMESSAGE_DELIMITER + VISUAL_INPUT_HEADER + (
 			"Although native visual input isn't yet supported in this interface, "
 			"you may invoke the analyze_image() function, which requests an image "
-			"description/analysis from the multimodal GPT-4V model. "
+			"description/analysis from the multimodal GPT-4o model. "
 			"Consult the full schema below to see detailed analysis options. "
 			#"Active this "
 			#"function to reveal its full schema to see detailed analysis options. "
@@ -2806,7 +2806,7 @@ class BotConversation:
 				"\n"
 				"Example response payload including private thoughts:\n"
 				"\n"
-				"\t🤍<think>My usual pre-response chain-of-thought reasoning trace appears here temporarily.</think>"
+				"\t🤍<think>My usual pre-response chain-of-thought reasoning trace appears here temporarily.</think>\n"
 				f"\t❧ {BOT_NAME}> [[Private: In this message, I'm privately "
 					"planning my response. This won't be sent to the chat.]]\n"
 				f"\t❧ {BOT_NAME}> Hello, user! [[Private: I can insert embedded thoughts like this.]] I am now responding to you.\n"
@@ -5436,9 +5436,11 @@ async def process_text_message(update:Update, context:Context):
 				_logger.error(f"Got a {type(e).__name__} from OpenAI ({e}) for "
 							  f"conversation {chat_id}.")
 
-				diagMsgStr = "AI model is overloaded, or monthly quota has "\
-					"been reached; please try again later. Quotas reset on "\
-					"the 1st of the month."
+				diagMsgStr = "AI model is overloaded; please try again later."
+
+				#diagMsgStr = "AI model is overloaded, or monthly quota has "\
+				#		"been reached; please try again later. Quotas reset on "\
+				#		"the 1st of the month."
 
 				await _send_diagnostic(tgMsg, conversation, diagMsgStr, ignore=True)
 				return	# That's all she wrote.
@@ -5989,7 +5991,7 @@ async def ai_vision(update:Update, context:Context, filename:str,
 	else:
 		who_from = f"user {user_name}"
 
-	_logger.normal(f"\nConverting image {filename} from {who_from} in chat {chat_id} to a {verbosity} text description using GPT-4V.")
+	_logger.normal(f"\nConverting image {filename} from {who_from} in chat {chat_id} to a {verbosity} text description using GPT-4o.")
 	if query:
 		_logger.normal(f"\t(And also asking the question: {query})")
 
@@ -7198,9 +7200,11 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 
 			# Send a diagnostic message to the AI and to the user.
 
-			diagMsgStr = "AI model is overloaded, or monthly quota has "\
-					"been reached; please try again later. Quotas reset on "\
-					"the 1st of the month."
+			diagMsgStr = "AI model is overloaded; please try again later."
+
+			#diagMsgStr = "AI model is overloaded, or monthly quota has "\
+			#		"been reached; please try again later. Quotas reset on "\
+			#		"the 1st of the month."
 
 			await _send_diagnostic(tgMsg, botConvo, diagMsgStr)
 
@@ -7425,6 +7429,7 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 # Adjusting this as needed to try to hit target daily expenditures.
 #DAILY_MESSAGE_LIMIT = 25
 DAILY_MESSAGE_LIMIT = 15
+#DAILY_MESSAGE_LIMIT = 500	# Effectively unlimited for free DeepSeek providers.
 
 async def process_chat_message(update:Update, context:Context) -> None:
 
@@ -8031,13 +8036,14 @@ async def process_raw_response(
 	# First, we must match a newline.
 	split_regex = r'\n'
 
-	# Next comes an optional message delimiter.
+	# Next comes an optional message delimiter. Maybe more than one!
 	if MESSAGE_DELIMITER:
-		split_regex += r'(?:\s*' + repr(MESSAGE_DELIMITER)[1:-1] + r')?'
+		split_regex += r'(?:\s*' + repr(MESSAGE_DELIMITER)[1:-1] + r')*'
 
 	# Next comes an optional non-matching group, whitespace followed by a submessage delimiter.
+	# Let's allow more than one of those as well.
 	if SUBMESSAGE_DELIMITER:
-		split_regex += r'(?:\s*' + repr(SUBMESSAGE_DELIMITER)[1:-1] + r')?'
+		split_regex += r'(?:\s*' + repr(SUBMESSAGE_DELIMITER)[1:-1] + r')*'
 
 	# Then optional whitespace, and bot's sender marker, with optional '**' around it.
 	split_regex += f"\s*(?:\*\*)?{botConvo.bot_name}(?:\*\*)?> "
@@ -8167,8 +8173,9 @@ async def process_response(update:Update, context:Context,
 	submsg_regex = '\n'
 	
 	# Next comes an optional non-matching group, whitespace followed by a submessage delimiter.
+	# We'll allow there to be more than one.
 	if SUBMESSAGE_DELIMITER:
-		submsg_regex += r'(?:\s*' + repr(SUBMESSAGE_DELIMITER)[1:-1] + r')?'
+		submsg_regex += r'(?:\s*' + repr(SUBMESSAGE_DELIMITER)[1:-1] + r')*'
 
 	# And finally, optional whitespace, and bot's sender marker, with optional '**' around it.
 	submsg_regex += f"\s*(?:\*\*)?{BOT_NAME}(?:\*\*)?> "
@@ -8308,7 +8315,7 @@ async def check_for_funcalls(update:Update, context:Context, response_text:str) 
 		ncalls += 1
 
 		# Diagnostic output to console
-		_logger.normal(f"({ncalls}) Found a '{func_name}' invocation: {full_call}")
+		_logger.normal(f"\n({ncalls}) Found a '{func_name}' invocation: {full_call}")
 
 		# Extract the argument list part from the full_call
 		arguments_str = full_call[full_call.find('(') + 1 : full_call.rfind(')')]
@@ -10550,8 +10557,8 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 			if ((isinstance(e, BadRequest) and "Not enough rights to send" in e.message) or
 				(isinstance(e, Forbidden) and "bot was blocked by the user" in e.message)):
 				try:
+					_logger.normal(f"Leaving chat {chat_id} due to insufficient permissions...")
 					await app.bot.leave_chat(chat_id)
-					_logger.normal(f"Left chat {chat_id} due to insufficient permissions.")
 				except Exception as leave_error:
 					_logger.error(f"Error leaving chat {chat_id}: {leave_error}")
 
@@ -11201,11 +11208,11 @@ PASS_TURN_RESULT = "Success: Noted that the AI is not responding to the last use
 	#  Sets the stop sequence (terminates response when encountered).
 
 # Configure the stop sequence appropriate for this application.
-stop_seq = MESSAGE_DELIMITER	# This is appropriate given the RS delimiter.
+# stop_seq = MESSAGE_DELIMITER	# This is appropriate given the RS delimiter.
 
 # For DeepSeek, because it outputs a reasoning trace before the first message,
 # we can't use the below stop sequence.
-# stop_seq = None
+stop_seq = None
 
 #stop_seq = ['\n' + MESSAGE_DELIMITER]	# Needed if delimiter might be in text.
 	# NOTE: The stop parameter is used to tell the API to stop generating 

@@ -231,7 +231,7 @@ import asyncio
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 import	openai		# OpenAI's Python bindings for their REST API to GPT-3.
-from	openai	import	OpenAI, AsyncOpenAI	# Client constructor.
+from	openai	import	OpenAI, AsyncOpenAI		# Client constructor.
 
 import	tiktoken	# A fast standalone tokenizer module for GPT-3.
 import	backoff		# Utility module for exponential backoff on failures.
@@ -514,6 +514,20 @@ _ENGINES = [
 		'field-size':	24_576,						# 64_000,						
 		'price':		0.0024,		# $2.40/M output tokens
 		'prompt-price':	0.008,		# $0.80/M input tokens
+		'is-chat':		True,
+		'has-vision':	False,
+		'encoding':		'p50k_base'
+
+	},
+	# NOTE: Sort by throughput for best performance.
+
+	{	# Free providers for DeepSeek-R1 model, served through OpenRouter.
+		
+		'provider':		'OpenRouter',					'model-family':		'DeepSeek',
+		'engine-name':	'deepseek/deepseek-r1:free',	'max-context':		164_000,
+		'field-size':	64_000,						# 64_000,						
+		'price':		0,			# $0.00/M output tokens
+		'prompt-price':	0,			# $0.00/M input tokens
 		'is-chat':		True,
 		'has-vision':	False,
 		'encoding':		'p50k_base'
@@ -1690,7 +1704,8 @@ class Completion:
 
 		# This decorator performs automatic exponential backoff on certain REST failures.
 
-	@backoff.on_exception(backoff.expo, (openai.APIError), max_tries=6)
+	@backoff.on_exception(backoff.expo, (openai.APIError, openai.RateLimitError), max_tries=6)
+
 	async def _createComplStruct(thisCompletion:Completion, apiArgs, minRepWin:int=DEF_TOKENS):
 			# By default, don't accept shortening the space for the response to less than 100 tokens.
 	
@@ -2364,7 +2379,13 @@ class ChatCompletion(Completion):
 	@property
 	def finishReason(thisChatCompletion:ChatCompletion):
 		"""Returns the value of the finish_reason field of the result."""
-		return thisChatCompletion.firstChoice.finish_reason
+
+		choice = thisChatCompletion.firstChoice
+
+		if hasattr(choice, 'finish_reason'):
+			return choice.finish_reason
+		else:
+			return None
 
 		#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#| chatCompletion.nTokens					  [public instance property]
@@ -2513,7 +2534,9 @@ class ChatCompletion(Completion):
 		# This decorator performs automatic exponential backoff on REST failures.
 
 	@backoff.on_exception(backoff.expo,
-						  (json.JSONDecodeError))
+			(json.JSONDecodeError, openai.RateLimitError, openai.APIError), 
+			max_tries=10, max_time=60)
+
 	async def _createChatComplStruct(thisChatCompletion:ChatCompletion, apiArgs:dict, 
 				minRepWin:int=DEF_TOKENS):
 			# By default, we'll throw an exception if the estimated result space
@@ -2722,6 +2745,32 @@ class ChatCompletion(Completion):
 					result_json = response.json()
 					_logger.info("Got back this response JSON:\n" + json.dumps(result_json, indent=4))
 					chatComplObj = dict_to_obj(result_json)
+
+					#print(f"\n\tNOTE: chatComplObj is {str(chatComplObj)}\n")
+
+					# Check for errors from Chutes in case it's overloaded.
+					if hasattr(chatComplObj, 'error'):
+						error = chatComplObj.error
+						if hasattr(error, 'code'):
+							code = error.code
+							body = getattr(response, 'text', None)
+							if code == 429:		# Assume detail "too many requests"
+								_logger.error("Provider returned error 429: Too many requests.")
+								raise openai.RateLimitError(response=response, body=body,
+										message="Provider returned error 429: Too many requests.")
+									# This should be caught by the @backoff decorator.
+
+							if code == 500:		# Assume message "Internal Server Error"
+								_logger.error("Provider returned error 500: Internal server error.")
+								raise openai.APIError(request=response.request, body=body,
+									message="Provider returned error 500: Internal server error.")
+									# This should be caught by the @backoff decorator.
+
+							# If we get here then it was some unknown error code.
+							_logger.error(f"Request returned an unknown error code {code}.")
+							raise openai.APIError(request=response.request, body=body,
+								  message=f"Request returned an unknown error code {code}.")
+
 				else:
 					_logger.error("Failed request")
 					response.raise_for_status()
@@ -2732,6 +2781,15 @@ class ChatCompletion(Completion):
 
 		except json.JSONDecodeError as e:
 			_logger.error("JSONDecodeError; assuming this is really a CloudFlare error page, doing backoff.")
+			raise	# Re-raise the exception so backoff can handle it.
+
+		except openai.RateLimitError as e:
+			#_logger.normal("\n\t****** GOT TO HERE ******\n")
+			_logger.error("\tLetting RateLimitError trigger backoff.")
+			raise	# Re-raise the exception so backoff can handle it.
+			
+		except openai.APIError as e:
+			_logger.error("\tLetting APIError trigger backoff.")
 			raise	# Re-raise the exception so backoff can handle it.
 
 		# If we get here, there was a successful return from the API call.
