@@ -32,9 +32,9 @@
       "owned_by": "system"
     },
     {
-      "id": "gpt-4o-2024-08-06",
+      "id": "gpt-4o",
       "object": "model",
-      "created": 1722814719,
+      "created": 1715367049,
       "owned_by": "system"
     },
     {
@@ -44,9 +44,9 @@
       "owned_by": "system"
     },
     {
-      "id": "gpt-4o",
+      "id": "gpt-4o-2024-08-06",
       "object": "model",
-      "created": 1715367049,
+      "created": 1722814719,
       "owned_by": "system"
     },
     {
@@ -86,18 +86,6 @@
       "owned_by": "system"
     },
     {
-      "id": "gpt-4o-realtime-preview",
-      "object": "model",
-      "created": 1727659998,
-      "owned_by": "system"
-    },
-    {
-      "id": "gpt-4o-realtime-preview-2024-10-01",
-      "object": "model",
-      "created": 1727131766,
-      "owned_by": "system"
-    },
-    {
       "id": "tts-1",
       "object": "model",
       "created": 1681940951,
@@ -134,21 +122,21 @@
       "owned_by": "system"
     },
     {
-      "id": "gpt-4o-mini-2024-07-18",
+      "id": "gpt-4o-realtime-preview-2024-10-01",
       "object": "model",
-      "created": 1721172717,
+      "created": 1727131766,
+      "owned_by": "system"
+    },
+    {
+      "id": "gpt-4o-realtime-preview",
+      "object": "model",
+      "created": 1727659998,
       "owned_by": "system"
     },
     {
       "id": "gpt-4-turbo-preview",
       "object": "model",
       "created": 1706037777,
-      "owned_by": "system"
-    },
-    {
-      "id": "gpt-4o-mini",
-      "object": "model",
-      "created": 1721172741,
       "owned_by": "system"
     },
     {
@@ -209,6 +197,18 @@
       "id": "gpt-3.5-turbo-1106",
       "object": "model",
       "created": 1698959748,
+      "owned_by": "system"
+    },
+    {
+      "id": "gpt-4o-mini",
+      "object": "model",
+      "created": 1721172741,
+      "owned_by": "system"
+    },
+    {
+      "id": "gpt-4o-mini-2024-07-18",
+      "object": "model",
+      "created": 1721172717,
       "owned_by": "system"
     },
     {

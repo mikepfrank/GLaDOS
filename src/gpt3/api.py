@@ -3577,7 +3577,7 @@ def stats():
 #__/ End module public function stats().
 
 
-async def genImage(desc:str, dims:str=None, style:str=None):
+async def genImage(desc:str, dims:str=None, style:str=None, quality:str=None):
 	"""Generate an image from the given description string with given dimensions.
 		Returns the URL of the generated image."""
 	
@@ -3586,6 +3586,9 @@ async def genImage(desc:str, dims:str=None, style:str=None):
 
 	if style is None:
 		style = 'vivid'
+
+	if quality is None:
+		quality = 'standard'
 
 	_logger.info(f"Generating a {style} {dims} image with description [{desc}].")
 
@@ -3596,12 +3599,16 @@ async def genImage(desc:str, dims:str=None, style:str=None):
 	#	size = "1024x1024"		# Other options include 512x512 and 256x256.
 	#)
 
+	# Convert quality to OpenAI's symbols.
+	if quality == 'high':
+		quality = 'hd'
+
 	# This is the new API call for the Dall-E 3 image generator.
 	response = await _client.images.generate(
 		model	= 'dall-e-3',		# Other options include: 'dall-e-2'
 		prompt	= desc,				# max length: 4000 characters for dall-e-3
 		size	= dims,				# Options include: 1024x1024 (square, default), 1792x1024 (landscape) and 1024x1792 (portrait).
-		quality = 'hd',				# Other options include: 'standard'
+		quality = quality,			# Options include: 'standard', 'hd'
 		style	= style,			# Options include: 'vivid', 'natural'
 	)
 
@@ -3737,7 +3744,8 @@ def describeImage(filename:str, verbosity:str='medium', query:str=None, user:str
 
 	# Construct POST payload.
 	payload = {
-		"model": "gpt-4-vision-preview",
+		#"model": "gpt-4-vision-preview",
+		"model": "gpt-4o",
 		"user": user,
 		"messages": [
 			{
