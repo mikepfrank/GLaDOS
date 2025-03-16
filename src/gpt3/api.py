@@ -2506,6 +2506,10 @@ class ChatCompletion(Completion):
 
 		#try:
 
+		#Temporary for testing chatgpt-4o-latest
+		#del apiArgs['tools']
+		#del apiArgs['tool_choice']
+
 		# New style chat completion call:
 		chatComplObj = await _client.chat.completions.create(**apiArgs)
 
@@ -3756,7 +3760,8 @@ def describeImage(filename:str, verbosity:str='medium', query:str=None, user:str
 
 	# Construct POST payload.
 	payload = {
-		"model": "gpt-4-vision-preview",
+		#"model": "gpt-4-vision-preview",
+		"model": "gpt-4o",
 		"user": user,
 		"messages": [
 			{
