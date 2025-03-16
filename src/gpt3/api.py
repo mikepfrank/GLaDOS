@@ -500,6 +500,11 @@ _ENGINES = [
 	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-11-20', 'field-size': 128_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-2024-11-20', 'field-size': 24_000, 'prompt-price': 0.005, 'price': 0.015, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 
+		# GPT-4.5 models
+
+	{'model-family': 'gpt-4.5', 'engine-name': "gpt-4.5-preview", 'field-size': 128_000, 'prompt-price': 0.075, 'price': 0.15, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'gpt-4.5', 'engine-name': "gpt-4.5-preview-2025-02-27", 'field-size': 128_000, 'prompt-price': 0.075, 'price': 0.15, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+
 ] # End _ENGINES constant module global data structure.
 
 # Set of models that support the functions interface.
@@ -527,6 +532,8 @@ _FUNCTION_MODELS = [
 	'chatgpt-4o-latest',
 	'chatgpt-4o-latest-20240808',
 	'chatgpt-4o-latest-20240903',
+	'gpt-4.5-preview',
+	'gpt-4.5-preview-2025-02-27',
 ]
 def _has_functions(engine_name):
 	"""Return True if the named engine supports the functions interface."""
