@@ -1511,8 +1511,8 @@ class	TheAIPersonaConfig:
 				
 		try:
 			confStruct = theAIConfig._loadConfig()
-		except:
-			_logger.error(f"Couldn't load AI config file {_AI_CONFIG_PATHNAME}.")
+		except Exception as e:
+			_logger.error(f"Couldn't load AI config file {_AI_CONFIG_PATHNAME}. Exception was: {e}")
 			return
 			
 			#---------------------------------------------------------

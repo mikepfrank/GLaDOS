@@ -1871,6 +1871,7 @@ class BotConversation:
 				"  forget_item(text:str=None, item_id:str=None, remark:str=None) -> status:str\n"
 				"  analyze_image(filename:str, verbosity:str='medium', query:str=None, remark:str=None) -> result:str\n"
 				"  create_image(description:str, shape:str='square', style:str='vivid', caption:str=None, remark:str=None) -> status:str\n"
+				f"  generate_speech(content:str, voice_name:str='{AI_VOICE}', voice_direction:str=None, remark:str=None) -> status:str\n"
 				f"  block_user(user_name:str='{userTag}', remark:str=None) -> status:str\n"
 				"  unblock_user(user_name:str, remark:str=None) -> status:str\n"
 				"  search_web(query:str, locale:str='en-US', sections:list=['webPages'], remark:str=None) -> results:dict\n"
@@ -2332,7 +2333,7 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 		await conversation.add_message(BotMessage(conversation.bot_name, START_MESSAGE))
 
 		# Now try to also send it to the user.
-		if await _reply_user(tgMessage, conversation, START_MESSAGE) != 'success':
+		if await _reply_user(tgMessage, conversation, START_MESSAGE, markup=True) != 'success':
 			return	# Connection broken; failure; abort.
 
 	else:	# Two or more messages? We must be continuing an existing conversation.
@@ -4098,6 +4099,9 @@ async def ai_activateFunction(
 	elif funcName == 'create_image':
 		cur_funcs += [CREATE_IMAGE_SCHEMA]
 	
+	elif funcName == 'generate_speech':
+		cur_funcs += [GENERATE_SPEECH_SCHEMA]
+	
 	elif funcName == 'block_user':
 		cur_funcs += [BLOCK_USER_SCHEMA]
 	
@@ -4436,8 +4440,7 @@ DAILY_IMAGE_LIMIT = 5
 
 # Define a function to handle the /image command, when issued by the AI.
 async def ai_image(update:Update, context:Context, imageDesc:str,
-				   shape:str=None, style:str=None, quality:str=None, 
-				   caption:str=None	#, remaining_text:str=None
+	   shape:str=None, style:str=None, quality:str=None, caption:str=None	#, remaining_text:str=None
 	) -> str:
 
 	# Get the message, or edited message from the update.
@@ -4495,7 +4498,7 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 	#
 	#	return "note: image generation capability is presently disabled"
 
-	# Error-checking for null argument.
+	# Error-checking for null image description argument.
 	if imageDesc == None or imageDesc=="":
 		_logger.error(f"The AI sent an /image command with no argument in conversation {chat_id}.")
 
@@ -4518,7 +4521,8 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 	else:
 		_logger.warn(f"\tUnknown shape name '{shape}'; reverting to 'square'.")
 		# Show the AI the warning too.
-		await conversation.add_message(BotMessage(SYS_NAME, f"Warning: Shape '{shape}' is invalid; defaulting to 'square'."))
+		await conversation.add_message(BotMessage(SYS_NAME, 
+			f"Warning: Shape '{shape}' is invalid; defaulting to 'square'."))
 		size = "1024x1024"
 
 	# Process the "style" parameter.
@@ -4573,6 +4577,78 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 	return f'Success: image with revised description "{new_desc}" has been generated in file "{save_filename}" and sent to user.'
 
 #__/ End of ai_image() function definition.
+
+
+async def ai_speak(update:Update, context:Context, content:str,
+				   voice:str=None, direction:str=None) -> str:
+	"""Generate a voice clip, with options, and send it to the user."""
+
+	# Get the message, or edited message from the update.
+	(message, edited) = _get_update_msg(update)
+
+	# Get the chat_id, user_name, and conversation object.
+	chat_id = message.chat.id
+	user_name = _get_user_tag(message.from_user)
+	conversation = context.chat_data['conversation']
+
+	# Error-checking for null speech content argument.
+	if not content:
+		_logger.error(f"The AI called the generate_speech() function with no content in conversation {chat_id}.")
+
+		diagMsg = "generate_speech() function needs a <content> argument."
+		sendRes = await _send_diagnostic(message, conversation, diagMsg)
+		if sendRes != 'success': return sendRes
+
+		return "error: null speech content"
+
+	# Process the "voice" parameter.
+	if not voice:
+		voice = AI_VOICE
+	else:
+		voice = voice.lower()
+		if voice not in ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer', 'verse']:
+			_logger.warn(f"\tUnknown voice name '{voice}'; reverting to '{AI_VOICE}'.")
+			await conversation.add_message(BotMessage(SYS_NAME, 
+				f"Warning: Voice '{voice}' is invalid; default to '{AI_VOICE}'."))
+			voice = AI_VOICE
+
+	try:
+		# Generate and send the voice clip.
+		await _reply_asSpeech(message, conversation, content, voice=voice, direction=direction)
+		await conversation.add_message(BotMessage(SYS_NAME,
+			"[Voice clip automatically generated and sent to chat.]"))
+		# Also send the content as text.
+		await _reply_user(message, conversation, content, noVoice=True)
+			# noVoice=True here because we already sent the voice clip;
+			# we don't need to send it again even if we're in /speech mode.
+
+
+	except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
+	
+		exType = type(e).__name__
+	
+		whatDoing = "ignoring" if ignore else "aborting"
+	
+		_logger.error(f"Got a {exType} exception from Telegram ({e}) "
+						  f"for conversation {chat_id}; {whatDoing}.")
+	
+		if convo is not None:
+			await convo.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram exception " \
+				f"{exType} ({e}) while sending to user {user_name}.]"))
+	
+		if isinstance(e, BadRequest) and "Not enough rights to send" in e.message:
+			try:
+				await app.bot.leave_chat(chat_id)
+				_logger.normal(f"Left chat {chat_id} due to insufficient permissions.")
+			except Exception as leave_error:
+				_logger.error(f"Error leaving chat {chat_id}: {leave_error}")
+
+		return f"error: Telegram threw a {exType} exception while sending " \
+			"voice message to the user"
+
+	return 'success'
+
+#__/ End of ai_speak() function definition.
 
 
 # Define a function to handle the /remember command, when issued by the AI.
@@ -5103,6 +5179,19 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 			await _report_error(conversation, message,
 					f"create_image() missing required argument 'description'.")
 			return "Error: Required argument 'description' is missing."
+
+	elif funcName == 'generate_speech':
+		
+		content	  = funcArgs.get('content',			None)
+		voice	  = funcArgs.get('voice_name',		None)
+		direction = funcArgs.get('voice_direction',	None)
+
+		if content:
+			return await ai_speak(update, context, content, voice=voice, direction=direction)
+		else:
+			await _report_error(conversation, message,
+					f"generate_speech() missing required argument 'content'.")
+			return "Error: Required argument 'content' is missing."
 
 	elif funcName == 'block_user':
 
@@ -5785,10 +5874,10 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 #__/ End function process_ai_command().
 
 # Adjusting this as needed to try to hit target daily expenditures.
-DAILY_MESSAGE_LIMIT = 8
-#DAILY_MESSAGE_LIMIT = 10
+#DAILY_MESSAGE_LIMIT = 8
+#DAILY_MESSAGE_LIMIT = 10	# Bumping it up a smidge.
 #DAILY_MESSAGE_LIMIT = 15
-#DAILY_MESSAGE_LIMIT = 20
+DAILY_MESSAGE_LIMIT = 20
 
 async def process_chat_message(update:Update, context:Context) -> None:
 
@@ -8174,7 +8263,8 @@ def _cleanup_markdown(text, inside_mask=0):
 # If ignore=True, then the error string indicates that the error is being
 # ignored by the program.
 async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
-					  msgToSend:str, ignore:bool=False, markup:bool=False) -> str:
+					  msgToSend:str, ignore:bool=False, markup:bool=False,
+					  noVoice=False) -> str:
 
 	"""Sends text message <msgToSend> in reply to the user's
 		Telegram message <userTgMessage> in conversation <convo>."""
@@ -8253,13 +8343,13 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 
 
 	# If speech mode is on, try also converting the text to a voice clip and sending that too."
-	if convo is not None and convo.speech_on:
+	if convo is not None and convo.speech_on and not noVoice:
 		while True:
 			try:
 				await _reply_asSpeech(message, convo, text)
 
 				await convo.add_message(BotMessage(SYS_NAME,
-					"[Voice clip automatically generated and sent to user.]"))
+					"[Voice clip automatically generated and sent to chat.]"))
 
 				break
 
@@ -8292,7 +8382,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 #__/ End definition of private function _reply_user().
 
 
-async def _reply_asSpeech(userTgMessage:TgMsg, convo:BotConversation, text):
+async def _reply_asSpeech(userTgMessage:TgMsg, convo:BotConversation, text, voice:str=None, direction:str=None):
 
 	"""Send the given text in reply to the given user message as a voice clip."""
 
@@ -8311,7 +8401,7 @@ async def _reply_asSpeech(userTgMessage:TgMsg, convo:BotConversation, text):
 
 	# This uses the OpenAI text-to-speech API 
 	#mp3_filename = genSpeech(text, user=user_name)
-	opus_filename = await genSpeech(text, user=user_name, voice=AI_VOICE, response_format="opus")
+	opus_filename = await genSpeech(text, user=user_name, voice=voice, response_format="opus", instructions=direction)
 
 	# This uses ffmpeg to convert to OGG
 	#ogg_filename = _mp3_to_ogg(mp3_filename)
@@ -9217,7 +9307,7 @@ ANALYZE_IMAGE_SCHEMA = {
 # Function schema for command: /image <description>
 CREATE_IMAGE_SCHEMA = {
 	"name":         "create_image",
-	"description":  "Generates an image using Dall-E and sends it to the user.",
+	"description":  "Generates an image using Dall-E and sends it to the chat.",
 	"parameters":   {
 		"type":         "object",
 		"properties":   {
@@ -9261,6 +9351,43 @@ CREATE_IMAGE_SCHEMA = {
 							"the operation, and the revised image prompt."
 	}
 }
+
+# Function schema for direct speech generation.
+GENERATE_SPEECH_SCHEMA = {
+	"name":			"generate_speech",
+	"description":	"Generates a voice clip with custom speech direction and sends it to the chat.",
+	"parameters":	{
+		"type":			"object",
+		"properties":	{
+			"content":	{
+				"type":			"string",
+				"description":	"Textual narration of the content of the utterance to be spoken."
+			},
+			"voice_name":	{
+				"type":			"string",
+				"description":	"The name of the voice to speak with.",
+				"default":		AI_VOICE,
+				"enum":			['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer', 'verse']
+			},
+			"voice_direction":	{
+				"type":			"string",
+				"description":	"Natural-language textual description of the style of speech. The instructions here may direct the accent, emotional range, intonation, speed, or tone of the speech, and more. Celebrity impressions and modifiers like 'whispering' are also in scope."
+			},
+			"remark":	{
+				"type":			"string",	# <remark> argument has type string.
+				"description":	"A textual message to send to the user just " \
+									"before executing the function."
+			}
+		},
+		"required":		["content"]
+	},
+	"returns":	{	# This describes the function's return type.
+		"type":			"string",
+		"description":	"A string indicating the success or failure of " \
+							"the operation."
+	}
+}
+
 
 
 # Function schema for command: /block [<user_tag>|<user_id>]
@@ -9452,8 +9579,8 @@ ACTIVATE_FUNCTION_SCHEMA = {
 			"func_name":	{
 				"type":		"string",
 				"enum":		["remember_item", "search_memory", "forget_item",
-							 "analyze_image", "create_image", "block_user",
-							 "unblock_user", "search_web"]
+							 "analyze_image", "create_image", "generate_speech", 
+							 "block_user", "unblock_user", "search_web"]
 			},
 			"remark":	{
 				"type":			"string",	# <remark> argument has type string.
@@ -9494,6 +9621,7 @@ FUNCTIONS_LIST = [
 	FORGET_ITEM_SCHEMA,
 	ANALYZE_IMAGE_SCHEMA,
 	CREATE_IMAGE_SCHEMA,
+	GENERATE_SPEECH_SCHEMA,
 	BLOCK_USER_SCHEMA,
 	UNBLOCK_USER_SCHEMA,
 	SEARCH_WEB_SCHEMA,

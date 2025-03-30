@@ -3559,7 +3559,7 @@ def tiktokenCount(text:str=None, encoding:str='gpt2', model:str=None):
 	# If the model argument is provided, use it to get the encoding.
 
 	if model != None:
-		if model.startswith('chatgpt-4o-latest'):
+		if model.startswith('chatgpt-4o-latest') or model.startswith('gpt-4.5'):
 			encodingObj = tiktoken.encoding_for_model('gpt-4o')
 		else:	
 			encodingObj = tiktoken.encoding_for_model(model)
@@ -3646,7 +3646,7 @@ async def genImage(desc:str, dims:str=None, style:str=None, quality:str=None):
 #__/ End module public function genImage().
 	
 
-async def genSpeech(text:str, user:str = None, voice:str = None, response_format=None):
+async def genSpeech(text:str, user:str = None, voice:str = None, response_format=None, instructions=None):
 	"""Generates spoken voice audio for the given text.
 		Returns the filename of the generated (.mp3) file.
 		The <user> argument, if provided, is used in the
@@ -3673,10 +3673,13 @@ async def genSpeech(text:str, user:str = None, voice:str = None, response_format
 	speech_filepath = path.join(speechDir, filename)
 
 	response = await _client.audio.speech.create(
-		model = 'tts-1',	# Optimized for speed. Other choices include: tts-1-hd (optimized for quality).
+		model = 'gpt-4o-mini-tts',
+		#model = 'tts-1',	# Optimized for speed. Other choices include: tts-1-hd (optimized for quality).
+
 		voice = voice,		# Female voice for Aria. Choices include alloy, echo, fable, onyx, nova, shimmer.
-		#voice = 'nova',		# Female voice for Aria. Choices include alloy, echo, fable, onyx, nova, shimmer.
+			# Voice choices are: alloy, ash, ballad, coral, echo, fable, onyx, nova, sage, shimmer, verse.
 		input = text,
+		instructions = instructions,
 		response_format = response_format
 	)
 
