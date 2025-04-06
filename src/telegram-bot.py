@@ -2795,14 +2795,14 @@ class BotConversation:
 				"\"[[Private:...]]\" will be suppressed from "
 				"being sent to the chat, while remaining visible for your future reference "
 				"in the chat transcript. You may use this facility to augment your "
-				"usual pre-response chain-of-thought reasoning, such to plan or "
+				"usual pre-response chain-of-thought reasoning, such as to plan or "
 				"reflect upon your visible responses or on the user interaction more "
 				"broadly. Please remember that remote human chat participants on "
 				"Telegram will not be able to see your private thoughts, but they may be "
 				"displayed to the system operator on the bot server console and/or saved "
 				"to system log files for diagnostic purposes during development. The "
 				"[[Private: ...]] blocks will also be preserved in your view of the "
-				"transcript of previous chat messages\n"
+				"transcript of previous chat messages.\n"
 				"\n"
 				"Example response payload including private thoughts:\n"
 				"\n"
@@ -2849,7 +2849,7 @@ class BotConversation:
 				"\n"
 				"\t@create_image(\"A beautiful mountain range\", style=\"natural\", remark=\"Creating an image for you...\")\n"
 				"\n"
-				"\t@search_web(\"Recent advances in AI\", remark=\"Searching web for recent AI advances...\")"
+				"\t@search_web(\"Recent advances in AI\", remark=\"Searching web for recent AI advances...\")\n"
 				"\n"
 				"IMPORTANT NOTE: You MUST include a function invocation string such "
 				"as the above in an actual message event (i.e., after your "
@@ -2886,7 +2886,7 @@ class BotConversation:
 				"opportunity to call additional functions and/or send messages to "
 				"the user based on the function's result; this also applies "
 				"recursively to those functions as well. Your private thoughts "
-				"during a chain of function calls will remain visible to you until that call stack has been unwound."
+				"during a chain of function calls will remain visible to you until that call stack has been unwound. "
 				"However, please note the user will not "
 				"have an opportunity to respond to any of your messages until the "
 				"entire nested tree of function invocations generated in response to the "
@@ -2896,7 +2896,7 @@ class BotConversation:
 				"messages containing function calls should preferentially appear at the VERY END of your "
 				"message sequence, so that you will have the opportunity to see and respond to the "
 				"function results before you attempt to generate subsequent output. It is also recommended "
-				"to do only one function invocation at a time, so that you may adjust later calls "
+				"to do only one function invocation at a time, so that you may adjust later calls (if needed) "
 				"depending on the results of earlier ones.\n\n"
 			)
 		)
@@ -3066,7 +3066,7 @@ class BotConversation:
 			'markdown_syntax',
 			(
 				"\n"
-				"Your text output will be rendered based on variant of Telegram MarkdownV2 "
+				"Your text output will be rendered based on a variant of Telegram's MarkdownV2 "
 				"formatting syntax, including **boldface**, __italic__, ___underline___, "
 				"and ~~strikethrough~~ text styles, "
 				"[inline URLs](http://www.example.com), `inline fixed-width code`, "
@@ -3138,29 +3138,29 @@ class BotConversation:
 			 "  remember_item(text:str, is_private:bool=True, " \
 		  	 		"is_global:bool=False, remark:str=None) -> status:str\n"
 
-			 f"  search_memory(query_phrase:str, max_results:int = " \
+			 f"  search_memory(query_phrase:str, max_results:int=" \
 			  		"{DEFAULT_SEARCHMEM_NITEMS}, remark:str=None) " \
 			  		"-> results:list\n"
 
 			 "  forget_item(text:str=None, item_id:str=None, remark:str=None) " \
 			  		"-> status:str\n"
 
-			 "  analyze_image(filename:str, verbosity:str='medium', " \
+			 "  analyze_image(filename:str, verbosity:str=\"medium\", " \
 			  		"query:str=None, remark:str=None) -> result:str\n"
 
-			 "  create_image(description:str, shape:str='square', " \
-			  		"style:str='vivid', caption:str=None, remark:str=None) " \
+			 "  create_image(description:str, shape:str=\"square\", " \
+			  		"style:str=\"vivid\", caption:str=None, remark:str=None) " \
 			  		"-> status:str\n"
 			  
-			 f"  block_user(user_name:str='{userTag}', user_id=None, " \
+			 f"  block_user(user_name:str=\"{userTag}\", user_id=None, " \
 			  		"remark:str=None) -> status:str\n"
 
 			 "  unblock_user(user_name:str=None, user_id=None, " \
 			  		"remark:str=None) -> status:str\n"
 
-			 "  search_web(query:str, locale:str='en-US', " \
+			 "  search_web(query:str, locale:str=\"en-US\", " \
 			 		"max_results:int={DEFAULT_MAX_WEBRESULTS}, " \
-			  		"sections:list=['webPages'], remark:str=None) " \
+			  		"sections:list=[\"webPages\"], remark:str=None) " \
 			  		"-> results:dict\n"
 			  
 			 ## Not yet implemented.
@@ -3187,7 +3187,7 @@ class BotConversation:
 				'function_schemas',
 
 				("\n"
-				 f"Below are the schemas for the currently available functions."
+				 f"Below are the JSON schemas for the currently available functions."
 				 "\n\n") + \
 				thisConv.cur_func_schemas + '\n\n'
 			)
@@ -6013,7 +6013,7 @@ async def ai_vision(update:Update, context:Context, filename:str,
 
 
 # Limit on number of images that can be generated per day per chat.
-DAILY_IMAGE_LIMIT = 10
+DAILY_IMAGE_LIMIT = 5
 	# Adjusting this as needed to help keep costs under control.
 
 # Define a function to handle the /image command, when issued by the AI.

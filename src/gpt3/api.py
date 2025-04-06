@@ -2720,8 +2720,8 @@ class ChatCompletion(Completion):
 		is_openrouter = (provider(apiArgs['model']) == 'OpenRouter')
 		if is_openrouter:
 			apiArgs['provider'] = {
-				'sort':		'price'				# Cheap, but slow.
-				#'sort':	 'throughput'		# Fast, but expensive.
+				#'sort':	'price'				# Cheap, but slow.
+				'sort':		'throughput'		# Fast, but expensive.
 			}
 			apiArgs['include_reasoning'] = True
 			if 'stop' in apiArgs:
