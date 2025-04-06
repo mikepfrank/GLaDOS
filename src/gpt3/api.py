@@ -535,6 +535,20 @@ _ENGINES = [
 	},
 	# NOTE: Sort by throughput for best performance.
 
+	{	# DeepSeek-R1 model, served through OpenRouter.
+		
+		'provider':		'OpenRouter',				'model-family':		'DeepSeek',
+		'engine-name':	'openrouter/quasar-alpha',	'max-context':		164_000,	# It's really like a million
+		'field-size':	24_576,						# 64_000,						
+		'price':		0.0024,		# $2.40/M output tokens
+		'prompt-price':	0.008,		# $0.80/M input tokens
+		'is-chat':		True,
+		'has-vision':	False,
+		'encoding':		'p50k_base'
+
+	},
+	# NOTE: Sort by throughput for best performance.
+
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#	Models served by Hyperbolic.
 	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -3803,7 +3817,7 @@ def tiktokenCount(text:str=None, encoding:str='gpt2', model:str=None):
 	# If the model argument is provided, use it to get the encoding.
 
 	if model != None:
-		if model.startswith('meta') or model.startswith('deepseek'):
+		if model.startswith('meta') or model.startswith('deepseek') or model.startswith('openrouter'):
 			# This is a hack. When using Meta's Llama models, we throw up
 			# our hands about the tokenizer and don't care. Default to this.
 			encodingObj = tiktoken.encoding_for_model('gpt-4o')
