@@ -535,10 +535,24 @@ _ENGINES = [
 	},
 	# NOTE: Sort by throughput for best performance.
 
-	{	# DeepSeek-R1 model, served through OpenRouter.
+	{	# Quasar Alpha model, served through OpenRouter.
 		
-		'provider':		'OpenRouter',				'model-family':		'DeepSeek',
+		'provider':		'OpenRouter',				'model-family':		'Quasar',
 		'engine-name':	'openrouter/quasar-alpha',	'max-context':		164_000,	# It's really like a million
+		'field-size':	24_576,						# 64_000,						
+		'price':		0.0024,		# $2.40/M output tokens
+		'prompt-price':	0.008,		# $0.80/M input tokens
+		'is-chat':		True,
+		'has-vision':	False,
+		'encoding':		'p50k_base'
+
+	},
+	# NOTE: Sort by throughput for best performance.
+
+	{	# Optimus Alpha model, served through OpenRouter.
+		
+		'provider':		'OpenRouter',				'model-family':		'Optimus',
+		'engine-name':	'openrouter/optimus-alpha',	'max-context':		164_000,	# It's really like a million
 		'field-size':	24_576,						# 64_000,						
 		'price':		0.0024,		# $2.40/M output tokens
 		'prompt-price':	0.008,		# $0.80/M input tokens
@@ -2696,6 +2710,8 @@ class ChatCompletion(Completion):
 
 		# Message list surgery needed for DeepSeek-R1
 		is_deepseek = (apiArgs['model'] == 'deepseek-reasoner') or (modelFamily(apiArgs['model']) == 'DeepSeek')
+		is_quasar = (modelFamily(apiArgs['model']) == 'Quasar')
+
 			# Ideally we should have a more general test here
 		if is_deepseek:
 

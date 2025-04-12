@@ -1010,6 +1010,7 @@ class BotMessage:
 		"""Returns an OpenAI-style chat message dictionary"""
 
 		is_deepseek = ((PROVIDER=='DeepSeek') or modelFamily(ENGINE_NAME)=='DeepSeek')
+		is_quasar = (modelFamily(ENGINE_NAME)=='Quasar')
 
 		sender = thisBotMsg.sender
 			# Note this is a string; it may be SYS_NAME,
@@ -1061,6 +1062,11 @@ class BotMessage:
 
 			if is_deepseek:
 				role = CHAT_ROLE_USER
+
+			elif is_quasar:
+				# For Quasar, we'll try setting function returns to be system messages.
+				role = CHAT_ROLE_SYSTEM
+				sender = sender[1:]		# Trim off the '@' to see if that helps.
 
 			else:
 				role = CHAT_ROLE_FUNCRET	# This should just be 'function'.
@@ -6748,9 +6754,11 @@ def _make_alternating(oaiMsgList:list) -> list:
 
 		new_msgs.append(oaiMsgDict)
 
-		if not oaiMsgDict.get('content', None):
+		if not oaiMsgDict.get('content', None):		# Is the text content empty?
 
-			if modelFamily(ENGINE_NAME) == 'DeepSeek':
+			# In the below, we're assuming that Quasar, like DeepSeek, doesn't understand
+			# function call messages.
+			if modelFamily(ENGINE_NAME) == 'DeepSeek' or modelFamily(ENGINE_NAME) == 'Quasar':
 
 				# OK, this is probably a function call message, and DeepSeek doesn't 
 				# understand those anyway, so let's convert it to our text representation.
@@ -7905,13 +7913,16 @@ async def process_raw_response(
 	# a function.  If it is, we'll dispatch out to the process_function_call()
 	# function to handle this case.
 
-	if modelFamily(ENGINE_NAME) == 'DeepSeek':	# Doesn't return these attributes.
+	if modelFamily(ENGINE_NAME) == 'DeepSeek' or modelFamily(ENGINE_NAME) == 'Optimus':	
+		# DeepSeek and Quasar models don't return these attributes.
 		funCall = None
 	else:
-		if response_oaiMsg.tool_calls:
+		if hasattr(response_oaiMsg, 'tool_calls') and response_oaiMsg.tool_calls:
 			funCall = response_oaiMsg.tool_calls[0].function
-		else:
+		elif hasattr(response_oaiMsg, 'function_call') and response_oaiMsg.function_call:
 			funCall = response_oaiMsg.function_call
+		else:
+			funCall = None
 	
 	if funCall:
 		
