@@ -4582,7 +4582,7 @@ def _msg_repr(msg:dict) -> str:
 			fargs = fcall['arguments']
 
 		rep = role + '\n' + \
-			  '@' + fname + '(' + fargs + ')' + '\n'
+			  '#' + fname + '(' + fargs + ')' + '\n'
 
 	return rep
 

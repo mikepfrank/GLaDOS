@@ -793,7 +793,8 @@ class BotMessage:
 		#		{bot_name}> @{function_identifier}({json_string_encoding_arglist})
 		#
 		# with our usual method for escaping any newlines or backslashes.
-		# However, we also need to be able to read the legacy format from disk:
+		# However, we are in the process of migrating to use '#' instead of '@' here.
+		# Also, we also need to be able to read the legacy format from disk:
 		#
 		#		BotServer> [NOTE: {bot_name} is doing function call {function_identifier}({kwargs}).]
 		#
@@ -835,7 +836,7 @@ class BotMessage:
 
 		# Look for function calls.
 		if sender == BOT_NAME or sender == SYS_NAME:
-			pattern = r'$@(\w+)\((.*)\)'
+			pattern = r'$[@#](\w+)\((.*)\)'
 			match = re.search(pattern, text)
 			if match:
 				func_name, json_encoded_arglist_dict_str = match.groups()
@@ -1625,7 +1626,7 @@ class BotConversation:
 				"\n"
 				f"\t\t\" {SYS_NAME}> " "@{funcName}({funcArgs}),\"\n"
 				"\n"
-				"\t  where funcArgs is formatted with dictionary syntax.\n"
+				"\t  where funcArgs is formatted with JSON object (dictionary) syntax.\n"
 			"\n"
 			"\t3. Events recording results returned by the preceding function "
 				"call. These are formatted in the transcript as:\n"
@@ -3551,7 +3552,7 @@ def append_contents(msgDict1, msgDict2):
 	# character of the content is '@', then this is a function call,
 	# and we need to make sure it's prefixed with the SYS_NAME marker.
 
-	if msgDict2['role'] == CHAT_ROLE_USER and isStr2 and content2[0] == '@':
+	if msgDict2['role'] == CHAT_ROLE_USER and isStr2 and content2[0] in ('@','#'):
 		name2 = msgDict2.get('name', SYS_NAME)
 		content2 = MESSAGE_DELIMITER + f" {name2}>" + content2
 
@@ -6756,9 +6757,11 @@ def _make_alternating(oaiMsgList:list) -> list:
 
 		if not oaiMsgDict.get('content', None):		# Is the text content empty?
 
-			# In the below, we're assuming that Quasar, like DeepSeek, doesn't understand
-			# function call messages.
-			if modelFamily(ENGINE_NAME) == 'DeepSeek' or modelFamily(ENGINE_NAME) == 'Quasar':
+			# In the below, we're assuming that Quasar and Optimus,
+			# like DeepSeek, don't understand function call
+			# messages.
+
+			if modelFamily(ENGINE_NAME) in ('DeepSeek', 'Quasar', 'Optimus'):
 
 				# OK, this is probably a function call message, and DeepSeek doesn't 
 				# understand those anyway, so let's convert it to our text representation.
@@ -6771,7 +6774,13 @@ def _make_alternating(oaiMsgList:list) -> list:
 					oaiMsgDict['content'] = ""
 					if MESSAGE_DELIMITER:
 						oaiMsgDict['content'] += MESSAGE_DELIMITER + ' '
-					oaiMsgDict['content'] += oaiMsgDict['name'] + '>'
+					uname = oaiMsgDict.get('name', None)
+					if not uname:
+						uname = BOT_NAME
+					oaiMsgDict['content'] += uname + '> '
+
+					oaiMsgDict['content'] += '#' + fname + '(' + \
+						json.dumps('arguments') + ')'
 
 					# Delete old function-call content.
 					del oaiMsgDict['function_call']
@@ -6779,7 +6788,7 @@ def _make_alternating(oaiMsgList:list) -> list:
 					_logger.error("Unexpected condition #42")
 
 			else:
-				print("WARNING: Found a message with no content: ", oaiMsgDict)
+				_logger.warn(f"Found a message with no content: {oaiMsgDict}")
 				continue
 
 		if len(new_msgs) >= 2:
@@ -7435,8 +7444,9 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 #__/ End function process_ai_command().
 
 # Adjusting this as needed to try to hit target daily expenditures.
+#DAILY_MESSAGE_LIMIT = 15
 #DAILY_MESSAGE_LIMIT = 25
-DAILY_MESSAGE_LIMIT = 15
+DAILY_MESSAGE_LIMIT = 100
 #DAILY_MESSAGE_LIMIT = 500	# Effectively unlimited for free DeepSeek providers.
 
 async def process_chat_message(update:Update, context:Context) -> None:
