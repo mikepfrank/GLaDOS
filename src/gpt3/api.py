@@ -503,8 +503,14 @@ _ENGINES = [
 	{'model-family': 'Llama-3.1', 'engine-name': 'meta-llama/Meta-Llama-3.1-405B', 'field-size': 131_072, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'},
 
 		# Grok models (served by xAI)
-	{'model-family': 'Grok 2', 'engine-name': 'grok-beta', 'field-size': 128_000, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'}
 
+	{'model-family': 'Grok', 'engine-name': 'grok-beta', 'field-size': 128_000, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'},
+
+	{'model-family': 'Grok 2', 'engine-name': 'grok-2-1212', 'field-size': 128_000, 'prompt-price': 0.002, 'price': 0.002, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'},
+
+	{'model-family': 'Grok 3', 'engine-name': 'grok-3-beta', 'field-size': 131_072, 'prompt-price': 0.003, 'price': 0.015, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'},
+
+	{'model-family': 'Grok 3', 'engine-name': 'grok-3-fast-beta', 'field-size': 131_072, 'prompt-price': 0.005, 'price': 0.025, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'}
 
 ] # End _ENGINES constant module global data structure.
 
@@ -2938,7 +2944,7 @@ class GPT3Core:
 		if conf.nCompletions		!= None:	kwargs['n']					= conf.nCompletions
 		if conf.stream				!= None:	kwargs['stream']			= conf.stream
 		if conf.logProbs			!= None:	kwargs['logprobs']			= conf.logProbs
-		if conf.echo				!= None:	kwargs['echo']				= conf.echo
+		#if conf.echo				!= None:	kwargs['echo']				= conf.echo
 		if conf.stop				!= None:	kwargs['stop']				= conf.stop
 		if conf.presencePenalty		!= None:	kwargs['presence_penalty']	= conf.presencePenalty
 		if conf.frequencyPenalty	!= None:	kwargs['frequency_penalty'] = conf.frequencyPenalty

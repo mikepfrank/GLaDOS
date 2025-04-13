@@ -319,8 +319,8 @@
 
 CONS_INFO = False	# True shows info-level messages on the console.
 
-#LOG_DEBUG = True	# True shows debug-level messages in the log file.
-LOG_DEBUG = False	# True shows debug-level messages in the log file.
+LOG_DEBUG = True	# True shows debug-level messages in the log file.
+#LOG_DEBUG = False	# True shows debug-level messages in the log file.
 
 
 #/=============================================================================|
@@ -4438,7 +4438,7 @@ async def process_text_message(update:Update, context:Context):
 				completion = await global_gptCore.genCompletion(context_string)
 				response_text = completion.text
 
-				_logger.debug("Got completion text: [{response_text}]")
+				_logger.debug(f"Got completion text: [{response_text}]")
 
 				break
 
@@ -4485,8 +4485,11 @@ async def process_text_message(update:Update, context:Context):
 			#__/
 		#__/
 
-		response_text = response_text.rstrip('<|eos|>')
-			# Grok likes to put this special token at the end of its responses.
+		# Grok likes to put this special token at the end of its responses; strip it off.
+		if response_text.endswith('<|eos|>'):
+			response_text = response_text[:-len('<|eos|>')]
+
+		_logger.debug(f"After stripping <|eos|>, response is: [{response_text}]")
 
 		# Unless the total response length has just maxed out the available space,
 		# if we get here, then we have a new chunk of response from GPT-3 that we
@@ -4555,6 +4558,8 @@ async def process_text_message(update:Update, context:Context):
 
 		#__/ End of if not response_maxed_out:
 
+		_logger.debug(f"Finished accumulating response: [{full_response}]")
+
 		# If we get here, then the final completion ended with a stop sequence, or the total length 
 		# of a multi-part response got maxed out.
 
@@ -4567,8 +4572,14 @@ async def process_text_message(update:Update, context:Context):
 		# Strip off any leading or trailing whitespace.
 		response_text = response_text.strip()
 
+		_logger.debug(f"After strip, full response is: [{response_text}]")
+
 		# Strip off any leading instances of the bot's sender tag marker.
-		response_text = response_text.lstrip(f"{BOT_NAME}>")
+		sender_tag_marker = f"{BOT_NAME}>"
+		while response_text.startswith(sender_tag_marker):
+			response_text = response_text[len(sender_tag_marker):].strip()
+
+		_logger.debug(f"Now we've stripped the sender tag marker: [{response_text}]")
 
 		# If the response is empty, then return early. (Can't even send an empty message anyway.)
 		if response_text == "":
@@ -4596,6 +4607,8 @@ async def process_text_message(update:Update, context:Context):
 		   or response_text.startswith('(Audio)') or response_text.startswith('(Voice)'):
 			response_text = response_text[len('(audio)'):]	# Either form is this length.
 			response_text = response_text.strip()
+
+		_logger.debug(f"After stripping voice/audio markers: [{response_text}]")
 
 		# Update the message object, and the context.
 		response_botMsg.text = response_text
@@ -5220,6 +5233,15 @@ async def ai_remember(updateMsg:TgMsg, conversation:BotConversation, textToAdd:s
 		return "error: missing required argument"
 	#__/
 
+	# Now we are sure we have a <textToAdd>.
+	# Next, check to see if the memory is already there.
+
+	matchList = await _searchMemories(user.id, chat_id, textToAdd, nItems=1)
+	if len(matchList) > 0:
+		if matchList[0]['itemText'] == textToAdd:
+			_logger.warn("Skipping memory add because item is already stored.")
+			return "info: memory already stored; ignoring"
+
 	# Diagnostic.
 	_logger.normal(f"\nFor user {user_name} in chat {chat_id}, adding "
 					f"{'public' if isPublic else 'private'} "
@@ -5229,35 +5251,35 @@ async def ai_remember(updateMsg:TgMsg, conversation:BotConversation, textToAdd:s
 	newItemID = await _addMemoryItem(user.id, chat_id, textToAdd, isPublic, isGlobal)
 	return f"Success: created new memory item {newItemID}"
 
-	# Obsolete code below.
-
-	# Tell the conversation object to add the given message to the AI's persistent memory.
-	if not conversation.add_memory(textToAdd):
-		
-		errmsg = _lastError
-
-		# Generate an error-level report to include in the application log.
-		_logger.error(f"The AI tried & failed to add memory: [{textToAdd}]")
-
-		diagMsg = f"Could not add [{textToAdd}] to persistent memory. " \
-					f'Error message was: "{errmsg}"'
-
-		# Send the diagnostic message to the user.
-		sendRes = await _send_diagnostic(message, conversation, diagMsg)
-		if sendRes != 'success': return sendRes
-
-		return "error: unable to add memory item"
-	#__/
-
-
-	_logger.normal(f"\tThe AI added [{textToAdd}] to persistent memory in conversation {chat_id}.")
-
-	# Also notify the user that we're remembering the given statement.
-	diagMsg = f"Added [{textToAdd}] to persistent memory."
-
-	# Send the diagnostic message to the user.
-	sendRes = await _send_diagnostic(message, conversation, diagMsg)
-	return sendRes
+	# # Obsolete code below.
+	#
+	# # Tell the conversation object to add the given message to the AI's persistent memory.
+	# if not conversation.add_memory(textToAdd):
+	#	
+	# 	errmsg = _lastError
+	#
+	# 	# Generate an error-level report to include in the application log.
+	# 	_logger.error(f"The AI tried & failed to add memory: [{textToAdd}]")
+	#
+	# 	diagMsg = f"Could not add [{textToAdd}] to persistent memory. " \
+	# 				f'Error message was: "{errmsg}"'
+	#
+	# 	# Send the diagnostic message to the user.
+	# 	sendRes = await _send_diagnostic(message, conversation, diagMsg)
+	# 	if sendRes != 'success': return sendRes
+	#
+	# 	return "error: unable to add memory item"
+	# #__/
+	#
+	#
+	# _logger.normal(f"\tThe AI added [{textToAdd}] to persistent memory in conversation {chat_id}.")
+	#
+	# # Also notify the user that we're remembering the given statement.
+	# diagMsg = f"Added [{textToAdd}] to persistent memory."
+	#
+	# # Send the diagnostic message to the user.
+	# sendRes = await _send_diagnostic(message, conversation, diagMsg)
+	# return sendRes
 
 #__/ End of ai_remember() function definition.
 				
@@ -7075,11 +7097,11 @@ async def process_response(update:Update, context:Context,
 	# the string "(cont)" or "(cont.)"  or "(more)" or "...", then
 	# we'll send a message to the user asking them to continue the
 	# conversation.
-	if msg_text.endswith("(cont)") or response_botMsg.text.endswith("(cont.)") or \
-	   msg_text.endswith("(more)") or response_botMsg.text.endswith("..."):
-
-		contTxt = "[If you want me to continue my response, type '/continue'.]"
-		await _reply_user(tgMsg, conversation, contTxt, ignore=True)
+	#if msg_text.endswith("(cont)") or response_botMsg.text.endswith("(cont.)") or \
+	#   msg_text.endswith("(more)") or response_botMsg.text.endswith("..."):
+	#
+	#	contTxt = "[If you want me to continue my response, type '/continue'.]"
+	#	await _reply_user(tgMsg, conversation, contTxt, ignore=True)
 
 	# Processed AI's response successfully.
 
