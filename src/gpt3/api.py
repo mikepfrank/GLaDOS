@@ -563,6 +563,19 @@ _ENGINES = [
 	},
 	# NOTE: Sort by throughput for best performance.
 
+	{	# OpenAI GPT-4.1, served through OpenRouter.
+		
+		'provider':		'OpenRouter',				'model-family':		'GPT-4.1',
+		'engine-name':	'openai/gpt-4.1',			'max-context':		1_000_000,
+		'field-size':	24_576,						# 64_000,						
+		'price':		0.008,		# $8.00/M output tokens
+		'prompt-price':	0.002,		# $2.00/M input tokens
+		'is-chat':		True,
+		'has-vision':	False,
+		'encoding':		'p50k_base'
+
+	},
+
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#	Models served by Hyperbolic.
 	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -3833,7 +3846,8 @@ def tiktokenCount(text:str=None, encoding:str='gpt2', model:str=None):
 	# If the model argument is provided, use it to get the encoding.
 
 	if model != None:
-		if model.startswith('meta') or model.startswith('deepseek') or model.startswith('openrouter'):
+		if model.startswith('meta') or model.startswith('deepseek') \
+		   or model.startswith('openrouter') or model.startswith('openai'):
 			# This is a hack. When using Meta's Llama models, we throw up
 			# our hands about the tokenizer and don't care. Default to this.
 			encodingObj = tiktoken.encoding_for_model('gpt-4o')

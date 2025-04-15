@@ -164,7 +164,8 @@
 		#model-version:					'deepseek/deepseek-r1'		# Served through OpenRouter
 		#model-version:					'deepseek/deepseek-r1:free'	# Served through OpenRouter
 		#model-version:					'openrouter/quasar-alpha'	# Mystery model. Served through OpenRouter
-		model-version:					'openrouter/optimus-alpha'	# Mystery model. Served through OpenRouter
+		#model-version:					'openrouter/optimus-alpha'	# Mystery model. Served through OpenRouter
+		model-version:					'openai/gpt-4.1'			# OpenAI GPT-4.1, served through OpenRouter.
 
 			#-----------------------------------------------------------------------
 			# The sys-notification-threshold specifies the minimum importance level
