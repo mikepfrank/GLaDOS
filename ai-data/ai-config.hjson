@@ -154,7 +154,8 @@
 		#model-version:					'gpt-4o'
 		#model-version:					'gpt-4o-2024-08-06'	# Switching to this due to lower cost.
 
-		model-version:					'o1-mini'
+		#model-version:					'o1-mini'
+		model-version:					'o4-mini'
 
 
 			#-----------------------------------------------------------------------
@@ -255,9 +256,10 @@
 		#temperature:			0.7		# Is this too random?
 		#temperature:			0.75	# Is this too random?
 		#temperature:			0.8		# Is this too random?
-		temperature:			0.9		# Is this too random? Use for creative Max.
+		#temperature:			0.9		# Is this too random? Use for creative Max.
 		# NOTE: Currently we're trying temperature=0.9 in Max, but not yet in Aria.
-
+		temperature:	  		null    # This should give the default value (1).
+			# NOTE: o4-mini does not support temperature =/= 1.
 
 			/*------------------------------------------------------------------
 				The 'top-p' parameter is a number from 0 to 1 that causes

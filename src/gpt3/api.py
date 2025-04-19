@@ -491,6 +491,10 @@ _ENGINES = [
 	{'model-family': 'O1', 'engine-name': 'o1-mini',            'field-size': 24_000, 'prompt-price': 0.003, 'price': 0.012, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	{'model-family': 'O1', 'engine-name': 'o1-mini-2024-09-12', 'field-size': 24_000, 'prompt-price': 0.003, 'price': 0.012, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 
+		# o4 series. Input is 200,000 tokens. Output is 100,000.
+	{'model-family': 'O4', 'engine-name': 'o4-mini',            'field-size': 24_000, 'prompt-price': 0.003, 'price': 0.012, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'O4', 'engine-name': 'o4-mini-2025-04-16', 'field-size': 24_000, 'prompt-price': 0.0011, 'price': 0.0044, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+
 ] # End _ENGINES constant module global data structure.
 
 # Set of models that support the functions interface.
@@ -516,6 +520,7 @@ _FUNCTION_MODELS = [
 	'gpt-4o-2024-08-06',
 	'o1-mini',				# The o1 models don't support functions yet, but hopefully eventually...
 	#'o1-mini-2024-09-12',
+	'o4-mini',				# o4 does support functions
 ]
 def _has_functions(engine_name):
 	"""Return True if the named engine supports the functions interface."""
@@ -1014,7 +1019,7 @@ class GPT3APIConfig:
 			GPT3 Configuration{namestr}:
 				engine_id		  = {self.engineId}
 				suffix			  = {self.suffix}
-				max_tokens		  = {self.maxTokens}
+				max_completion_tokens		  = {self.maxTokens}
 				temperature		  = {self.temperature}
 				top_p			  = {self.topP}
 				n				  = {self.nCompletions}
@@ -1054,7 +1059,7 @@ class GPT3ChatAPIConfig(GPT3APIConfig):
 	#|	API parameters inherited from GPT3APIConfig:
 	#|	--------------------------------------------
 	#|		.engineId			[string]			'model' parameter
-	#|		.maxTokens			[integer]			'max_tokens' parameter
+	#|		.maxTokens			[integer]			'max_completion_tokens' parameter
 	#|		.temperature		[number]			'temperature' parameter
 	#|		.topP				[number]			'top_p' parameter
 	#|		.nCompletions		[integer]			'n' parameter
@@ -1223,7 +1228,7 @@ class GPT3ChatAPIConfig(GPT3APIConfig):
 		return f"""
 			GPT3 Chat Configuration{namestr}:
 				engine_id         = {chatConf.engineId}
-				max_tokens        = {chatConf.maxTokens}
+				max_completion_tokens        = {chatConf.maxTokens}
 				temperature       = {chatConf.temperature}
 				top_p             = {chatConf.topP}
 				n                 = {chatConf.nCompletions}
@@ -1471,7 +1476,7 @@ class Completion:
 			Possible results include:
 
 				'length' - The completion finished because the engine 
-							generated max_tokens tokens.
+							generated max_completion_tokens tokens.
 
 				'stop' - The completion finished because the engine
 							generated a stop sequence.
@@ -1634,7 +1639,7 @@ class Completion:
 			# the size of the receptive field; if so, then we need to request 
 			# a smaller result (but not too small).
 
-			if _inputLength + apiArgs['max_tokens'] > fieldSize:
+			if _inputLength + apiArgs['max_completion_tokens'] > fieldSize:
 
 					# See how much space there is right now for our query result.
 				availSpace = fieldSize - _inputLength
@@ -1656,10 +1661,10 @@ class Completion:
 
 					# If we get here, we have enough space for our minimum result length,
 					# so we can shrink the maximum result length accordingly.
-				origMax = apiArgs['max_tokens']	# Save the original value.
-				apiArgs['max_tokens'] = maxTok = fieldSize - _inputLength
+				origMax = apiArgs['max_completion_tokens']	# Save the original value.
+				apiArgs['max_completion_tokens'] = maxTok = fieldSize - _inputLength
 
-				_logger.warn(f"[GPT-3 API] Trimmed max_tokens from {origMax} to {maxToks}.")
+				_logger.warn(f"[GPT-3 API] Trimmed max_completion_tokens from {origMax} to {maxToks}.")
 
 			# If we get here, we know we have enough space for our query + result,
 			# so we can proceed with the request to the actual underlying API.
@@ -2418,11 +2423,11 @@ class ChatCompletion(Completion):
 		#_logger.debug(f"In ._createChatComplStruct(), fieldSize={fieldSize}.")
 
 
-		# Get a numeric equivalent for 'max_tokens'.
-		if 'max_tokens' not in apiArgs or apiArgs['max_tokens'] is None:
+		# Get a numeric equivalent for 'max_completion_tokens'.
+		if 'max_completion_tokens' not in apiArgs or apiArgs['max_completion_tokens'] is None:
 			maxToks = float('inf')
 		else:
-			maxToks = apiArgs['max_tokens']
+			maxToks = apiArgs['max_completion_tokens']
 
 		#_logger.debug(f"In ._createChatComplStruct(), maxToks={maxToks}.")
 
@@ -2465,27 +2470,27 @@ class ChatCompletion(Completion):
 				# so we can shrink the maximum result length accordingly.
 
 			origMax = maxToks	# Save the original value.
-			apiArgs['max_tokens'] = maxToks = fieldSize - estInputLen
+			apiArgs['max_completion_tokens'] = maxToks = fieldSize - estInputLen
 
 			#_logger.debug(f"In ._createChatComplStruct(), maxToks={maxToks}.")
 
-			_logger.warn(f"[GPT chat API] Trimmed max_tokens window from {origMax} to {maxToks}.")
+			_logger.warn(f"[GPT chat API] Trimmed max_completion_tokens window from {origMax} to {maxToks}.")
 
 		#__/ End if result window too big.
 
 		# Temporary hack to try to max out the output length.
-		#apiArgs['max_tokens'] = None
+		#apiArgs['max_completion_tokens'] = None
 
 		# This code *should* allow the output to fill up to the entire remaining context window? Will it work?
-		if 'max_tokens' in apiArgs:
+		if 'max_completion_tokens' in apiArgs:
 
-			if apiArgs['max_tokens'] is None:
-				apiArgs['max_tokens'] = float('inf')
+			if apiArgs['max_completion_tokens'] is None:
+				apiArgs['max_completion_tokens'] = float('inf')
 
-			_logger.debug(f"[GPT chat API] Requesting up to {apiArgs['max_tokens']} tokens.")
+			_logger.debug(f"[GPT chat API] Requesting up to {apiArgs['max_completion_tokens']} tokens.")
 
-			if apiArgs['max_tokens'] == float('inf'):
-				del apiArgs['max_tokens']	# Equivalent to float('inf')?
+			if apiArgs['max_completion_tokens'] == float('inf'):
+				del apiArgs['max_completion_tokens']	# Equivalent to float('inf')?
 
 		prettyArgs = pformat(apiArgs)
 		_logger.debug("Calling openai.ChatCompleton.create() with these keyword args:\n" + prettyArgs)
@@ -2507,8 +2512,8 @@ class ChatCompletion(Completion):
 			apiArgs['messages'] = newmsgs
 			del apiArgs['tools']
 			del apiArgs['tool_choice']
-			apiArgs['max_completion_tokens'] = apiArgs['max_tokens']
-			del apiArgs['max_tokens']
+			apiArgs['max_completion_tokens'] = apiArgs['max_completion_tokens']
+			del apiArgs['max_completion_tokens']
 			apiArgs['temperature'] = 1
 
 		# New style chat completion call:
@@ -2625,8 +2630,8 @@ class ChatCompletion(Completion):
 			# Get the raw message list.
 		messages = ChatMessages(apiArgs['messages'])
 
-		if _has_functions(engine) and 'functions' in apiArgs:
-			funcToks = tiktokenCount(json.dumps(apiArgs['functions']), model=engine)
+		if _has_functions(engine) and 'tools' in apiArgs:
+			funcToks = tiktokenCount(json.dumps(apiArgs['tools']), model=engine)
 		else:
 			funcToks = 0
 
@@ -2891,7 +2896,7 @@ class GPT3Core:
 
 		if prompt					!= None:	kwargs['prompt']			= prompt
 		if conf.suffix				!= None:	kwargs['suffix']			= conf.suffix
-		if conf.maxTokens			!= None:	kwargs['max_tokens']		= conf.maxTokens
+		if conf.maxTokens			!= None:	kwargs['max_completion_tokens']		= conf.maxTokens
 		if conf.temperature			!= None:	kwargs['temperature']		= conf.temperature
 		if conf.topP				!= None:	kwargs['top_p']				= conf.topP
 		if conf.nCompletions		!= None:	kwargs['n']					= conf.nCompletions
@@ -3284,7 +3289,7 @@ class GPT3ChatCore(GPT3Core):
 		#| (Note below we have to match the exact keyword argument names supported 
 		#| by OpenAI's API.
 
-		if maxTokens		!= None:	apiargs['max_tokens']			= maxTokens
+		if maxTokens		!= None:	apiargs['max_completion_tokens']			= maxTokens
 		if temperature		!= None:	apiargs['temperature']			= temperature
 		if topP				!= None:	apiargs['top_p']				= topP
 		if nCompletions		!= None:	apiargs['n']					= nCompletions
@@ -3307,6 +3312,8 @@ class GPT3ChatCore(GPT3Core):
 
 		if toolList		!= None:	apiargs['tools']		= toolList
 		if toolChoice	!= None:	apiargs['tool_choice']	= toolChoice
+
+		_logger.info(f"In getChatArgs(), tool list has {len(apiargs['tools'])} items.")
 
 		#if 'messages' in apiargs:
 		#	_logger.info(f"In genChatArgs(), set apiargs['messages']=[list of {len(apiargs['messages'])} messages]")
@@ -3552,7 +3559,7 @@ def tiktokenCount(text:str=None, encoding:str='gpt2', model:str=None):
 
 	# If the model argument is provided, use it to get the encoding.
 
-	if model == 'o1-mini':
+	if model in ('o1-mini', 'o4-mini'):
 		encodingObj = tiktoken.encoding_for_model('gpt-4o')
 	elif model != None:
 		encodingObj = tiktoken.encoding_for_model(model)

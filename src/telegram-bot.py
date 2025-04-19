@@ -316,8 +316,8 @@
 
 CONS_INFO = False	# True shows info-level messages on the console.
 
-#LOG_DEBUG = True	# True shows debug-level messages in the log file.
-LOG_DEBUG = False	# True shows debug-level messages in the log file.
+LOG_DEBUG = True	# True shows debug-level messages in the log file.
+#LOG_DEBUG = False	# True shows debug-level messages in the log file.
 
 
 #/=============================================================================|
@@ -4327,7 +4327,7 @@ async def ai_forget(updateMsg:TgMsg, conversation:BotConversation,
 	_logger.normal(f"\nDeleting a memory item in chat #{chat_id}.")
 	result = _deleteMemoryItem(item_id=itemToDel, text=textToDel, user_id=cur_user_id)
 	# Check for errors.
-	if result is not None and result is not 'Success':
+	if result and (result != 'Success'):
 		return "ERROR: " + result
 
 	if itemToDel is not None:
@@ -5326,7 +5326,7 @@ async def get_ai_response(update:Update, context:Context, finalPrompt:bool=True,
 		# since we don't know how it's formatted at the back end exactly.)
 		if functions is not None:
 			funcsSize = tiktokenCount(json.dumps(functions), model=ENGINE_NAME)
-			#_logger.info(f"Estimating size of FUNCTIONS_LIST is {funcsSize}.)")
+			_logger.info(f"Estimating size of FUNCTIONS_LIST is {funcsSize}.)")
 			msgsSizeToks += funcsSize
 
 		## Detailed diagnostic; comment out until needed.
@@ -5416,7 +5416,7 @@ async def get_ai_response(update:Update, context:Context, finalPrompt:bool=True,
 		#	f"absMaxRetToks = {absMaxRetToks}, "
 		#	f"availSpaceToks = {availSpaceToks}")
 
-		#_logger.info(f"CURRENT FUNCTION LIST IS:\n{pformat(functions)}")
+		_logger.info(f"CURRENT FUNCTION LIST IS:\n{pformat(functions)}")
 
 		# Now we'll do the actual API call, with exception handling.
 		try:
@@ -5458,6 +5458,7 @@ async def get_ai_response(update:Update, context:Context, finalPrompt:bool=True,
 
 				functionList = functions,	# Available function list, if supported.
 				functionCall = 'auto'		# Let AI decide whether/which functions to call.
+				# ^ Deprecated interface; needs updating.
 
 			) # End of gptCore.genChatCompletion() call.
 
