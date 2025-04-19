@@ -6779,7 +6779,7 @@ def _make_alternating(oaiMsgList:list) -> list:
 						uname = BOT_NAME
 					oaiMsgDict['content'] += uname + '> '
 
-					oaiMsgDict['content'] += '#' + fname + '(' + \
+					oaiMsgDict['content'] += '@' + fname + '(' + \
 						json.dumps('arguments') + ')'
 
 					# Delete old function-call content.
