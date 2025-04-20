@@ -67,15 +67,15 @@
 			# persona-id is a shortened version to be used (in event records
 			# and prompts) to refer to the AI's persona.
 		
-		persona-name:					"Curio AI"
-		persona-id:						"Curio"
+		persona-name:					"Ava Solve"
+		persona-id:						"Ava"
 
 
 			#-----------------------------------------------------------------
 			# The persona-user-account is the user account name on the host 
 			# system under which the server process should be run.
 		
-		persona-user-account:			"curio"		# Not yet used.
+		persona-user-account:			"ava"		# Not yet used.
 
             #-----------------------------------------------------------------
             # The persona-voice is the name of the voice to use for text-to-
@@ -85,7 +85,7 @@
             #   Male-coded:     Echo, Onyx,
             #   Female-coded:   Nova, Shimmer
 
-        persona-voice:                  'echo'      # Deep male voice for Seeker.
+        persona-voice:                  'nova'      # Female voice for Aria.
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#|	The model-family is a symbol specifying the general architecture
@@ -152,20 +152,12 @@
 		#model-version:					'gpt-4-0314'		# Original release of GPT-4.
 		#model-version:					'gpt-4-0613'		# Updated release of GPT-4. Supports functions. Used for Aria.
 		#model-version:					'gpt-4o'
-		#model-version:					'gpt-4o-mini'
+		#model-version:					'gpt-4o-2024-08-06'	# Switching to this due to lower cost.
 
-		#model-version:					'meta-llama/llama-3.1-405b'		# This is served through OpenRouter
-		#model-version:					'meta-llama/llama-3.1-405b-instruct'		# This is served through OpenRouter
-		#model-version:					'meta-llama/Meta-Llama-3.1-405B'		# This is served through Hyperbolic
+		#model-version:					'o1-mini'
+		#model-version:					'o4-mini'
+		model-version:					'openai/o4-mini'		# Served through OpenRouter.
 
-		#model-version:					'deepseek-ai/DeepSeek-V3'	# Served through Hyperbolic
-		#model-version:					'deepseek-reasoner'			# DeepSeek-R1, served by DeepSeek
-		#model-version:					'deepseek-ai/DeepSeek-R1'	# Served through Hyperbolic
-		#model-version:					'deepseek/deepseek-r1'		# Served through OpenRouter
-		#model-version:					'deepseek/deepseek-r1:free'	# Served through OpenRouter
-		#model-version:					'openrouter/quasar-alpha'	# Mystery model. Served through OpenRouter
-		#model-version:					'openrouter/optimus-alpha'	# Mystery model. Served through OpenRouter
-		model-version:					'openai/gpt-4.1'			# OpenAI GPT-4.1, served through OpenRouter.
 
 			#-----------------------------------------------------------------------
 			# The sys-notification-threshold specifies the minimum importance level
@@ -199,8 +191,7 @@
 		#min-replywin-toks:	100		# Gladys 2.0 (text-davinci-002) requested this increase.
 		#min-replywin-toks:	400		# Turbo (gpt-3.5-turbo) requested this increase (1/10 of context window).
 		#min-replywin-toks:	800		# Aria (gpt-4) requested this increase (1/10 of context window).
-		#min-replywin-toks:	1024	# Use for Max (gpt-3.5-turbo-16k). This is 1/16th of context window.
-		min-replywin-toks:	2048	# Using for Luna (llama-3.1-405b). This is 1/64th of context window.
+		min-replywin-toks:	1024	# Use for Max (gpt-3.5-turbo-16k). This is 1/16th of context window.
 
 
 			#-----------------------------------------------------------------
@@ -251,8 +242,7 @@
 		#max-returned-tokens:	150		# Keep response size reasonable.
 		#max-returned-tokens:	200		# Gladys 2.0 requested this upgrade.
 		#max-returned-tokens:	1000	# To give the chat engines more space.
-		#max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window). (Also use for Max.)
-		max-returned-tokens:	4000	# Larger for Aria (1/4 of 8K window). (Also use for Max.)
+		max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window). (Also use for Max.)
 			# (Note the chat API doesn't support extending responses.)
 			# (Also note the Telegram API only supports 4,096-character messages.)
 
@@ -267,9 +257,10 @@
 		#temperature:			0.7		# Is this too random?
 		#temperature:			0.75	# Is this too random?
 		#temperature:			0.8		# Is this too random?
-		temperature:			0.9		# Is this too random? Use for creative Max.
+		#temperature:			0.9		# Is this too random? Use for creative Max.
 		# NOTE: Currently we're trying temperature=0.9 in Max, but not yet in Aria.
-
+		temperature:	  		null    # This should give the default value (1).
+			# NOTE: o4-mini does not support temperature =/= 1.
 
 			/*------------------------------------------------------------------
 				The 'top-p' parameter is a number from 0 to 1 that causes
@@ -414,12 +405,10 @@
 		#max-visible-tokens:	128_000	# Appropriate for gpt-4-turbo models
 		#max-visible-tokens:	64_000	# Cut in half to lower costs.
 		#max-visible-tokens:	32_000	# Cut in half again.
-		#max-visible-tokens:	24_000	# Cut again.
+		max-visible-tokens:	24_000	# Cut again.
 		#max-visible-tokens:	16_000	# Cut again.
-		#max-visible-tokens:	8_000	# Cut in half again.
+		#max-visible-tokens:		8_000	# Cut in half again.
 	
-		max-visible-tokens:		32_000	# Trying this for Nova & Luna. Keep an eye on cost!
-
 	} # End of field-conf substructure.
 
 
@@ -430,14 +419,11 @@
 
 	telegram-conf:	{
 
-		bot-name:		'Curio'		# Same as persona name.
+		bot-name:		'Ava'		# Same as persona name.
 
 		start-message:	
-			'''
-**Hi there! I’m Curio, your curious AI companion.**
+			"Hello! I'm Ava (@AvaSolveBot), your intelligent companion for problem-solving and critical thinking. Whether you're tackling homework, facing professional challenges, or seeking answers to everyday questions, I'm here to provide clear solutions and insightful guidance. Let's embark on your learning and personal growth journey together! How can I assist you today?"
 
-I love exploring questions, ideas, and new perspectives — big or small! Just ask me anything, share your thoughts, or dive into a topic you’re curious about. Let’s unlock inspiration and discover something new together! 🌟
-  	   		'''
 		context-file:	'context.txt'	# File under the AI's data directory with the context string.
 
 	} # End of telegram-conf substructure.

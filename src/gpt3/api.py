@@ -495,6 +495,10 @@ _ENGINES = [
 
 	{'provider': 'OpenAI', 'model-family': 'GPT-4V', 'engine-name': 'gpt-4o-mini-2024-07-18', 'field-size': 128_000, 'prompt-price': 0.00015, 'price': 0.0006, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 
+		# o4 series. Input is 200,000 tokens. Output is 100,000.
+	{'provider': 'OpenAI', 'model-family': 'O4', 'engine-name': 'o4-mini',            'field-size': 24_000, 'prompt-price': 0.003, 'price': 0.012, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'provider': 'OpenAI', 'model-family': 'O4', 'engine-name': 'o4-mini-2025-04-16', 'field-size': 24_000, 'prompt-price': 0.0011, 'price': 0.0044, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#	Models served by OpenRouter.
 	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -576,6 +580,19 @@ _ENGINES = [
 
 	},
 
+	{	# OpenAI o4-mini, served through OpenRouter.
+		
+		'provider':		'OpenRouter',				'model-family':		'o4',
+		'engine-name':	'openai/o4-mini',			'max-context':		200_000,
+		'field-size':	24_576,						# 64_000,						
+		'prompt-price':	0.0011,		# $1.10/M input tokens
+		'price':		0.0044,		# $4.40/M output tokens
+		'is-chat':		True,
+		'has-vision':	False,
+		'encoding':		'p50k_base'
+
+	},
+
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#	Models served by Hyperbolic.
 	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -643,6 +660,8 @@ _FUNCTION_MODELS = [
 	#'deepseek-reasoner',
 	#'meta-llama/llama-3.1-405b',
 	#'meta-llama/llama-3.1-405b-instruct',
+	'o4-mini',
+	#'openai/o4-mini',
 ]
 def _has_functions(engine_name):
 	"""Return True if the named engine supports the functions interface."""
@@ -3845,7 +3864,9 @@ def tiktokenCount(text:str=None, encoding:str='gpt2', model:str=None):
 
 	# If the model argument is provided, use it to get the encoding.
 
-	if model != None:
+	if model in ('o1-mini', 'o4-mini'):
+		encodingObj = tiktoken.encoding_for_model('gpt-4o')
+	elif model != None:
 		if model.startswith('meta') or model.startswith('deepseek') \
 		   or model.startswith('openrouter') or model.startswith('openai'):
 			# This is a hack. When using Meta's Llama models, we throw up

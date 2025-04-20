@@ -319,13 +319,15 @@
 
 CONS_INFO = False	# True shows info-level messages on the console.
 
-#LOG_DEBUG = True	# True shows debug-level messages in the log file.
-LOG_DEBUG = False	# True shows debug-level messages in the log file.
+LOG_DEBUG = True	# True shows debug-level messages in the log file.
+#LOG_DEBUG = False	# True shows debug-level messages in the log file.
 
 
 #/=============================================================================|
 #|	1. Imports.									[python module code section]   |
 #|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
+
+from types import SimpleNamespace
 
 	#/=========================================================================|
 	#| 1.1. Imports of standard Python libraries.
@@ -420,14 +422,14 @@ from	telegram.error	import	BadRequest, Forbidden, ChatMigrated, TimedOut
 		#	Anthropic API library, for accessing Claude.
 		#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv|
 
-from anthropic import Anthropic		# Main class for accessing Anthropic API.
-from anthropic import RateLimitError as AnthroRateLimitError
-from anthropic import APIStatusError
+#from anthropic import Anthropic		# Main class for accessing Anthropic API.
+#from anthropic import RateLimitError as AnthroRateLimitError
+#from anthropic import APIStatusError
 
-_anthropic_client	= Anthropic(
+#_anthropic_client	= Anthropic(
 #	default_headers = {"anthropic-beta": "prompt-caching-2024-07-31"}
 		# Saves on communication & cost
-)
+#)
 	# Note this expects the Anthropic API key to be in ANTHROPIC_API_KEY.
 
 
@@ -1064,7 +1066,7 @@ class BotMessage:
 			if is_deepseek:
 				role = CHAT_ROLE_USER
 
-			elif is_quasar:
+			elif is_quasar or True:
 				# For Quasar, we'll try setting function returns to be system messages.
 				role = CHAT_ROLE_SYSTEM
 				sender = sender[1:]		# Trim off the '@' to see if that helps.
@@ -2540,7 +2542,7 @@ class BotConversation:
 		#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 		# Boolean to remind us if the core AI is an Anthropic (vs. OpenAI) LLM.
-		is_anthropic = isinstance(_main_client, Anthropic)
+		is_anthropic = False #isinstance(_main_client, Anthropic)
 
 		# Similar to remind us if the API provider is DeepSeek.
 		is_deepseek = (PROVIDER == 'DeepSeek') or (modelFamily(ENGINE_NAME) == 'DeepSeek')
@@ -3174,7 +3176,7 @@ class BotConversation:
 			 #f"  show_user(user_name:str='{userTag}', user_id=None, remark:str=None) -> result:str)\n"
 			 #"  list_blocked_users() -> result:str\n"
 
-			 "	pass_turn() -> None\n"
+			 "  pass_turn() -> None\n"
 			 "\n"
 			 "Fully documented JSON schemas for the functions are shown in the next section.\n"
 			 "\n"
@@ -3188,16 +3190,16 @@ class BotConversation:
 		# 	These only need to be explicitly included here for Anthropic
 		#	models; for OpenAI models, they are provided separately.
 
-		if is_anthropic or is_deepseek:
-			add_system_section(
-				FUNCTION_SCHEMAS_HEADER,
-				'function_schemas',
+		#if is_anthropic or is_deepseek :
+		add_system_section(
+			FUNCTION_SCHEMAS_HEADER,
+			'function_schemas',
 
-				("\n"
-				 f"Below are the JSON schemas for the currently available functions."
-				 "\n\n") + \
-				thisConv.cur_func_schemas + '\n\n'
-			)
+			("\n"
+			 f"Below are the JSON schemas for the currently available functions."
+			 "\n\n") + \
+			thisConv.cur_func_schemas + '\n\n'
+		)
 
 
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -7723,7 +7725,14 @@ async def process_function_call(
 	# to this message at some point, because if we did and we try sending it
 	# back to the API, the API will choke on it.
 
-	if 'content' in funcall_oaiMsg and funcall_oaiMsg['content'] is not None:
+	if isinstance(funcall_oaiMsg, SimpleNamespace):
+		if hasattr(funcall_oaiMsg, 'content'):
+			if funcall_oaiMsg.content is not None:
+				_logger.info("Oops, our funcall message has text content?? "
+							 f"[\n{pformat(funcall_oaiMsg)}\n]")
+				funcall_oaiMsg.content = None
+
+	elif 'content' in funcall_oaiMsg and funcall_oaiMsg['content'] is not None:
 		_logger.info("Oops, our funcall message has text content?? "
 					 f"[\n{pformat(funcall_oaiMsg)}\n]")
 		funcall_oaiMsg['content'] = None
@@ -7731,7 +7740,7 @@ async def process_function_call(
 	# This new raw-format message represents the actual return value of the
 	# function.
 
-	if is_deepseek:		# Doesn't handle function calls yet.
+	if is_deepseek or True:		# Doesn't handle function calls yet.
 
 		funcret_oaiMsg = {
 			'role':		CHAT_ROLE_USER,
