@@ -399,7 +399,9 @@ __all__ = [
 	#|		'field-size'	- The number of tokens in the GPT-3 receptive field.
 	#|							(This is also often called the context window.)
 	#|		'price'			- The cost (per 1,000 tokens) to use the engine.
+	#|		'prompt-price'	- Price per input token (if different from output).
 	#|		'is-chat'		- True if the engine is a chat engine.
+	#|		'has-vision'	- True if the model supports image input.
 	#|		'encoding'		- The token encoding used by the engine. [DEPRECATED]
 	#|			These are defined by the tiktoken library, and are:
 	#|				'gpt2'	- Used by most GPT-3 engines.
@@ -407,47 +409,50 @@ __all__ = [
 	#|
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+# NOTE: Much of the data in this table (particularly on pricing) may need to be updated.
 _ENGINES = [
 		# OG GPT-3 models; data through Oct. 2019.
 
-    {'model-family': 'GPT-3',	'engine-name': 'ada', 					'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
-    {'model-family': 'GPT-3',	'engine-name': 'babbage',				'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
-    {'model-family': 'GPT-3',	'engine-name': 'curie',	    			'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
-    {'model-family': 'GPT-3',	'engine-name': 'davinci',				'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
-    {'model-family': 'GPT-3',	'engine-name': 'davinci:2020-05-03',	'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
-    
-		# Early InstructGPT models. (RLHF trained; data through Oct. 2019.)
+	{'model-family': 'GPT-3',	'engine-name': 'ada',					'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
+	{'model-family': 'GPT-3',	'engine-name': 'babbage',				'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
+	{'model-family': 'GPT-3',	'engine-name': 'curie',					'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
+	{'model-family': 'GPT-3',	'engine-name': 'davinci',				'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
+	{'model-family': 'GPT-3',	'engine-name': 'davinci:2020-05-03',	'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
+	
+		# Early InstructGPT models. (Instruct-tuned but not RLHF'd; data through Oct. 2019.)
 
-    {'model-family': 'GPT-3/Instruct',	'engine-name': 'text-ada-001',		'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
-    {'model-family': 'GPT-3/Instruct',	'engine-name': 'text-babbage-001',	'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
-    {'model-family': 'GPT-3/Instruct',	'engine-name': 'text-curie-001',	'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
-    {'model-family': 'GPT-3/Instruct',	'engine-name': 'text-davinci-001',	'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
+	{'model-family': 'GPT-3/Instruct',	'engine-name': 'text-ada-001',		'field-size': 2048, 'price': 0.0004,	'is-chat': False,	'encoding': 'gpt2'},
+	{'model-family': 'GPT-3/Instruct',	'engine-name': 'text-babbage-001',	'field-size': 2048, 'price': 0.0005,	'is-chat': False,	'encoding': 'gpt2'},
+	{'model-family': 'GPT-3/Instruct',	'engine-name': 'text-curie-001',	'field-size': 2048, 'price': 0.002,		'is-chat': False,	'encoding': 'gpt2'},
+	{'model-family': 'GPT-3/Instruct',	'engine-name': 'text-davinci-001',	'field-size': 2048, 'price': 0.02,		'is-chat': False,	'encoding': 'gpt2'},
 
 		# GPT-3.5 models. (Increased context length; data through June 2021.)
 
-    {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06,		'is-chat': False,	'encoding': 'p50k_base'},
-    {'model-family': 'GPT-3.5',	'engine-name': 'code-davinci-002', 'field-size': 8001, 'price': 0,			'is-chat': False,	'encoding': 'p50k_base'},
-    {'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02,		'is-chat': False,	'encoding': 'p50k_base'},
-		# GPT-3.5-turbo-instruct. (Speed & pricing like GPT-3.5 Turbo, trained like GPT-3 Instruct.)
-	{'model-family': 'GPT-3.5', 'engine-name': 'gpt-3.5-turbo-instruct', 'field-size': 4000, 'prompt-price': 0.0015, 'price': 0.002, 'is-chat': False,  'encoding': 'p50k_base'},
-    
-		# ChatGPT-3.5 models. (These use the chat API. Data through Sep. 2021.)
+	{'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-002', 'field-size': 4000, 'price': 0.06,	'is-chat': False,	'encoding': 'p50k_base'},
+	{'model-family': 'GPT-3.5',	'engine-name': 'code-davinci-002', 'field-size': 8001, 'price': 0,		'is-chat': False,	'encoding': 'p50k_base'},
+	{'model-family': 'GPT-3.5',	'engine-name': 'text-davinci-003', 'field-size': 4000, 'price': 0.02,	'is-chat': False,	'encoding': 'p50k_base'},
 
-    {'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo', 		'field-size': 16_384, 	'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
-	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0301', 	'field-size': 4096, 	'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
-		# To be discontinued on 9/13/23. Switch to gpt-3.5-turbo-0613.
-	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0613', 	'field-size': 4096, 	'prompt-price': 0.0015,	'price': 0.002,		'is-chat': True,	'encoding': 'p50k_base'},
-    
+		# GPT-3.5-turbo-instruct. (Speed & pricing like GPT-3.5 Turbo, trained like GPT-3 Instruct. NOTE: Less aligned!)
+	{'model-family': 'GPT-3.5', 'engine-name': 'gpt-3.5-turbo-instruct', 'field-size': 4000, 'prompt-price': 0.0015, 'price': 0.002, 'is-chat': False, 'encoding': 'p50k_base'},
+	
+		# ChatGPT-3.5 models. (These use the chat API! Data through Sep. 2021.)
+
+	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo',			'field-size': 16_384,	'prompt-price': 0.0015,	'price': 0.002,	'is-chat': True, 'encoding': 'p50k_base'},
+		# ^ Rolling updates to this model.
+	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0301',	'field-size': 4096,		'prompt-price': 0.0015,	'price': 0.002,	'is-chat': True, 'encoding': 'p50k_base'},
+		# ^ To be discontinued on 9/13/23. Switch to gpt-3.5-turbo-0613.
+	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0613',	'field-size': 4096,		'prompt-price': 0.0015,	'price': 0.002,	'is-chat': True, 'encoding': 'p50k_base'},
+	
 		# 16k ChatGPT-3.5 models. (Context window size increased to 16,384.)
 
-	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-16k', 		'field-size': 16384, 	'prompt-price': 0.003,	'price': 0.004,		'is-chat': True,	'encoding': 'p50k_base'},
-	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-16k-0613', 	'field-size': 16384, 	'prompt-price': 0.003,	'price': 0.004,		'is-chat': True,	'encoding': 'p50k_base'},
-	#{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',	 	'field-size': 16384, 	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
+	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-16k',			'field-size': 16384,	'prompt-price': 0.003,	'price': 0.004,		'is-chat': True,	'encoding': 'p50k_base'},
+	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-16k-0613',	'field-size': 16384,	'prompt-price': 0.003,	'price': 0.004,		'is-chat': True,	'encoding': 'p50k_base'},
+	#{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',		'field-size': 16384,	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
 	# -------- NOTE: Artificially cutting this down from 16K to 12K to reduce costs.
-	#{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',	 	'field-size': 12288, 	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
-	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',	 	'field-size': 8192, 	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
+	#{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',		'field-size': 12288,	'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
+	{'model-family': 'ChatGPT',	'engine-name': 'gpt-3.5-turbo-0125',		'field-size': 8192,		'prompt-price': 0.0005,	'price': 0.0015,	'is-chat': True,	'encoding': 'p50k_base'},
 
-		# GPT-4 models.  (These also use the chat API. Data through Sep. 2021.)
+		# GPT-4 models.	 (These also use the chat API. Data through Sep. 2021.)
 
 	{'model-family': 'GPT-4',	'engine-name': 'gpt-4',			'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
 	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-0314',	'field-size': 8192, 'price': 0.06,	'prompt-price': 0.03,	'is-chat': True,	'encoding': 'p50k_base'},
@@ -460,17 +465,17 @@ _ENGINES = [
 	{'model-family': 'GPT-4',	'engine-name': 'gpt-4-32k-0613',	'field-size': 32768, 'price': 0.12,	'prompt-price': 0.06,	'is-chat': True,	'encoding': 'p50k_base'},
 
 		# 128k GPT-4 models. (Context window size increased to 128,000 tokens; data through Apr. 2023.)
-	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-turbo-preview',  'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
-	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-1106-preview',   'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
-	#{'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',   'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-turbo-preview',	 'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-1106-preview',	 'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': False, 'encoding': 'p50k_base'},
+	#{'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',	  'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	# -------- NOTE: Artificially cutting this down from 128K to 96K to reduce costs.
-	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',   'field-size': 96000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4', 'engine-name': 'gpt-4-0125-preview',	 'field-size': 96000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	
 		# 128k GPT-4V models. (Vision capability added.)
-	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-vision-preview',      'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-vision-preview',	   'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-1106-vision-preview', 'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
-    #{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-turbo-2024-04-09', 'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
-    {'model-family': 'GPT-4V', 'engine-name': 'gpt-4-turbo-2024-04-09', 'field-size': 96000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	#{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-turbo-2024-04-09', 'field-size': 128000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
+	{'model-family': 'GPT-4V', 'engine-name': 'gpt-4-turbo-2024-04-09', 'field-size': 96000, 'prompt-price': 0.01, 'price': 0.03, 'is-chat': True, 'has-vision': True, 'encoding': 'p50k_base'},
 
 ] # End _ENGINES constant module global data structure.
 
@@ -3764,7 +3769,8 @@ def describeImage(filename:str, verbosity:str='medium', query:str=None, user:str
 
 	# Construct POST payload.
 	payload = {
-		"model": "gpt-4-vision-preview",
+		#"model": "gpt-4-vision-preview",
+		"model": "gpt-4o",
 		"user": user,
 		"messages": [
 			{
