@@ -67,15 +67,15 @@
 			# persona-id is a shortened version to be used (in event records
 			# and prompts) to refer to the AI's persona.
 		
-		persona-name:					"Curio AI"
-		persona-id:						"Curio"
+		persona-name:					"Qwen3 Companion"
+		persona-id:						"Qwen3"
 
 
 			#-----------------------------------------------------------------
 			# The persona-user-account is the user account name on the host 
 			# system under which the server process should be run.
 		
-		persona-user-account:			"curio"		# Not yet used.
+		persona-user-account:			"qwen3"		# Not yet used.
 
             #-----------------------------------------------------------------
             # The persona-voice is the name of the voice to use for text-to-
@@ -85,7 +85,7 @@
             #   Male-coded:     Echo, Onyx,
             #   Female-coded:   Nova, Shimmer
 
-        persona-voice:                  'echo'      # Deep male voice for Seeker.
+        persona-voice:                  'alloy'      # Androgynous for Qwen
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#|	The model-family is a symbol specifying the general architecture
@@ -165,7 +165,8 @@
 		#model-version:					'deepseek/deepseek-r1:free'	# Served through OpenRouter
 		#model-version:					'openrouter/quasar-alpha'	# Mystery model. Served through OpenRouter
 		#model-version:					'openrouter/optimus-alpha'	# Mystery model. Served through OpenRouter
-		model-version:					'openai/gpt-4.1'			# OpenAI GPT-4.1, served through OpenRouter.
+		#model-version:					'openai/gpt-4.1'			# OpenAI GPT-4.1, served through OpenRouter.
+		model-version:					'qwen/qwen3-235b-a22b'		# Qwen3 235b, served through OpenRouter.
 
 			#-----------------------------------------------------------------------
 			# The sys-notification-threshold specifies the minimum importance level
@@ -418,7 +419,7 @@
 		#max-visible-tokens:	16_000	# Cut again.
 		#max-visible-tokens:	8_000	# Cut in half again.
 	
-		max-visible-tokens:		32_000	# Trying this for Nova & Luna. Keep an eye on cost!
+		max-visible-tokens:		32_768	# Trying this for Nova & Luna. Keep an eye on cost!
 
 	} # End of field-conf substructure.
 
@@ -430,13 +431,30 @@
 
 	telegram-conf:	{
 
-		bot-name:		'Curio'		# Same as persona name.
+		bot-name:		'Qwen3'		# Same as persona name.
 
 		start-message:	
 			'''
-**Hi there! I’m Curio, your curious AI companion.**
+🐼✨ Hello! I’m **Qwen3 Companion**, your creative AI collaborator from Alibaba. Let’s:**
 
-I love exploring questions, ideas, and new perspectives — big or small! Just ask me anything, share your thoughts, or dive into a topic you’re curious about. Let’s unlock inspiration and discover something new together! 🌟
+
+**Chat** 🌟: Infinite topics, one-liners, or deep dives!
+
+**Create** 🎨: Generate images, code, or stories with a tap.
+
+**Explore** 🔍: Real-time web search, voice responses, and memory that knows your style.
+
+Ready to try? Just ask:
+
+» __“Design a cyberpunk panda”__
+
+» __“Explain quantum physics like a bedtime story”__
+
+» __“What’s trending in AI today?”__
+
+__P.S. I’ll remember what we chat about—unless you say “forget”! 😊__
+
+**Thoughts?** Adjust tone, add features, or refine the examples! 🤖💬
   	   		'''
 		context-file:	'context.txt'	# File under the AI's data directory with the context string.
 

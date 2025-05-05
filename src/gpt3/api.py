@@ -576,6 +576,19 @@ _ENGINES = [
 
 	},
 
+	{	# Qwen3 235B A22B
+		
+		'provider':		'OpenRouter',				'model-family':		'Qwen3',
+		'engine-name':	'qwen/qwen3-235b-a22b',		'max-context':		128_000,
+		'field-size':	32_768,						# 64_000,						
+		'price':		0.0001,		# $0.10/M output tokens
+		'prompt-price':	0.0001,		# $0.10/M input tokens
+		'is-chat':		True,
+		'has-vision':	False,
+		'encoding':		'p50k_base'
+
+	},
+
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#	Models served by Hyperbolic.
 	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
