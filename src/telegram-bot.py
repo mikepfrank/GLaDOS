@@ -598,7 +598,8 @@ from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF
 		# Generates a text representation of a chat message dict.
 
 	tiktokenCount,		# Local model-dependent token counter.
-	genImage,			# Generates an image from a description.
+	#genImage,			# Generates an image from a description.
+	genImage2,			# New image generator (uses gpt-image-1).
 	transcribeAudio,	# Transcribes an audio file to text.
 	genSpeech,			# Converts text to spoken voice audio.
 	describeImage,		# Uses GPT-4V to generate a detailed description of an image.
@@ -2330,8 +2331,12 @@ class BotConversation:
 			  "  analyze_image(filename:str, verbosity:str='medium', " \
 			  		"query:str=None, remark:str=None) -> result:str\n"
 
-			  "  create_image(description:str, shape:str='square', " \
-			  		"style:str='vivid', caption:str=None, remark:str=None) " \
+			  #"  create_image(description:str, shape:str='square', " \
+			  #		"style:str='vivid', caption:str=None, remark:str=None) " \
+			  #		"-> status:str\n"
+			  
+			  "  create_image(description:str, shape:str='auto', " \
+			  		"quality:str='auto', caption:str=None, remark:str=None) " \
 			  		"-> status:str\n"
 			  
 			  "  refresh_image(filename:str, mime_type:str, " \
@@ -5218,8 +5223,11 @@ async def ai_vision(update:Update, context:Context, filename:str,
 DAILY_IMAGE_LIMIT = 5
 
 # Define a function to handle the /image command, when issued by the AI.
+#async def ai_image(update:Update, context:Context, imageDesc:str,
+#				   shape:str=None, style:str=None, quality:str=None, 
+#				   caption:str=None	#, remaining_text:str=None
 async def ai_image(update:Update, context:Context, imageDesc:str,
-				   shape:str=None, style:str=None, quality:str=None, 
+				   shape:str=None, quality:str=None, 
 				   caption:str=None	#, remaining_text:str=None
 	) -> str:
 
@@ -5290,68 +5298,66 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 
 	# Process the "shape" parameter.
 
-	if shape is None:
-		shape = "square"			# Default image shape.
-	elif shape == "panoramic":		# AI might try this.
+	#if shape is None:
+	#	shape = "square"			# Default image shape.
+
+	if shape == "panoramic":		# AI might try this.
 		shape = "landscape"
-
-	if shape == "square":
-		size = "1024x1024"
-	elif shape == "portrait":
-		size = "1024x1792"
-	elif shape == "landscape":
-		size = "1792x1024"
+	elif shape in (None, 'auto', 'portrait', 'landscape'):
+		pass
 	else:
-		_logger.warn(f"\tUnknown shape name '{shape}'; reverting to 'square'.")
-		shape = "square"
+		warn_msg = f"\tUnknown shape name '{shape}'; ignoring."
+		_logger.warn(warn_msg)
 
 		# Show the AI the warning too.
-		conversation.add_message(BotMessage(SYS_NAME, f"Warning: Shape '{shape}' is invalid; defaulting to 'square'."))
+		conversation.add_message(BotMessage(SYS_NAME, f"Warning: {warn_msg}"))
+		shape = None
 
-		size = "1024x1024"
+	## Process the "style" parameter.
+	#
+	#if style is None:
+	#	style = 'vivid'
+	#elif style == 'photorealistic':
+	#	style = 'natural'
+	#
+	#if style != 'vivid' and style != 'natural':
+	#	_logger.warn(f"\tUnknown style '{style}'; reverting to 'natural'.")
+	#
+	#	# Show the AI the warning too.
+	#	conversation.add_message(BotMessage(SYS_NAME, f"Warning: Style '{style}' is invalid; defaulting to 'natural'."))
+	#
+	#	style = 'natural'
 
-	# Process the "style" parameter.
-
-	if style is None:
-		style = 'vivid'
-	elif style == 'photorealistic':
-		style = 'natural'
-
-	if style != 'vivid' and style != 'natural':
-		_logger.warn(f"\tUnknown style '{style}'; reverting to 'natural'.")
-
-		# Show the AI the warning too.
-		conversation.add_message(BotMessage(SYS_NAME, f"Warning: Style '{style}' is invalid; defaulting to 'natural'."))
-
-		style = 'natural'
-
-	# Process the "quality" parameter.
-	if quality is None:
-		quality = 'standard'
-	elif quality == 'hd' or quality == 'HD':
-		quality = 'high'
-	elif (quality != 'high') and (quality != 'standard'):
-		_logger.warn(f"\tUnknown quality '{quality}'; reverting to 'standard'.")
-
-		# Show the AI the warning too.
-		conversation.add_message(BotMessage(SYS_NAME, f"Warning: quality '{style}' is invalid; defaulting to 'standard'."))
-
-		quality = 'standard'
+	## Process the "quality" parameter.
+	#if quality is None:
+	#	quality = 'standard'
+	#elif quality == 'hd' or quality == 'HD':
+	#	quality = 'high'
+	#elif (quality != 'high') and (quality != 'standard'):
+	#	_logger.warn(f"\tUnknown quality '{quality}'; reverting to 'standard'.")
+	#
+	#	# Show the AI the warning too.
+	#	conversation.add_message(BotMessage(SYS_NAME, f"Warning: quality '{style}' is invalid; defaulting to 'standard'."))
+	#
+	#	quality = 'standard'
 
 	# Generate and send an image described by the /image command argument string.
-	_logger.normal(f"\nGenerating a {quality}-quality {style} {shape} image with description "
+	#_logger.normal(f"\nGenerating a {quality}-quality {style} {shape} image with description "
+	_logger.normal(f"\nGenerating a {quality}-quality {shape}-shape image with description "
 					f"[{imageDesc}] for user '{user_name}' in "
 					f"conversation {chat_id}.")
 	if caption:
 		_logger.normal(f"\tAn image caption [{caption}] was also specified.")
 
 	# Attempt to actually generate and send the image.
-	send_result = await send_image(update, context, imageDesc, dims=size, style=style, quality=quality, caption=caption)
+	#send_result = await send_image(update, context, imageDesc, dims=size, style=style, quality=quality, caption=caption)
+	send_result = await send_image(update, context, imageDesc, shape, quality, caption)
 
 	if send_result is None:
 		return f'Error: Failed to generate and send image to the user.'
 
-	(image_url, new_desc, save_filename) = send_result
+	#(image_url, new_desc, save_filename) = send_result
+	save_filename = send_result
 
 	# Make a note in conversation archive to indicate that the image was sent.
 	#conversation.add_message(BotMessage(SYS_NAME, f'[Generated and sent image "{new_desc}" in filename "{save_filename}"]'))
@@ -5365,7 +5371,8 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 	# This doesn't work, because the URL is only accessible from this server.
 	#return f"Success: image has been generated and sent to user. Temporary URL=({image_url})."
 
-	return f'Success: image with revised description "{new_desc}" has been generated in file "{save_filename}" and sent to user.'
+	#return f'Success: image with revised description "{new_desc}" has been generated in file "{save_filename}" and sent to user.'
+	return f'Success: image has been generated in file "{save_filename}" and sent to user.'
 
 #__/ End of ai_image() function definition.
 
@@ -5990,12 +5997,13 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 		
 		imageDesc = funcArgs.get('description', None)
 		shape	  = funcArgs.get('shape', None)
-		style	  = funcArgs.get('style', None)
+		#style	  = funcArgs.get('style', None)
 		quality	  = funcArgs.get('quality', None)
 		caption	  = funcArgs.get('caption', None)
 
 		if imageDesc:
-			return await ai_image(update, context, imageDesc, shape=shape, style=style, quality=quality, caption=caption)
+			#return await ai_image(update, context, imageDesc, shape=shape, style=style, quality=quality, caption=caption)
+			return await ai_image(update, context, imageDesc, shape=shape, quality=quality, caption=caption)
 		else:
 			await _report_error(conversation, message,
 					f"create_image() missing required argument 'description'.")
@@ -8579,8 +8587,17 @@ async def process_single_response_msg(tgUpdate, tgContext, botConvo, response_ms
 
 ################################################################################
 @backoff.on_exception(backoff.expo, TimedOut, max_tries=4)	# If this doesn't work, try Exception
-async def send_image(update:Update, context:Context, desc:str, dims=None, 
-					 style=None, quality=None, caption=None, save_copy=True) -> (str, str, str):
+#async def send_image(update:Update, context:Context, desc:str, dims=None, 
+#					 style=None, quality=None, caption=None, save_copy=True) -> (str, str, str):
+
+async def send_image(update:Update, context:Context, desc:str, shape:str=None, 
+					 quality=None, caption=None, save_copy=True) -> str:	# Returns filename.
+	# Notes on arguments:
+	#	* shape:str can be any of the following:
+	#		None --> passed through to genImage2().
+	#		'auto' --> passed through to genImage2().
+	#		'square' --> translated to '1024x1024'
+
 	"""Generates an image from the given description and sends it to the user.
 		Also archives a copy on the server unless save_copy=False is specified.
 		Returns a temporary URL for the image, if successful, and a revised
@@ -8603,20 +8620,35 @@ async def send_image(update:Update, context:Context, desc:str, dims=None,
 	# Get our Conversation object.
 	conversation = context.chat_data['conversation']
 
-	# Default image dimensions.
-	if dims is None:
-		dims = "1024x1024"
+	# Translate image shape to dimensions.
+	if shape == 'square':
+		dims = '1024x1024'
+	elif shape == 'landscape':
+		dims = '1536x1024'
+	elif shape == 'portrait':
+		dims = '1024x1536'
+	elif shape == 'auto' or shape is None:
+		dims = shape
+	else:
+		warn_msg = f"In send_image(): Unknown image shape '{shape}'; ignoring."
+		_logger.warn(warn_msg)
+		conversation.add_message(BotMessage(SYS_NAME, f"WARNING: {warn_msg}"))
+		dims = shape = None		
 
-	# If
-	if quality is None:
-		quality = 'standard'
+	# Check the quality parameter.
+	if quality not in (None, 'auto', 'low', 'medium', 'high'):
+		warn_msg = f"In send_image(): Unknown image quality '{quality}'; ignoring."
+		_logger.warn(warn_msg)
+		conversation.add_message(BotMessage(SYS_NAME, f"WARNING: {warn_msg}"))
+		quality = None	# Just use the default behavior.
 
-	_logger.normal(f"\tGenerating {quality}-quality {dims} image for user {username} from " \
+	_logger.normal(f"\tGenerating {quality}-quality {shape}-shape image for user {username} from " \
 				   f"description [{desc}]. Caption is [{str(caption)}]...")
 
 	# Use the OpenAI API to generate the image.
 	try:
-		(image_url, revised_prompt) = genImage(desc, dims, style, quality)
+		#(image_url, revised_prompt) = await genImage(desc, dims, style)
+		imageResponse = await genImage2(desc, dims, quality)	# trans:bool is another option
 	except Exception as e:
 		await _report_error(conversation, tgMsg,
 					  f"In send_image(), genImage() threw an exception: {type(e).__name__} ({e})")
@@ -8624,12 +8656,22 @@ async def send_image(update:Update, context:Context, desc:str, dims=None,
 		# We could also do a traceback here. Should we bother?
 		raise
 
-	_logger.normal(f"\tImage description was revised to: [{revised_prompt}]")
-	_logger.normal(f"\tDownloading generated image from url [{image_url[0:50]}...]")
+	if hasattr(imageResponse, 'data'):
+		first = imageResponse.data[0]
+		b64 = first.b64_json
+		
+		import base64
+		png_bytes = base64.b64decode(b64)
+	else:
+		_logger.error(f"In send_image(): No data in response from genImage2().")
+		return None
+
+	#_logger.normal(f"\tImage description was revised to: [{revised_prompt}]")
+	#_logger.normal(f"\tDownloading generated image from url [{image_url[0:50]}...]")
 
 	# Download the image from the URL
-	response = requests.get(image_url)
-	response.raise_for_status()
+	#response = requests.get(image_url)
+	#response.raise_for_status()
 	
 	# Save the image to the filesystem if the flag is set to True
 	save_filename = None
@@ -8644,7 +8686,8 @@ async def send_image(update:Update, context:Context, desc:str, dims=None,
 		image_save_path = os.path.join(image_dir, short_filename)
 		save_filename = os.path.join('images', short_filename)
 		with open(image_save_path, 'wb') as image_file:
-			image_file.write(response.content)
+			#image_file.write(response.content)
+			image_file.write(png_bytes)
 		_logger.normal(f"\t\tImage saved to {image_save_path}.")
 
 	_logger.normal(f"\tSending generated image to user {username}...")
@@ -8656,7 +8699,7 @@ async def send_image(update:Update, context:Context, desc:str, dims=None,
 	conversation.add_message(BotMessage(SYS_NAME, image_msg))
 
 	# This actually sends the image to the user as a photo reply (or tries to).
-	await _send_imagedata(response.content, tgMsg, caption=caption)
+	await _send_imagedata(png_bytes, tgMsg, caption=caption)
 
 	# Update record of how many images have been generated today in this context.
 
@@ -8669,7 +8712,8 @@ async def send_image(update:Update, context:Context, desc:str, dims=None,
 
 	_logger.normal(f"\tA total of {context.chat_data['nimages_today']} images have been generated in chat {chat_id} today ({today}).")
 
-	return (image_url, revised_prompt, save_filename)
+	#return (image_url, revised_prompt, save_filename)
+	return save_filename
 #__/ End function send_image()
 
 
@@ -11352,7 +11396,7 @@ ANALYZE_IMAGE_SCHEMA = {
 # Function schema for command: /image <description>
 CREATE_IMAGE_SCHEMA = {
 	"name":         "create_image",
-	"description":  "Generates an image using Dall-E and sends it to the user.",
+	"description":  "Generates an image using gpt-image-1 and sends it to the user.",
 	"parameters":   {
 		"type":         "object",
 		"properties":   {
@@ -11363,20 +11407,20 @@ CREATE_IMAGE_SCHEMA = {
 			"shape":	{
 				"type":			"string",
 				"description":	"Overall shape of image to generate.",
-				"default":		'square',
-				"enum":			['square', 'portrait', 'landscape']
+				"default":		'auto',
+				"enum":			['auto', 'square', 'portrait', 'landscape']
 			},
-			"style":	{
-				"type":			"string",
-				"description":	"Overall style of image appearance.",
-				"default":		'vivid',
-				"enum":			['vivid', 'natural']
-			},
+			#"style":	{
+			#	"type":			"string",
+			#	"description":	"Overall style of image appearance.",
+			#	"default":		'vivid',
+			#	"enum":			['vivid', 'natural']
+			#},
 			"quality":	{
 				"type":			"string",
 				"description":	"Rendering effort & image detail.",
-				"default":		'standard',
-				"enum":			['standard', 'high']
+				"default":		'auto',
+				"enum":			['auto', 'low', 'medium', 'high']
 			},
 			"caption":    {
 				"type":         "string",   # <caption> argument has type string.
@@ -11642,7 +11686,7 @@ FUNCTIONS_LIST = [
 	BLOCK_USER_SCHEMA,
 	UNBLOCK_USER_SCHEMA,
 	SEARCH_WEB_SCHEMA,
-	ACTIVATE_FUNCTION_SCHEMA,	# Maybe don't need this with Claude?
+	#ACTIVATE_FUNCTION_SCHEMA,	# Maybe don't need this with Claude?
 	PASS_TURN_SCHEMA
 ]	
 
