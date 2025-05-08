@@ -373,6 +373,7 @@ __all__ = [
 	'stats',				# Function: Returns the GPT-3 usage statistics.
 
 	'genImage',				# Function: Generate an image from a description.
+	'genImage2',			# Function: Generate an image from a description using gpt-image-1.
 	'transcribeAudio',		# Function: Transcribe an audio file to text.
 	'describeImage',		# Function: Generate a text description of an image.
 
@@ -3942,6 +3943,72 @@ async def genImage(desc:str, dims:str=None, style:str=None):
 	return (image_url, revised_prompt)
 #__/ End module public function genImage().
 	
+
+# Upgraded version, uses gpt-image-1 model.
+async def genImage2(desc:str, dims:str=None, quality:str=None, trans:bool=None):
+	"""Generate an image from the given description string.
+		Returns a JSON object for the generated image."""
+
+	_logger.info(f"Generating an image with description [{desc}].")
+
+	# Image generation API parameters:
+	#	prompt:str
+	#	background:str ('transparent' | 'opaque' | 'auto')
+	#	model:str ('dall-e-2' | 'dall-e-3' | 'gpt-image-1')
+	#	moderation:str ('low' | 'auto')
+	#	n:int (1-10 or null)
+	#	output_compression:int (0-100)
+	#	output_format:str ('png' | 'jpeg' | 'webp')
+	#	quality:str ('auto' | 'high' | 'medium' | 'low')
+	#	size:str ('1024x1024' | '1536x1024' | '1024x1536' | 'auto')
+	#	user
+
+	kwargs = dict()
+	kwargs['prompt'] = desc
+	if trans != None:
+		kwargs['background'] = 'transparent' if trans else 'opaque'
+	#else
+	#	kwargs['background'] = 'auto'		# Default anyway
+	kwargs['model'] = 'gpt-image-1'
+	kwargs['moderation'] = 'low'
+	#kwargs['n'] = None				# Default anyway, means 1.
+	#kwargs['output_compression'] = None	# Default anyway, means 100.
+	#kwargs['output_format'] = 'png'	# Default anyway
+	if quality != None:
+		kwargs['quality'] = quality
+	#else
+	#	kwargs['quality'] = None		# Default anyway, means auto.
+	if dims != None:
+		kwargs['size'] = dims
+	#else
+	#	kwargs['size'] = None		# Default anyway, means auto.
+	# kwargs['user'] = None			# Not yet supported
+
+	# Actually make the call.
+	response = await _client.images.generate(**kwargs)
+
+	return response
+
+	# Example of returned JSON object:
+	# {
+	#   "created": 1746671728,
+	#   "data": [
+	#     {
+	#       "b64_json": "iVBORw0KGgoAAAANSUhEUgAABAAAAAQACAIAAADwf7zUAAEq9GNhQlgAASr0anVtYgAAAB5qdW1kYzJwY..."
+	#     }
+	#   ],
+	#   "usage": {
+	#     "input_tokens": 12,
+	#     "input_tokens_details": {
+	#       "image_tokens": 0,
+	#       "text_tokens": 12
+	#     },
+	#     "output_tokens": 4160,
+	#     "total_tokens": 4172
+	#   }
+	# }
+
+#__/ End module public function genImage2().
 
 async def genSpeech(text:str, user:str = None, voice:str = None, response_format=None):
 	"""Generates spoken voice audio for the given text.

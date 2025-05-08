@@ -639,7 +639,8 @@ from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF
 		# Generates a text representation of a chat message dict.
 
 	tiktokenCount,		# Local model-dependent token counter.
-	genImage,			# Generates an image from a description.
+	#genImage,			# Generates an image from a description.
+	genImage2,			# New image generator (uses gpt-image-1).
 	transcribeAudio,	# Transcribes an audio file to text.
 	genSpeech,			# Converts text to spoken voice audio.
 	describeImage,		# Uses GPT-4V to generate a detailed description of an image.
@@ -1069,6 +1070,8 @@ class BotMessage:
 				# For Quasar, we'll try setting function returns to be system messages.
 				role = CHAT_ROLE_SYSTEM
 				sender = sender[1:]		# Trim off the '@' to see if that helps.
+
+				text = f" @{sender}>" + text
 
 			else:
 				role = CHAT_ROLE_FUNCRET	# This should just be 'function'.
@@ -4086,10 +4089,13 @@ async def handle_image(update:Update, context:Context) -> None:
 
 		send_result = await send_image(update, context, imageDesc)
 		if send_result is not None:
-			(image_url, new_desc, save_filename) = send_result
+			#(image_url, new_desc, save_filename) = send_result
+			save_filename = send_result
 
 			# Make a note in conversation archive to indicate that the image was sent.
-			await conversation.add_message(BotMessage(SYS_NAME, f'[Generated image "{new_desc}" in file "{save_filename}" and sent it to the user.]'))
+			await conversation.add_message(BotMessage(SYS_NAME, 
+				#f'[Generated image "{new_desc}" in file "{save_filename}" and sent it to the user.]'))
+				f'[Generated image in file "{save_filename}" and sent it to the user.]'))
 		else:
 			await conversation.add_message(BotMessage(SYS_NAME, f'[ERROR: Failed to send image to user.]'))
 
@@ -6101,9 +6107,11 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 	if shape == "square":
 		size = "1024x1024"
 	elif shape == "portrait":
-		size = "1024x1792"
+		#size = "1024x1792"
+		size = "1024x1536"
 	elif shape == "landscape":
-		size = "1792x1024"
+		#size = "1792x1024"
+		size = "1536x1024"
 	else:
 		_logger.warn(f"\tUnknown shape name '{shape}'; reverting to 'square'.")
 		# Show the AI the warning too.
@@ -6127,26 +6135,24 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 		_logger.normal(f"\tAn image caption [{caption}] was also specified.")
 
 	# Attempt to actually generate and send the image.
-	send_result = await send_image(update, context, imageDesc, dims=size, style=style, caption=caption)
+	#send_result = await send_image(update, context, imageDesc, dims=size, style=style, caption=caption)
+	send_result = await send_image(update, context, imageDesc, dims=size, caption=caption)
 
 	if send_result is None:
 		return f'Error: Failed to generate and send image to the user.'
 
-	(image_url, new_desc, save_filename) = send_result
+	#(image_url, new_desc, save_filename) = send_result
+	save_filename = send_result
 
 	# Make a note in conversation archive to indicate that the image was sent.
 	#conversation.add_message(BotMessage(SYS_NAME, f'[Generated and sent image "{new_desc}" in filename "{save_filename}"]'))
 	# ^^^ The above isn't really necessary any more...
 
-	## NOTE: This is now done in process_command() more generically.
-	# Send the remaining text after the command line, if any, as a normal message.
-	#if remaining_text != None and remaining_text != '':
-	#	await send_response(update, context, remaining_text)
-
 	# This doesn't work, because the URL is only accessible from this server.
 	#return f"Success: image has been generated and sent to user. Temporary URL=({image_url})."
 
-	return f'Success: image with revised description "{new_desc}" has been generated in file "{save_filename}" and sent to user.'
+	#return f'Success: image with revised description "{new_desc}" has been generated in file "{save_filename}" and sent to user.'
+	return f'Success: image has been generated in file "{save_filename}" and sent to user.'
 
 #__/ End of ai_image() function definition.
 
@@ -8046,7 +8052,7 @@ async def process_raw_response(
 #	response_text = thought_pattern.sub('', response_text)
 
 	# At this point, according to our new protocol for allowing the AI to send multiple
-	# messages, we check for additional instances of "\n{BOT_NAME}>" in the response, and
+	# messages, we check for additional instances of "\n✿ {BOT_NAME}>" in the response, and
 	# if they exist, we split the response on those, and process each one as if it were 
 	# a separate response. (Now accepts optional message delimiters too.)
 
@@ -8086,6 +8092,26 @@ async def process_raw_response(
 	for response_msg in response_msgs:
 		response_msg = response_msg.strip()		# Trim leading/trailing whitespace.
 		
+		# Trim any extra copies of "✿ {BOT_NAME}>" off the front of the message.
+
+		prefix_pattern = r'^(?:\s*'
+			# Start of string, open non-matching group, optional whitespace
+		prefix_pattern += re.escape(MESSAGE_DELIMITER) + '?'
+			# Optional extra copy of message delimiter character
+		prefix_pattern += f'\s*{botConvo.bot_name}>*\s*)+'
+			# Optional whitespace followed by BOT_NAME followed 
+			# by '>' and optional whitespace, and then that entire
+			# group can be repeated one or more times.
+		regex = re.compile(prefix_pattern)
+		match = regex.match(response_msg)
+		if match:
+			_logger.info(f"Trimming prefix [{match.group()}] off front of message.")
+			response_msg = response_msg[match.end():]
+
+		# If message is now empty, just skip it.
+		if not response_msg:
+			continue
+
 		# Create a new Message object.
 		response_botMsg = BotMessage(botConvo.bot_name, response_msg)
 
@@ -8789,7 +8815,8 @@ async def _send_imagedata(img_data, tgMsg:TgMsg, caption:str=None, ):
 #__/ End private function _send_imagedata                                                                                                                                                       
 
 
-async def send_image(update:Update, context:Context, desc:str, dims=None, style=None, caption=None, save_copy=True) -> (str, str, str):
+async def send_image(update:Update, context:Context, desc:str, dims=None,
+					 quality=None, caption=None, save_copy=True) -> (str, str, str):
 	"""Generates an image from the given description and sends it to the user.
 		Also archives a copy on the server unless save_copy=False is specified.
 		Returns a temporary URL for the image, if successful, and a revised
@@ -8813,15 +8840,16 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, style=
 	conversation = context.chat_data['conversation']
 
 	# Default image dimensions.
-	if dims is None:
-		dims = "1024x1024"
+	#if dims is None:
+	#	dims = "1024x1024"
 
-	_logger.normal(f"\tGenerating {dims} image for user {username} from " \
+	_logger.normal(f"\tGenerating image for user {username} from " \
 				   f"description [{desc}]. Caption is [{str(caption)}]...")
 
 	# Use the OpenAI API to generate the image.
 	try:
-		(image_url, revised_prompt) = await genImage(desc, dims, style)
+		#(image_url, revised_prompt) = await genImage(desc, dims, style)
+		response_json = await genImage2(desc, dims, quality)
 	except Exception as e:
 		await _report_error(conversation, tgMsg,
 					  f"In send_image(), genImage() threw an exception: {type(e).__name__} ({e})")
@@ -8829,16 +8857,25 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, style=
 		# We could also do a traceback here. Should we bother?
 		raise
 
-	_logger.normal(f"\tImage description was revised to: [{revised_prompt}]")
-	_logger.normal(f"\tDownloading generated image from url [{image_url[0:50]}...]")
+	if 'data' in response_json:
+		first = response_json['data'][0]
+		b64 = first['b64_json']
+		
+		import base64
+		png_bytes = base64.b64decode(b64)
+	else:
+		png_bytes = None
+
+	#_logger.normal(f"\tImage description was revised to: [{revised_prompt}]")
+	#_logger.normal(f"\tDownloading generated image from url [{image_url[0:50]}...]")
 
 	# Download the image from the URL
-	response = requests.get(image_url)
-	response.raise_for_status()
+	#response = requests.get(image_url)
+	#response.raise_for_status()
 	
 	# Save the image to the filesystem if the flag is set to True
 	save_filename = None
-	if save_copy:
+	if save_copy and png_bytes:
 		_logger.normal(f"\tSaving a copy of the generated image to the filesystem...")
 		image_dir = os.path.join(AI_DATADIR, 'images')
 		if not os.path.exists(image_dir):
@@ -8849,51 +8886,37 @@ async def send_image(update:Update, context:Context, desc:str, dims=None, style=
 		image_save_path = os.path.join(image_dir, short_filename)
 		save_filename = os.path.join('images', short_filename)
 		with open(image_save_path, 'wb') as image_file:
-			image_file.write(response.content)
+			#image_file.write(response.content)
+			image_file.write(png_bytes)
 		_logger.normal(f"\t\tImage saved to {image_save_path}.")
 
-	_logger.normal(f"\tSending generated image to user {username}...")
+	if png_bytes:
 
-	# Prepare the image to be sent via Telegram
-	image_data = InputFile(response.content)
+		_logger.normal(f"\tSending generated image to user {username}...")
+
+		# Prepare the image to be sent via Telegram
+		image_data = InputFile(response.content)
 	
-	# This actually sends the image to the user as a photo reply (or tries to).																													
-	await _send_imagedata(response.content, tgMsg, caption=caption)
+		# This actually sends the image to the user as a photo reply (or tries to).																													
+		#await _send_imagedata(response.content, tgMsg, caption=caption)
+		await _send_imagedata(png_bytes, tgMsg, caption=caption)
 
-	# # Send the image as a reply in Telegram
-	# try:
-	#	await tgMsg.reply_photo(photo=image_data, caption=caption)
+		# Update record of how many images have been generated today in this context.
 
-	# except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
+		today = get_current_date()
+		if 'last_image_date' not in context.chat_data or today != context.chat_data['last_image_date']:
+			context.chat_data['last_image_date'] = today
+			context.chat_data['nimages_today'] = 1	# The image we just made.
+		else:
+			context.chat_data['nimages_today'] += 1
 
-	#	_logger.error(f"Got a {type(e).__name__} exception from Telegram "
-	#				  "({e}) for conversation {chat_id}; aborting.")
-	#	await conversation.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram " \
-	#		"exception {exType} ({e}) while sending to user {user_name}.]"))
+		_logger.normal(f"\tA total of {context.chat_data['nimages_today']} "
+					   f"images have been generated in chat {chat_id} today ({today}).")
 
-	#	if isinstance(e, BadRequest) and "Not enough rights to send" in e.message:
-	#		try:
-	#			await app.bot.leave_chat(chat_id)
-	#			_logger.normal(f"Left chat {chat_id} due to insufficient permissions.")
-	#		except Exception as leave_error:
-	#			_logger.error(f"Error leaving chat {chat_id}: {leave_error}")
+	#__/
 
-	#	return None
-
-	# #__/
-
-	# Update record of how many images have been generated today in this context.
-
-	today = get_current_date()
-	if 'last_image_date' not in context.chat_data or today != context.chat_data['last_image_date']:
-		context.chat_data['last_image_date'] = today
-		context.chat_data['nimages_today'] = 1	# The image we just made.
-	else:
-		context.chat_data['nimages_today'] += 1
-
-	_logger.normal(f"\tA total of {context.chat_data['nimages_today']} images have been generated in chat {chat_id} today ({today}).")
-
-	return (image_url, revised_prompt, save_filename)
+	#return (image_url, revised_prompt, save_filename)
+	return save_filename
 #__/
 
 
