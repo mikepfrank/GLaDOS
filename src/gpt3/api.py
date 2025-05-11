@@ -2537,7 +2537,7 @@ class ChatCompletion(Completion):
 							  f"maximum of {effMax}. Requesting "
 							  "message list shrink.")
 
-				e = PromptTooLargeException(_inputLength, effMax)
+				e = PromptTooLargeException(estInputLen, effMax)
 				raise e		# Complain to our caller hierarchy.
 
 			#__/ End if too little space left.
@@ -2668,6 +2668,12 @@ class ChatCompletion(Completion):
 			ntoks = _anth_count_tokens(messages, apiArgs['model'], client)
 			_logger.normal(f"\t*** NOTE: Full message list has {ntoks} tokens. ***")
 
+			# Archive the message list to a log file.
+			with open("log/last-messages.txt", "w") as f:
+				for msg in messages:
+					f.write('~'*70 + '\n')
+					f.write(messageRepr(msg))
+			
 			# Anthropic style chat completion.
 			chatComplObj = client.messages.create(
 				#extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
@@ -3899,12 +3905,13 @@ async def genImage2(desc:str, dims:str=None, quality:str=None, trans:bool=None):
 #__/ End module public function genImage2().
 
 
-def genSpeech(text:str, user:str = None, voice:str = None, response_format=None):
-	"""Generates spoken voice audio for the given text.
-		Returns the filename of the generated (.mp3) file.
-		The <user> argument, if provided, is used in the
-		output filename to distinguish speech responding
-		to different users."""
+def genSpeech(text:str, user:str = None, voice:str = None, response_format=None, instructions=None):
+
+	"""Generates spoken voice audio for the given text.  Returns the
+		filename of the generated (.mp3) file.  The <user> argument,
+		if provided, is used in the output filename to distinguish
+		speech responding to different users.
+	"""
 
 	_logger.info(f"Generating speech for the following text: [{text}]")
 
@@ -3926,16 +3933,21 @@ def genSpeech(text:str, user:str = None, voice:str = None, response_format=None)
 	speech_filepath = path.join(speechDir, filename)
 
 	response = _client.audio.speech.create(
-		model = 'tts-1',	# Optimized for speed. Other choices include: tts-1-hd (optimized for quality).
+		model = 'gpt-4o-mini-tts',
+		#model = 'tts-1',	# Optimized for speed. Other choices include: tts-1-hd (optimized for quality).
+
 		voice = voice,		# Female voice for Aria. Choices include alloy, echo, fable, onyx, nova, shimmer.
-		#voice = 'nova',		# Female voice for Aria. Choices include alloy, echo, fable, onyx, nova, shimmer.
+			# Voice choices are: alloy, ash, ballad, coral, echo, fable, onyx, nova, sage, shimmer, verse.
 		input = text,
+		instructions = instructions,
 		response_format = response_format
 	)
 
 	response.stream_to_file(speech_filepath)
 
 	return speech_filepath
+
+#__/ End function genSpeech().
 
 
 def transcribeAudio(filename:str):

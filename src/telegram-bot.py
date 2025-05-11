@@ -794,6 +794,12 @@ def _anthropize(msgDict):
 
 	# If we created a function_call field, we need to rearrange it.
 	if 'function_call' in msgDict:
+
+		_logger.info(f"_anthropize(): msgDict has a function call: [{json.dumps(msgDict, indent=4)}]")
+
+		if '<function_calls>' in msgDict['content']:
+			_logger.error("\t_anthropize(): But function call is already in text content!")
+
 		funcall_dict = msgDict['function_call']
 		func_name = funcall_dict['name']
 		arguments = json.loads(funcall_dict['arguments'])
@@ -825,6 +831,8 @@ def _anthropize(msgDict):
 	# Anthropic doesn't understand the special role for function return values.
 	if msgDict['role'] == CHAT_ROLE_FUNCRET:
 		msgDict['role'] = CHAT_ROLE_USER
+
+		_logger.info(f"_anthropize(): msgDict has a function return role: [{json.dumps(msgDict, indent=4)}]")
 
 		func_name = msgDict['name']
 		content = msgDict['content']
@@ -1549,10 +1557,12 @@ class BotConversation:
 		# pass it our list of function descriptions.
 
 		if hasFunctions(ENGINE_NAME):
-			# Retrieve our current functions list...
-			functions = bc.cur_funcs + \
-						[ACTIVATE_FUNCTION_SCHEMA, PASS_TURN_SCHEMA]
-				# Plus always include these two.
+			## Retrieve our current functions list...
+			#functions = bc.cur_funcs + \
+			#			[ACTIVATE_FUNCTION_SCHEMA, PASS_TURN_SCHEMA]
+			#	# Plus always include these two.
+
+			functions = FUNCTIONS_LIST	# All functions
 
 			func_names = [func['name'] for func in functions if 'name' in func]
 			_logger.info(f"\tIn chat {bc.chat_id}, current function list is: {func_names}.")
@@ -2314,8 +2324,8 @@ class BotConversation:
 			FUNCTION_USAGE_HEADER,
 			'function_usage',
 			
-			( "  activate_function(func_name:str, remark:str=None) " \
-			  		"-> status:str\n"
+			( #"  activate_function(func_name:str, remark:str=None) " \
+			  #		"-> status:str\n"
 
 			  "  remember_item(text:str, is_private:bool=True, " \
 			  		"is_global:bool=False, remark:str=None) -> status:str\n"
@@ -2339,6 +2349,9 @@ class BotConversation:
 			  		"quality:str='auto', caption:str=None, remark:str=None) " \
 			  		"-> status:str\n"
 			  
+			  f"  generate_speech(content:str, voice_name:str='{AI_VOICE}', " \
+					"voice_direction:str=None, remark:str=None) -> status:str\n"
+
 			  "  refresh_image(filename:str, mime_type:str, " \
 			  		"caption:str=None, remark:str=None) -> status:str\n"
 
@@ -2524,8 +2537,10 @@ class BotConversation:
 			"recently, if appropriate. Be concise unless asked for detail. "
 			"You may include multiple Telegram messages in your response, but each one "
 			f"must be contained in a new &lt;message&gt; element. "
-			"(Or, alternatively to just sending messages, you can activate "
-			"an available function and then call that function, if appropriate.)"
+			#"(Or, alternatively to just sending messages, you can activate "
+			#"an available function and then call that function, if appropriate.)"
+			"(Or, alternatively to just sending messages, you can "
+			"call an available function, if appropriate.)"
 		)
 
 		if thisConv.chat_id < 0:	# Negative chat IDs correspond to group chats.
@@ -2601,10 +2616,33 @@ class BotConversation:
 				   'content' in chat_messages[-2] and \
 				   'content' in chat_messages[-1]:
 
-					# Append last message content to second-to-last.
-					#chat_messages[-2]['content'] += '\n' + \
-					#	chat_messages[-1]['content']
-					append_contents(chat_messages[-2], chat_messages[-1])
+					first_content = chat_messages[-2]['content']
+					second_content = chat_messages[-1]['content']
+
+					# See if we're going to cause a duplicated function-calls block.
+					funcDuped = False
+					if '<function_calls>' in first_content and \
+					   '<function_calls>' in second_content:
+						#_logger.warn("Merging two consecutive messages that both contain function-call XML:\n"
+						#	f"#1: [{chat_messages[-2]}]; and\n"
+						#	f"#2: [{chat_messages[-1]}].\n"
+						#)
+
+						# Check whether second message content is a suffix of the first.
+						if second_content in first_content:
+							#_logger.warn("\tNOTE: First one contains the second already.")
+							funcDuped = True
+
+					# If it's a duplicated function call block, just merge the token lengths.
+					if funcDuped:
+						#if 'ntokens' in chat_messages[-1]:
+						#	chat_messages[-2]['ntokens'] += chat_messages[-1]['ntokens']
+						pass
+					else:
+						# Append last message content to second-to-last.
+						#chat_messages[-2]['content'] += '\n' + \
+						#	chat_messages[-1]['content']
+						append_contents(chat_messages[-2], chat_messages[-1])
 
 					CHECK_FOR_ANOMALOUS_MSGS(chat_messages, 12)
 
@@ -2627,9 +2665,30 @@ class BotConversation:
 						new_msglist[-1]['role'] == CHAT_ROLE_USER and 
 						msg['role'] == CHAT_ROLE_USER):
 
-					# Just add the new user content onto the end of the last one.
-					#new_msglist[-1]['content'] += '\n' + msg['content']
-					append_contents(new_msglist[-1], msg)
+					first_content = new_msglist[-1]['content']
+					second_content = msg['content']
+
+					# See if we're going to cause a duplicated function-results block.
+					retDuped = False
+					if '<function_results>' in first_content and \
+					   '<function_results>' in second_content:
+						#_logger.warn("Merging two consecutive messages that both contain function-result XML:\n"
+						#	f"#1: [{new_msglist[-1]}]; and\n"
+						#	f"#2: [{msg}].\n"
+						#)
+						# Check whether second message content is a suffix of the first.
+						if second_content in first_content:
+							#_logger.warn("\tNOTE: First one contains the second already.")
+							retDuped = True
+
+					# If it's a duplicated function return block, just merge the token lengths.
+					if retDuped:
+						if 'ntokens' in msg:
+							new_msglist[-1]['ntokens'] += msg['ntokens']
+					else:
+						# Just add the new user content onto the end of the last one.
+						#new_msglist[-1]['content'] += '\n' + msg['content']
+						append_contents(new_msglist[-1], msg)
 						
 					CHECK_FOR_ANOMALOUS_MSGS(new_msglist, 13)
 
@@ -3044,7 +3103,8 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 		conversation.add_message(BotMessage(conversation.bot_name, START_MESSAGE))
 
 		# Now try to also send it to the user.
-		if await _reply_user(tgMessage, conversation, START_MESSAGE) != 'success':
+		if await _reply_user(tgMessage, conversation, START_MESSAGE, markup=True) \
+		   			!= 'success':
 			return	# Connection broken; failure; abort.
 
 	else:	# Two or more messages? We must be continuing an existing conversation.
@@ -4932,6 +4992,9 @@ async def ai_activateFunction(
 	elif funcName == 'create_image':
 		cur_funcs += [CREATE_IMAGE_SCHEMA]
 	
+	elif funcName == 'generate_speech':
+		cur_funcs += [GENERATE_SPEECH_SCHEMA]
+	
 	elif funcName == 'refresh_image':
 		cur_funcs += [REFRESH_IMAGE_SCHEMA]
 
@@ -4948,9 +5011,9 @@ async def ai_activateFunction(
 		# Do nothing because it's always activated.
 		return f"Note: The pass_turn function is always available; activation isn't needed."
 
-	elif funcName == 'activate_function':
-		# Do nothing because it's always activated.
-		return f"Note: The activate_function function is always available; activation isn't needed."
+	#elif funcName == 'activate_function':
+	#	# Do nothing because it's always activated.
+	#	return f"Note: The activate_function function is always available; activation isn't needed."
 
 	else:
 		_logger.error(f"AI tried to activate an unknown function '{funcName}'.")
@@ -5286,7 +5349,7 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 	#
 	#	return "note: image generation capability is presently disabled"
 
-	# Error-checking for null argument.
+	# Error-checking for null image description argument.
 	if imageDesc == None or imageDesc=="":
 		_logger.error(f"The AI sent an /image command with no argument in conversation {chat_id}.")
 
@@ -5375,6 +5438,78 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 	return f'Success: image has been generated in file "{save_filename}" and sent to user.'
 
 #__/ End of ai_image() function definition.
+
+
+async def ai_speak(update:Update, context:Context, content:str,
+				   voice:str=None, direction:str=None) -> str:
+	"""Generate a voice clip, with options, and send it to the user."""
+
+	# Get the message, or edited message from the update.
+	(message, edited) = _get_update_msg(update)
+
+	# Get the chat_id, user_name, and conversation object.
+	chat_id = message.chat.id
+	user_name = _get_user_tag(message.from_user)
+	conversation = context.chat_data['conversation']
+
+	# Error-checking for null speech content argument.
+	if not content:
+		_logger.error(f"The AI called the generate_speech() function with no content in conversation {chat_id}.")
+
+		diagMsg = "generate_speech() function needs a <content> argument."
+		sendRes = await _send_diagnostic(message, conversation, diagMsg)
+		if sendRes != 'success': return sendRes
+
+		return "error: null speech content"
+
+	# Process the "voice" parameter.
+	if not voice:
+		voice = AI_VOICE
+	else:
+		voice = voice.lower()
+		if voice not in ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer', 'verse']:
+			_logger.warn(f"\tUnknown voice name '{voice}'; reverting to '{AI_VOICE}'.")
+			await conversation.add_message(BotMessage(SYS_NAME, 
+				f"Warning: Voice '{voice}' is invalid; default to '{AI_VOICE}'."))
+			voice = AI_VOICE
+
+	try:
+		# Generate and send the voice clip.
+		await _reply_asSpeech(message, conversation, content, voice=voice, direction=direction)
+		conversation.add_message(BotMessage(SYS_NAME,
+			"[Voice clip automatically generated and sent to chat.]"))
+		# Also send the content as text.
+		await _reply_user(message, conversation, content, noVoice=True)
+			# noVoice=True here because we already sent the voice clip;
+			# we don't need to send it again even if we're in /speech mode.
+
+
+	except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
+	
+		exType = type(e).__name__
+	
+		whatDoing = "ignoring" if ignore else "aborting"
+	
+		_logger.error(f"Got a {exType} exception from Telegram ({e}) "
+						  f"for conversation {chat_id}; {whatDoing}.")
+	
+		if convo is not None:
+			await convo.add_message(BotMessage(SYS_NAME, "[ERROR: Telegram exception " \
+				f"{exType} ({e}) while sending to user {user_name}.]"))
+	
+		if isinstance(e, BadRequest) and "Not enough rights to send" in e.message:
+			try:
+				await app.bot.leave_chat(chat_id)
+				_logger.normal(f"Left chat {chat_id} due to insufficient permissions.")
+			except Exception as leave_error:
+				_logger.error(f"Error leaving chat {chat_id}: {leave_error}")
+
+		return f"error: Telegram threw a {exType} exception while sending " \
+			"voice message to the user"
+
+	return 'success'
+
+#__/ End of ai_speak() function definition.
 
 
 # Function to handle refresh_image() function call by the AI.
@@ -6022,6 +6157,19 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 					f"refresh_image() missing required argument 'filename'.")
 			return "Error: Required argument 'filename' is missing."
 
+	elif funcName == 'generate_speech':
+		
+		content	  = funcArgs.get('content',			None)
+		voice	  = funcArgs.get('voice_name',		None)
+		direction = funcArgs.get('voice_direction',	None)
+
+		if content:
+			return await ai_speak(update, context, content, voice=voice, direction=direction)
+		else:
+			await _report_error(conversation, message,
+					f"generate_speech() missing required argument 'content'.")
+			return "Error: Required argument 'content' is missing."
+
 	elif funcName == 'block_user':
 
 		# NOTE: Blocking users by tag may not always work, since tags are not unique.
@@ -6068,15 +6216,15 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 					f"search_web() missing required argument 'query'.")
 			return "Error: Required argument 'query' is missing."
 
-	elif funcName == 'activate_function':
-
-		funcName = funcArgs.get('func_name', None)
-		if funcName:
-			return await ai_activateFunction(message, conversation, funcName)
-		else:
-			await _report_error(conversation, message,
-					f"activate_function() missing required argument 'func_name'.")
-			return "Error: Required argument 'func_name' is missing."
+	#elif funcName == 'activate_function':
+	#
+	#	funcName = funcArgs.get('func_name', None)
+	#	if funcName:
+	#		return await ai_activateFunction(message, conversation, funcName)
+	#	else:
+	#		await _report_error(conversation, message,
+	#				f"activate_function() missing required argument 'func_name'.")
+	#		return "Error: Required argument 'func_name' is missing."
 
 	elif funcName == 'pass_turn':
 		_logger.normal(f"\nNOTE: The AI is passing its turn in conversation {chat_id}.")
@@ -6353,10 +6501,12 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 	# Does this engine support the functions interface? If so, then we'll
 	# pass it our list of function descriptions.
 	if hasFunctions(ENGINE_NAME):
-		# Retrieve our current functions list...
-		functions = botConvo.cur_funcs + \
-					[ACTIVATE_FUNCTION_SCHEMA, PASS_TURN_SCHEMA]
-					# Plus always include these two.
+		## Retrieve our current functions list...
+		#functions = botConvo.cur_funcs + \
+		#			[ACTIVATE_FUNCTION_SCHEMA, PASS_TURN_SCHEMA]
+		#			# Plus always include these two.
+
+		functions = FUNCTIONS_LIST
 
 		func_names = [func['name'] for func in functions if 'name' in func]
 		_logger.info(f"\tIn chat {chat_id}, current function list is: {func_names}.")
@@ -6811,6 +6961,8 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 def CHECK_FOR_ANOMALOUS_MSGS(msgList:list, where:int):
 	for msg in msgList:
 		content = msg['content']
+
+		# Check for crazy-long item lists; this was a problem we were having once.
 		if isinstance(content, list):
 			nitems = len(content)
 			if nitems>1000:
@@ -6818,6 +6970,20 @@ def CHECK_FOR_ANOMALOUS_MSGS(msgList:list, where:int):
 				_logger.info(f"Message content is: {content}")
 				#quit()
 
+		continue	# Skip the below checks
+
+		# Check for multiple function-call or function-return blocks.
+		if isinstance(content, str):
+
+			fcalls = content.count('<function_calls>')
+			if fcalls > 1:
+				_logger.info(f"Message content is: {content}")
+				_logger.fatal(f"AT SITE {where}: Message content has {fcalls} function-calls blocks...")
+
+			frets = content.count('<function_results>')
+			if frets > 1:
+				_logger.info(f"Message content is: {content}")
+				_logger.fatal(f"AT SITE {where}: Message content has {frets} function-results blocks...")
 
 # Process a command (message starting with '/') from the AI.
 async def process_ai_command(update:Update, context:Context, response_text:str) -> None:
@@ -6967,9 +7133,9 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 #__/ End function process_ai_command().
 
 # Adjusting this as needed to try to hit target daily expenditures.
-DAILY_MESSAGE_LIMIT = 8
+#DAILY_MESSAGE_LIMIT = 8
 #DAILY_MESSAGE_LIMIT = 10
-#DAILY_MESSAGE_LIMIT = 15
+DAILY_MESSAGE_LIMIT = 15
 #DAILY_MESSAGE_LIMIT = 20
 						 
 async def process_chat_message(update:Update, context:Context) -> None:
@@ -10304,7 +10470,8 @@ def _cleanup_markdown(text, inside_mask=0):
 # ignored by the program.
 
 async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
-					  msgToSend:str, ignore:bool=False, markup:bool=False) -> str:
+					  msgToSend:str, ignore:bool=False, markup:bool=False,
+					  noVoice:bool=False) -> str:
 
 	"""Sends text message <msgToSend> in reply to the user's
 		Telegram message <userTgMessage> in conversation <convo>."""
@@ -10399,13 +10566,13 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 
 
 	# If speech mode is on, try also converting the text to a voice clip and sending that too."
-	if convo is not None and convo.speech_on:
+	if convo is not None and convo.speech_on and not noVoice:
 		while True:
 			try:
 				await _reply_asSpeech(message, convo, text)
 
 				convo.add_message(BotMessage(SYS_NAME,
-					"[Voice clip automatically generated and sent to user.]"))
+					"[Voice clip automatically generated and sent to chat.]"))
 
 				break
 
@@ -10438,7 +10605,7 @@ async def _reply_user(userTgMessage:TgMsg, convo:BotConversation,
 #__/ End definition of private function _reply_user().
 
 
-async def _reply_asSpeech(userTgMessage:TgMsg, convo:BotConversation, text):
+async def _reply_asSpeech(userTgMessage:TgMsg, convo:BotConversation, text, voice:str=None, direction:str=None):
 
 	"""Send the given text in reply to the given user message as a voice clip."""
 
@@ -10457,7 +10624,7 @@ async def _reply_asSpeech(userTgMessage:TgMsg, convo:BotConversation, text):
 
 	# This uses the OpenAI text-to-speech API 
 	#mp3_filename = genSpeech(text, user=user_name)
-	opus_filename = genSpeech(text, user=user_name, voice=AI_VOICE, response_format="opus")
+	opus_filename = genSpeech(text, user=user_name, voice=AI_VOICE, response_format="opus", instructions=direction)
 
 	# This uses ffmpeg to convert to OGG
 	#ogg_filename = _mp3_to_ogg(mp3_filename)
@@ -11128,7 +11295,8 @@ PERMANENT_CONTEXT_HEADER	= f" {SEPARATOR_BAR} PERMANENT CONTEXT DATA: {SEPARATOR
 FUNCTION_USAGE_HEADER		= f" {SEPARATOR_BAR} USAGE SUMMARY FOR FUNCTIONS AVAILABLE TO AI: {SEPARATOR_BAR}\n"
 
 	# System section #3.5:
-FUNCTION_SCHEMAS_HEADER		= f" {SEPARATOR_BAR} FULL SCHEMAS FOR ALL CURRENTLY ACTIVATED FUNCTIONS: {SEPARATOR_BAR}\n"
+#FUNCTION_SCHEMAS_HEADER		= f" {SEPARATOR_BAR} FULL SCHEMAS FOR ALL CURRENTLY ACTIVATED FUNCTIONS: {SEPARATOR_BAR}\n"
+FUNCTION_SCHEMAS_HEADER		= f" {SEPARATOR_BAR} FULL SCHEMAS FOR ALL AVAILABLE FUNCTIONS: {SEPARATOR_BAR}\n"
 
 	# System section #3.75:
 USER_COMMANDS_HEADER		= f" {SEPARATOR_BAR} COMMANDS AVAILABLE TO USERS: {SEPARATOR_BAR}\n"
@@ -11396,7 +11564,7 @@ ANALYZE_IMAGE_SCHEMA = {
 # Function schema for command: /image <description>
 CREATE_IMAGE_SCHEMA = {
 	"name":         "create_image",
-	"description":  "Generates an image using gpt-image-1 and sends it to the user.",
+	"description":  "Generates an image using gpt-image-1 and sends it to the chat.",
 	"parameters":   {
 		"type":         "object",
 		"properties":   {
@@ -11438,6 +11606,43 @@ CREATE_IMAGE_SCHEMA = {
 		"type":			"string",
 		"description":	"A string indicating the success or failure of " \
 							"the operation, and the revised image prompt."
+	}
+}
+
+
+# Function schema for direct speech generation.
+GENERATE_SPEECH_SCHEMA = {
+	"name":			"generate_speech",
+	"description":	"Generates a voice clip with custom speech direction and sends it to the chat.",
+	"parameters":	{
+		"type":			"object",
+		"properties":	{
+			"content":	{
+				"type":			"string",
+				"description":	"Textual narration of the content of the utterance to be spoken."
+			},
+			"voice_name":	{
+				"type":			"string",
+				"description":	"The name of the default voice to speak with.",
+				"default":		AI_VOICE,
+				"enum":			['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer', 'verse']
+			},
+			"voice_direction":	{
+				"type":			"string",
+				"description":	"Natural-language textual description of the style of speech. The instructions here may direct the accent, emotional range, intonation, speed, or tone of the speech, and more. Celebrity impressions and modifiers like 'whisper' are also in scope."
+			},
+			"remark":	{
+				"type":			"string",	# <remark> argument has type string.
+				"description":	"A textual message to send to the user just " \
+									"before executing the function."
+			}
+		},
+		"required":		["content"]
+	},
+	"returns":	{	# This describes the function's return type.
+		"type":			"string",
+		"description":	"A string indicating the success or failure of " \
+							"the operation."
 	}
 }
 
@@ -11640,8 +11845,8 @@ ACTIVATE_FUNCTION_SCHEMA = {
 			"func_name":	{
 				"type":		"string",
 				"enum":		["remember_item", "search_memory", "forget_item",
-							 "analyze_image", "create_image", "block_user",
-							 "unblock_user", "search_web"]
+							 "analyze_image", "create_image", "generate_speech", 
+							 "block_user", "unblock_user", "search_web"]
 			},
 			"remark":	{
 				"type":			"string",	# <remark> argument has type string.
@@ -11682,6 +11887,7 @@ FUNCTIONS_LIST = [
 	FORGET_ITEM_SCHEMA,
 	ANALYZE_IMAGE_SCHEMA,
 	CREATE_IMAGE_SCHEMA,
+	GENERATE_SPEECH_SCHEMA,
 	REFRESH_IMAGE_SCHEMA,
 	BLOCK_USER_SCHEMA,
 	UNBLOCK_USER_SCHEMA,
