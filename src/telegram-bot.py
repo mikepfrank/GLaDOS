@@ -2642,7 +2642,8 @@ class BotConversation:
 						# Append last message content to second-to-last.
 						#chat_messages[-2]['content'] += '\n' + \
 						#	chat_messages[-1]['content']
-						append_contents(chat_messages[-2], chat_messages[-1])
+						if second_content not in first_content:
+							append_contents(chat_messages[-2], chat_messages[-1])
 
 					CHECK_FOR_ANOMALOUS_MSGS(chat_messages, 12)
 
@@ -2683,12 +2684,14 @@ class BotConversation:
 
 					# If it's a duplicated function return block, just merge the token lengths.
 					if retDuped:
-						if 'ntokens' in msg:
-							new_msglist[-1]['ntokens'] += msg['ntokens']
+						pass
+						#if 'ntokens' in msg:
+						#	new_msglist[-1]['ntokens'] += msg['ntokens']
 					else:
 						# Just add the new user content onto the end of the last one.
 						#new_msglist[-1]['content'] += '\n' + msg['content']
-						append_contents(new_msglist[-1], msg)
+						if second_content not in first_content:
+							append_contents(new_msglist[-1], msg)
 						
 					CHECK_FOR_ANOMALOUS_MSGS(new_msglist, 13)
 
@@ -7135,8 +7138,8 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 # Adjusting this as needed to try to hit target daily expenditures.
 #DAILY_MESSAGE_LIMIT = 8
 #DAILY_MESSAGE_LIMIT = 10
-DAILY_MESSAGE_LIMIT = 15
-#DAILY_MESSAGE_LIMIT = 20
+#DAILY_MESSAGE_LIMIT = 15
+DAILY_MESSAGE_LIMIT = 20
 						 
 async def process_chat_message(update:Update, context:Context) -> None:
 
