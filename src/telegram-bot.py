@@ -10626,9 +10626,12 @@ async def _reply_asSpeech(userTgMessage:TgMsg, convo:BotConversation, text, voic
 
 	_logger.normal(f"\nConverting output [{text}] in chat {chat_id} to speech...")
 
-	# This uses the OpenAI text-to-speech API 
+	if voice is None:
+		voice = AI_VOICE
+
+	# This uses the OpenAI text-to-speech API
 	#mp3_filename = genSpeech(text, user=user_name)
-	opus_filename = genSpeech(text, user=user_name, voice=AI_VOICE, response_format="opus", instructions=direction)
+	opus_filename = genSpeech(text, user=user_name, voice=voice, response_format="opus", instructions=direction)
 
 	# This uses ffmpeg to convert to OGG
 	#ogg_filename = _mp3_to_ogg(mp3_filename)
