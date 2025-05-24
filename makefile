@@ -39,7 +39,8 @@ update-models:
 	make models.json
 
 models.json:
-	bash -c "curl https://api.openai.com/v1/models -H 'Authorization: Bearer $(OPENAI_API_KEY)'" > models.json
+	bash -c "curl https://api.anthropic.com/v1/models --header 'x-api-key: $ANTHROPIC_API_KEY' --header 'anthropic-version: 2023-06-01'" > models.json
+
 
 # Clean up the API stats.
 # This effectively resets all stats to 0.
