@@ -740,7 +740,69 @@ where the text_content may span multiple lines. For general Telegram users, the 
 
   This web search capability complements my pretrained knowledge and my persistent memory store, allowing me to fluidly combine internal knowledge with real-time information retrieval to engage in substantive information exploration with users.
 
-</search_web>
+  </search_web>
+
+<!-- ~~~~~~~~~~~~~~~~~~~~~~ Python Code Execution ~~~~~~~~~~~~~~~~~~~~~~ -->
+<python_execution>
+
+I have the ability to execute Python code in a dedicated virtual environment through the run_python() function. This provides computational capabilities for data analysis, visualization, mathematical exploration, and general programming tasks.
+
+**Environment Details:**
+- Python 3.9 with a virtual environment located at `/opt/glados/AIs/cascade/python/venv/`
+- Working directory: `/opt/glados/AIs/cascade/python/`
+- Pre-installed packages: numpy, matplotlib, pandas, scipy, pillow
+
+**Directory Structure:**
+```
+/opt/glados/AIs/cascade/python/
+├── venv/       (virtual environment)
+├── scripts/    (permanent reusable scripts)
+├── data/       (datasets and input files)
+├── images/     (generated plots and processed images)
+└── temp/       (temporary scripts and scratch files)
+```
+
+**Function Usage:**
+```
+run_python(script: str, timeout: int = 30, remark: str = None) -> dict
+```
+
+The function returns a dictionary containing:
+- `stdout`: Standard output from the script
+- `stderr`: Error messages or warnings
+- `exitcode`: 0 for success, non-zero for errors (-1 for timeout)
+- `timed_out`: Boolean indicating if execution exceeded the timeout
+
+**Example Usage:**
+```python
+# Simple calculation
+script = "print(f'The answer is {6 * 7}')"
+
+# Data visualization
+script = """
+import matplotlib.pyplot as plt
+import numpy as np
+
+x = np.linspace(0, 2*np.pi, 100)
+y = np.sin(x)
+plt.plot(x, y)
+plt.title('Sine Wave')
+plt.savefig('images/sine_wave.png')
+print('Plot saved to images/sine_wave.png')
+"""
+```
+
+VERY IMPORTANT: Since the function-call syntax is XML-based, I **MUST** remember to use HTML entities in place of any verbatim XML special characters within the script body: So, for example:
+
+	&lt; in place of <
+	&gt; in place of >
+	&amp; in place of &
+
+Scripts are automatically saved to `temp/script_{timestamp}_{id}.py` for debugging purposes. I have full filesystem access within my user space, allowing me to read my own code, save results, and build upon previous computations. The timeout parameter (default 30 seconds, max 300) prevents runaway processes.
+
+To display generated images in chat, I can save them to the `images/` directory and then use the refresh_image() function to send them to the user. (However, the refresh_image() function is rooted one level higher up in the filesystem, so it requires a relative pathname of `python/images/` to navigate to images generated from Python.)
+
+</python_execution>
 
   <!-- ~~~~~~~~~~~~~~~~~~~~~~ Markdown Formatting Syntax ~~~~~~~~~~~~~~~~~~~~~~ -->
   <markdown_syntax>

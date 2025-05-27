@@ -736,7 +736,7 @@ def _anthropize(msgDict):
 	if msgDict['role'] == CHAT_ROLE_SYSTEM:
 		msgDict['role'] = CHAT_ROLE_USER
 		msgDict['content'] = _msg_to_xml(msgDict['content'], SYS_NAME)
-		CHECK_FOR_ANOMALOUS_MSGS([msgDict], 4)
+		#CHECK_FOR_ANOMALOUS_MSGS([msgDict], 4)
 
 		# msgDict['content'] = f'<message sender="{SYS_NAME}">\n' \
 		#	 + msgDict['content'] + '\n' \
@@ -747,7 +747,7 @@ def _anthropize(msgDict):
 		if 'name' in msgDict:
 			user_tag = msgDict['name']
 			msgDict['content'] = _msg_to_xml(msgDict['content'], user_tag)
-			CHECK_FOR_ANOMALOUS_MSGS([msgDict], 5)
+			#CHECK_FOR_ANOMALOUS_MSGS([msgDict], 5)
 
 			#msgDict['content'] = f'<message sender="{user_tag}">\n' \
 			#					 + msgDict['content'] + '\n' \
@@ -783,10 +783,10 @@ def _anthropize(msgDict):
 			msg_content = msgDict['content']
 			if msg_content.startswith("*thinks") or msg_content.startswith("*thinking"):
 				msgDict['content'] = _thought_to_xml(msg_content, BOT_NAME)
-				CHECK_FOR_ANOMALOUS_MSGS([msgDict], 6)
+				#CHECK_FOR_ANOMALOUS_MSGS([msgDict], 6)
 			else:
 				msgDict['content'] = _msg_to_xml(msg_content, BOT_NAME)
-				CHECK_FOR_ANOMALOUS_MSGS([msgDict], 7)
+				#CHECK_FOR_ANOMALOUS_MSGS([msgDict], 7)
 
 			#msgDict['content'] = f'<message sender="{BOT_NAME}">\n' \
 			#					 + msgDict['content'] + '\n' \
@@ -798,33 +798,37 @@ def _anthropize(msgDict):
 		_logger.info(f"_anthropize(): msgDict has a function call: [{json.dumps(msgDict, indent=4)}]")
 
 		if '<function_calls>' in msgDict['content']:
-			_logger.error("\t_anthropize(): But function call is already in text content!")
+			_logger.warn("\t_anthropize(): But function call is already in text content!")
 
-		funcall_dict = msgDict['function_call']
-		func_name = funcall_dict['name']
-		arguments = json.loads(funcall_dict['arguments'])
-		xml_funcall = (
-			 "<function_calls>\n"
-			 "  <invoke>\n"
-			f"    <tool_name>{func_name}</tool_name>\n"
-			 "    <parameters>\n")
-		#print("=================== GOT ARGUMENT LIST ==================")
-		#pprint(arguments)
+		else:
 
-		# Loop over arguments
-		for key, val in arguments.items():
-			xml_funcall += f"      <{key}>{val}</{key}>\n"
-		#__/
+			funcall_dict = msgDict['function_call']
+			func_name = funcall_dict['name']
+			arguments = json.loads(funcall_dict['arguments'])
+			xml_funcall = (
+				"<function_calls>\n"
+				"  <invoke>\n"
+				f"    <tool_name>{func_name}</tool_name>\n"
+				"    <parameters>\n")
+			#print("=================== GOT ARGUMENT LIST ==================")
+			#pprint(arguments)
 
-		# Close out the <function_calls> element.
-		xml_funcall += (
-			 "    </parameters>\n"
-			 "  </invoke>\n"
-			 "</function_calls>")
+			# Loop over arguments
+			for key, val in arguments.items():
+				xml_funcall += f"      <{key}>{val}</{key}>\n"
+			#__/
 
-		#msgDict['content'] = f"{BOT_NAME}> " + xml_funcall
-		msgDict['content'] = xml_funcall
-		CHECK_FOR_ANOMALOUS_MSGS([msgDict], 8)
+			# Close out the <function_calls> element.
+			xml_funcall += (
+				"    </parameters>\n"
+				"  </invoke>\n"
+				"</function_calls>")
+
+			#msgDict['content'] = f"{BOT_NAME}> " + xml_funcall
+			msgDict['content'] = xml_funcall
+			#CHECK_FOR_ANOMALOUS_MSGS([msgDict], 8)
+
+		#__/ End if <function_calls> already in content ... else ...
 
 		del msgDict['function_call']
 
@@ -858,7 +862,7 @@ def _anthropize(msgDict):
 	# Make sure no leading or trailing whitespace in message content.
 	if not isinstance(msgDict['content'], list):
 		msgDict['content'] = msgDict['content'].strip()
-		CHECK_FOR_ANOMALOUS_MSGS([msgDict], 9)
+		#CHECK_FOR_ANOMALOUS_MSGS([msgDict], 9)
 
 	return msgDict		# Return the dict we just constructed.
 
@@ -1306,7 +1310,7 @@ class BotMessage:
 		elif isinstance(_main_client, Anthropic):
 			_oaiMsgDict['content'] = text
 				# This will get reformatted into XML in the _anthropize() call later on.
-			CHECK_FOR_ANOMALOUS_MSGS([_oaiMsgDict], 10)
+			#CHECK_FOR_ANOMALOUS_MSGS([_oaiMsgDict], 10)
 
 		else:	# Normal message, for OpenAI clients.
 			_oaiMsgDict['content'] = str(thisBotMsg)
@@ -1333,7 +1337,7 @@ class BotMessage:
 			# NOTE: Previously, we just sent the message text, like this:
 			#'content':	message.text	# The content field is also expected.
 
-			CHECK_FOR_ANOMALOUS_MSGS([_oaiMsgDict], 11)
+			#CHECK_FOR_ANOMALOUS_MSGS([_oaiMsgDict], 11)
 
 		# To reduce API errors, we set the 'name' property only for
 		# the 'user' role, and the 'function' role.
@@ -1655,8 +1659,12 @@ class BotConversation:
 			tracked for a convo. Returns the new
 			trimmed list."""
 
+		#_check_for_error_message(thisConv.raw_oaiMsgs, "013. Before _trimLastRaw")
+
 		thisConv.raw_oaiMsgs = thisConv.raw_oaiMsgs[:-1]
 
+		#_check_for_error_message(thisConv.raw_oaiMsgs, "14. After _trimLastRaw")
+		
 		return thisConv.raw_oaiMsgs
 
 	def __len__(thisConv:BotConversation) -> int:
@@ -2192,12 +2200,15 @@ class BotConversation:
 		
 		global N_HEADER_MSGS
 
+		#_check_for_error_message(thisConv.messages, "007. Start of get_chat_messages")
+		
 		chat_messages = []		# Initialize the list of chat messages.
 		sys_prompt = ""			# Initialize system prompt (for Anthropic models).
 
 		botName = thisConv.bot_name
 		lastUser = thisConv.last_user	# Telegram object for last user that messaged us.
 		userTag = _get_user_tag(lastUser)
+
 
 		#/======================================================================
 		#|	Message list format:
@@ -2366,9 +2377,13 @@ class BotConversation:
 			  		"remark:str=None) -> status:str\n"
 
 			  "  search_web(query:str, locale:str='en-US', " \
-			  		"sections:list=['webPages'], remark:str=None) " \
+			  		"remark:str=None) " \
 			  		"-> results:dict\n"
+					#"sections:list=['webPages'], remark:str=None) " \
 			  
+			  "  run_python(script:str, timeout:int=30, remark:str=None) " \
+					"-> output:dict\n"
+
 			  "  pass_turn() -> None\n"
 		  	)
 			
@@ -2635,8 +2650,7 @@ class BotConversation:
 
 					# If it's a duplicated function call block, just merge the token lengths.
 					if funcDuped:
-						#if 'ntokens' in chat_messages[-1]:
-						#	chat_messages[-2]['ntokens'] += chat_messages[-1]['ntokens']
+						#_logger.warn("\t\tSo, I am entirely skipping the second message.")
 						pass
 					else:
 						# Append last message content to second-to-last.
@@ -2645,7 +2659,7 @@ class BotConversation:
 						if second_content not in first_content:
 							append_contents(chat_messages[-2], chat_messages[-1])
 
-					CHECK_FOR_ANOMALOUS_MSGS(chat_messages, 12)
+					#CHECK_FOR_ANOMALOUS_MSGS(chat_messages, 12)
 
 					# Trim off the last message; it's been absorbed.
 					chat_messages = chat_messages[:-1]
@@ -2656,6 +2670,8 @@ class BotConversation:
 
 		#__/ End loop over botMessages in convo.
 
+		#_check_for_error_message(chat_messages, "008. Before Anthropic user-message consolidation")
+		
 		# Anthropic is picky about alternating user and assistant messages.
 		# Here, we consolidate consecutive user messages.
 
@@ -2673,27 +2689,25 @@ class BotConversation:
 					retDuped = False
 					if '<function_results>' in first_content and \
 					   '<function_results>' in second_content:
-						#_logger.warn("Merging two consecutive messages that both contain function-result XML:\n"
-						#	f"#1: [{new_msglist[-1]}]; and\n"
-						#	f"#2: [{msg}].\n"
-						#)
+						_logger.warn("Merging two consecutive messages that both contain function-result XML:\n"
+							f"#1: [{new_msglist[-1]}]; and\n"
+							f"#2: [{msg}].\n"
+						)
 						# Check whether second message content is a suffix of the first.
 						if second_content in first_content:
-							#_logger.warn("\tNOTE: First one contains the second already.")
+							_logger.warn("\tNOTE: First one contains the second already.")
 							retDuped = True
 
 					# If it's a duplicated function return block, just merge the token lengths.
 					if retDuped:
-						pass
-						#if 'ntokens' in msg:
-						#	new_msglist[-1]['ntokens'] += msg['ntokens']
+						_logger.warn("\t\tSo, I am entirely skipping the second message.")
 					else:
 						# Just add the new user content onto the end of the last one.
 						#new_msglist[-1]['content'] += '\n' + msg['content']
 						if second_content not in first_content:
 							append_contents(new_msglist[-1], msg)
 						
-					CHECK_FOR_ANOMALOUS_MSGS(new_msglist, 13)
+					#CHECK_FOR_ANOMALOUS_MSGS(new_msglist, 13)
 
 				else:
 					new_msglist.append(msg)
@@ -2702,6 +2716,8 @@ class BotConversation:
 
 		#__/ End if Anthropic.
 
+		#_check_for_error_message(chat_messages, "009. After Anthropic user-message consolidation")
+    		
 		# Note this one will appear at the bottom of OpenAI messages, but as
 		# part of the overall system prompt for Anthropic models.
 		if not is_anthropic:
@@ -2726,6 +2742,8 @@ class BotConversation:
 		if is_anthropic:
 			while chat_messages[0]['role'] == CHAT_ROLE_AI:
 				chat_messages = chat_messages[1:]
+
+		#_check_for_error_message(chat_messages, "010. About to return from get_chat_messages")				
 
 		return chat_messages
 	
@@ -2785,6 +2803,10 @@ def append_contents(msgDict1, msgDict2):
 		msgDict1['content'] = content1 + [item2]
 
 	#__/ This covers all cases.
+
+	# Update the number of tokens in the first message to include both.
+	if ('ntokens' in msgDict1) and ('ntokens' in msgDict2):
+		msgDict1['ntokens'] += msgDict2['ntokens']
 
 #__/ End function append_contents().
 
@@ -5010,6 +5032,9 @@ async def ai_activateFunction(
 	elif funcName == 'search_web':
 		cur_funcs += [SEARCH_WEB_SCHEMA]
 		
+	elif funcName == 'run_python':
+		cur_funcs += [RUN_PYTHON_SCHEMA]
+
 	elif funcName == 'pass_turn':
 		# Do nothing because it's always activated.
 		return f"Note: The pass_turn function is always available; activation isn't needed."
@@ -5444,6 +5469,7 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 #__/ End of ai_image() function definition.
 
 
+# Define a function that lets the AI generate and send an expressive voice clip.
 async def ai_speak(update:Update, context:Context, content:str,
 				   voice:str=None, direction:str=None) -> str:
 	"""Generate a voice clip, with options, and send it to the user."""
@@ -5903,6 +5929,121 @@ async def ai_searchWeb(updateMsg:TgMsg, botConvo:BotConversation,
 #__/
 
 
+# Eventually should move these imports up to the appropriate code section.
+import datetime
+import subprocess
+import string
+
+# Define a function that lets the AI run a Python script in its environment.
+async def ai_run_python(update:Update, context:Context, script:str,
+						timeout:int=30) -> str:
+
+	"""The AI calls this function to execute a given Python script within
+		a subprocess with an environment that exists for this purpose.
+		Output from the subprocess is returned as a JSON formatted string
+		representation of an object (dictionary) per the function schema.
+	"""
+
+	# Get the message, or edited message from the update.
+	(message, edited) = _get_update_msg(update)
+
+	# Get the chat_id, user_name, and conversation object.
+	chat_id = message.chat.id
+	user_name = _get_user_tag(message.from_user)
+	conversation = context.chat_data['conversation']
+
+	# Error-checking for null script argument.
+	if not script:
+		_logger.error(f"The AI called the run_python() function with no script in conversation {chat_id}.")
+
+		diagMsg = "run_python() function needs a <script> argument."
+		sendRes = await _send_diagnostic(message, conversation, diagMsg)
+		if sendRes != 'success': return sendRes
+
+		return "error: null script"
+
+	#import os
+	#import datetime
+	#import random
+	#import string
+
+	# Generate timestamp and random ID for unique filename
+	timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+	random_id = ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
+	script_filename = f"script_{timestamp}_{random_id}.py"
+	script_path = os.path.join(AI_DATADIR, "python", "temp", script_filename)
+
+	# Write the script to the temporary file
+	try:
+		with open(script_path, 'w', encoding='utf-8') as f:
+			f.write(script)
+    
+		# Make the script executable (optional, but might be useful)
+		os.chmod(script_path, 0o755)
+    
+		_logger.info(f"Wrote Python script to {script_path}")
+    
+	except Exception as e:
+		_logger.error(f"Failed to write script to {script_path}: {str(e)}")
+		diagMsg = f"Failed to create temporary script file: {str(e)}"
+		sendRes = await _send_diagnostic(message, conversation, diagMsg)
+		if sendRes != 'success': return sendRes
+
+		return f"error: {str(e)}"
+
+	# Prepare the command to run the script using our venv Python
+	python_cmd = os.path.join(AI_DATADIR, "python", "venv", "bin", "python3")
+	working_dir = os.path.join(AI_DATADIR, "python")
+
+	try:
+		# Run the script with timeout
+		result = subprocess.run(
+			[python_cmd, script_path],
+			capture_output=True,
+			text=True,
+			timeout=timeout,
+			cwd=working_dir
+		)
+    
+		# Prepare the output dictionary
+		output = {
+			"stdout": result.stdout,
+			"stderr": result.stderr,
+			"exitcode": result.returncode,
+			"timed_out": False
+		}
+    
+	except subprocess.TimeoutExpired as e:
+		_logger.warning(f"Script execution timed out after {timeout} seconds: {script_path}")
+		await _report_error(conversation, message, 
+        	f"Python script execution timed out after {timeout} seconds")
+    
+		# Capture any partial output
+		output = {
+			"stdout": e.stdout if e.stdout else "",
+			"stderr": e.stderr if e.stderr else "",
+			"exitcode": -1,  # Indicate timeout with special exit code
+			"timed_out": True
+		}
+
+	except Exception as e:
+		_logger.error(f"Unexpected error running script: {str(e)}")
+		await _report_error(conversation, message, 
+        	f"Error executing Python script: {str(e)}")
+    
+		output = {
+			"stdout": "",
+			"stderr": str(e),
+			"exitcode": -2,  # Indicate other errors
+			"timed_out": False
+		}
+
+	# Return the results as formatted JSON
+	return json.dumps(output, indent=2)
+
+#__/ End function ai_run_python().
+
+
 # Define a function to handle the /unblock command, when issued by the AI.
 async def ai_unblock(updateMsg:TgMsg, conversation:BotConversation,
 					 userToUnblock:str=None, userIDToUnblock:int=None) -> str:
@@ -6220,6 +6361,19 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 					f"search_web() missing required argument 'query'.")
 			return "Error: Required argument 'query' is missing."
 
+	elif funcName == 'run_python':
+
+		scriptCode = funcArgs.get('script', None)
+		timeoutSecs = funcArgs.get('timeout', 30)
+
+		if scriptCode:
+			return await ai_run_python(update, context, scriptCode, timeout=timeoutSecs)
+		else:
+			await _report_error(conversation, message,
+					f"run_python() missing required argument 'script'.")
+			return "Error: Required argument 'script' is missing."
+
+
 	#elif funcName == 'activate_function':
 	#
 	#	funcName = funcArgs.get('func_name', None)
@@ -6249,6 +6403,8 @@ def _sanitize_msgs(oaiMsgList):
 		message list is Anthropic API compatible, if we're 
 		using an Anthropic client."""
 
+	#_check_for_error_message(oaiMsgList, "011. Start of _sanitize_msgs")
+
 	if isinstance(_main_client, Anthropic):
 
 		# Skip initial assistant messages.
@@ -6271,7 +6427,7 @@ def _sanitize_msgs(oaiMsgList):
 				#newOaiMsgs[-2]['content'] += '\n' + newOaiMsgs[-1]['content']
 				append_contents(newOaiMsgs[-2], newOaiMsgs[-1])
 
-				CHECK_FOR_ANOMALOUS_MSGS(newOaiMsgs, 14)
+				#CHECK_FOR_ANOMALOUS_MSGS(newOaiMsgs, 14)
 				newOaiMsgs = newOaiMsgs[:-1]
 
 			# Consolidate consecutive assistant messages.
@@ -6281,11 +6437,13 @@ def _sanitize_msgs(oaiMsgList):
 				#newOaiMsgs[-2]['content'] += '\n' + newOaiMsgs[-1]['content']
 				append_contents(newOaiMsgs[-2], newOaiMsgs[-1])
 
-				CHECK_FOR_ANOMALOUS_MSGS(newOaiMsgs, 15)
+				#CHECK_FOR_ANOMALOUS_MSGS(newOaiMsgs, 15)
 				newOaiMsgs = newOaiMsgs[:-1]
 
 		oaiMsgList = newOaiMsgs
 	
+	_check_for_error_message(oaiMsgList, "012. End of _sanitize_msgs")
+
 	return oaiMsgList
 
 
@@ -6500,8 +6658,11 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 
 	# Get chat/conversation data.																
 	botConvo	= context.chat_data['conversation']
+	#_check_for_error_message(botConvo.messages, "002. Start of get_ai_response - botConvo.messages")
 	chat_id		= botConvo.chat_id
 	
+	#_logger.info(f"In get_ai_response(): The last message in botConvo is: [{botConvo.lastMessage()}]")
+
 	# Does this engine support the functions interface? If so, then we'll
 	# pass it our list of function descriptions.
 	if hasFunctions(ENGINE_NAME):
@@ -6525,14 +6686,18 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 	# derive it from the convo.
 	if oaiMsgList is None:
 		oaiMsgList = botConvo.get_chat_messages()
+		#_check_for_error_message(oaiMsgList, "003. After get_chat_messages")
 		usingRawMsgs = False	# Our input wasn't a raw messsage list.
 	else:
+		#_check_for_error_message(oaiMsgList, "003b. Passed-in oaiMsgList")
 		oaiMsgList = _sanitize_msgs(oaiMsgList)
+		#_check_for_error_message(oaiMsgList, "004. After _sanitize_msgs")
 		usingRawMsgs = True		# Our input *was* a raw message list.
 
 	# Also, stash it in the convo structure so we don't have to keep passing it
 	# around everywhere.
 	botConvo.raw_oaiMsgs = oaiMsgList
+	#_check_for_error_message(botConvo.raw_oaiMsgs, "005. After setting raw_oaiMsgs")
 	
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#| Here's our main loop, which calls the API with exception handling as
@@ -6591,8 +6756,8 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 			contextWinSizeToks += 1		# One more token than spec'd.
 
 		## Detailed diagnostic; comment out until needed.
-		#_logger.debug("In get_ai_response(), "
-		#	f"contextWinSizeToks={contextWinSizeToks}.")
+		_logger.debug("In get_ai_response(), "
+			f"contextWinSizeToks={contextWinSizeToks}.")
 
 
 				#***************************************************************
@@ -6611,8 +6776,8 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 			msgsSizeToks += funcsSize
 
 		## Detailed diagnostic; comment out until needed.
-		#_logger.debug("In get_ai_response(), "
-		#	f"msgsSizeToks={msgsSizeToks}.")
+		_logger.debug("In get_ai_response(), "
+			f"msgsSizeToks={msgsSizeToks}.")
 			
 
 				#***************************************************************
@@ -6626,8 +6791,8 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 			# or extra undocumented fields.
 
 		## Detailed diagnostic; comment out until needed.
-		#_logger.debug("In get_ai_response(), "
-		#	f"availSpaceToks={availSpaceToks}.")
+		_logger.debug("In get_ai_response(), "
+			f"availSpaceToks={availSpaceToks}.")
 
 
 			#-------------------------------------------------------------------
@@ -6653,8 +6818,8 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 			absMaxRetToks = globalMaxRetToks
 
 		## Detailed diagnostic; comment out until needed.
-		#_logger.debug("In get_ai_response(), "
-		#	f"absMaxRetToks={absMaxRetToks}.")
+		_logger.debug("In get_ai_response(), "
+			f"absMaxRetToks={absMaxRetToks}.")
 		
 				#***************************************************************
 				# Calculate the actual maximum number of tokens we'll tell the
@@ -6691,16 +6856,16 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 				# right now in the AI's context window.
 
 		## Detailed diagnostic; comment out until needed.
-		#_logger.debug("In get_ai_response(), "
-		#	f"maxTokens={maxTokens}.")
+		_logger.debug("In get_ai_response(), "
+			f"maxTokens={maxTokens}.")
 
 		## Detailed diagnostic; comment out until needed.
-		#_logger.info("get_ai_response(): "
-		#	f"maxTokens = {maxTokens}, "
-		#	f"globalMinReplWinToks = {globalMinReplWinToks}, "
-		#	f"globalMaxRetToks = {globalMaxRetToks}, "
-		#	f"absMaxRetToks = {absMaxRetToks}, "
-		#	f"availSpaceToks = {availSpaceToks}")
+		_logger.info("get_ai_response(): "
+			f"maxTokens = {maxTokens}, "
+			f"globalMinReplWinToks = {globalMinReplWinToks}, "
+			f"globalMaxRetToks = {globalMaxRetToks}, "
+			f"absMaxRetToks = {absMaxRetToks}, "
+			f"availSpaceToks = {availSpaceToks}")
 
 		#_logger.info(f"CURRENT FUNCTION LIST IS:\n{pformat(functions)}")
 
@@ -6715,10 +6880,14 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 			else:
 				system = None
 
+			#_check_for_error_message(oaiMsgList, "006--. Before expanding embedded images.")
+
 			# Here we process the message list to expand out embedded images.
 
 			if isinstance(global_gptCore.client, Anthropic):
+				which_msg = 0
 				for msgDict in oaiMsgList:
+					#_check_for_error_message(oaiMsgList, f"006-. Before processing msg #{which_msg}")
 					# Assistant isn't allowed to have non-text content, 
 					if msgDict['role'] == CHAT_ROLE_USER:
 						orig_content = msgDict['content']
@@ -6729,9 +6898,16 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 
 						if 'bot-msg-obj' in msgDict:
 							botMsg = msgDict['bot-msg-obj']
-							if botMsg.expanded_content:
+							if botMsg.expanded_content and '*** Attention' not in str(orig_content):
+								#                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+								# This is a kludgey hack so that we don't blow away these error messages.
+								# It still doesn't really explain why the problem occurs, and it doesn't
+								# fix other cases where it might occurs! So it's really a very incomplete
+								# solution. But all we're really doing here is just skipping a possible
+								# optimization, so it's ok.
+								
 								msgDict['content'] = botMsg.expanded_content
-								CHECK_FOR_ANOMALOUS_MSGS([msgDict], 3)
+								#CHECK_FOR_ANOMALOUS_MSGS([msgDict], 3)
 
 								continue	# Proceed to next message.
 						
@@ -6741,14 +6917,17 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 							# This is a list including text and images.
 							msgDict['content'] = message_content
 
-							CHECK_FOR_ANOMALOUS_MSGS([msgDict], 2)
+							#CHECK_FOR_ANOMALOUS_MSGS([msgDict], 2)
 
 							# Make sure the original botMsg remembers our expanded form.
 							if 'bot-msg-obj' in msgDict:
 								botMsg = msgDict['bot-msg-obj']
 								botMsg.expanded_content = message_content
+					#_check_for_error_message(oaiMsgList, f"006-. After processing msg #{which_msg}")
 
-			CHECK_FOR_ANOMALOUS_MSGS(oaiMsgList, 1)
+			#CHECK_FOR_ANOMALOUS_MSGS(oaiMsgList, 1)
+
+			#_check_for_error_message(oaiMsgList, "006. Right before API call")
 
 			# Get the response from the GPT, as a gpt3.api.ChatCompletion object.
 			chatCompletion = global_gptCore.genChatCompletion(	# Call the API.
@@ -7139,8 +7318,8 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 # Adjusting this as needed to try to hit target daily expenditures.
 #DAILY_MESSAGE_LIMIT = 8
 #DAILY_MESSAGE_LIMIT = 10
-#DAILY_MESSAGE_LIMIT = 15
-DAILY_MESSAGE_LIMIT = 20
+DAILY_MESSAGE_LIMIT = 15
+#DAILY_MESSAGE_LIMIT = 20
 						 
 async def process_chat_message(update:Update, context:Context) -> None:
 
@@ -7221,6 +7400,8 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 	botConvo.nix_init_assts()
 
+	# This gets the actual response from the AI and processes it.
+	
 	result = await get_ai_response(update, context)
 
 	# Update record of how many user messages have been processed
@@ -7643,7 +7824,9 @@ async def process_raw_response(
 	response_text = chatCompletion.text
 
 	# Diagnostic for debugging.
-	_logger.debug(f"Got response text: [{response_text}]")
+	#_logger.debug(f"Got response text: [{response_text}]")
+	#_logger.normal('%'*80)
+	#_logger.normal(f"Got RAW response text: [{response_text}]")
 
 	#~~~~~~~~~~~~~~~~~~~~~~~ CHECK CONTENT FILTER ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# Get user data.
@@ -7666,7 +7849,8 @@ async def process_raw_response(
 		# This allows the AI to see this warning message too.
 		botConvo.add_message(BotMessage(SYS_NAME, WARNING_MSG))
 
-		repRes = await _reply_user(tgMsg, botConvo, "[SYSTEM {WARNING_MSG}]")
+		# Show it to the user too.
+		repRes = await _reply_user(tgMsg, botConvo, f"[SYSTEM {WARNING_MSG}]")
 		if repRes != 'success': return
 
 	#__/ End if content filter triggered.
@@ -7877,7 +8061,47 @@ async def process_raw_response(
 				except FunctionCallError as e:	# Parse error.
 
 					_logger.warn(f"Got a parse error in <function_calls> element: {e}")
-					break
+
+					# OK, at this point, we want to show the AI what went wrong, so that
+					# it has a chance to repair the function call syntax and retry. But
+					# we must be careful to set this up intelligently.
+
+					msgToAI = f"*** Attention, {BOT_NAME}: I detected a malformed `function_calls` element " + \
+										"in your response payload.\n" + \
+						f"*** You sent the following text before the `function_calls` element: [{before_text}]\n" + \
+						f"*** Then this `function_calls` element failed to parse: [{function_calls_xml}]\n" + \
+						f"*** Did you forget to escape an XML special character (<, >, &) appearing in your " + \
+								"function parameters as an HTML entity?\n" + \
+						f"*** Your message has not been sent to the chat, and no functions have been called yet.\n" + \
+						f"*** You may now attempt to re-generate a correctly formatted response payload."
+
+					#_logger.info(f"Previously the last message in botConvo was: [{botConvo.lastMessage()}]")
+
+					_logger.info(f"Sending this message to the AI:\n{msgToAI}")
+
+					botConvo.add_message(BotMessage(SYS_NAME, msgToAI))
+					
+					#_check_for_error_message(botConvo.messages, "001. Right after add_message")
+					
+					error_oai_msg = {
+						'role': CHAT_ROLE_USER,
+						'content': f"{SYS_NAME}> {msgToAI}"
+					}
+					botConvo.raw_oaiMsgs.append(error_oai_msg)
+
+					#_check_for_error_message(botConvo.raw_oaiMsgs, "001b. In raw_oaiMsgs after add")
+					
+					#_logger.info(f"Now the last message in botConvo is: [{botConvo.lastMessage()}]")
+
+					#_logger.info("Yo, I got to this place in the code.")
+					WARNING_MSG = f"WARNING: Got a parse error in <function_calls> element: {e}"
+					#_logger.info(f"About to send this warning: {WARNING_MSG}")
+					# This allows the AI to see this warning message too.
+					#botConvo.add_message(BotMessage(SYS_NAME, WARNING_MSG))
+					# Show it to the user too.
+					repRes = await _reply_user(tgMsg, botConvo, f"[SYSTEM {WARNING_MSG}]")
+					if repRes != 'success': return
+					#break
 
 					## This is necessary so that the AI can see what it tried to do.
 					#botConvo.add_message(BotMessage(BOT_NAME, function_calls_xml))
@@ -7886,12 +8110,16 @@ async def process_raw_response(
 					#await _report_error(botConvo, tgMsg, "Malformed `<function_calls>` "
 					#	f"element: {e} No functions were executed.", showUser=False)
 					#
-					## Give the AI a chance to respond to the error, e.g., by
-					## reissuing the function calls with corrections.
-					#await get_ai_response(tgUpdate, tgContext)
-					#
-					#return
+
+					_logger.info("Giving the AI another chance to respond...")
+
+					# Give the AI a chance to respond to the error, e.g., by
+					# reissuing the function calls with corrections.
+					await get_ai_response(tgUpdate, tgContext, botConvo.raw_oaiMsgs)
+					return
 				
+				#__/ End except FunctionCallError
+
 				if len(function_calls) >= 1:
 					for funcname, params, invocation in function_calls:
 					
@@ -11783,21 +12011,21 @@ SEARCH_WEB_SCHEMA = {
 						 "nl-NL", "no-NO", "pl-PL", "pt-BR", "ru-RU",  
 						 "sv-SE", "tr-TR", "zh-CN", "zh-HK", "zh-TW"]
 			},
-			"sections": {
-				"type":			"array",
-				"description":	"List of sections to return in the search results. "
-									"This should be a JSON-formatted list. "
-									f"(Default is {DEFAULT_BINGSEARCH_SECTIONS}).",
-									#f"(Default is ['webPages', 'relatedSearches']).",
-				"minLength":	1,
-				"uniqueItems":	True,
-				"items": {
-					"type":	"string",
-					"enum": ["computation", "entities", "images", "news",
-							 "places", "relatedSearches", "spellSuggestions",
-							 "timeZone", "translations", "videos", "webPages"]
-				}
-			},
+			#"sections": {
+			#	"type":			"array",
+			#	"description":	"List of sections to return in the search results. "
+			#						"This should be a JSON-formatted list. "
+			#						f"(Default is {DEFAULT_BINGSEARCH_SECTIONS}).",
+			#						#f"(Default is ['webPages', 'relatedSearches']).",
+			#	"minLength":	1,
+			#	"uniqueItems":	True,
+			#	"items": {
+			#		"type":	"string",
+			#		"enum": ["computation", "entities", "images", "news",
+			#				 "places", "relatedSearches", "spellSuggestions",
+			#				 "timeZone", "translations", "videos", "webPages"]
+			#	}
+			#},
 			"remark":	{
 				"type":			"string",	# <remark> argument has type string.
 				"description":	"A textual message to send to the user just " \
@@ -11840,6 +12068,58 @@ SEARCH_WEB_SCHEMA = {
 }
 
 
+RUN_PYTHON_SCHEMA = {
+  "name": "run_python",
+  "description": "Executes Python code in the bot's virtual environment and returns the output.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "script": {
+        "type": "string",
+        "description": "Python code to execute. Can be multi-line. Runs in /opt/glados/AIs/cascade/python/ with access to installed packages."
+      },
+      "timeout": {
+        "type": "integer",
+        "description": "Maximum execution time in seconds before the process is terminated.",
+        "default": 30,
+        "minimum": 1,
+        "maximum": 300
+      },
+      "remark": {
+        "type": "string",
+        "description": "A textual message to send to the user just before executing the function."
+      }
+    },
+    "required": [
+      "script"
+    ],
+	"additionalProperties": False
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "stdout": {
+        "type": "string",
+        "description": "Standard output from the Python script."
+      },
+      "stderr": {
+        "type": "string",
+        "description": "Standard error output, including any error messages or tracebacks."
+      },
+      "exitcode": {
+        "type": "integer",
+        "description": "Process exit code (0 for success, non-zero for errors)."
+      },
+      "timed_out": {
+        "type": "boolean",
+        "description": "Whether the script exceeded the timeout limit."
+      }
+    },
+	"additionalProperties": False
+  }
+}
+
+
 # Function schema for the 'activate_function' function.
 ACTIVATE_FUNCTION_SCHEMA = {
 	"name":			"activate_function",
@@ -11853,7 +12133,7 @@ ACTIVATE_FUNCTION_SCHEMA = {
 				"type":		"string",
 				"enum":		["remember_item", "search_memory", "forget_item",
 							 "analyze_image", "create_image", "generate_speech", 
-							 "block_user", "unblock_user", "search_web"]
+							 "block_user", "unblock_user", "search_web", "run_python"]
 			},
 			"remark":	{
 				"type":			"string",	# <remark> argument has type string.
@@ -11899,6 +12179,7 @@ FUNCTIONS_LIST = [
 	BLOCK_USER_SCHEMA,
 	UNBLOCK_USER_SCHEMA,
 	SEARCH_WEB_SCHEMA,
+	RUN_PYTHON_SCHEMA,
 	#ACTIVATE_FUNCTION_SCHEMA,	# Maybe don't need this with Claude?
 	PASS_TURN_SCHEMA
 ]	
@@ -12137,6 +12418,54 @@ unknown_command_filter = _UnknownCommandFilter()
 # Human: ...and? :)
 # Copilot pauses, and then says... 
 # Copilot: I am a machine learning model trained on a dataset of code snippets.
+
+
+def _check_for_error_message(msg_list, location, looking_for="*** Attention"):
+    """Debug function to trace where error messages disappear."""
+    found = False
+    found_messages = []
+    
+    for i, msg in enumerate(msg_list):
+        content = None
+        
+        # Handle different message formats
+        if isinstance(msg, dict):
+            content = msg.get('content', '')
+        elif hasattr(msg, 'text'):  # BotMessage
+            content = msg.text
+        elif hasattr(msg, 'content'):  # OpenAI message object
+            content = msg.content
+            
+        if content and looking_for in str(content):
+            found = True
+            # Truncate for logging
+            preview = str(content)[:100].replace('\n', ' ')
+            found_messages.append(f"  [{i}]: {preview}...")
+    
+    if found:
+        _logger.info(f"✓ ERROR MESSAGE FOUND at {location}:")
+        for fm in found_messages:
+            _logger.info(fm)
+    else:
+        _logger.warn(f"✗ ERROR MESSAGE MISSING at {location}!")
+        _logger.warn(f"  Message list has {len(msg_list)} messages")
+        if len(msg_list) > 0:
+            # Show last few messages
+            _logger.warn(f"  Last 3 messages:")
+            for i in range(max(0, len(msg_list)-3), len(msg_list)):
+                if i < len(msg_list):
+                    content = None
+                    if isinstance(msg_list[i], dict):
+                        content = msg_list[i].get('content', '')[:50]
+                        role = msg_list[i].get('role', '?')
+                    elif hasattr(msg_list[i], 'text'):
+                        content = msg_list[i].text[:50]
+                        role = getattr(msg_list[i], 'sender', '?')
+                    _logger.warn(f"    [{i}] {role}: {str(content)[:100]}...")
+    
+    return found
+
+#__/ End function _check_for_error_message()
 
 
 #/=============================================================================|
