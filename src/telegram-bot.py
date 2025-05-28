@@ -2689,18 +2689,19 @@ class BotConversation:
 					retDuped = False
 					if '<function_results>' in first_content and \
 					   '<function_results>' in second_content:
-						_logger.warn("Merging two consecutive messages that both contain function-result XML:\n"
-							f"#1: [{new_msglist[-1]}]; and\n"
-							f"#2: [{msg}].\n"
-						)
+						#_logger.warn("Merging two consecutive messages that both contain function-result XML:\n"
+						#	f"#1: [{new_msglist[-1]}]; and\n"
+						#	f"#2: [{msg}].\n"
+						#)
 						# Check whether second message content is a suffix of the first.
 						if second_content in first_content:
-							_logger.warn("\tNOTE: First one contains the second already.")
+							#_logger.warn("\tNOTE: First one contains the second already.")
 							retDuped = True
 
 					# If it's a duplicated function return block, just merge the token lengths.
 					if retDuped:
-						_logger.warn("\t\tSo, I am entirely skipping the second message.")
+						#_logger.warn("\t\tSo, I am entirely skipping the second message.")
+						pass
 					else:
 						# Just add the new user content onto the end of the last one.
 						#new_msglist[-1]['content'] += '\n' + msg['content']
@@ -2786,9 +2787,19 @@ def append_contents(msgDict1, msgDict2):
 	elif (not isStr1) and (not isStr2):
 
 		# Assume they're both lists of content items.
-		
+
+		# Add to the first list a newline text item,
+		# and the content items from the second list:
+
 		newlineItem = {'type': 'text', 'text': '\n'}
-		msgDict1['content'] += [newlineItem] + content2
+		#msgDict1['content'] += [newlineItem] + content2
+		msgDict1['content'].append(newlineItem)
+		msgDict1['content'].extend(content2)
+		# ^^ Note: This new version modifies the list object in-place
+		#    rather than reassigning it, which is important so that
+		#    the cached reference to it in the corresponding
+		#    BotMessage's .expanded_content attribute will also get
+		#    updated.
 
 	elif isStr1 and not isStr2:
 
@@ -2798,9 +2809,22 @@ def append_contents(msgDict1, msgDict2):
 
 	elif (not isStr1) and isStr2:
 
+		# Assume the first content is a list;
+		# meanwhile, the second one is a string.
+
+		# Add to the first content list a new text
+		# item containing a newline followed by the
+		# second content string:
+
 		item2 = {'type': 'text', 'text': '\n' + content2}
 
-		msgDict1['content'] = content1 + [item2]
+		#msgDict1['content'] = content1 + [item2]
+		msgDict1['content'].append(item2)
+		# ^^ Note: This new version modifies the list object in-place
+		#    rather than reassigning it, which is important so that
+		#    the cached reference to it in the corresponding
+		#    BotMessage's .expanded_content attribute will also get
+		#    updated.
 
 	#__/ This covers all cases.
 
@@ -5559,18 +5583,23 @@ async def ai_refresh(update:Update, context:Context, filename:str,
 	try:
 		full_path = os.path.join(AI_DATADIR, filename)
 		_logger.normal(f"\tAttempting to resend file {filename} with caption: {caption}")
-		with open(full_path, 'rb') as image_file:
-			image_bytes = image_file.read()
-			await _send_imagedata(image_bytes, tgMsg, caption)
-
-		# The following arranges things so the AI can see the image too.
 
 		if not mimeType:
 			if filename.endswith(".jpg"):
 				mimeType = "image/jpeg"
+			elif filename.endswith(".gif"):
+				mimeType = "image/gif"
 			else:
 				mimeType = "image/png"
 
+		# Set this Boolean if it's a GIF.
+		isGif = (mimeType == "image/gif")
+
+		with open(full_path, 'rb') as image_file:
+			image_bytes = image_file.read()
+			await _send_imagedata(image_bytes, tgMsg, caption, is_gif=isGif, filename=filename)
+
+		# The following arranges things so the AI can see the image too.
 		if mimeType == "image/jpeg":
 			CALLOUT_REMARK = "PHOTO ATTACHMENT"
 		else:
@@ -6366,6 +6395,10 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 		scriptCode = funcArgs.get('script', None)
 		timeoutSecs = funcArgs.get('timeout', 30)
 
+		if isinstance(timeoutSecs, str):
+			_logger.warn(f"Converting timeout string {timeoutSecs} to integer...")
+			timeoutSecs = int(timeoutSecs)
+
 		if scriptCode:
 			return await ai_run_python(update, context, scriptCode, timeout=timeoutSecs)
 		else:
@@ -6442,7 +6475,7 @@ def _sanitize_msgs(oaiMsgList):
 
 		oaiMsgList = newOaiMsgs
 	
-	_check_for_error_message(oaiMsgList, "012. End of _sanitize_msgs")
+	#_check_for_error_message(oaiMsgList, "012. End of _sanitize_msgs")
 
 	return oaiMsgList
 
@@ -6898,14 +6931,17 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 
 						if 'bot-msg-obj' in msgDict:
 							botMsg = msgDict['bot-msg-obj']
-							if botMsg.expanded_content and '*** Attention' not in str(orig_content):
-								#                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-								# This is a kludgey hack so that we don't blow away these error messages.
-								# It still doesn't really explain why the problem occurs, and it doesn't
-								# fix other cases where it might occurs! So it's really a very incomplete
-								# solution. But all we're really doing here is just skipping a possible
-								# optimization, so it's ok.
+
+							#if botMsg.expanded_content and '*** Attention' not in str(orig_content):
+							#	#                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+							#	# This is a kludgey hack so that we don't blow away these error messages.
+							#	# It still doesn't really explain why the problem occurs, and it doesn't
+							#	# fix other cases where it might occurs! So it's really a very incomplete
+							#	# solution. But all we're really doing here is just skipping a possible
+							#	# optimization, so it's ok.
+							# ^^ Should no longer be needed now that we've fixed append_contents().
 								
+							if botMsg.expanded_content:
 								msgDict['content'] = botMsg.expanded_content
 								#CHECK_FOR_ANOMALOUS_MSGS([msgDict], 3)
 
@@ -6923,6 +6959,16 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 							if 'bot-msg-obj' in msgDict:
 								botMsg = msgDict['bot-msg-obj']
 								botMsg.expanded_content = message_content
+							#__/ End if we know the original BotMessage.
+
+						#__/ End if orig_content is a string.
+
+					#__/ End check for user messages -- only these can contain embedded images.
+
+				#__/ End loop over msgDicts in oaiMsgList.
+
+			#__/ End if Anthropic.
+
 					#_check_for_error_message(oaiMsgList, f"006-. After processing msg #{which_msg}")
 
 			#CHECK_FOR_ANOMALOUS_MSGS(oaiMsgList, 1)
@@ -8872,7 +8918,7 @@ async def process_text_response(
 #__/ End function process_text_response().
 
 
-async def _send_imagedata(img_data, tgMsg:TgMsg, caption:str=None, ):
+async def _send_imagedata(img_data, tgMsg:TgMsg, caption:str=None, is_gif:bool=False, filename=None):
 	# img_data is image data as file handle, bytes, or string
 	# tgMsg is the user message we're replying to
 	# caption is an optional string to use as the message caption
@@ -8884,14 +8930,19 @@ async def _send_imagedata(img_data, tgMsg:TgMsg, caption:str=None, ):
 	username = _get_user_tag(tgMsg.from_user)
 
 	# Prepare the image to be sent via Telegram
-	image_data = InputFile(img_data)
+	image_data = InputFile(img_data, filename=filename)
 	
 	# Send the image as a reply in Telegram
 	try:
 		timeout=30	# Try longer timeouts
-		await tgMsg.reply_photo(photo=image_data, caption=caption,
-				read_timeout=timeout, write_timeout=timeout,
-				connect_timeout=timeout, pool_timeout=timeout)
+		if is_gif:
+			await tgMsg.reply_animation(animation=image_data, caption=caption,
+						read_timeout=timeout, write_timeout=timeout,
+						connect_timeout=timeout, pool_timeout=timeout)
+		else:
+			await tgMsg.reply_photo(photo=image_data, caption=caption,
+						read_timeout=timeout, write_timeout=timeout,
+						connect_timeout=timeout, pool_timeout=timeout)
 
 	except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
 
