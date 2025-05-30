@@ -2307,7 +2307,9 @@ class BotConversation:
 			 f"humanlike AI persona named {botName} in a Telegram chat. "
 			 "Below are the context headers for the persona, followed by "
 			 "recent messages in the chat. Please try to keep your responses "
-			 "concise except when asked to respond in detail.\n")
+			 "concise except when asked to respond in detail. Your maximum "
+			 f"response payload length in this environment is {globalMaxRetToks} "
+			 "tokens.\n")
 		)
 
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
