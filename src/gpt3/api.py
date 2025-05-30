@@ -505,8 +505,8 @@ _ENGINES = [
 		# Claude 4 models.
 
 	#{'model-family': 'Claude-4',	'engine-name': 'claude-opus-4-20250514',	'field-size': 16_384,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'}
-	#{'model-family': 'Claude-4',	'engine-name': 'claude-opus-4-20250514',	'field-size': 49_152,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
-	{'model-family': 'Claude-4',	'engine-name': 'claude-opus-4-20250514',	'field-size': 65_536,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+	{'model-family': 'Claude-4',	'engine-name': 'claude-opus-4-20250514',	'field-size': 49_152,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
+	#{'model-family': 'Claude-4',	'engine-name': 'claude-opus-4-20250514',	'field-size': 65_536,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 	#{'model-family': 'Claude-4',	'engine-name': 'claude-opus-4-20250514',	'field-size': 200_000,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'}
 
 ] # End _ENGINES constant module global data structure.
@@ -4040,7 +4040,8 @@ def describeImage(filename:str, verbosity:str='medium', query:str=None):
 
 	# Construct POST payload.
 	payload = {
-		"model": "gpt-4-vision-preview",
+		#"model": "gpt-4-vision-preview",
+		"model": "gpt-4o",
 		"messages": [
 			{
 				"role": "user",
@@ -4073,7 +4074,7 @@ def describeImage(filename:str, verbosity:str='medium', query:str=None):
 
 	if 'choices' not in response_json:
 		_logger.error("The preceding JSON object did not have a 'choices' field.")
-		return "[VISION ERROR: The expected 'choices' field was not included in the raw JSON response: [{response_json}]]"
+		return f"[VISION ERROR: The expected 'choices' field was not included in the raw JSON response: [{response_json}]]"
 
 	description = response_json['choices'][0]['message']['content']
 	_logger.info(f"Got image description: [{description}]")

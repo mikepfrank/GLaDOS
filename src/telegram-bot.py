@@ -5335,8 +5335,8 @@ async def ai_vision(update:Update, context:Context, filename:str,
 #__/ End async function ai_vision().
 
 
-#DAILY_IMAGE_LIMIT = 5
-DAILY_IMAGE_LIMIT = 10
+DAILY_IMAGE_LIMIT = 5
+#DAILY_IMAGE_LIMIT = 10
 
 # Define a function to handle the /image command, when issued by the AI.
 #async def ai_image(update:Update, context:Context, imageDesc:str,
@@ -7363,8 +7363,8 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 
 # Adjusting this as needed to try to hit target daily expenditures.
 #DAILY_MESSAGE_LIMIT = 8
-#DAILY_MESSAGE_LIMIT = 10
-DAILY_MESSAGE_LIMIT = 15
+DAILY_MESSAGE_LIMIT = 10
+#DAILY_MESSAGE_LIMIT = 15
 #DAILY_MESSAGE_LIMIT = 20
 						 
 async def process_chat_message(update:Update, context:Context) -> None:
