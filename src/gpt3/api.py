@@ -504,10 +504,15 @@ _ENGINES = [
 
 		# Claude 4 models.
 
-	#{'model-family': 'Claude-4',	'engine-name': 'claude-opus-4-20250514',	'field-size': 16_384,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'}
-	{'model-family': 'Claude-4',	'engine-name': 'claude-opus-4-20250514',	'field-size': 49_152,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
-	#{'model-family': 'Claude-4',	'engine-name': 'claude-opus-4-20250514',	'field-size': 65_536,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
-	#{'model-family': 'Claude-4',	'engine-name': 'claude-opus-4-20250514',	'field-size': 200_000,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'}
+	#{'model-family': 'Claude-4',	'engine-name': 'claude-sonnet-4-20250514',	'field-size': 16_384,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken',		'max-output': 64_000},
+	#{'model-family': 'Claude-4',	'engine-name': 'claude-sonnet-4-20250514',	'field-size': 49_152,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken',		'max-output': 64_000},
+	{'model-family': 'Claude-4',	'engine-name': 'claude-sonnet-4-20250514',	'field-size': 65_536,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken',		'max-output': 64_000},
+	#{'model-family': 'Claude-4',	'engine-name': 'claude-sonnet-4-20250514',	'field-size': 200_000,	'prompt-price': 3e-3,		'price': 15e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken',		'max-output': 64_000},
+
+	#{'model-family': 'Claude-4',	'engine-name': 'claude-opus-4-20250514',	'field-size': 16_384,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken',		'max-output': 32_000},
+	{'model-family': 'Claude-4',	'engine-name': 'claude-opus-4-20250514',	'field-size': 49_152,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken',		'max-output': 32_000},
+	#{'model-family': 'Claude-4',	'engine-name': 'claude-opus-4-20250514',	'field-size': 65_536,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken',		'max-output': 32_000},
+	#{'model-family': 'Claude-4',	'engine-name': 'claude-opus-4-20250514',	'field-size': 200_000,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken',		'max-output': 32_000},
 
 ] # End _ENGINES constant module global data structure.
 
@@ -557,9 +562,11 @@ def _get_engine_attribs(engine_name):
 		attribute dictionary."""
 	return _ENGINE_ATTRIBS[engine_name]
 
-# Given an engine name and an attribute name, return the attribute value.
+# Given an engine name and an attribute name, return the attribute
+# value.  Returns None if that attribute isn't set for that engine.
 def _get_engine_attr(engine_name, attr_name):
-	return _get_engine_attribs(engine_name)[attr_name]
+	attrs = _get_engine_attribs(engine_name)
+	return attrs.get(attr_name, None)
 
 # Given an engine name, return the model-family attribute value.
 def _get_model_family(engine_name):
@@ -608,6 +615,14 @@ def _get_encoding(engine_name):
 	"""Given an engine name string, return the corresponding encoding 
 		attribute value. [DEPRECATED]"""
 	return _get_engine_attr(engine_name, 'encoding')
+
+# Given an engine name, return the value of the max-output (maximum
+# response length in tokens) parameter, if known; otherwise, return
+# None.
+def _get_max_output(engine_name):
+	"""Given an engine (model) name string, return the value of its
+		max-output parameter, if specified; otherwise return None."""
+	return _get_engine_attr(engine_name, 'max-output')
 
 
 	# The following private constants are initialized based on the above.

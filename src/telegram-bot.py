@@ -2307,9 +2307,12 @@ class BotConversation:
 			 f"humanlike AI persona named {botName} in a Telegram chat. "
 			 "Below are the context headers for the persona, followed by "
 			 "recent messages in the chat. Please try to keep your responses "
-			 "concise except when asked to respond in detail.\n")
+             "concise except when asked to respond in detail. Your maximum "
+             f"response payload length in this environment is {globalMaxRetToks} "
+             "tokens.\n")
 		)
-
+ 
+		
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# MESSAGE #3.	Persistent context information.
 		#
@@ -2325,6 +2328,7 @@ class BotConversation:
 
 			globalPersistentData	# This is set in _initPersistentData().
 		)
+
 
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# MESSAGE #4.	Function usage hints.
@@ -3208,8 +3212,8 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 			ann_text = ann_file.read().strip()
 			msgStr = f"ANNOUNCEMENT: {ann_text}"
 			conversation.add_message(BotMessage(SYS_NAME, msgStr))
-			fullMsgStr = f"[SYSTEM {msgStr}]"
-			_logger.info(f"Sending user {user_name} system announcement: {fullMsgStr}")
+			fullMsgStr = f"\[SYSTEM {msgStr}\]"
+			_logger.info(f"Sending user {user_name} system announcement: {fullMsgStr}", markup=True)
 			await _reply_user(tgMessage, conversation, fullMsgStr, ignore=True)
 
 #__/ End handle_start() function definition.
@@ -5335,8 +5339,8 @@ async def ai_vision(update:Update, context:Context, filename:str,
 #__/ End async function ai_vision().
 
 
-DAILY_IMAGE_LIMIT = 5
-#DAILY_IMAGE_LIMIT = 10
+#DAILY_IMAGE_LIMIT = 5
+DAILY_IMAGE_LIMIT = 10
 
 # Define a function to handle the /image command, when issued by the AI.
 #async def ai_image(update:Update, context:Context, imageDesc:str,
@@ -7363,9 +7367,10 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 
 # Adjusting this as needed to try to hit target daily expenditures.
 #DAILY_MESSAGE_LIMIT = 8
-DAILY_MESSAGE_LIMIT = 10
+#DAILY_MESSAGE_LIMIT = 10
 #DAILY_MESSAGE_LIMIT = 15
 #DAILY_MESSAGE_LIMIT = 20
+DAILY_MESSAGE_LIMIT = 50
 						 
 async def process_chat_message(update:Update, context:Context) -> None:
 
