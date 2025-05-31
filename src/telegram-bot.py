@@ -3210,9 +3210,9 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 			ann_text = ann_file.read().strip()
 			msgStr = f"ANNOUNCEMENT: {ann_text}"
 			conversation.add_message(BotMessage(SYS_NAME, msgStr))
-			fullMsgStr = f"[SYSTEM {msgStr}]"
+			fullMsgStr = f"\[SYSTEM {msgStr}\]"
 			_logger.info(f"Sending user {user_name} system announcement: {fullMsgStr}")
-			await _reply_user(tgMessage, conversation, fullMsgStr, ignore=True)
+			await _reply_user(tgMessage, conversation, fullMsgStr, ignore=True, markup=True)
 
 #__/ End handle_start() function definition.
 
