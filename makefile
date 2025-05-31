@@ -30,6 +30,10 @@ install-data:
 	make data-dir
 	cp -r ai-data/* $(AI_DATADIR)
 
+# Set up the AI's Python virtual environment.
+python:
+	./setup-venv.sh
+
 # Should we add a rule to install the current Python source
 # tree somewhere too?
 
@@ -56,6 +60,7 @@ help:
 	@echo "    * data-dir - Create the AI's persistent data directory."
 	@echo "    * help - Display this help."
 	@echo "    * install-data - Install the AI's initial data files."
+	@echo "    * python - Setup the AI's Python virtual environment."
 	@echo "    * models.json - Create models.json if it doesn't exist."
 	@echo "    * run-bot - Run the Telegram bot server."
 	@echo "    * run-glados (default) - Run the GLaDOS server."

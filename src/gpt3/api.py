@@ -3955,16 +3955,25 @@ def genSpeech(text:str, user:str = None, voice:str = None, response_format=None,
 
 	speech_filepath = path.join(speechDir, filename)
 
-	response = _client.audio.speech.create(
-		model = 'gpt-4o-mini-tts',
-		#model = 'tts-1',	# Optimized for speed. Other choices include: tts-1-hd (optimized for quality).
+	kwargs = dict()
+	kwargs['model'] = 'gpt-4o-mini-tts'
+	kwargs['voice'] = voice
+	kwargs['input'] = text
+	if instructions: kwargs['instructions'] = instructions
+	kwargs['response_format'] = response_format
 
-		voice = voice,		# Female voice for Aria. Choices include alloy, echo, fable, onyx, nova, shimmer.
-			# Voice choices are: alloy, ash, ballad, coral, echo, fable, onyx, nova, sage, shimmer, verse.
-		input = text,
-		instructions = instructions,
-		response_format = response_format
-	)
+	response = _client.audio.speech.create(**kwargs)
+
+	#response = _client.audio.speech.create(
+	#	model = 'gpt-4o-mini-tts',
+	#	#model = 'tts-1',	# Optimized for speed. Other choices include: tts-1-hd (optimized for quality).
+	#
+	#	voice = voice,		# Female voice for Aria. Choices include alloy, echo, fable, onyx, nova, shimmer.
+	#		# Voice choices are: alloy, ash, ballad, coral, echo, fable, onyx, nova, sage, shimmer, verse.
+	#	input = text,
+	#	instructions = instructions,
+	#	response_format = response_format
+	#)
 
 	response.stream_to_file(speech_filepath)
 
