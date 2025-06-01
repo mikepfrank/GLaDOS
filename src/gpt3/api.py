@@ -535,6 +535,20 @@ _ENGINES = [
 	},
 	# NOTE: Sort by throughput for best performance.
 
+	{	# DeepSeek-R1 model (05/28/25 update), served through OpenRouter.
+		
+		'provider':		'OpenRouter',					'model-family':		'DeepSeek',
+		'engine-name':	'deepseek/deepseek-r1-0528',	'max-context':		128_000,
+		'field-size':	24_576,						# 64_000,						
+		'price':		0.00215,	# $2.15/M output tokens
+		'prompt-price':	0.005,		# $0.50/M input tokens
+		'is-chat':		True,
+		'has-vision':	False,
+		'encoding':		'p50k_base'
+
+	},
+	# NOTE: Sort by throughput for best performance.
+
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#	Models served by Hyperbolic.
 	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -2754,6 +2768,7 @@ class ChatCompletion(Completion):
 						if hasattr(error, 'code'):
 							code = error.code
 							body = getattr(response, 'text', None)
+
 							if code == 429:		# Assume detail "too many requests"
 								_logger.error("Provider returned error 429: Too many requests.")
 								raise openai.RateLimitError(response=response, body=body,
@@ -2765,6 +2780,13 @@ class ChatCompletion(Completion):
 								raise openai.APIError(request=response.request, body=body,
 									message="Provider returned error 500: Internal server error.")
 									# This should be caught by the @backoff decorator.
+
+							if code == 502:		# Assume message "Error processing stream"
+								_logger.error("Provider returned error 502: Error processing stream.")
+								raise openai.APIError(request=response.request, body=body,
+									message="Provider returned error 502: Error processing stream.")
+									# This should be caught by the @backoff decorator.
+
 
 							# If we get here then it was some unknown error code.
 							_logger.error(f"Request returned an unknown error code {code}.")
@@ -2886,7 +2908,11 @@ class ChatCompletion(Completion):
 		global _inputLength
 
 		chatCompl = thisChatCompl		# For convenience.
-		usage = chatComplObj.usage		# Sub-dict of usage data.
+		if hasattr(chatComplObj, 'usage'):
+			usage = chatComplObj.usage		# Sub-dict of usage data.
+		else:
+			_logger.error("_accountForChatInput(): Usage attribute missing in chatComplObj.")
+			return
 
 			# This gets the "official" count of tokens in the prompt
 			# (what we'll be charged for).
@@ -2914,7 +2940,11 @@ class ChatCompletion(Completion):
 			updates the global record of output tokens processed by the API."""
 
 		chatCompl = thisChatCompl		# For convenience.
-		usage = chatComplObj.usage		# Sub-dict of usage data.
+		if hasattr(chatComplObj, 'usage'):
+			usage = chatComplObj.usage		# Sub-dict of usage data.
+		else:
+			_logger.error("_accountForChatOutput(): Usage attribute missing in chatComplObj.")
+			return
 
 			# This gets the "official" count of tokens in the result
 			# (what we'll be charged for).
