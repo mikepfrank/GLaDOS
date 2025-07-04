@@ -7045,6 +7045,10 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 				# Just trim off the oldest message after the first
 				# N_HEADER_MSGS.
 
+				if N_HEADER_MSGS >= len(oaiMsgList):
+					_logger.error("No more messages left after header! Giving up...")
+					return
+
 				msg = oaiMsgList[N_HEADER_MSGS]
 
 				# Delete any message data so it doesn't fill up debug log
