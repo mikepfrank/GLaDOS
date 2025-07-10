@@ -7427,8 +7427,9 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 #__/ End function process_ai_command().
 
 # Adjusting this as needed to try to hit target daily expenditures.
-#DAILY_MESSAGE_LIMIT = 25
+#DAILY_MESSAGE_LIMIT = 10
 DAILY_MESSAGE_LIMIT = 15
+#DAILY_MESSAGE_LIMIT = 25
 #DAILY_MESSAGE_LIMIT = 500	# Effectively unlimited for free DeepSeek providers.
 
 async def process_chat_message(update:Update, context:Context) -> None:
@@ -8161,8 +8162,9 @@ async def process_response(update:Update, context:Context,
 		_logger.normal(f"\nNOTE: The AI is passing its turn in conversation {chat_id}.")
 		return
 
+	# If the response text is empty, do nothing.
 	if response_text == "":		# Response is empty string??
-		_logger.error(f"In process_response(), got an empty response message: [{str(response_botMsg)}].")
+		_logger.warn(f"In process_response(), got an empty response message: [{str(response_botMsg)}].")
 		return
 
 	# This is the right place to see if the AI sent its response as a

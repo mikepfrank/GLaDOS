@@ -532,8 +532,7 @@ _ENGINES = [
 		'has-vision':	False,
 		'encoding':		'p50k_base'
 
-	},
-	# NOTE: Sort by throughput for best performance.
+	}, # NOTE: Sort by throughput for best performance.
 
 	{	# DeepSeek-R1 model (05/28/25 update), served through OpenRouter.
 		
@@ -546,8 +545,21 @@ _ENGINES = [
 		'has-vision':	False,
 		'encoding':		'p50k_base'
 
-	},
-	# NOTE: Sort by throughput for best performance.
+	}, # NOTE: Sort by throughput for best performance.
+
+	{	# xAI's Grok 4 model (initial 07/09/25 release), served through OpenRouter.
+		
+		'provider':		'OpenRouter',					'model-family':		'Grok 4',
+		'engine-name':	'x-ai/grok-4-07-09',			'max-context':		256_000,
+		'field-size':	24_576,						# 64_000,						
+		'prompt-price':	0.003,		# $3.00/M input tokens
+		'price':		0.015,		# $15.00/M output tokens
+		'is-chat':		True,
+		'has-vision':	False,
+		'encoding':		'p50k_base'
+
+	}, # NOTE: Sort by throughput for best performance.
+
 
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#	Models served by Hyperbolic.
@@ -2734,8 +2746,8 @@ class ChatCompletion(Completion):
 		is_openrouter = (provider(apiArgs['model']) == 'OpenRouter')
 		if is_openrouter:
 			apiArgs['provider'] = {
-				#'sort':	'price'				# Cheap, but slow.
-				'sort':		'throughput'		# Fast, but expensive.
+				'sort': 		'price'				# Cheap, but slow.
+				#'sort': 		'throughput'		# Fast, but expensive.
 			}
 			apiArgs['include_reasoning'] = True
 			if 'stop' in apiArgs:
