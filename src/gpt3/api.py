@@ -510,7 +510,9 @@ _ENGINES = [
 
 	{'model-family': 'Grok 3', 'engine-name': 'grok-3-beta', 'field-size': 131_072, 'prompt-price': 0.003, 'price': 0.015, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'},
 
-	{'model-family': 'Grok 3', 'engine-name': 'grok-3-fast-beta', 'field-size': 131_072, 'prompt-price': 0.005, 'price': 0.025, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'}
+	{'model-family': 'Grok 3', 'engine-name': 'grok-3-fast-beta', 'field-size': 131_072, 'prompt-price': 0.005, 'price': 0.025, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'},
+
+	{'model-family': 'Grok 4', 'engine-name': 'grok-4-0709', 'field-size': 256_000, 'prompt-price': 0.005, 'price': 0.025, 'is-chat': False, 'has-vision': False, 'encoding': 'p50k_base'}
 
 ] # End _ENGINES constant module global data structure.
 
@@ -1469,6 +1471,8 @@ class Completion:
 				# First generate the argument list for passing to the API.
 			apiArgs = core.genArgs(prompt)
 			
+			_logger.debug(f"The stop sequence is: {apiArgs['stop']}")
+
 				# This actually calls the API, with any needed retries.
 			complStruct = await newComplObj._createComplStruct(apiArgs)
 
@@ -3816,7 +3820,8 @@ def describeImage(filename:str, verbosity:str='medium', query:str=None, user:str
 
 	# Construct POST payload.
 	payload = {
-		"model": "gpt-4-vision-preview",
+		#"model": "gpt-4-vision-preview",
+		"model": "gpt-4o",
 		"user": user,
 		"messages": [
 			{

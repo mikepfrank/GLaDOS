@@ -319,8 +319,8 @@
 
 CONS_INFO = False	# True shows info-level messages on the console.
 
-LOG_DEBUG = True	# True shows debug-level messages in the log file.
-#LOG_DEBUG = False	# True shows debug-level messages in the log file.
+#LOG_DEBUG = True	# True shows debug-level messages in the log file.
+LOG_DEBUG = False	# True shows debug-level messages in the log file.
 
 
 #/=============================================================================|
@@ -1498,7 +1498,7 @@ class BotConversation:
 
 		context_str += SUBMESSAGE_DELIMITER + TRANSCRIPT_DOC_HEADER + (
 			"In this environment, you are presented with a sequence of records "
-			"separated by the special end-of-string token, '<|eos|>'. "
+			"separated by the special end-of-string token, '<|separator|>'. "
 			"The initial records are context headers, and these are followed by "
 			"records representing recent events in the current Telegram chat, "
 			f"which happens to be {indgrp}. Event types include:\n"
@@ -1540,7 +1540,7 @@ class BotConversation:
 			 "without waiting for the user to respond in between. To do "
 			 "this, simply separate the messages in the sequence with a "
 			 "Rotated Heavy Black Heart Bullet character (U+2765, '❥') "
-			 "instead of the usual end-of-string token ('<|eos|>'). "
+			 "instead of the usual end-of-string token ('<|separator|>'). "
 			 "For example:\n"
 			 "\n"
 			 f"\t{MESSAGE_DELIMITER} {BOT_NAME}> This is the first Telegram message to be sent in my response.\n"
@@ -4486,10 +4486,10 @@ async def process_text_message(update:Update, context:Context):
 		#__/
 
 		# Grok likes to put this special token at the end of its responses; strip it off.
-		if response_text.endswith('<|eos|>'):
-			response_text = response_text[:-len('<|eos|>')]
+		if response_text.endswith('<|separator|>'):
+			response_text = response_text[:-len('<|separator|>')]
 
-		_logger.debug(f"After stripping <|eos|>, response is: [{response_text}]")
+		_logger.debug(f"After stripping <|separator|>, response is: [{response_text}]")
 
 		# Unless the total response length has just maxed out the available space,
 		# if we get here, then we have a new chunk of response from GPT-3 that we
@@ -9955,7 +9955,7 @@ def _unblockUserByID(userID:int) -> bool:
 #MESSAGE_DELIMITER = ""				# No delimiter at all!
 	# ^ Trying this in desperation to hopefully get rid of API errors.
 	# NOTE: I think this was unnecessary.
-MESSAGE_DELIMITER = '<|eos|>'	# For Grok. Special token
+MESSAGE_DELIMITER = '<|separator|>'	# For Grok. Special token
 
 	# The following defines a message separator which pads the message
 	# delimiter string with a trailing space to facilitate tokenization.
@@ -9995,9 +9995,9 @@ PASS_TURN_RESULT = "Success: Noted that the AI is not responding to the last use
 	#  Sets the stop sequence (terminates response when encountered).
 
 # Configure the stop sequence appropriate for this application.
-#stop_seq = MESSAGE_DELIMITER	# This is appropriate given the RS delimiter.
+stop_seq = [MESSAGE_DELIMITER]	# Needed so Grok 3 doesn't go haywire
 
-stop_seq = ['\n' + MESSAGE_DELIMITER]	# Needed if delimiter might be in text.
+#stop_seq = ['\n' + MESSAGE_DELIMITER]	# Needed if delimiter might be in text.
 	# NOTE: The stop parameter is used to tell the API to stop generating 
 	# tokens when it encounters the specified string(s). We set it to stop 
 	# when it encounters the message delimiter string at the start of a new 
