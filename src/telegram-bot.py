@@ -7906,7 +7906,7 @@ async def process_raw_response(
 	# a function.  If it is, we'll dispatch out to the process_function_call()
 	# function to handle this case.
 
-	if modelFamily(ENGINE_NAME) == 'DeepSeek':	# Doesn't return these attributes.
+	if modelFamily(ENGINE_NAME) == 'DeepSeek' or modelFamily(ENGINE_NAME).startswith('Grok'):	# Doesn't return these attributes.
 		funCall = None
 	else:
 		if response_oaiMsg.tool_calls:

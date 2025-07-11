@@ -3845,7 +3845,7 @@ def tiktokenCount(text:str=None, encoding:str='gpt2', model:str=None):
 	# If the model argument is provided, use it to get the encoding.
 
 	if model != None:
-		if model.startswith('meta') or model.startswith('deepseek'):
+		if model.startswith('meta') or model.startswith('deepseek') or model.startswith('x-ai'):
 			# This is a hack. When using Meta's Llama models, we throw up
 			# our hands about the tokenizer and don't care. Default to this.
 			encodingObj = tiktoken.encoding_for_model('gpt-4o')
