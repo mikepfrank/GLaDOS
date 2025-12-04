@@ -315,7 +315,7 @@
 # Set these global flags to configure diagnostic output.
 
 CONS_INFO = False	# True shows info-level messages on the console.
-LOG_DEBUG = False	# True shows debug-level messages in the log file.
+LOG_DEBUG = True	# True shows debug-level messages in the log file.
 
 
 #/=============================================================================|
@@ -7408,7 +7408,7 @@ async def process_chat_message(update:Update, context:Context) -> None:
 
 	# Make sure we haven't hit the message limit.
 
-	if user_name == 'Michael' or user_name == 'Jiff':
+	if user_name == 'Michael' or user_name == 'Jiff' or user_name == 'Paula':
 			# Michael and his friends are exempt from the rate limit.
 
 		daily_message_limit = float('inf')
