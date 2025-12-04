@@ -509,6 +509,19 @@ _ENGINES = [
 	#{'model-family': 'Claude-4',	'engine-name': 'claude-opus-4-20250514',	'field-size': 65_536,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'},
 	#{'model-family': 'Claude-4',	'engine-name': 'claude-opus-4-20250514',	'field-size': 200_000,	'prompt-price': 15e-3,		'price': 75e-3,		'is-chat':	True,	'has-vision': True,		'encoding': 'non-tiktoken'}
 
+		# Claude 4.5 models.
+	{
+		'model-family':		'Claude-4',
+		'engine-name':		'claude-opus-4-5-20251101',
+		'field-size':		200_000,
+		'prompt-price':		5e-3,
+		'price':			25e-3,
+		'is-chat':			True,
+		'has-vision':		True,
+		'encoding':			'non-tiktoken'
+	}
+
+
 ] # End _ENGINES constant module global data structure.
 
 # Set of models that support the functions interface.
@@ -532,7 +545,8 @@ _FUNCTION_MODELS = [
 	'claude-3-opus-20240229',
 	'claude-3-5-sonnet-20240620',
 	'claude-3-5-sonnet-20241022',
-	'claude-opus-4-20250514'
+	'claude-opus-4-20250514',
+	'claude-opus-4-5-20251101'
 ]
 
 def _has_functions(engine_name):
