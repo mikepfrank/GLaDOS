@@ -841,19 +841,23 @@ def _anthropize(msgDict):
 		func_name = msgDict['name']
 		content = msgDict['content']
 
-		indented_content = _indent(content)
+		indented_content = _indent(content, 8)
 
+		#msgDict['name'] = SYS_NAME
 		xml_result = (
-			 "<function_results>\n"
-			 "  <result>\n"
-			f"    <tool_name>{func_name}</tool_name>\n"
-			 "    <stdout>\n"
+			f'<message sender="{SYS_NAME}">\n'
+			 "  <function_results>\n"
+			 "    <result>\n"
+			f"      <tool_name>{func_name}</tool_name>\n"
+			 "      <stdout>\n"
 			f"{indented_content}\n"		# Already multi-line indented above
-			 "    </stdout>\n"
-			 "  </result>\n"
-			 "</function_results>")
+			 "      </stdout>\n"
+			 "    </result>\n"
+			 "  </function_results>\n"
+			 "</message>"
+		)
 			
-		msgDict['content'] = f"{SYS_NAME}> " + '\n' + xml_result
+		msgDict['content'] = xml_result
 
 	# If there's a 'name' field, delete it at this point -- Anthropic can't take it.
 	if 'name' in msgDict:
@@ -1517,6 +1521,11 @@ class BotMessage:
 		
 		text = pattern.sub(deserialize_replacer, text)
 
+		# Remove any extra XML crud from the start of the message.
+		bad_tag = f'<message sender="{BOT_NAME}">'
+		if text:
+			text = _remove_leading_tag(text, bad_tag)
+
 		# Return a new object for the deserialized message.
 		return BotMessage(sender, text)
 	
@@ -1524,6 +1533,21 @@ class BotMessage:
 
 #__/ End of BotMessage class definition.
 
+from xml.sax.saxutils import escape as xml_escape
+
+def _removeprefix(text:str, prefix:str):
+	return text[len(prefix):] if text.startswith(prefix) else text
+
+def _remove_leading_tag(text:str, tag:str):
+	escaped_tag = xml_escape(tag)
+
+	text = _removeprefix(text, tag)
+	text = _removeprefix(text, escaped_tag)
+
+	return text
+
+	#return text.removeprefix(tag).removeprefix(escaped_tag)
+	#	# .removeprefix() only available in Python 3.9 and later
 
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#|	2.2. The Conversation class is defined below.
@@ -8606,7 +8630,7 @@ async def process_response(update:Update, context:Context, response_botMsg:BotMe
 
 		except ET.ParseError as e:
 			# If parsing fails, leave response_text unchanged
-			_logger.warn("Failed to XML-parse message text: {e}")
+			_logger.warn(f"Failed to XML-parse message text: [{e}]")
 			conversation.add_message(BotMessage(SYS_NAME, 
 				f"[WARNING: {BOT_NAME}, your previous message failed XML parsing, please be careful.]"))
 	
@@ -8878,6 +8902,14 @@ async def process_text_response(
 				msg_body = msg_xml.replace(open_tag, '').replace(f'</{tag}>', '')
 
 				text	 = msg_body
+
+				# Hack to strip commonly-seen XML garbage off the start of the message body.
+				if isinstance(text, str):
+					xml_poop = f'&lt;message sender="{BOT_NAME}"&gt;'
+					if text.startswith(f'&lt;message sender="{BOT_NAME}"&gt;'):
+						_logger.normal(f"\tRemoving XML crud [{xml_poop}] from message start...")
+						text = text[len(xml_poop):]
+
 				text_str = text or "None"
 
 				_logger.normal(f"\nElement tag: {tag}, "

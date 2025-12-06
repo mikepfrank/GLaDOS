@@ -1392,14 +1392,24 @@ class	TheAIPersonaConfig:
 		else:
 			theAIConfig.startMsg = None	# No default value provided in config file.
 
-		if 'context' in telegramConf:
+		if 'context-file' in telegramConf:
+			contextFile = telegramConf['context-file']
+			_logger.normal(f"	 [Config/AI]	 AI config:		The AI persona's Telegram context file is [{contextFile}].")
+			contextPath = path.join(_AI_DATADIR, 'telegram', contextFile)
+			_logger.normal(f"	 [Config/AI]	 AI config:		The AI persona's Telegram context pathname is [{contextPath}].")
+			context = None
+			with open(contextPath) as contextFD:
+				context = contextFD.read()
+			theAIConfig.context = context
+			_logger.normal(f"	 [Config/AI]	 AI config: The AI persona's Telegram context data is a {len(context)}-character string.")
+		elif 'context' in telegramConf:
 			context = telegramConf['context']
 			# Make sure context string ends in a newline.
 			if not context.endswith('\n'):
 				context += '\n'
 			theAIConfig.context = context
-			#_logger.normal(f"    [Config/AI]     AI config: The AI persona's Telegram context data is [{context.strip()}].")
-			_logger.normal(f"    [Config/AI]     AI config: The AI persona's Telegram context data is a {len(context)}-character string.")
+			#_logger.normal(f"	  [Config/AI]	  AI config: The AI persona's Telegram context data is [{context.strip()}].")
+			_logger.normal(f"	 [Config/AI]	 AI config: The AI persona's Telegram context data is a {len(context)}-character string.")
 		else:
 			theAIConfig.context = None	# No default value provided in config file.
 
