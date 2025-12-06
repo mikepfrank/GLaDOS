@@ -797,7 +797,7 @@ def _anthropize(msgDict):
 
 		_logger.info(f"_anthropize(): msgDict has a function call: [{json.dumps(msgDict, indent=4)}]")
 
-		if '<function_calls>' in msgDict['content']:
+		if 'content' in msgDict and '<function_calls>' in msgDict['content']:
 			_logger.warn("\t_anthropize(): But function call is already in text content!")
 
 		else:
@@ -3213,8 +3213,8 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 			msgStr = f"ANNOUNCEMENT: {ann_text}"
 			conversation.add_message(BotMessage(SYS_NAME, msgStr))
 			fullMsgStr = f"\[SYSTEM {msgStr}\]"
-			_logger.info(f"Sending user {user_name} system announcement: {fullMsgStr}", markup=True)
-			await _reply_user(tgMessage, conversation, fullMsgStr, ignore=True)
+			_logger.info(f"Sending user {user_name} system announcement: {fullMsgStr}")
+			await _reply_user(tgMessage, conversation, fullMsgStr, ignore=True, markup=True)
 
 #__/ End handle_start() function definition.
 
