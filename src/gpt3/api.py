@@ -316,7 +316,7 @@ __all__ = [
 	'CHAT_ROLE_USER',	# Constant: Role name for the user in a chat session.
 	'CHAT_ROLE_AI',		# Constant: Role name for the AI in a chat session.
 		
-	'CHAT_ROLE_FUNCALL',	# Constant: Role name for function calls issues by the AI.
+	#'CHAT_ROLE_FUNCALL',	# Constant: Role name for function calls issues by the AI.
 	'CHAT_ROLE_FUNCRET',	# Constant: Role name for function results returned to the AI.
 
 
@@ -576,6 +576,19 @@ _ENGINES = [
 
 	},
 
+	{	# OpenAI GPT-5.2, served through OpenRouter.
+		
+		'provider':		'OpenRouter',				'model-family':		'GPT-5.2',
+		'engine-name':	'openai/gpt-5.2',			'max-context':		400_000,
+		'field-size':	32_768,						# 64_000,						
+		'price':		0.014,		# $14.00/M output tokens
+		'prompt-price':	0.00175,	# $1.75/M input tokens
+		'is-chat':		True,
+		'has-vision':	False,
+		'encoding':		'p50k_base'
+
+	},
+
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#	Models served by Hyperbolic.
 	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -640,6 +653,7 @@ _FUNCTION_MODELS = [
 	'gpt-4o-2024-05-13',
 	'gpt-4o-mini',
 	'gpt-4o-mini-2024-07-18',
+	'openai/gpt-5.2',
 	#'deepseek-reasoner',
 	#'meta-llama/llama-3.1-405b',
 	#'meta-llama/llama-3.1-405b-instruct',
@@ -788,8 +802,9 @@ CHAT_ROLE_USER		= 'user'
 global				CHAT_ROLE_AI
 CHAT_ROLE_AI		= 'assistant'
 
-global				CHAT_ROLE_FUNCALL
-CHAT_ROLE_FUNCALL	= 'function_call'
+# Not a role.
+#global				CHAT_ROLE_FUNCALL
+#CHAT_ROLE_FUNCALL	= 'function_call'
 
 global				CHAT_ROLE_FUNCRET
 CHAT_ROLE_FUNCRET	= 'function'
@@ -2738,6 +2753,9 @@ class ChatCompletion(Completion):
 			
 		messages = apiArgs['messages']
 		fresh_msgs = []
+		call_id = 0
+		last_call_id_str = f"call_{call_id:04d}"		
+
 		for msg in messages:
 
 			# Shallow-copy all the message dicts, so we can f around
@@ -2752,12 +2770,38 @@ class ChatCompletion(Completion):
 			if 'ntokens' in fresh_msg:
 				del fresh_msg['ntokens']
 
+			# Change function_call messages to tool_calls.
+			if 'function_call' in fresh_msg:
+
+				# Extricate the function call from the message;
+				fcall = fresh_msg['function_call']
+				del fresh_msg['function_call']
+
+				# Change the message to a tool_calls message.
+				fresh_msg['content'] = None
+				call_id += 1
+				last_call_id_str = f"call_{call_id:04d}"
+				fresh_msg['tool_calls'] = [{
+					'id':			last_call_id_str,
+					'type':			'function',
+					'function':		fcall
+				}]
+
+			# Change function return messages to tool returns.
+			if fresh_msg['role'] == CHAT_ROLE_FUNCRET:
+				fresh_msg['role'] = 'tool'
+				fresh_msg['tool_call_id'] = last_call_id_str
+
 			fresh_msgs.append(fresh_msg)
 
 		#__/ End loop thru messages.
 
 		messages = fresh_msgs	# Use cleaned-up copy of message list.
 		apiArgs['messages'] = messages
+
+		# Let's display the last several messages after having done cleanup.
+		_logger.debug(f"LAST FEW MESSAGES: {json.dumps(messages[-20:], indent=4)}")
+
 
 		# If we're using OpenRouter, sort providers by throughput.
 		is_openrouter = (provider(apiArgs['model']) == 'OpenRouter')
@@ -2783,7 +2827,15 @@ class ChatCompletion(Completion):
 					"Content-Type": "application/json"
 				}
 				url = "https://openrouter.ai/api/v1/chat/completions"
+
 				response = requests.post(url, headers=headers, data=json.dumps(apiArgs))
+
+				#try:
+				#	response = requests.post(url, headers=headers, data=json.dumps(apiArgs))
+				#	response.raise_for_status()
+				#except requests.HTTPError:
+				#	_logger.error("OpenRouter error body: [%s]", response.text)
+					
 				if response.ok:
 					result_json = response.json()
 					_logger.info("Got back this response JSON:\n" + json.dumps(result_json, indent=4))
@@ -2816,7 +2868,10 @@ class ChatCompletion(Completion):
 
 				else:
 					_logger.error("Failed request")
-					response.raise_for_status()
+					try:
+						response.raise_for_status()
+					except requests.HTTPError:
+						_logger.error("OpenRouter error body: [%s]", response.text)
 				
 			else:
 				# New style chat completion call:
@@ -4565,6 +4620,12 @@ def _msg_repr(msg:dict) -> str:
 
 	# Get the 'function_call' value, if present.
 	fcall = msg.get('function_call', None)
+
+	# No 'function_call' value? Look for 'tool_calls' ->[0] 'function' instead...
+	if fcall is None:
+		tcall = msg.get('tool_calls', None)
+		if tcall is not None:
+			fcall = tcall[0]['function']
 
 	# Make sure role isn't still None at this point
 	if role is None:

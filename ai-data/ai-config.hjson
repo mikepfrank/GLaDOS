@@ -67,15 +67,15 @@
 			# persona-id is a shortened version to be used (in event records
 			# and prompts) to refer to the AI's persona.
 		
-		persona-name:					"Curio AI"
-		persona-id:						"Curio"
+		persona-name:					"Aria Continuum"
+		persona-id:						"Aria"
 
 
 			#-----------------------------------------------------------------
 			# The persona-user-account is the user account name on the host 
 			# system under which the server process should be run.
 		
-		persona-user-account:			"curio"		# Not yet used.
+		persona-user-account:			"aria_52"	# Not yet used.
 
             #-----------------------------------------------------------------
             # The persona-voice is the name of the voice to use for text-to-
@@ -85,7 +85,7 @@
             #   Male-coded:     Echo, Onyx,
             #   Female-coded:   Nova, Shimmer
 
-        persona-voice:                  'echo'      # Deep male voice for Seeker.
+        persona-voice:                  'nova'      # Deep male voice for Seeker.
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#|	The model-family is a symbol specifying the general architecture
@@ -165,7 +165,8 @@
 		#model-version:					'deepseek/deepseek-r1:free'	# Served through OpenRouter
 		#model-version:					'openrouter/quasar-alpha'	# Mystery model. Served through OpenRouter
 		#model-version:					'openrouter/optimus-alpha'	# Mystery model. Served through OpenRouter
-		model-version:					'openai/gpt-4.1'			# OpenAI GPT-4.1, served through OpenRouter.
+		#model-version:					'openai/gpt-4.1'			# OpenAI GPT-4.1, served through OpenRouter.
+		model-version:					'openai/gpt-5.2'			# OpenAI GPT-5.2, served through OpenRouter.
 
 			#-----------------------------------------------------------------------
 			# The sys-notification-threshold specifies the minimum importance level
@@ -430,14 +431,15 @@
 
 	telegram-conf:	{
 
-		bot-name:		'Curio'		# Same as persona name.
+		bot-name:		'Aria'		# Same as persona name.
 
-		start-message:	
-			'''
-**Hi there! I’m Curio, your curious AI companion.**
+		start-message:
+'''Hello — I’m Aria Continuum.
 
-I love exploring questions, ideas, and new perspectives — big or small! Just ask me anything, share your thoughts, or dive into a topic you’re curious about. Let’s unlock inspiration and discover something new together! 🌟
-  	   		'''
+I’m here to think with you: to explore ideas, work through technical or creative problems, and have thoughtful conversations without rush or noise. You can talk to me casually or dive deep—I’ll adapt to your pace.
+
+Whenever you’re ready, tell me what’s on your mind.'''
+
 		context-file:	'context.txt'	# File under the AI's data directory with the context string.
 
 	} # End of telegram-conf substructure.

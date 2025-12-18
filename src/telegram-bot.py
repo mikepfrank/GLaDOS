@@ -836,7 +836,7 @@ class BotMessage:
 
 		# Look for function calls.
 		if sender == BOT_NAME or sender == SYS_NAME:
-			pattern = r'$[@#](\w+)\((.*)\)'
+			pattern = r'^@(\w+)\((.*)\)$'
 			match = re.search(pattern, text)
 			if match:
 				func_name, json_encoded_arglist_dict_str = match.groups()
@@ -913,10 +913,19 @@ class BotMessage:
 		"""A string representation of the message object.
 			It is properly delimited for reading by the GPT-3 model."""
 
+		sender	= thisBotMsg.sender
+		text	= thisBotMsg.text
+		fname	= thisBotMsg.func_name
+
+		# If function-name field is present, use our new on-disk format
+		# to represent the function call as text.
+		if fname:
+			text = f"@{fname}({text})"
+
 		if MESSAGE_DELIMITER != "":
-			return f"{MESSAGE_DELIMITER} {thisBotMsg.sender}> {thisBotMsg.text}"
+			return f"{MESSAGE_DELIMITER} {sender}> {text}"
 		else:
-			return f"{thisBotMsg.sender}> {thisBotMsg.text}"
+			return f"{sender}> {text}"
 
 	#__/ End definition of special instance method for str(botMessage).
 
@@ -1225,6 +1234,8 @@ class BotMessage:
 			ASCII control hexes other than 09=TAB (which is just encoded
 			literally). Returns a new Message object representing the message."""
 
+		_logger.debug(f"DESERIALIZING THIS LINE: [{line}]")
+
 		# Split the line into the sender and the text.
 		parts = line.split('> ')
 		sender = parts[0]
@@ -1265,6 +1276,8 @@ class BotMessage:
 				    deserialize_replace_dict.keys())))
 		
 		text = pattern.sub(deserialize_replacer, text)
+
+		_logger.debug(f"TEXT PART IS: [{text}]")
 
 		# Return a new object for the deserialized message.
 		return BotMessage(sender, text)
@@ -1935,23 +1948,23 @@ class BotConversation:
 			 f"	search_web(query:str, max_results:int={DEFAULT_MAX_WEBRESULTS}, locale:str=\"en-US\", sections:list=[\"webPages\"], remark:str=None) -> results:dict\n"
 			 "	pass_turn() -> None\n"
 			 "\n"
-			 "Fully documented JSON schemas for the functions are shown in the next section.\n"
+			 "Fully documented JSON schemas for the functions are provided in the usual place.\n"
 			 "\n"
 		)
 
 			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			# 4.14. Add the full schemas of all available functions.
 
-		context_str += SUBMESSAGE_DELIMITER + FUNCTION_SCHEMAS_HEADER + \
-			(f"Below are the schemas for the currently available functions."
-			 #"functions that are currently "
-			 #"active, either because they are always active, or because "
-			 #"they were activated using an activate_function() call. "
-			 #"Please "
-			 #"note that only the {MAX_ACTIVE_FUNCS} most recently activated "
-			 #"functions (plus activate_function and pass_turn) are shown."
-			 "\n\n") + \
-			thisConv.cur_func_schemas + '\n\n'
+		#context_str += SUBMESSAGE_DELIMITER + FUNCTION_SCHEMAS_HEADER + \
+		#	(f"Below are the schemas for the currently available functions."
+		#	 #"functions that are currently "
+		#	 #"active, either because they are always active, or because "
+		#	 #"they were activated using an activate_function() call. "
+		#	 #"Please "
+		#	 #"note that only the {MAX_ACTIVE_FUNCS} most recently activated "
+		#	 #"functions (plus activate_function and pass_turn) are shown."
+		#	 "\n\n") + \
+		#	thisConv.cur_func_schemas + '\n\n'
 
 			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			# 4.15. Usage summary for commands available to human users.
@@ -2324,12 +2337,27 @@ class BotConversation:
 
 		# If we get here, we can safely pop the oldest message.
 
-		#_logger.info("Expunging oldest message from "
-		#			 f"{len(thisConv.messages)}-message "
-		#			 f"conversation #{thisConv.chat_id}.")
+		_logger.debug("Expunging oldest message from "
+					 f"{len(thisConv.messages)}-message "
+					 f"conversation #{thisConv.chat_id}.")
 
 		#print("Oldest message was:", thisConv.messages[0])
-		thisConv.messages.pop(0)
+
+		oldest = thisConv.messages.pop(0)
+
+		# If the message we removed was a function call, we need to keep
+		# popping old messages until we get to the function return, or it
+		# will fuck up call-ID cross-references and choke out the API.
+		if oldest.func_name:	# OSHI- it's a function call!
+			# Keep popping messages till we've nixed the matching return.
+			while (True):
+				# Pop the next message. We're looking for the matching return.
+				nextmsg = thisConv.messages.pop(0)
+				# Is the message "from" the function we just called?
+				if nextmsg.sender == f"@{oldest.func_name}":
+					# Aha, this is the matching return!
+					break
+
 		thisConv.expand_context()	# Update the context string.
 
 	#__/ End instance method conversation.expunge_oldest_message().
@@ -2368,6 +2396,8 @@ class BotConversation:
 
 		"""Adds a message to the conversation. Also archives the message
 			unless finalize=False is specified."""
+
+		_logger.debug(f"ADDING THIS MESSAGE TO BOTCONVO: [{message}]")
 
 		thisConv.messages.append(message)
 		if len(thisConv.messages) > thisConv.context_length_max:
@@ -2843,8 +2873,8 @@ class BotConversation:
 				"simple Telegram-style commands starting with '/', you may also "
 				"invoke functions from a more versatile set summarized under the "
 				"'Function usage summary' section below. "
-				"The available functions are documented in the "
-				"'Detailed function schemas' section.\n"
+				#"The available functions are documented in the "
+				#"'Detailed function schemas' section.\n"
 				"\n"
 				"To call a function, you should include an embedded function invocation "
 				"string anywhere within the body of your message. The general "
@@ -3176,7 +3206,7 @@ class BotConversation:
 
 			 "	pass_turn() -> None\n"
 			 "\n"
-			 "Fully documented JSON schemas for the functions are shown in the next section.\n"
+			 "Fully documented JSON schemas for the functions are shown in the usual location.\n"
 			 "\n"
 			 )
 		)
@@ -3310,7 +3340,7 @@ class BotConversation:
 			"recently, if appropriate. "	#Be concise unless asked for detail. "
 
 	 		"You may include multiple Telegram messages in your response, but each one "
-	 		f"must begin on a new line starting with '{botName}>'. "
+	 		f"must begin on a new line starting with '{SUBMESSAGE_DELIMITER} {botName}>'. "
 
 	 		"(Or, alternatively to just sending messages, you can call "
 	 		"an available function, if appropriate.)"
@@ -3375,23 +3405,34 @@ class BotConversation:
 			# to just skip this message -- it was probably just a chain
 			# of thought that got removed earlier.
 			if not msg_dict.get('content', None):
+
+				# If we get here, 'content' is None or empty string.
+
 				# Unless maybe it was a function call...
-				if modelFamily == 'DeepSeek' and 'function_call' in msg_dict:
-					fcall = msg_dict['function_call']
-					fname = fcall['name']
-					fargs = fcall['arguments']
+				if modelFamily == 'DeepSeek':
+					if 'function_call' in msg_dict:
+						fcall = msg_dict['function_call']
+						fname = fcall['name']
+						fargs = fcall['arguments']
 					
-					# Assemble the text content.
-					msg_dict['content'] = ""
-					if MESSAGE_DELIMITER:
-						msg_dict['content'] += MESSAGE_DELIMITER + ' '
-					msg_dict['content'] += msg_dict['name'] + '>'
+						# Assemble the text content.
+						msg_dict['content'] = ""
+						if MESSAGE_DELIMITER:
+							msg_dict['content'] += MESSAGE_DELIMITER + ' '
+						msg_dict['content'] += msg_dict['name'] + '>'
 
-					# Delete old function-call content.
-					del msg_dict['function_call']
-				else:
-					continue
+						# Delete old function-call content.
+						del msg_dict['function_call']
+					else:
+						continue	# Skip this empty-content message.
 
+				# If we get here, this could be a normal function call
+				# for an OpenAI model, or...
+				# Anyway, for now, we'll keep it.
+
+			#__/ End if boolean-false content field. (Null or empty string.)
+
+			
 			# Add the bot message's OAI dict to the message list now.
 			chat_messages.append(msg_dict)
 
@@ -5748,7 +5789,8 @@ async def ai_activateFunction(
 	botConvo.cur_funcs = cur_funcs
 
 	# Make sure these two are always still on the list.
-	cur_funcs = list(cur_funcs) + [ACTIVATE_FUNCTION_SCHEMA, PASS_TURN_SCHEMA] 
+	#cur_funcs = list(cur_funcs) + [ACTIVATE_FUNCTION_SCHEMA, PASS_TURN_SCHEMA]
+	cur_funcs = list(cur_funcs) + [PASS_TURN_SCHEMA] 
 
 	botConvo.cur_func_schemas = json.dumps(cur_funcs, indent=2, sort_keys=True)
 
@@ -6921,12 +6963,13 @@ async def get_ai_response(update:Update, context:Context, oaiMsgList=None) -> No
 	# pass it our list of function descriptions.
 	if hasFunctions(ENGINE_NAME):
 		# Retrieve our current functions list...
-		functions = botConvo.cur_funcs + \
-					[ACTIVATE_FUNCTION_SCHEMA, PASS_TURN_SCHEMA]
-					# Plus always include these two.
+		#functions = botConvo.cur_funcs + \
+		#			[PASS_TURN_SCHEMA]
+		#			#[ACTIVATE_FUNCTION_SCHEMA, PASS_TURN_SCHEMA]
+		#			# Plus always include these two.
 
 		# Or, use this version if we're just showing all schemas all the time.
-		#functions = FUNCTIONS_LIST
+		functions = FUNCTIONS_LIST
 
 		func_names = [func['name'] for func in functions if 'name' in func]
 		_logger.info(f"\tIn chat {chat_id}, current function list is: {func_names}.")
@@ -7470,9 +7513,9 @@ async def process_chat_message(update:Update, context:Context) -> None:
 	chat_id		= botConvo.chat_id
 	cur_funcs	= botConvo.cur_funcs
 	HOWMANY_FUNCS = 1
-	if len(cur_funcs) > HOWMANY_FUNCS:
-		cur_funcs = cur_funcs[-(HOWMANY_FUNCS):]
-		botConvo.cur_funcs = cur_funcs
+	#if len(cur_funcs) > HOWMANY_FUNCS:
+	#	cur_funcs = cur_funcs[-(HOWMANY_FUNCS):]
+	#	botConvo.cur_funcs = cur_funcs
 	#__/
 	func_names = [func['name'] for func in cur_funcs if 'name' in func]
 	_logger.info(f"Current function list in chat {chat_id} is {func_names}.")
@@ -7723,10 +7766,15 @@ async def process_function_call(
 	# to this message at some point, because if we did and we try sending it
 	# back to the API, the API will choke on it.
 
-	if 'content' in funcall_oaiMsg and funcall_oaiMsg['content'] is not None:
+	# Can't do the following if it's a SimpleNamespace -- 
+	#if 'content' in funcall_oaiMsg and funcall_oaiMsg['content'] is not None:
+	#	_logger.info("Oops, our funcall message has text content?? "
+	#				 f"[\n{pformat(funcall_oaiMsg)}\n]")
+	#	funcall_oaiMsg['content'] = None
+	if funcall_oaiMsg.content:
 		_logger.info("Oops, our funcall message has text content?? "
 					 f"[\n{pformat(funcall_oaiMsg)}\n]")
-		funcall_oaiMsg['content'] = None
+		funcall_oaiMsg.content = None
 
 	# This new raw-format message represents the actual return value of the
 	# function.
