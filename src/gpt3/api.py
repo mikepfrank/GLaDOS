@@ -513,9 +513,11 @@ _ENGINES = [
 	{
 		'model-family':		'Claude-4',
 		'engine-name':		'claude-opus-4-5-20251101',
-		'field-size':		200_000,
-		'prompt-price':		5e-3,
-		'price':			25e-3,
+		#'field-size':		200_000,						# 200K tokens; true maximum value for model.
+		'field-size':		65_536,							# 64K tokens.
+		#'field-size':		49_152,							# 48K tokens.
+		'prompt-price':		5e-3,							# $5/Mtok.
+		'price':			25e-3,							# $25/Mtok.
 		'is-chat':			True,
 		'has-vision':		True,
 		'encoding':			'non-tiktoken'
@@ -3881,7 +3883,8 @@ async def genImage2(desc:str, dims:str=None, quality:str=None, trans:bool=None):
 		kwargs['background'] = 'transparent' if trans else 'opaque'
 	#else
 	#	kwargs['background'] = 'auto'		# Default anyway
-	kwargs['model'] = 'gpt-image-1'			# The new image generator.
+	#kwargs['model'] = 'gpt-image-1'			# The new image generator.
+	kwargs['model'] = 'gpt-image-1.5'			# The new image generator.
 	kwargs['moderation'] = 'low'			# Allow more images.
 	#kwargs['n'] = None						# Default anyway, means 1.
 	#kwargs['output_compression'] = None	# Default anyway, means 100.

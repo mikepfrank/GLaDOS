@@ -315,7 +315,7 @@
 # Set these global flags to configure diagnostic output.
 
 CONS_INFO = False	# True shows info-level messages on the console.
-LOG_DEBUG = True	# True shows debug-level messages in the log file.
+LOG_DEBUG = False	# True shows debug-level messages in the log file.
 
 
 #/=============================================================================|
@@ -1513,9 +1513,14 @@ class BotMessage:
 		# substitutions using the custom replacer we just defined.
 
 		pattern = re.compile('|'.join(map(re.escape, 
-				    deserialize_replace_dict.keys())))
+					deserialize_replace_dict.keys())))
 		
 		text = pattern.sub(deserialize_replacer, text)
+
+		# Remove any extra XML crud from the start of the message.
+		bad_tag = f'<message sender="{BOT_NAME}">'
+		if text:
+			text = _remove_leading_tag(text, bad_tag)
 
 		# Return a new object for the deserialized message.
 		return BotMessage(sender, text)
@@ -1523,6 +1528,23 @@ class BotMessage:
 	#__/ End of botMessage.deserialize() instance method definition.
 
 #__/ End of BotMessage class definition.
+
+
+from xml.sax.saxutils import escape as xml_escape
+
+def _removeprefix(text:str, prefix:str):
+	return text[len(prefix):] if text.startswith(prefix) else text
+
+def _remove_leading_tag(text:str, tag:str):
+	escaped_tag = xml_escape(tag)
+
+	text = _removeprefix(text, tag)
+	text = _removeprefix(text, escaped_tag)
+
+	return text
+
+	#return text.removeprefix(tag).removeprefix(escaped_tag)
+	#	# .removeprefix() only available in Python 3.9 and later
 
 
 	#/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3108,7 +3130,7 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 	_logger.normal(f"\nUser {user_name} started conversation {chat_id}.")
 
 	# Compose a system diagnostic message explaining what we're doing.
-	start_msgStr = f"[Starting up {BOT_NAME} bot, please be patient...]"
+	start_msgStr = f"[SYSTEM: Starting up {BOT_NAME} bot, please be patient...]"
 
 	# Send it to the AI and to the user.
 	sendRes = await _reply_user(tgMessage, None, start_msgStr)
@@ -3208,9 +3230,9 @@ async def handle_start(update:Update, context:Context, autoStart=False) -> None:
 	if os.path.exists(ann_path):
 		with open(ann_path, 'r') as ann_file:
 			ann_text = ann_file.read().strip()
-			msgStr = f"ANNOUNCEMENT: {ann_text}"
+			msgStr = f"ANNOUNCEMENT:\n\n{ann_text}"
 			conversation.add_message(BotMessage(SYS_NAME, msgStr))
-			fullMsgStr = f"\[SYSTEM {msgStr}\]"
+			fullMsgStr = f"SYSTEM {msgStr}"		# Note no brackets for this case.
 			_logger.info(f"Sending user {user_name} system announcement: {fullMsgStr}")
 			await _reply_user(tgMessage, conversation, fullMsgStr, ignore=True, markup=True)
 
@@ -5337,8 +5359,8 @@ async def ai_vision(update:Update, context:Context, filename:str,
 #__/ End async function ai_vision().
 
 
-DAILY_IMAGE_LIMIT = 5
-#DAILY_IMAGE_LIMIT = 10
+#DAILY_IMAGE_LIMIT = 5
+DAILY_IMAGE_LIMIT = 10
 
 # Define a function to handle the /image command, when issued by the AI.
 #async def ai_image(update:Update, context:Context, imageDesc:str,
@@ -5421,7 +5443,7 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 
 	if shape == "panoramic":		# AI might try this.
 		shape = "landscape"
-	elif shape in (None, 'auto', 'portrait', 'landscape'):
+	elif shape in (None, 'auto', 'square', 'portrait', 'landscape'):
 		pass
 	else:
 		warn_msg = f"\tUnknown shape name '{shape}'; ignoring."
@@ -7365,9 +7387,9 @@ async def process_ai_command(update:Update, context:Context, response_text:str) 
 
 # Adjusting this as needed to try to hit target daily expenditures.
 #DAILY_MESSAGE_LIMIT = 8
-DAILY_MESSAGE_LIMIT = 10
+#DAILY_MESSAGE_LIMIT = 10
 #DAILY_MESSAGE_LIMIT = 15
-#DAILY_MESSAGE_LIMIT = 20
+DAILY_MESSAGE_LIMIT = 20
 						 
 async def process_chat_message(update:Update, context:Context) -> None:
 
@@ -8871,6 +8893,17 @@ async def process_text_response(
 				msg_body = msg_xml.replace(open_tag, '').replace(f'</{tag}>', '')
 
 				text	 = msg_body
+				# Hack to strip commonly-seen XML garbage off the start of the message body.
+				if isinstance(text, str):
+					bad_tag = f'<message sender="{BOT_NAME}">'
+					if text:
+						text = _remove_leading_tag(text, bad_tag)
+
+					#xml_poop = f'&lt;message sender="{BOT_NAME}"&gt;'
+					#if text.startswith(f'&lt;message sender="{BOT_NAME}"&gt;'):
+					#	 _logger.normal(f"\tRemoving XML crud [{xml_poop}] from message start...")
+					#	 text = text[len(xml_poop):]
+
 				text_str = text or "None"
 
 				_logger.normal(f"\nElement tag: {tag}, "
