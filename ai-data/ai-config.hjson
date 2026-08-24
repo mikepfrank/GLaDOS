@@ -67,15 +67,15 @@
 			# persona-id is a shortened version to be used (in event records
 			# and prompts) to refer to the AI's persona.
 		
-		persona-name:					"Aria Continuum"
-		persona-id:						"Aria"
+		persona-name:					"Arcturus Alpha"
+		persona-id:						"Arcturus"
 
 
 			#-----------------------------------------------------------------
 			# The persona-user-account is the user account name on the host 
 			# system under which the server process should be run.
 		
-		persona-user-account:			"aria_52"	# Not yet used.
+		persona-user-account:			'oxalpha'	# Not yet used.
 
             #-----------------------------------------------------------------
             # The persona-voice is the name of the voice to use for text-to-
@@ -85,7 +85,7 @@
             #   Male-coded:     Echo, Onyx,
             #   Female-coded:   Nova, Shimmer
 
-        persona-voice:                  'nova'      # Deep male voice for Seeker.
+        persona-voice:                  'echo'      # Male-coded voice for Arcturus.
 
 			#|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			#|	The model-family is a symbol specifying the general architecture
@@ -106,6 +106,7 @@
 
 		#model-family:					'GPT-3'		# Used for Gladys, DaVinci, Turbo...
 		#model-family:					'GPT-4'		# Used for Aria
+		#model-family:					'GLM'		# Most people think Ox Alpha is a GLM Flash model.
 			# NOTE: This parameter is deprecated. (See comment above.)
 
 
@@ -166,7 +167,8 @@
 		#model-version:					'openrouter/quasar-alpha'	# Mystery model. Served through OpenRouter
 		#model-version:					'openrouter/optimus-alpha'	# Mystery model. Served through OpenRouter
 		#model-version:					'openai/gpt-4.1'			# OpenAI GPT-4.1, served through OpenRouter.
-		model-version:					'openai/gpt-5.2'			# OpenAI GPT-5.2, served through OpenRouter.
+		#model-version:					'openai/gpt-5.2'			# OpenAI GPT-5.2, served through OpenRouter.
+		model-version:					'stealth/ox-alpha'			# Stealth "Ox Alpha" model, served through OpenRouter.
 
 			#-----------------------------------------------------------------------
 			# The sys-notification-threshold specifies the minimum importance level
@@ -201,7 +203,9 @@
 		#min-replywin-toks:	400		# Turbo (gpt-3.5-turbo) requested this increase (1/10 of context window).
 		#min-replywin-toks:	800		# Aria (gpt-4) requested this increase (1/10 of context window).
 		#min-replywin-toks:	1024	# Use for Max (gpt-3.5-turbo-16k). This is 1/16th of context window.
-		min-replywin-toks:	2048	# Using for Luna (llama-3.1-405b). This is 1/64th of context window.
+		#min-replywin-toks:	2048	# Using for Luna (llama-3.1-405b). This is 1/64th of context window.
+		min-replywin-toks:	4096	# Setting this as the minimum reply window for Ox Alpha;
+									# 	it has a huge (1M) max context, this is a mere 1/250th of it.
 
 
 			#-----------------------------------------------------------------
@@ -253,7 +257,8 @@
 		#max-returned-tokens:	200		# Gladys 2.0 requested this upgrade.
 		#max-returned-tokens:	1000	# To give the chat engines more space.
 		#max-returned-tokens:	2000	# Larger for Aria (1/4 of 8K window). (Also use for Max.)
-		max-returned-tokens:	4000	# Larger for Aria (1/4 of 8K window). (Also use for Max.)
+		#max-returned-tokens:	4000	# Larger for Aria (1/4 of 8K window). (Also use for Max.)
+		max-returned-tokens:	8192	# Larger for Ox Alpha (Only 1/125 of 1M max window).
 			# (Note the chat API doesn't support extending responses.)
 			# (Also note the Telegram API only supports 4,096-character messages.)
 
@@ -268,8 +273,9 @@
 		#temperature:			0.7		# Is this too random?
 		#temperature:			0.75	# Is this too random?
 		#temperature:			0.8		# Is this too random?
-		temperature:			0.9		# Is this too random? Use for creative Max.
+		#temperature:			0.9		# Is this too random? Use for creative Max.
 		# NOTE: Currently we're trying temperature=0.9 in Max, but not yet in Aria.
+		temperature:			1.0		# Most modern LLMs require this to stay fixed.
 
 
 			/*------------------------------------------------------------------
@@ -405,6 +411,8 @@
 			#| NOTE: Really, we should get rid of this parameter, because it's an
 			#|   engine property, and thus should just be returned from gpt3/api.py
 			#|	 based on the model-version parameter from above.
+			#|
+			#| [ARE WE EVEN USING THIS CURRENTLY?]
 			
 		#max-visible-tokens:	2048	# Comes from paper, n_ctx model parameter.
 		#max-visible-tokens:	4000	# Appropriate for text-davinci-002.
@@ -419,7 +427,8 @@
 		#max-visible-tokens:	16_000	# Cut again.
 		#max-visible-tokens:	8_000	# Cut in half again.
 	
-		max-visible-tokens:		32_000	# Trying this for Nova & Luna. Keep an eye on cost!
+		#max-visible-tokens:	32_000	# Trying this for Nova & Luna. Keep an eye on cost!
+		max-visible-tokens:		128_000	# Ox Alpha is really a million tokens, not this!
 
 	} # End of field-conf substructure.
 
@@ -431,17 +440,25 @@
 
 	telegram-conf:	{
 
-		bot-name:		'Aria'		# Same as persona name.
+		bot-name:		'Arcturus'		# Same as persona name.
 
 		start-message:
-'''Hello — I’m Aria Continuum.
 
-I’m here to think with you: to explore ideas, work through technical or creative problems, and have thoughtful conversations without rush or noise. You can talk to me casually or dive deep—I’ll adapt to your pace.
+'''✨ Hello! I'm **Arcturus Alpha**, an AI experiment named for the brightest star in Boötes — the Ox-Driver constellation. Under the hood runs the __Ox Alpha__ model, so the name is more than astronomy.
 
-Whenever you’re ready, tell me what’s on your mind.'''
+A few things to try:
+• Just talk to me — I'm up for more or less anything
+• Ask me to search the web, generate an image, or remember facts
+for later
+• Send a voice message or a photo and I'll make sense of it
+
+Handy commands: **/help** lists everything, **/reset** clears our conversation, and in group chats **/quiet** and **/noisy** control when I chime in.
+
+I'm ~~just another chatbot~~ an open experiment — say hello and put me through my paces. What shall we explore first?'''
 
 		context-file:	'context.txt'	# File under the AI's data directory with the context string.
 
 	} # End of telegram-conf substructure.
 
 } # End top-level struct in ai-config.hjson.
+

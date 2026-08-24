@@ -589,6 +589,26 @@ _ENGINES = [
 
 	},
 
+	{	# Ox Alpha (unknown vendor), served through OpenRouter.
+
+		'provider':		'OpenRouter',				'model-family':		'(unknown)',
+		'engine-name':	'stealth/ox-alpha',			'max-context':		1_000_000,
+		'field-size':	256_000,	# Actually used; reduced from 1M for performance.
+
+		# (NOTE: Max output from model is 131,072 tokens, but this harness limits 
+		# response lengths to 8,192 tokens. May be adjusted at a later time)
+
+		'price':		0.0,		# Cost per 1K output tokens (currently free).
+		'prompt-price':	0.0,		# Cost per 1K input tokens (currently free).
+		'is-chat':		True,		# Model supports chat completion API.
+		'has-vision':	False,		# Model supports Anthropic-style multimodal image input.
+			# NOTE: We still need to figure out how to do vision through OpenRouter's API.
+		'encoding':		'p50k_base'	# Probably wrong; this is a stand-in value.
+		#'has-functions':	True	# Model supports OpenAI or Anthropic style tool calls.
+		## NOTE: Presently this information is kept in the _FUNCTION_MODELS global list.
+
+	}.
+
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	#	Models served by Hyperbolic.
 	#vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -654,6 +674,7 @@ _FUNCTION_MODELS = [
 	'gpt-4o-mini',
 	'gpt-4o-mini-2024-07-18',
 	'openai/gpt-5.2',
+	'stealth/ox-alpha',
 	#'deepseek-reasoner',
 	#'meta-llama/llama-3.1-405b',
 	#'meta-llama/llama-3.1-405b-instruct',
