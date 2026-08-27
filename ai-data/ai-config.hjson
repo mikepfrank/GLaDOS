@@ -168,7 +168,8 @@
 		#model-version:					'openrouter/optimus-alpha'	# Mystery model. Served through OpenRouter
 		#model-version:					'openai/gpt-4.1'			# OpenAI GPT-4.1, served through OpenRouter.
 		#model-version:					'openai/gpt-5.2'			# OpenAI GPT-5.2, served through OpenRouter.
-		model-version:					'stealth/ox-alpha'			# Stealth "Ox Alpha" model, served through OpenRouter.
+		#model-version:					'stealth/ox-alpha'			# Stealth "Ox Alpha" model, served through OpenRouter.
+		model-version:					'z-ai/glm-5.3-flash'		# Replaces Ox Alpha
 
 			#-----------------------------------------------------------------------
 			# The sys-notification-threshold specifies the minimum importance level
@@ -448,8 +449,7 @@
 
 A few things to try:
 • Just talk to me — I'm up for more or less anything
-• Ask me to search the web, generate an image, or remember facts
-for later
+• Ask me to search the web, generate an image, or remember facts for later
 • Send a voice message or a photo and I'll make sense of it
 
 Handy commands: **/help** lists everything, **/reset** clears our conversation, and in group chats **/quiet** and **/noisy** control when I chime in.

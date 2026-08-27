@@ -938,14 +938,15 @@ class BotMessage:
 	#|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 	def delThoughts(thisBotMsg:BotMessage) -> None:
-		"""This method strips any private thoughts (within
-			<think>...</think> tags) out of the text content of the
-			given BotMessage. For DeepSeek-R1, This should be done for
+		"""This method strips any private thoughts (within <reasoning>
+			...</reasoning> tags) out of the text content of the given
+			BotMessage. For DeepSeek-R1, This should be done for
 			messages it generated before passing the message back into
 			the model as context (R1's preference). (Note the archived
 			format should still include the thoughts, though.)"""
 		bm = thisBotMsg
-		bm.text = _strip_thoughts(bm.text)
+		bm.text = _strip_thoughts(bm.text, "[...old thought elided...]")
+			# FUTURE: Instead, replace old thought with an initial/final stub
 
 	# Trims some content off the front of a message.
 	def trimFront(thisBotMsg:BotMessage) -> bool:
@@ -1661,7 +1662,7 @@ class BotConversation:
 			 "For example:\n"
 			 "\n"
 			 "\t```text\n"
-			 f"\t🤍<think>Your usual reasoning chain could appear here.</think>"
+			 f"\t🤍<reasoning>Your usual reasoning chain could appear here.</reasoning>"
 			 f"\t❧ {BOT_NAME}> This is the first Telegram message to be sent in my response.\n"
 			 f"\t❧ {BOT_NAME}> This is a second Telegram message in the same response!\n"
 			 f"\t(Note that a single Telegram message can span multiple lines of text!)\n"
@@ -1715,17 +1716,23 @@ class BotConversation:
 			"In this environment, in addition to your being able to execute "
 			"simple Telegram-style commands starting with '/', you may also "
 			"invoke functions from a more versatile set summarized under the "
-			"'Function usage summary' section below. "
+			"'Function usage summary' section below."
+			#"The available functions are documented in the "
+			#"'Detailed function schemas' section.\n"
+			"\n"
+			"Your native tool-call or function-call capability may be used, but "
+			"in case you include any plain text content in a tool-calls message, "
+			"it will become automatically wrapped in a `[[Private: ...]]` construct "
+			"by the server and will not be shown to the user.\n"
 			#"Most functions require "
 			#"activation before you can use them; the set of currently active "
 			#"functions is documented in the "
-			"The available functions are documented in the "
-			"'Detailed function schemas' section.\n"
 			#"To activate another function, first call the "
 			#"`activate_function` function, passing the name of the function to "
 			#"be activated as the `func_name` argument.\n"
 			"\n"
-			"To call a function, you should include an embedded function invocation "
+			"Or, to call a function in an API-independent way, "
+			"you should include an embedded function invocation "
 			"string anywhere within the body of your message. The general "
 			"appearance of this string is `@functionName(argList)` where "
 			"functionName is the function identifier and argList is in "
@@ -2073,6 +2080,9 @@ class BotConversation:
 	def read_archive(thisConv:BotConversation):
 		"""Loads messages from conversation archive."""
 
+		# Need special handling for DeepSeek models.
+		is_deepseek = ((PROVIDER=='DeepSeek') or modelFamily(ENGINE_NAME)=='DeepSeek')
+
 		# If the conversation archive file exists, read it.
 		if os.path.exists(thisConv.filename):
 			# Open the conversation archive file.
@@ -2087,7 +2097,7 @@ class BotConversation:
 					message.text = re.sub(r'(<\s*/think\s*>\s*)+', '</think>\n', message.text, flags=re.DOTALL)
 
 					# (For DeepSeek-R1) Strip out embedded thoughts from the message..
-					if message.sender == BOT_NAME:
+					if is_deepseek and message.sender == BOT_NAME:
 						message.delThoughts()
 
 					# If message is empty now after stripping thoughts, then just skip it...
@@ -2103,10 +2113,23 @@ class BotConversation:
 					thisConv.messages.append(message)
 					thisConv.context_length += 1
 
+			#thisConv.delOldThoughts()	# Doesn't work well yet.
+
 			# Update the conversation's context string.
 			thisConv.expand_context()
 
 	#__/ End read_archive() instance method for class Conversation.
+
+
+	def delOldThoughts(thisConv:BotConversation):
+		"""Trim old thoughts."""
+		
+		# Delete or compact thoughts older than the most recent N messages,
+		# where N=10 initially.
+		nmsgs = len(thisConv.messages)
+		for i in range(nmsgs):
+			if i < nmsgs - 10:
+				thisConv.messages[i].delThoughts()
 
 
 	# This method reads the AI's persistent memories from the persistent memory
@@ -2403,6 +2426,9 @@ class BotConversation:
 		if len(thisConv.messages) > thisConv.context_length_max:
 			thisConv.messages = thisConv.messages[-thisConv.context_length_max:]	# Keep the last N messages
 		thisConv.context_length = len(thisConv.messages)	# Update the context_length counter.
+		# Delete old thoughts.
+		#thisConv.delOldThoughts()	# Doesn't work well yet.
+
 		thisConv.expand_context()	# Update the context string.
 
 		# Unless this message isn't to be finalized yet, we'll also need to
@@ -2712,7 +2738,7 @@ class BotConversation:
 			'chat_transcript_docs',
 			( "\n"
 			  "In this environment, you are presented with a sequence of records "
-			  "prefixed by the white heart emoji ('🤍') character, U+2767, used "
+			  "prefixed by the white heart emoji ('🤍') character, U+1F90D, used "
 			  "here as a message delimiter. "
 			  "The initial records are context headers, and these are followed by "
 			  "records representing recent events in the current Telegram chat, "
@@ -2756,28 +2782,35 @@ class BotConversation:
 			 "user message, you should structure your response in the following "
 			 "format:\n"
 			 "\n"
-			 "First, you may generate your usual chain of thought as per your training; "
-			 "this will be delivered by your API to the bot server wrapped in "
-			 "an XML-like <think>...</think> element, but you should structure "
-			 "your chain of thought in the usual way you're comfortable with.\n"
+
+			 "First, you may generate your usual chain of thought or reasoning "
+			 "block as per your training; this will be recorded by the bot "
+			 "server wrapped in an XML-like <reasoning>...</reasoning> element, "
+			 "but you should structure your chain of thought in the usual way "
+			 "you're comfortable with.\n"
 			 "\n"
+
 			 "After your chain of thought, you may prefix your text response "
 			 "with a rotated Unicode floral heart bullet ('❧', U+2767) "
 			 "to begin your actual output message text, followed by a space "
 			 f"and your sender tag '{BOT_NAME}>', like so:\n"
 			 "\n"
-			 "\t🤍 <think>(You will generate your chain of thought first in your response "
-			 		"as per usual, and it will get transmitted to your bot server in a "
-			 		"'think' element like this; but, it will not be forwarded to the "
-			 		"external Telegram chat.)</think>\n"
+
+			 "\t🤍 <reasoning>(You will generate your chain of thought first "
+			 	"in your response as per usual, and it will get recorded by "
+			 	"your bot server in a 'reasoning' element like this; but, it "
+			 	"will not be forwarded to the external Telegram chat.)</reasoning>\n"
+
 			 "\t\n"
 			 f"\t❧ {BOT_NAME}> [Addressing the user...] Well, now I've finished "
 			 		"thinking about that, so then, let me say this to you in response: ...\n"
 			 "\n"
+
 			 "(That is just an example; of course, you can say whatever you like.)\n"
-			 "You may also include multiple similarly-structured telegram messages in your response, "
-			 "and intersperse additional private thoughts embedded within "
-			 "[[Private: ...]] forms; see the next two sections for further details.\n\n"
+			 "You may also include multiple similarly-structured telegram "
+			 "messages in your response, and intersperse additional private "
+			 "thoughts embedded within [[Private: ...]] forms; see the next "
+			 "two sections for further details.\n\n"
 			 )
 		)
 
@@ -2821,9 +2854,9 @@ class BotConversation:
 				"monologue capability that you were trained to use.\n"
 				"\n"
 				"Your usual chain-of-thought reasoning trace may be "
-				"the first thing that you generate, as usual; it may appear temporarily "
-				"in the chat transcript wrapped in \"<think>...</think>\" tags, but "
-				"it will not be shown to the user, and old reasoning may be removed "
+				"the first thing that you generate, as usual; it may appear "
+				"in the chat transcript wrapped in \"<reasoning>...</reasoning>\" tags, but "
+				"it will not be shown to the user, and old reasoning blocks may be trimmed "
 				"from your view of the chat transcript, for conciseness.\n"
 				"\n"
 				"In addition, you may also "
@@ -2843,7 +2876,7 @@ class BotConversation:
 				"\n"
 				"Example response payload including private thoughts:\n"
 				"\n"
-				"\t🤍<think>My usual pre-response chain-of-thought reasoning trace appears here temporarily.</think>\n"
+				"\t🤍<reasoning>My usual pre-response chain-of-thought reasoning trace appears here.</reasoning>\n"
 				f"\t❧ {BOT_NAME}> [[Private: In this message, I'm privately "
 					"planning my response. This won't be sent to the chat.]]\n"
 				f"\t❧ {BOT_NAME}> Hello, user! [[Private: I can insert embedded thoughts like this.]] I am now responding to you.\n"
@@ -2872,11 +2905,18 @@ class BotConversation:
 				"In this environment, in addition to your being able to execute "
 				"simple Telegram-style commands starting with '/', you may also "
 				"invoke functions from a more versatile set summarized under the "
-				"'Function usage summary' section below. "
+				"'Function usage summary' section below.\n"
 				#"The available functions are documented in the "
 				#"'Detailed function schemas' section.\n"
 				"\n"
-				"To call a function, you should include an embedded function invocation "
+				"Your native tool-call or function-call capability may be used, but "
+				"in case you also include any plain text content in a tool-calls message, "
+				"it will become automatically wrapped in a `[[Private: ...]]` construct "
+				"by the server and will not be shown to the user.\n"
+				"\n"
+				"Or, to call a function in an API-independent way, "
+				#"To call a function, you should include an embedded function invocation "
+				"you should include an embedded function invocation "
 				"string anywhere within the body of your message. The general "
 				"appearance of this string is `@functionName(argList)` where "
 				"functionName is the function identifier and argList is in "
@@ -6830,7 +6870,7 @@ def _make_alternating(oaiMsgList:list) -> list:
 					_logger.error("Unexpected condition #42")
 
 			else:
-				_logger.warn(f"Found a message with no content: {oaiMsgDict}")
+				#_logger.warn(f"Found a message with no content: {oaiMsgDict}")
 				continue
 
 		if len(new_msgs) >= 2:
@@ -7645,7 +7685,9 @@ async def process_function_call(
 	# Extract the optional remark argument from the argument list.
 	if 'remark' in function_args:
 		remark = function_args['remark']
-		if remark is None:
+		if remark and remark != "null":
+			remark = "\nRemark: " + remark		# Helps with diagnostics.
+		else:
 			remark = ""
 		del function_args['remark']
 	else:
@@ -7656,7 +7698,11 @@ async def process_function_call(
 	# this without checking its type all the time.
 	if response_text is None:
 		response_text = ""
-
+	elif response_text:			# If non-empty text content,
+		# wrap it in a `[[Private: ...]]` construct so it won't be shown.
+		# Maybe check here to make sure it isn't already private?
+		response_text = f"[[Private: {response_text}]]"
+		
 	## Just did this temporarily while debugging.
 	# # Prepend a diagnostic with the call description and remark to the
 	# # response_text (which is probably null).
@@ -7930,18 +7976,34 @@ async def process_raw_response(
 
 	# If DeepSeek, check for a reasoning_content attribute;
 	# if it's present, display it on the console.
-	if PROVIDER == 'DeepSeek' or PROVIDER == 'OpenRouter':
+	is_deepseek = ((PROVIDER=='DeepSeek') or modelFamily(ENGINE_NAME)=='DeepSeek')
+	if is_deepseek or  PROVIDER == 'OpenRouter':
 		response_reasoning = chatCompletion.reasoning
 		if response_reasoning:
 			_logger.info(f"THINKING: [{response_reasoning}]")
 
-			# We also prepend the reasoning inside <think> tags
-			# at the front of the response. This is so that it
-			# will get archived in the chat transcript.
+			# We also archive the reasoning text (wrapped inside 
+			# <reasoning>...</reasoning> tags) as an explicit message in
+			# the conversation history. This enables the LLM to
+			# see its past reasoning traces in context in future
+			# turns, and also archives them to the chat log.
 
-			if response_text is None: 
-				response_text = ""
-			response_text = f"<think>{response_reasoning}</think>\n" + response_text
+			wrapped_reasoning = f"<reasoning>{response_reasoning.strip()}</reasoning>\n"
+			reasoning_botMsg = BotMessage(botConvo.bot_name, wrapped_reasoning)
+			await botConvo.add_message(reasoning_botMsg)
+
+			# # We also prepend the reasoning inside <reasoning> tags
+			# # at the front of the response. This is so that it
+			# # can get archived in the chat transcript.
+			#
+			# if response_text is None: 
+			# 	response_text = ""
+			# response_text = f"<reasoning>{response_reasoning}</reasoning>\n" + response_text
+			#
+			# # Add it in the chat message object also.
+			# chatCompletion.text = response_text
+		#__/ End if response_resoning.
+	#__/
 
 	# Here, we make sure that the response does not begin with a message
 	# prompt like "{BOT_NAME}> ". If it does, we trim it off the front.
@@ -8070,26 +8132,6 @@ async def process_raw_response(
 	_logger.debug("Creating new ordinary (non-function-call) response from "
 				  f"{botConvo.bot_name} with text: [{response_text}].")
 
-## NOT DOING THIS BECAUSE WE WANT THOUGHTS TO GET ARCHIVED
-#
-#	# Next, we want to strip out any complete <think> or <thought> constructs before
-#	# we even try to split messages, just in case the AI tries to think about the
-#	# message delimiters. NOTE: We won't check for function calls in these guys.
-#
-#	think_pattern = re.compile(r'<\s*think\s*>(.*?)(?:<\s*/think\s*>\s*)+', re.DOTALL)
-#	thinks = think_pattern.findall(response_text)
-#
-#	thought_pattern = re.compile(r'<\s*thought\s*>(.*?)(?:<\s*/thought\s*>\s*)+', re.DOTALL)
-#	thoughts = thought_pattern.findall(response_text)
-#	
-#	thinks_and_thoughts = thinks + thoughts
-#	for thunk in thinks_and_thoughts:
-#		_logger.normal('\n' + ':'*100 + f"\nSuppressing thought [{thunk}] from being sent to chat {chat_id}")
-#		
-#	# Actually strip them out of the response text now.
-#	response_text = think_pattern.sub('', response_text)
-#	response_text = thought_pattern.sub('', response_text)
-
 	# At this point, according to our new protocol for allowing the AI to send multiple
 	# messages, we check for additional instances of "\n{BOT_NAME}>" in the response, and
 	# if they exist, we split the response on those, and process each one as if it were 
@@ -8182,7 +8224,8 @@ async def process_raw_response(
 		# the AI, so it's a good idea to go ahead now and strip out any embedded
 		# thoughts. (DeepSeek-R1 says it actually prefers this.)
 
-		response_botMsg.delThoughts()
+		if is_deepseek:
+			response_botMsg.delThoughts()
 
 	#__/ End for loop over Telegram messages in the response.
 
@@ -8192,17 +8235,25 @@ async def process_raw_response(
 #__/ End definition of function process_raw_response().
 
 
-# Private function to strip private thoughts in <think>...</think> tags from a
-# given text string, and return the stripped version.
-def _strip_thoughts(raw_text:str) -> str:
+# Private function to strip private thoughts in
+# <think>/<thought>/<reasoning> tags from a given text string, and
+# return the stripped version.
+
+def _strip_thoughts(raw_text:str, repl_str:str='') -> str:
+	# FUTURE: Provide option to leave initial/final subtext in place.
 	"""Removes private thoughts from a string."""
-	cleaned_response = re.sub(r'(?:<\s*think\s*>.*?(<\s*/think\s*>\s*)+|<\s*thought\s*>.*?(<\s*/thought\s*>\s*)+)', '', raw_text, flags=re.DOTALL)  
+	cleaned_response = re.sub(r'(?:<\s*think\s*>.*?(<\s*/think\s*>\s*)+|'+
+							  r'<\s*thought\s*>.*?(<\s*/thought\s*>\s*)+|'+
+							  r'<\s*reasoning\s*>.*?(<\s*/reasoning\s*>\s*)+)', 
+							repl_str, raw_text, flags=re.DOTALL)  
 		# The structure here is:
-		# (?:											# Non-capturing group.
-		#	<\s*think\s*>.*?(<\s*/think\s*>\s*)+		#	Open-think-tag, anything (non-greedy), close-think-tag(s).
-		#  |											#		-OR-
-		#	<\s*thought\s*>.*?(<\s*/thought\s*>\s*)+	#	Open-thought-tag, anything (non-greedy), close-thought-tag(s).
-		# )												# Close non-capturing group.
+		# (?:												# Non-capturing group.
+		#	<\s*think\s*>.*?(<\s*/think\s*>\s*)+			#	Open-think-tag, anything (non-greedy), close-think-tag(s).
+		#  |												#		-OR-
+		#	<\s*thought\s*>.*?(<\s*/thought\s*>\s*)+		#	Open-thought-tag, anything (non-greedy), close-thought-tag(s).
+		#  |												#		-OR-
+		#	<\s*reasoning\s*>.*?(<\s*/reasoning\s*>\s*)+	#	Open-reasoning-tag, anything (non-greedy), close-reasoning-tag(s).
+		# )													# Close non-capturing group.
 
 	return cleaned_response
 
@@ -8279,10 +8330,11 @@ async def process_response(update:Update, context:Context,
 
 		# Strip out any private thoughts (in format "[[Private: ...]]")
 		# before sending the message to the Telegram chat.
-
 		#private_pattern = re.compile(r'\[\[Private: ((?:[^]]|\][^]])*)\]\]')
+
 		# The above format was being used with DeepSeek-V3. The below format
 		# is what DeepSeek-R1 was trained to use.
+
 		private_pattern = re.compile(r'<\s*think\s*>(.*?)(?:<\s*/think\s*>\s*)+', re.DOTALL)
 
 		# Find all private thought patterns in msg_text
@@ -8296,6 +8348,10 @@ async def process_response(update:Update, context:Context,
 		private_pattern_2 = re.compile(r'\[\[Private: ((?:[^]]|\][^]])*)\]\]\s*')
 		private_thoughts += private_pattern_2.findall(msg_text)
 
+		# Also this, our new reasoning tag:
+		private_pattern_3 = re.compile(r'<\s*reasoning\s*>(.*?)(?:<\s*/reasoning\s*>\s*)+', re.DOTALL)
+		private_thoughts += private_pattern_3.findall(msg_text)
+
 		# Print out all the private thought patterns to the console
 		# for diagnostic purposes.
 		for thought in private_thoughts:
@@ -8304,7 +8360,8 @@ async def process_response(update:Update, context:Context,
 		# Strip them out of msg_text.
 		post_think_text = private_pattern.sub('', msg_text)
 		post_think_text = private_pattern_1.sub('', post_think_text)
-		public_msg_text = private_pattern_2.sub('', post_think_text)
+		post_think_text = private_pattern_2.sub('', post_think_text)
+		public_msg_text = private_pattern_3.sub('', post_think_text)
 
 		# Send the response with private thoughts removed.
 		if public_msg_text:
@@ -12056,6 +12113,9 @@ Available user commands:
 /greet - Causes the server to send a greeting. (Server responsiveness test.)
 
 NOTE: Please be polite and ethical, or you may be blocked."""
+## NOTE: There also exist undocumented commands /showmem and /delmem for developer use.
+##	Arguably, /echo and /greet should also be undocumented.
+
 
 # Override above help string if it's set in ai-config.hjson.
 if aiConf.helpString:
