@@ -640,6 +640,7 @@ from gpt3.api	import (		# A simple wrapper for the openai module, written by MPF
 
 	tiktokenCount,		# Local model-dependent token counter.
 	genImage,			# Generates an image from a description.
+	genImage2,			# New version of image-generation function.
 	transcribeAudio,	# Transcribes an audio file to text.
 	genSpeech,			# Converts text to spoken voice audio.
 	describeImage,		# Uses GPT-4V to generate a detailed description of an image.
@@ -945,7 +946,7 @@ class BotMessage:
 			the model as context (R1's preference). (Note the archived
 			format should still include the thoughts, though.)"""
 		bm = thisBotMsg
-		bm.text = _strip_thoughts(bm.text, "[...old thought elided...]")
+		bm.text = _strip_thoughts(bm.text, "[...old reasoning block elided...]")
 			# FUTURE: Instead, replace old thought with an initial/final stub
 
 	# Trims some content off the front of a message.
@@ -1948,7 +1949,11 @@ class BotConversation:
 			 "	remember_item(text:str, is_private:bool=True, is_global:bool=False, remark:str=None) -> status:str\n"
 			 f"	search_memory(query_phrase:str, max_results:int={DEFAULT_SEARCHMEM_NITEMS}, remark:str=None) -> results:list\n"
 			 "	forget_item(text:str=None, item_id:str=None, remark:str=None) -> status:str\n"
-			 "	create_image(description:str, shape:str=\"square\", style:str=\"vivid\", caption:str=None, remark:str=None) -> status:str\n"
+
+             "  create_image(description:str, shape:str='auto', " \
+                    "quality:str='auto', caption:str=None, remark:str=None) " \
+                    "-> status:str\n"
+
 			 "	analyze_image(filename:str, verbosity:str=\"medium\", query:str=None, remark:str=None) -> result:str\n"
 			 f"	block_user(user_name:str=\"{user_tag}\", remark:str=None) -> status:str\n"
 			 "	unblock_user(user_name:str, remark:str=None) -> status:str\n"
@@ -2113,7 +2118,7 @@ class BotConversation:
 					thisConv.messages.append(message)
 					thisConv.context_length += 1
 
-			#thisConv.delOldThoughts()	# Doesn't work well yet.
+			thisConv.delOldThoughts()	# Doesn't work well yet.
 
 			# Update the conversation's context string.
 			thisConv.expand_context()
@@ -2427,7 +2432,7 @@ class BotConversation:
 			thisConv.messages = thisConv.messages[-thisConv.context_length_max:]	# Keep the last N messages
 		thisConv.context_length = len(thisConv.messages)	# Update the context_length counter.
 		# Delete old thoughts.
-		#thisConv.delOldThoughts()	# Doesn't work well yet.
+		thisConv.delOldThoughts()	# Doesn't work well yet.
 
 		thisConv.expand_context()	# Update the context string.
 
@@ -2876,7 +2881,7 @@ class BotConversation:
 				"\n"
 				"Example response payload including private thoughts:\n"
 				"\n"
-				"\t🤍<reasoning>My usual pre-response chain-of-thought reasoning trace appears here.</reasoning>\n"
+				"\t🤍 {BOT_NAME}<reasoning>My usual pre-response chain-of-thought reasoning trace appears here.</reasoning>\n"
 				f"\t❧ {BOT_NAME}> [[Private: In this message, I'm privately "
 					"planning my response. This won't be sent to the chat.]]\n"
 				f"\t❧ {BOT_NAME}> Hello, user! [[Private: I can insert embedded thoughts like this.]] I am now responding to you.\n"
@@ -2924,7 +2929,7 @@ class BotConversation:
 				"arguments. Enclose string literals in double-quote (\") characters. "
 				"Below are some examples of properly formatted function invocations:\n"
 				"\n"
-				"\t@create_image(\"A beautiful mountain range\", style=\"natural\", remark=\"Creating an image for you...\")\n"
+				"\t@create_image(\"A beautiful mountain range\", shape=\"landscape\", remark=\"Creating an image for you...\")\n"
 				"\n"
 				"\t@search_web(\"Recent advances in AI\", remark=\"Searching web for recent AI advances...\")\n"
 				"\n"
@@ -2987,18 +2992,17 @@ class BotConversation:
 			'image_generation',
 			(
 				"\n"
-				"You may utilize the create_image() function to generate an image "
-				"using the DALL-E API and send it to the chat. "
+				"You have the ability to generate images based on text "
+				"descriptions using OpenAI's image generation API (and to "
+				"send them to the chat) through the create_image() function."
 				"Key arguments include:\n"
 				"\n"
-				"\t- description (required) - Overall text prompt for the desired image.\n"
-				"\t- shape, style (optional) - Control overall image shape and stylistic appearance.\n"
+				"\t- description (required) - Core text prompt for the desired image.\n"
+				"\t- shape (optional) - Control overall image shape (square, portrait, landscape).\n"
+				"\t- quality (optional) - Rendering effort and level of detail (low, medium, high).\n"
 				"\t- caption (optional) - Attach a text caption to the image.\n"
 				"\n"
 				"See the full function schema below for further details. "
-				"Please note that the image generation AI may modify or add details "
-				"to the prompt, but it will return the new image description which you "
-				"may summarize to the user."
 				"\n\n"
 			)
 		)
@@ -3225,10 +3229,10 @@ class BotConversation:
 			 "  analyze_image(filename:str, verbosity:str=\"medium\", " \
 			  		"query:str=None, remark:str=None) -> result:str\n"
 
-			 "  create_image(description:str, shape:str=\"square\", " \
-			  		"style:str=\"vivid\", caption:str=None, remark:str=None) " \
-			  		"-> status:str\n"
-			  
+             "  create_image(description:str, shape:str='auto', " \
+                    "quality:str='auto', caption:str=None, remark:str=None) " \
+                    "-> status:str\n"
+
 			 f"  block_user(user_name:str=\"{userTag}\", user_id=None, " \
 			  		"remark:str=None) -> status:str\n"
 
@@ -5208,6 +5212,125 @@ async def handle_photo(update:Update, context:Context) -> None:
 #__/ End async function handle_photo().
 
 
+# Map from file extensions to IANA media types.
+
+_EXTENSION_MAPPINGS = {
+    # Common image types
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "png": "image/png",
+    "gif": "image/gif",
+    "bmp": "image/bmp",
+    "tif": "image/tiff",
+    "tiff": "image/tiff",
+
+    # Common document types
+    "pdf": "application/pdf",
+    "doc": "application/msword",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "xls": "application/vnd.ms-excel",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "ppt": "application/vnd.ms-powerpoint",
+    "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+
+    # Audio/video types
+    "mp3": "audio/mpeg",
+    "wav": "audio/wav",
+    "m4a": "audio/x-m4a",
+    "mp4": "video/mp4",
+    "mov": "video/quicktime",
+
+    # Archive/compression types
+    "zip": "application/zip",
+    "gz": "application/gzip",
+    "tar": "application/x-tar",
+
+    # Catch-all for unrecognized extensions
+    "": "application/octet-stream"
+}
+
+
+_IMAGE_EXTENSION_MAPPINGS = {
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "png": "image/png",
+    "gif": "image/gif",
+    "bmp": "image/bmp",
+    "tif": "image/tiff",
+    "tiff": "image/tiff",
+    "svg": "image/svg+xml",
+    "webp": "image/webp",
+    "ico": "image/x-icon",
+    "heic": "image/heic",
+    "heif": "image/heif",
+
+    # Catch-all for unrecognized extensions
+    "": "application/octet-stream"
+}
+
+def _get_media_type(file_extension):
+    """
+    Maps a file extension string to its corresponding IANA media type.
+
+    Args:
+        file_extension (str): The file extension string (e.g. '.jpg', 'docx')
+
+    Returns:
+        str: The IANA media type string (e.g. 'image/jpeg', 'application/msword')
+    """
+
+    # Remove leading period if present
+    ext = file_extension.lower().lstrip(".")
+
+    # Perform lookup in extension mappings
+    media_type = _EXTENSION_MAPPINGS.get(ext, _EXTENSION_MAPPINGS[""])
+
+    return media_type
+#__/
+
+
+def _get_image_media_type(file_extension):
+    """
+    Maps a file extension string to its corresponding IANA image media type.
+
+    Args:
+        file_extension (str): The image file extension string (e.g. '.jpg', 'png')
+
+    Returns:
+        str: The IANA media type string (e.g. 'image/jpeg', 'image/png')
+    """
+
+    # Remove leading period if present
+    ext = file_extension.lower().lstrip(".")
+
+    # Perform lookup in extension mappings
+    media_type = _IMAGE_EXTENSION_MAPPINGS.get(ext, _IMAGE_EXTENSION_MAPPINGS[""])
+
+    return media_type
+#__/
+
+
+def _extract_extension(filename):
+    """
+    Extracts the file extension from a filename string.
+
+    Args:
+        filename (str): The filename string (e.g. 'image.jpg', 'data.txt.gz')
+
+    Returns:
+        str: The file extension string including the leading period (e.g. '.jpg', '.gz')
+             Or an empty string if no extension is found.
+    """
+    # Use regex to extract extension part from filename
+    extension = re.search(r'\.\w+$', filename)
+
+    # If match, return the extracted extension
+    if extension:
+        return extension.group(0)
+    else:
+        return ''
+
+
 	#/==========================================================================
 	#| 3.3. Update handler group 2 -- Normal message handlers.
 	#|
@@ -6102,12 +6225,14 @@ async def ai_vision(update:Update, context:Context, filename:str,
 
 
 # Limit on number of images that can be generated per day per chat.
-DAILY_IMAGE_LIMIT = 5
+#DAILY_IMAGE_LIMIT = 5
+DAILY_IMAGE_LIMIT = 10
 	# Adjusting this as needed to help keep costs under control.
 
 # Define a function to handle the /image command, when issued by the AI.
 async def ai_image(update:Update, context:Context, imageDesc:str,
-				   shape:str=None, style:str=None, caption:str=None	#, remaining_text:str=None
+				   shape:str=None, quality:str=None, #style:str=None [this was only supported in dall-e-2]
+				   caption:str=None	#, remaining_text:str=None
 	) -> str:
 
 	# Get the message, or edited message from the update.
@@ -6165,7 +6290,7 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 	#
 	#	return "note: image generation capability is presently disabled"
 
-	# Error-checking for null argument.
+	# Error-checking for null image description argument.
 	if imageDesc == None or imageDesc=="":
 		_logger.error(f"The AI sent an /image command with no argument in conversation {chat_id}.")
 
@@ -6176,58 +6301,37 @@ async def ai_image(update:Update, context:Context, imageDesc:str,
 		return "error: null image description"
 
 	# Process the "shape" parameter.
-	if shape is None:
-		shape = "square"	# Default
+	#if shape is None:
+	#	shape = "square"			# Default image shape anyway.
 
-	if shape == "square":
-		size = "1024x1024"
-	elif shape == "portrait":
-		size = "1024x1792"
-	elif shape == "landscape":
-		size = "1792x1024"
+	if shape == "panoramic":		# AI might try this.
+		shape = "landscape"
+	elif shape in (None, 'auto', 'square', 'portrait', 'landscape'):
+		pass
 	else:
-		_logger.warn(f"\tUnknown shape name '{shape}'; reverting to 'square'.")
-		# Show the AI the warning too.
-		await conversation.add_message(BotMessage(SYS_NAME, f"Warning: Shape '{shape}' is invalid; defaulting to 'square'."))
-		size = "1024x1024"
+		warn_msg = f"\tUnknown shape name '{shape}'; ignoring."
+		_logger.warn(warn_msg)
 
-	# Process the "style" parameter.
-	if style is None:
-		style = 'vivid'
-	if style == 'photorealistic':
-		style = 'natural'
-	if style != 'vivid' and style != 'natural':
-		_logger.warn(f"\tUnknown style '{style}'; reverting to 'natural'.")
-		style = 'natural'
+		# Show the AI the warning too.
+		conversation.add_message(BotMessage(SYS_NAME, f"Warning: {warn_msg}"))
+		shape = None
 
 	# Generate and send an image described by the /image command argument string.
-	_logger.normal(f"\nGenerating a {style} {shape} image with description "
+	_logger.normal(f"\nGenerating a {quality}-quality {shape}-shape image with description "
 					f"[{imageDesc}] for user '{user_name}' in "
 					f"conversation {chat_id}.")
 	if caption:
 		_logger.normal(f"\tAn image caption [{caption}] was also specified.")
 
 	# Attempt to actually generate and send the image.
-	send_result = await send_image(update, context, imageDesc, dims=size, style=style, caption=caption)
+	send_result = await send_image(update, context, imageDesc, shape, quality, caption)
 
 	if send_result is None:
 		return f'Error: Failed to generate and send image to the user.'
 
-	(image_url, new_desc, save_filename) = send_result
+	save_filename = send_result
 
-	# Make a note in conversation archive to indicate that the image was sent.
-	#conversation.add_message(BotMessage(SYS_NAME, f'[Generated and sent image "{new_desc}" in filename "{save_filename}"]'))
-	# ^^^ The above isn't really necessary any more...
-
-	## NOTE: This is now done in process_command() more generically.
-	# Send the remaining text after the command line, if any, as a normal message.
-	#if remaining_text != None and remaining_text != '':
-	#	await send_response(update, context, remaining_text)
-
-	# This doesn't work, because the URL is only accessible from this server.
-	#return f"Success: image has been generated and sent to user. Temporary URL=({image_url})."
-
-	return f'Success: image with revised description "{new_desc}" has been generated in file "{save_filename}" and sent to user.'
+	return f'Success: image has been generated in file "{save_filename}" and sent to user.'
 
 #__/ End of ai_image() function definition.
 
@@ -6753,11 +6857,11 @@ async def ai_call_function(update:Update, context:Context, funcName:str, funcArg
 		
 		imageDesc = funcArgs.get('description', None)
 		shape	  = funcArgs.get('shape', None)
-		style	  = funcArgs.get('style', None)
+		quality	  = funcArgs.get('quality', None)
 		caption	  = funcArgs.get('caption', None)
 
 		if imageDesc:
-			return await ai_image(update, context, imageDesc, shape=shape, style=style, caption=caption)
+			return await ai_image(update, context, imageDesc, shape=shape, quality=quality, caption=caption)
 		else:
 			await _report_error(conversation, message,
 					f"create_image() missing required argument 'description'.")
@@ -8726,8 +8830,8 @@ async def analyze_image(tgArgs:dict, filename:str, verbosity:str='medium',
 	return await process_function_call(funcall_oaiMsgObj, tgUpdate, tgContext)
 
 
-async def create_image(tgArgs:dict, description:str, shape:str='square',
-					   style:str='vivid', caption:str=None, remark:str=None) -> str:
+async def create_image(tgArgs:dict, description:str, shape:str=None,
+					   quality:str=None, caption:str=None, remark:str=None) -> str:
 
 	tgUpdate	= tgArgs['update']
 	tgContext	= tgArgs['context']
@@ -8736,7 +8840,7 @@ async def create_image(tgArgs:dict, description:str, shape:str='square',
 	funcArgs = {
 		'description':	description,
 		'shape':		shape,
-		'style':		style,
+		'quality':		quality,
 		'caption':		caption,
 		'remark':		remark
 	}
@@ -8847,26 +8951,31 @@ async def pass_turn(tgArgs:dict) -> None:
 ################################################################################
 
 
-async def _send_imagedata(img_data, tgMsg:TgMsg, caption:str=None, ):
-    # img_data is image data as file handle, bytes, or string                                                                                                                                   
-    # tgMsg is the user message we're replying to                                                                                                                                               
-    # caption is an optional string to use as the message caption                                                                                                                               
+async def _send_imagedata(img_data, tgMsg:TgMsg, caption:str=None, is_gif:bool=False, filename=None):
+    # img_data is image data as file handle, bytes, or string
+	# tgMsg is the user message we're replying to
+	# caption is an optional string to use as the message caption                                                                     
 
-    # Get the message's chat ID.                                                                                                                                                                
+    # Get the message's chat ID.
     chat_id = tgMsg.chat.id
 
-    # Get our preferred name for the user.                                                                                                                                                      
+    # Get our preferred name for the user.
     username = _get_user_tag(tgMsg.from_user)
 
     # Prepare the image to be sent via Telegram                                                                                                                                                 
-    image_data = InputFile(img_data)
+    image_data = InputFile(img_data, filename=filename)
 
-    # Send the image as a reply in Telegram                                                                                                                                                     
+    # Send the image as a reply in Telegram
     try:
-        timeout=30  # Try longer timeouts                                                                                                                                                       
-        await tgMsg.reply_photo(photo=image_data, caption=caption,
-                read_timeout=timeout, write_timeout=timeout,
-                connect_timeout=timeout, pool_timeout=timeout)
+        timeout=30  # Try longer timeouts
+        if is_gif:
+            await tgMsg.reply_animation(animation=image_data, caption=caption,
+                        read_timeout=timeout, write_timeout=timeout,
+                        connect_timeout=timeout, pool_timeout=timeout)
+        else:
+            await tgMsg.reply_photo(photo=image_data, caption=caption,
+                        read_timeout=timeout, write_timeout=timeout,
+                        connect_timeout=timeout, pool_timeout=timeout)
 
     except BadRequest or Forbidden or ChatMigrated or TimedOut as e:
 
@@ -8891,7 +9000,141 @@ async def _send_imagedata(img_data, tgMsg:TgMsg, caption:str=None, ):
 #__/ End private function _send_imagedata                                                                                                                                                       
 
 
-async def send_image(update:Update, context:Context, desc:str, dims=None, style=None, caption=None, save_copy=True) -> (str, str, str):
+################################################################################
+@backoff.on_exception(backoff.expo, TimedOut, max_tries=4)  # If this doesn't work, try Exception
+#async def send_image(update:Update, context:Context, desc:str, dims=None,
+#                    style=None, quality=None, caption=None, save_copy=True) -> (str, str, str):
+
+async def send_image(update:Update, context:Context, desc:str, shape:str=None,
+                     quality=None, caption=None, save_copy=True) -> str:    # Returns filename.
+    # Notes on arguments:
+    #   * shape:str can be any of the following:
+    #       None --> passed through to genImage2().
+    #       'auto' --> passed through to genImage2().
+    #       'square' --> translated to '1024x1024'
+
+    """Generates an image from the given description and sends it to the user.
+        Also archives a copy on the server unless save_copy=False is specified.
+        Returns a temporary URL for the image, if successful, and a revised
+        description of the generated image. And the image filename, if saved.
+        If something goes wrong, None is returned instead."""
+
+    # Get the message, or edited message from the update.
+    (tgMsg, edited) = _get_update_msg(update)
+
+    if tgMsg is None:
+        _logger.warning("In send_image() with no message? Aborting.")
+        return None
+
+    # Get the message's chat ID.
+    chat_id = tgMsg.chat.id
+
+    # Get our preferred name for the user.
+    username = _get_user_tag(tgMsg.from_user)
+
+    # Get our Conversation object.
+    conversation = context.chat_data['conversation']
+
+    # Translate image shape to dimensions.
+	#	[NOTE: Larger sizes are now available in API, but not yet supported here.]
+    if shape == 'square':
+        dims = '1024x1024'
+    elif shape == 'landscape':
+        dims = '1536x1024'
+    elif shape == 'portrait':
+        dims = '1024x1536'
+    elif shape == 'auto' or shape is None:
+        dims = shape
+    else:
+        warn_msg = f"In send_image(): Unknown image shape '{shape}'; ignoring."
+        _logger.warn(warn_msg)
+        conversation.add_message(BotMessage(SYS_NAME, f"WARNING: {warn_msg}"))
+        dims = shape = None
+
+    # Check the quality parameter.
+    if quality not in (None, 'auto', 'low', 'medium', 'high'):
+        warn_msg = f"In send_image(): Unknown image quality '{quality}'; ignoring."
+        _logger.warn(warn_msg)
+        conversation.add_message(BotMessage(SYS_NAME, f"WARNING: {warn_msg}"))
+        quality = None  # Just use the default behavior.
+
+    _logger.normal(f"\tGenerating {quality}-quality {shape}-shape image for user {username} from " \
+                   f"description [{desc}]. Caption is [{str(caption)}]...")
+
+    # Use the OpenAI API to generate the image.
+    try:
+        #(image_url, revised_prompt) = await genImage(desc, dims, style)
+        imageResponse = await genImage2(desc, dims, quality)    # trans:bool is another option
+    except Exception as e:
+        await _report_error(conversation, tgMsg,
+                      f"In send_image(), genImage2() threw an exception: {type(e).__name__} ({e})")
+
+        # We could also do a traceback here. Should we bother?
+        raise
+
+    if hasattr(imageResponse, 'data'):
+        first = imageResponse.data[0]
+        b64 = first.b64_json
+
+        import base64
+        png_bytes = base64.b64decode(b64)
+    else:
+        _logger.error(f"In send_image(): No data in response from genImage2().")
+        return None
+
+    #_logger.normal(f"\tImage description was revised to: [{revised_prompt}]")
+    #_logger.normal(f"\tDownloading generated image from url [{image_url[0:50]}...]")
+
+    # Download the image from the URL
+    #response = requests.get(image_url)
+    #response.raise_for_status()
+
+    # Save the image to the filesystem if the flag is set to True
+    save_filename = None
+    if save_copy:
+        _logger.normal(f"\tSaving a copy of the generated image to the filesystem...")
+        image_dir = os.path.join(AI_DATADIR, 'images')
+        if not os.path.exists(image_dir):
+            os.makedirs(image_dir)
+        # Pick a short ID for the file (collisions will be fairly rare).
+        short_file_id = f"{random.randint(1,1000000)-1:06d}"
+        short_filename = f'{username}--{short_file_id}.png'
+        image_save_path = os.path.join(image_dir, short_filename)
+        save_filename = os.path.join('images', short_filename)
+        with open(image_save_path, 'wb') as image_file:
+            #image_file.write(response.content)
+            image_file.write(png_bytes)
+        _logger.normal(f"\t\tImage saved to {image_save_path}.")
+
+    _logger.normal(f"\tSending generated image to user {username}...")
+
+    # Also log the image in the transcript.
+    extension = _extract_extension(short_filename)  # Get the file extension, e.g., '.png'.
+    media_type = _get_image_media_type(extension)   # Get the IANA media type, e.g., 'image/png'.
+    image_msg = f'''[GENERATED IMAGE; type="{media_type}", filename="{save_filename}"]'''
+    conversation.add_message(BotMessage(SYS_NAME, image_msg))
+
+    # This actually sends the image to the user as a photo reply (or tries to).
+    await _send_imagedata(png_bytes, tgMsg, caption=caption)
+
+    # Update record of how many images have been generated today in this context.
+
+    today = get_current_date()
+    if 'last_image_date' not in context.chat_data or today != context.chat_data['last_image_date']:
+        context.chat_data['last_image_date'] = get_current_date()
+        context.chat_data['nimages_today'] = 1  # The image we just made.
+    else:
+        context.chat_data['nimages_today'] += 1
+
+    _logger.normal(f"\tA total of {context.chat_data['nimages_today']} images have been generated in chat {chat_id} today ({today}).")
+
+    #return (image_url, revised_prompt, save_filename)
+    return save_filename
+#__/ End function send_image()
+
+
+
+async def _OLD_send_image(update:Update, context:Context, desc:str, dims=None, style=None, caption=None, save_copy=True) -> (str, str, str):
 	"""Generates an image from the given description and sends it to the user.
 		Also archives a copy on the server unless save_copy=False is specified.
 		Returns a temporary URL for the image, if successful, and a revised
@@ -11751,25 +11994,25 @@ ANALYZE_IMAGE_SCHEMA = {
 # Function schema for command: /image <description>
 CREATE_IMAGE_SCHEMA = {
 	"name":         "create_image",
-	"description":  "Generates an image using Dall-E and sends it to the user.",
-	"parameters":   {
+    "description":  "Generates an image using gpt-image-2 and sends it to the chat.",
+ 	"parameters":   {
 		"type":         "object",
 		"properties":   {
 			"description":    {
 				"type":         "string",   # <description> argument has type string.
 				"description":  "Detailed text prompt describing the desired image."
 			},
-			"shape":	{
-				"type":			"string",
-				"description":	"Overall shape of image to generate.",
-				"Default":		'square',
-				"enum":			['square', 'portrait', 'landscape']
-			},
-			"style":	{
-				"type":			"string",
-				"description":	"Overall style of image appearance.",
-				"default":		'vivid',
-				"enum":			['vivid', 'natural']
+            "shape":    {
+                "type":         "string",
+                "description":  "Overall shape of image to generate.",
+                "default":      'auto',
+                "enum":         ['auto', 'square', 'portrait', 'landscape']
+            },
+            "quality":  {
+                "type":         "string",
+                "description":  "Rendering effort & image detail.",
+                "default":      'auto',
+                "enum":         ['auto', 'low', 'medium', 'high']
 			},
 			"caption":    {
 				"type":         "string",   # <caption> argument has type string.

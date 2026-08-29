@@ -373,7 +373,8 @@ __all__ = [
 	'stats',				# Function: Returns the GPT-3 usage statistics.
 
 	'genImage',				# Function: Generate an image from a description.
-	'transcribeAudio',		# Function: Transcribe an audio file to text.
+    'genImage2',            # Function: Generate an image from a description using gpt-image-2.
+ 	'transcribeAudio',		# Function: Transcribe an audio file to text.
 	'describeImage',		# Function: Generate a text description of an image.
 
 	# Functions to retrieve certain engine attributes given the engine identifier.
@@ -705,6 +706,7 @@ _FUNCTION_MODELS = [
 	'gpt-4o-mini-2024-07-18',
 	'openai/gpt-5.2',
 	'stealth/ox-alpha',
+	'z-ai/glm-5.3-flash',
 	#'deepseek-reasoner',
 	#'meta-llama/llama-3.1-405b',
 	#'meta-llama/llama-3.1-405b-instruct',
@@ -3954,7 +3956,7 @@ def tiktokenCount(text:str=None, encoding:str='gpt2', model:str=None):
 	if model != None:
 		if model.startswith('meta') or model.startswith('deepseek') \
 		   or model.startswith('openrouter') or model.startswith('openai') \
-		   or model.startswith('stealth'):
+		   or model.startswith('stealth') or model.startswith('z-ai'):
 			# This is a hack. When using Meta's Llama models, we throw up
 			# our hands about the tokenizer and don't care. Default to this.
 			encodingObj = tiktoken.encoding_for_model('gpt-4o')
@@ -4035,6 +4037,104 @@ async def genImage(desc:str, dims:str=None, style:str=None):
 	return (image_url, revised_prompt)
 #__/ End module public function genImage().
 	
+
+# Upgraded version, uses gpt-image-1 model.
+async def genImage2(desc:str, dims:str=None, quality:str=None, trans:bool=None):
+	"""Generate an image from the given description string.
+		Returns a JSON object for the generated image."""
+
+	_logger.info(f"Generating an image with description [{desc}].")
+
+	# Image generation API parameters:
+	#	prompt:str [< 32kchar]
+	#	background:str ('transparent' | 'opaque' | 'auto') [or null; defaults to auto]
+	#	model:str ('dall-e-2' | 'dall-e-3' | 'gpt-image-{1,1-mini,1.5,2}') or null
+	#	moderation:str ('low' | 'auto') [or null]
+	#	n:int (1-10 or null)
+	#	output_compression:int (0-100)
+	#	output_format:str ('png' | 'jpeg' | 'webp') [or null; default is png]
+	#	partial_images [don't bother with this]
+	#	quality:str ('auto' | 'high' | 'medium' | 'low') [or null; default is auto]
+	#	size:str ('1024x1024' | '1536x1024' | '1024x1536' | 'auto')
+	#		('1024x1024' [square] | '1536x1024' [landscape] |
+	#		'1024x1536' [portrait] | '2048x2048' [2K square] |
+	#		'2048x1152' [2K landscape] | '3840x2160' [4K landscape] |
+	#		'2160x3840' [4K portrait] | 'auto' [default])
+	#	stream [don't bother]
+	#	user
+
+	# More on size parameter:
+	# -----------------------
+	#	The size of the generated images. For gpt-image-2 and
+	#	gpt-image-2-2026-04-21, arbitrary resolutions are supported as
+	#	WIDTHxHEIGHT strings, for example 1536x864. Width and height
+	#	must both be divisible by 16 and the requested aspect ratio
+	#	must be between 1:3 and 3:1. Resolutions above 2560x1440 are
+	#	experimental, and the maximum supported resolution is
+	#	3840x2160. The requested size must also satisfy the model’s
+	#	current pixel and edge limits. The standard sizes 1024x1024,
+	#	1536x1024, and 1024x1536 are supported by the GPT image
+	#	models; auto is supported for models that allow automatic
+	#	sizing. For dall-e-2, use one of 256x256, 512x512, or
+	#	1024x1024. For dall-e-3, use one of 1024x1024, 1792x1024, or
+	#	1024x1792.
+	
+	kwargs = dict()
+	kwargs['prompt'] = desc
+
+	if trans != None:
+		kwargs['background'] = 'transparent' if trans else 'opaque'
+	#else
+	#	kwargs['background'] = 'auto'		# Default anyway
+
+	#kwargs['model'] = 'gpt-image-1'		# The new image generator.
+	#kwargs['model'] = 'gpt-image-1.5'		# The new image generator.
+	kwargs['model'] = 'gpt-image-2'			# Latest as of 2026-08-29.
+
+	#kwargs['moderation'] = 'low'			# Allow more images.
+	#kwargs['n'] = None						# Default anyway, means 1.
+	#kwargs['output_compression'] = None	# Default anyway, means 100.
+	#kwargs['output_format'] = 'png'		# Default anyway.
+	if quality != None:
+		kwargs['quality'] = quality
+	#else
+	#	kwargs['quality'] = None		# Default anyway, means auto.
+	if dims != None:
+		kwargs['size'] = dims
+	#else
+	#	kwargs['size'] = None		# Default anyway, means auto.
+	#kwargs['user'] = None			# Not yet supported
+
+	_logger.normal(f"Generating image with these args: {json.dumps(kwargs, indent=4)}")
+
+	# Actually make the call.
+	response = await _client.images.generate(**kwargs)
+
+	#_logger.normal(f"Got response: {response}")
+
+	return response
+
+	# Example of returned JSON object:
+	# {
+	#	"created": 1746671728,
+	#	"data": [
+	#	  {
+	#		"b64_json": "iVBORw0KGgoAAAANSUhEUgAABAAAAAQACAIAAADwf7zUAAEq9GNhQlgAASr0anVtYgAAAB5qdW1kYzJwY..."
+	#	  }
+	#	],
+	#	"usage": {
+	#	  "input_tokens": 12,
+	#	  "input_tokens_details": {
+	#		"image_tokens": 0,
+	#		"text_tokens": 12
+	#	  },
+	#	  "output_tokens": 4160,
+	#	  "total_tokens": 4172
+	#	}
+	# }
+
+#__/ End module public function genImage2().
+
 
 async def genSpeech(text:str, user:str = None, voice:str = None, response_format=None):
 	"""Generates spoken voice audio for the given text.
