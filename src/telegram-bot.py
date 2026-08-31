@@ -2766,14 +2766,14 @@ class BotConversation:
 			  "\t2. Events recording successful function invocations that you "
 			  		"previously triggered. These are formatted in the transcript like:\n"
 			  		"\n"
-			  		f"\t\t\" {SYS_NAME}> " "@{funcName}({funcArgs}),\"\n"
+			  		f"\t\t\"🤍 {SYS_NAME}> " "@{funcName}({funcArgs}),\"\n"
 			  		"\n"
 			  		"\t  where funcArgs is formatted with dictionary syntax.\n"
 			  "\n"
 			  "\t3. Events recording results returned by the preceding function "
 			  		"call. These are formatted in the transcript as:\n"
 			  		"\n"
-			  		"\t\t\" @{funcName}> {result}\".\n"
+			  		"\t\t\"🤍 @{funcName}> {result}\".\n"
 			  		"\n"
 			 )
 		)
@@ -8076,15 +8076,15 @@ async def process_raw_response(
 		response_text = re.sub(r'(<\s*/think\s*>\s*)+', '</think>\n', response_text, flags=re.DOTALL)
 
 	# Diagnostic for debugging.
-	_logger.info(f"Got response text: [{response_text}]")
+	_logger.info('\n' + '='*100 + f"\nGot response text: [{response_text}]")
 
 	# If DeepSeek, check for a reasoning_content attribute;
 	# if it's present, display it on the console.
 	is_deepseek = ((PROVIDER=='DeepSeek') or modelFamily(ENGINE_NAME)=='DeepSeek')
-	if is_deepseek or  PROVIDER == 'OpenRouter':
+	if is_deepseek or PROVIDER == 'OpenRouter':
 		response_reasoning = chatCompletion.reasoning
 		if response_reasoning:
-			_logger.info(f"THINKING: [{response_reasoning}]")
+			_logger.info('\n' + ':'*80 + f"\nREASONING: [{response_reasoning}]")
 
 			# We also archive the reasoning text (wrapped inside 
 			# <reasoning>...</reasoning> tags) as an explicit message in
@@ -8269,7 +8269,7 @@ async def process_raw_response(
 		_logger.info(f"\nIn chat {chat_id}, detected multiple Telegram messages in response:")
 		i=1
 		for msg in response_msgs:
-			_logger.info(f"\tMessage #{i}: [{msg}]")
+			_logger.info('\n' + '-'*90 + f"\n\tMessage #{i}: [{msg}]")
 			i += 1
 	else:
 		response_msgs = [response_text]
@@ -8459,13 +8459,16 @@ async def process_response(update:Update, context:Context,
 		# Print out all the private thought patterns to the console
 		# for diagnostic purposes.
 		for thought in private_thoughts:
-			_logger.info('\n' + ':'*100 + f"\nSuppressing thought [{thought}] from being sent to chat {chat_id}")
+			_logger.info('\n' + ':'*80 + f"\nSuppressing thought [{thought}] from being sent to chat {chat_id}")
 
 		# Strip them out of msg_text.
 		post_think_text = private_pattern.sub('', msg_text)
 		post_think_text = private_pattern_1.sub('', post_think_text)
 		post_think_text = private_pattern_2.sub('', post_think_text)
 		public_msg_text = private_pattern_3.sub('', post_think_text)
+
+		# Just in case there's a begin-message prompt immediately after an initial thought, strip it out.
+		public_msg_text = _trim_prompt(public_msg_text)
 
 		# Send the response with private thoughts removed.
 		if public_msg_text:
@@ -11341,11 +11344,11 @@ def _trim_prompt(response_text:str) -> str:
 			if MESSAGE_DELIMITER:
 				regex += r'\s*' + f"{escaped_delimiter}?"
 			if SUBMESSAGE_DELIMITER:
-				regex += r'\s*' + f"{escaped_delimiter2}"
-				regex += r'\s*)' + f"({BOT_NAME})>"
-				# Two match groups here:
-				#	(1) Prefix: Optional whitespace, optional message delimiter, optional whitespace.
-				#	(2) Sender name (before '>').
+				regex += r'\s*' + f"{escaped_delimiter2}?"
+			regex += r'\s*)' + f"({BOT_NAME})>"
+			# NOTE: Two match groups here:
+			#	(1) Prefix: Optional whitespace, optional message delimiter, optional whitespace, optional submessage delimiter, optional whitespace.
+			#	(2) Sender name (before '>').
 		else:
 			regex = r"(\s*)" + f"({BOT_NAME})>"
 				# Two match groups here:
