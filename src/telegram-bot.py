@@ -2910,38 +2910,60 @@ class BotConversation:
 				"In this environment, in addition to your being able to execute "
 				"simple Telegram-style commands starting with '/', you may also "
 				"invoke functions from a more versatile set summarized under the "
-				"'Function usage summary' section below.\n"
+				"'Function usage summary' section below. There are two different "
+				"methods that may be used to call functions from within this "
+				"bot server environment.\n"
 				#"The available functions are documented in the "
 				#"'Detailed function schemas' section.\n"
 				"\n"
-				"Your native tool-call or function-call capability may be used, but "
-				"in case you also include any plain text content in a tool-calls message, "
-				"it will become automatically wrapped in a `[[Private: ...]]` construct "
-				"by the server and will not be shown to the user.\n"
+				"LEGACY METHOD. Your native tool-call (or function-call) "
+				"capability may be used, but you should be aware that use of "
+				"this method is generally disfavored within this harness, in "
+				"favor of the more flexible, Python-like embedded (in-line) "
+				"function invocation syntax described in the next paragraph. "
+				"However, just in case you do generate a native tool-call "
+				"message structure, be aware that including plain text content "
+				"within a tool-calls message is discouraged in this environment, "
+				"due to historical ambiguity regarding how such text should be "
+				"treated -- many legacy applications ignored such content. "
+				"Here, to avoid ambiguity, if you wish to utilize the content "
+				"field of a tool-calls message for private musings, you should "
+				"wrap the content in a `[[Private: ...]]` construct. Or, if you "
+				"instead wish to just send a short message to the chat prior to "
+				"calling a function, the preferred method would be to pass an "
+				"explicit 'remark' argument to the function. If you nevertheless "
+				"do include a plain text content field in a tool-calls message, "
+				"it will be processed like a normal text-only message prior to "
+				"calling the function. Note that it may even include multiple "
+				"Telegram messages and in-line function calls, which will all be "
+				"processed prior to calling the top-level tool-calls function. "
+				"Also, please note: ANY TOOL CALLS AFTER THE FIRST ARE IGNORED.\n"
 				"\n"
-				"Or, to call a function in an API-independent way, "
-				#"To call a function, you should include an embedded function invocation "
-				"you should include an embedded function invocation "
-				"string anywhere within the body of your message. The general "
-				"appearance of this string is `@functionName(argList)` where "
-				"functionName is the function identifier and argList is in "
-				"Python format and can include positional and/or keyword "
-				"arguments. Enclose string literals in double-quote (\") characters. "
-				"Below are some examples of properly formatted function invocations:\n"
+				"PREFERRED METHOD. To call one or more functions in the "
+				"preferred, more versatile and API-independent way, you should "
+				"utilize in-line (embedded) function invocation strings, which "
+				"may appear anywhere within the body of your message. The "
+				"general appearance of such a string is `@functionName(argList)` "
+				"where functionName is the function identifier and argList is an "
+				"argument list in Python format and can include positional and/or "
+				"keyword arguments. Enclose string literals in double-quote (\") "
+				"characters. Below are some examples of properly formatted "
+				"function invocations:\n"
 				"\n"
 				"\t@create_image(\"A beautiful mountain range\", shape=\"landscape\", remark=\"Creating an image for you...\")\n"
 				"\n"
 				"\t@search_web(\"Recent advances in AI\", remark=\"Searching web for recent AI advances...\")\n"
 				"\n"
-				"IMPORTANT NOTE: You MUST include a function invocation string such "
-				"as the above in an actual message event (i.e., after your "
-				"initial chain of thought) to cause the function to be invoked; "
-				"however, if you wrap the function call in a \"[[Private:...]]\" form, then it won't "
-				"be sent to the chat; see the Inner Monologue instructions above. Doing this is a "
-				"best practice, since most outside users won't want to see your function "
-				"call code.\n"
+				"IMPORTANT NOTE: You MUST include a function invocation string "
+				"such as the above in the primary textual message body (i.e., "
+				"after your initial chain-of-thought reasoning block) to cause "
+				"the function to be invoked; however, if you wrap the function "
+				"call in a \"[[Private:...]]\" form, then it won't be sent to the "
+				"chat; see the Inner Monologue instructions above. Doing this is a "
+				"recommended best practice, since most outside Telegram users won't "
+				"want to see your literal function call code.\n"
 				"\n"
-				"You can inform the user about each function call as it's "
+				"However, you can inform the user about each function call as it's "
 				"invoked by supplying a message to the user in the `remark` "
 				"argument to the function; the remark will be sent to the user when the "
 				"function is called, even if it's invoked from within a private thought.\n"
@@ -2968,7 +2990,8 @@ class BotConversation:
 				"opportunity to call additional functions and/or send messages to "
 				"the user based on the function's result; this also applies "
 				"recursively to those functions as well. Your private thoughts "
-				"during a chain of function calls will remain visible to you until that call stack has been unwound. "
+				"during a chain of function calls will remain visible to you at "
+				"least until that call stack has been unwound. "
 				"However, please note the user will not "
 				"have an opportunity to respond to any of your messages until the "
 				"entire nested tree of function invocations generated in response to the "
@@ -2977,8 +3000,8 @@ class BotConversation:
 				"Note that in general, any "
 				"messages containing function calls should preferentially appear at the VERY END of your "
 				"message sequence, so that you will have the opportunity to see and respond to the "
-				"function results before you attempt to generate subsequent output. It is also recommended "
-				"to do only one function invocation at a time, so that you may adjust later calls (if needed) "
+				"function results before you attempt to generate subsequent output messages. It is also recommended "
+				"to only invoke one function at a time, so that you may adjust any later calls (if needed) "
 				"depending on the results of earlier ones.\n\n"
 			)
 		)
@@ -4168,12 +4191,11 @@ async def handle_image(update:Update, context:Context) -> None:
 					   f"[{imageDesc}] for user '{user_name}' in "
 					   f"conversation {chat_id}.")
 
-		send_result = await send_image(update, context, imageDesc)
-		if send_result is not None:
-			(image_url, new_desc, save_filename) = send_result
+		save_filename = await send_image(update, context, imageDesc)
+		if save_filename is not None:
 
 			# Make a note in conversation archive to indicate that the image was sent.
-			await conversation.add_message(BotMessage(SYS_NAME, f'[Generated image "{new_desc}" in file "{save_filename}" and sent it to the user.]'))
+			await conversation.add_message(BotMessage(SYS_NAME, f'[Generated image in file "{save_filename}" and sent it to the user.]'))
 		else:
 			await conversation.add_message(BotMessage(SYS_NAME, f'[ERROR: Failed to send image to user.]'))
 
@@ -7722,6 +7744,9 @@ async def process_function_call(
 		funcall_oaiMsg:object,		# Raw OpenAI message that represents the function call.
 		tgUpdate:Update,			# The original Telegram update that prompted this call.
 		tgContext:Context,			# The Telegram context for this chat.
+		chatCompletion:ChatCompletion = None
+			# Optional: ChatCompletion object that led to this call. This is only
+			# needed in the case where we still need to check for content violations.
 	) -> None:
 
 	"""Processes a function call request received from the AI. Also returns the
@@ -7803,27 +7828,50 @@ async def process_function_call(
 	if response_text is None:
 		response_text = ""
 	elif response_text:			# If non-empty text content,
-		# wrap it in a `[[Private: ...]]` construct so it won't be shown.
-		# Maybe check here to make sure it isn't already private?
-		response_text = f"[[Private: {response_text}]]"
+		# This is an "extra" output channel, in between the reasoning
+		# block and the tool-call block. (Old OpenAI API versions didn't
+		# allow text content here.) Sometimes the AI might want to use
+		# this space for private musing, and sometimes for intended user-
+		# facing output. We don't know which, but the AI can use the
+		# [[Private: ...]] syntax explicitly if it wishes to use the
+		# space for extra private musing. Either way, we'll process this
+		# content like a normal text message.
+
+		## We used to do the below, but it causes issues, so don't.
+		# # wrap it in a `[[Private: ...]]` construct so it won't be shown.
+		# # Maybe check here to make sure it isn't already private?
+		# _logger.warn(f"Tool-call message contained unexpected text content:\n"
+		#			 "\t[{response_text}];\n"
+		#			 "\t--> treating it as a private thought.")
+		# response_text = f"[[Private: {response_text}]]"
 		
+		# Instead, we'll process the response text just like any other
+		# normal text-only response. Note this could include embedded
+		# (in-line) function calls, which will execute before the current one.
+		await process_normal_message(chatCompletion, tgUpdate, tgContext, response_text)
+
+	#__/ Handle non-empty text content prior to tool/function call field.
+
+	# Generate a description of the function call, for diagnostic purposes.
+	call_desc = _call_desc(function_name, function_args)
+
 	## Just did this temporarily while debugging.
 	# # Prepend a diagnostic with the call description and remark to the
 	# # response_text (which is probably null).
 	# response_text = f"[SYSTEM DIAGNOSTIC: Called {call_desc}]\n\n" \
 	#					+ remark + '\n' + response_text
 
-	# Generate a description of the function call, for diagnostic purposes.
-	call_desc = _call_desc(function_name, function_args)
+	## The original response text, followed by the remark. This probably is just
+	## the remark, since the original response text should have been null. But in
+	## any case, we'll use it as our response text below.
+	#response_text = (response_text + '\n' + remark).strip()
 
-	# The original response text, followed by the remark. This probably is just
-	# the remark, since the original response text should have been null. But in
-	# any case, we'll use it as our response text below.
-	response_text = (response_text + '\n' + remark).strip()
+	# Change response text to just the function's remark (if any).
+	response_text = remark.strip()
 
-	# Before calling the function, we'll send the response_text, if non-empty.
+	# Before calling the function, we'll send the response_text, if non-empty
 	# (which at this point probably just contents of a remark argument, if
-	# anything)'
+	# anything).
 	if response_text != "":
 
 		# Append the response text to the conversation.
@@ -8014,6 +8062,8 @@ async def process_function_call(
 	# So at this point, we are done processing the original function call, and
 	# so we just return.
 
+	return
+
 #__/ End definition of function process_function_call().
 
 
@@ -8024,7 +8074,7 @@ async def process_function_call(
 
 async def process_raw_response(
 			chatCompletion:ChatCompletion, 
-			#oaiMsgs:list,
+			#oaiMsgs:list,		# Now obtained from tgContext
 			tgUpdate:Update,
 			tgContext:Context
 		) -> None:
@@ -8147,10 +8197,11 @@ async def process_raw_response(
 			funCall = response_oaiMsg.function_call
 		else:
 			funCall = None
+	#__/ End if DeepSeek or Optimus.
 	
 	if funCall:
 		
-		await process_function_call(response_oaiMsg, tgUpdate, tgContext)
+		await process_function_call(response_oaiMsg, tgUpdate, tgContext, chatCompletion=chatCompletion)
 			# This handles the function recall, the function return, and any
 			# responses by the AI to the function return (including any
 			# recursive function call-return sequences).
@@ -8166,15 +8217,35 @@ async def process_raw_response(
 		return	# End process_chat_message() when done function processing.
 
 	#__/ End if funCall is truthy.
-	
-	# If we get here, it isn't a function-call response, it's a normal response.
+
+	# If we get here, it isn't a function-call response, it's a normal text response.
+	return await process_normal_message(chatCompletion, tgUpdate, tgContext, response_text)
+		# Should always return None.
+
+#__/ End definition of function process_raw_response().
+
+
+# Processes a response from the AI that's been stripped down to just plain text
+# -- no reasoning block, no function-call or tool-call fields. (Note, however,
+# that it could still include embedded [[Private: ...]] blocks, or Python-style
+# @function_invocation() syntax.) This code is separated out from the rest of
+# process_raw_response() so that we can call it from multiple different places.
+async def process_normal_message(
+			chatCompletion:ChatCompletion, 
+			tgUpdate:Update,
+			tgContext:Context,
+			response_text:str		# Already obtained in process_raw_response().
+		) -> None:
+
+	# Get the bot's conversation object.
+	botConvo = tgContext.chat_data['conversation']
 
 	# Get the message, or edited message from the update.
 	(tgMsg, edited) = _get_update_msg(tgUpdate)
 		# NOTE: We only do this to get the user data.
 		
 	if tgMsg is None:
-		_logger.error("In get_ai_response() with no message! Aborting.")
+		_logger.error("In process_text_response() with no Telegram message! Aborting.")
 		return
 
 	# Get user data.
@@ -8184,23 +8255,25 @@ async def process_raw_response(
 	chat_id		= botConvo.chat_id
 
 	# Also check for finish_reason == 'content_filter' and log/send a warning.
-	finish_reason = chatCompletion.finishReason
-	if finish_reason == 'content_filter':
+	if chatCompletion:	# If this is null, we don't need to check.
+		finish_reason = chatCompletion.finishReason
+		if finish_reason == 'content_filter':
 				
-		_logger.warn(f"OpenAI content filter triggered by user {user_name} " \
-					 "(ID {user_id}) in chat {chat_id}. Response was:\n" + \
-					 pformat(chatCompletion.chatComplStruct))
+			_logger.warn(f"OpenAI content filter triggered by user {user_name} " \
+						 "(ID {user_id}) in chat {chat_id}. Response was:\n" + \
+						 pformat(chatCompletion.chatComplStruct))
 
-		WARNING_MSG = "WARNING: User {user_name} triggered OpenAI's content " + \
-					  "filter. Repeated violations could result in a ban."
+			WARNING_MSG = "WARNING: User {user_name} triggered OpenAI's content " + \
+				"filter. Repeated violations could result in a ban."
 
-		# This allows the AI to see this warning message too.
-		await botConvo.add_message(BotMessage(SYS_NAME, WARNING_MSG))
+			# This allows the AI to see this warning message too.
+			await botConvo.add_message(BotMessage(SYS_NAME, WARNING_MSG))
 
-		repRes = await _reply_user(tgMsg, botConvo, "[SYSTEM {WARNING_MSG}]")
-		if repRes != 'success': return
+			repRes = await _reply_user(tgMsg, botConvo, "[SYSTEM {WARNING_MSG}]")
+			if repRes != 'success': return
 
-	#__/ End if content filter triggered.
+		#__/ End if content filter triggered.
+	#__/ End if original chat completion object is still available.
 
 	# This handles case if response_text is None.
 	if not response_text:
@@ -8212,7 +8285,7 @@ async def process_raw_response(
 	# anyway.).
 	response_text = response_text.strip()
 	
-	# Now we check for the case of an empty response text.
+	# Now we check for the case of an empty response text (after stripping).
 
 	# If the response is empty, then return early. (Because, like, we can't even
 	# send an empty message anyway.)
@@ -8240,11 +8313,6 @@ async def process_raw_response(
 	# messages, we check for additional instances of "\n{BOT_NAME}>" in the response, and
 	# if they exist, we split the response on those, and process each one as if it were 
 	# a separate response. (Now accepts optional message delimiters too.)
-
-	#split_str = '\n'
-	#if MESSAGE_DELIMITER:
-	#	split_str += MESSAGE_DELIMITER + ' '
-	#split_str += f"{botConvo.bot_name}> "
 
 	## Assemble the regex for message splitting.
 
@@ -8280,31 +8348,7 @@ async def process_raw_response(
 		# Create a new Message object.
 		response_botMsg = BotMessage(botConvo.bot_name, response_msg)
 
-		# If this message is already in the conversation, then we'll suppress it, so
-		# as not to exacerbate the AI's tendency to repeat itself.  (So, as a user,
-		# if you see that the AI isn't responding to a message, this may mean that
-		# it has the urge to just repeat something that it already said earlier, but
-		# is holding its tongue.)
-
-		#if response_msg.lower() != '/pass' and \
-		#   botConvo.is_repeated_message(response_botMsg):
-		#
-		#	# Generate an info-level log message to indicate that we're suppressing
-		#	# the response.
-		#	_logger.normal(f"Suppressing response [{response_text}]; it's a repeat.")
-		#
-		#	# Delete the last message from the conversation.
-		#	#botConvo.delete_last_message()
-		#
-		#	## Send the user a diagnostic message (doing this temporarily during development).
-		#	#diagMsg = f"Suppressing response [{response_text}]; it's a repeat."
-		#	#await _send_diagnostic(message, conversation, diagMsg, toAI=False, ignore=True)
-		#
-		#	continue		# This means the bot is simply not responding to the message
-		#
-		##__/ End check for repeated messages.
-
-		# It isn't a repeat, so we'll add it to the conversation.
+		# Add the message to the conversation.
 		await botConvo.add_message(response_botMsg)
 
 		# Update the message object, and the context.
@@ -8328,6 +8372,7 @@ async def process_raw_response(
 		# the AI, so it's a good idea to go ahead now and strip out any embedded
 		# thoughts. (DeepSeek-R1 says it actually prefers this.)
 
+		is_deepseek = ((PROVIDER=='DeepSeek') or modelFamily(ENGINE_NAME)=='DeepSeek')
 		if is_deepseek:
 			response_botMsg.delThoughts()
 
@@ -8336,7 +8381,7 @@ async def process_raw_response(
 	# If we get here, then we have finished processing the AI's text response,
 	# and we can just return.
 
-#__/ End definition of function process_raw_response().
+#__/ End process_normal_message().
 
 
 # Private function to strip private thoughts in
@@ -8448,12 +8493,12 @@ async def process_response(update:Update, context:Context,
 		private_pattern_1 = re.compile(r'<\s*thought\s*>(.*?)(?:<\s*/thought\s*>\s*)+', re.DOTALL)
 		private_thoughts += private_pattern_1.findall(msg_text)
 
-		# And this, our form for embedded thoughts.
-		private_pattern_2 = re.compile(r'\[\[Private: ((?:[^]]|\][^]])*)\]\]\s*')
+		# Also this, our new reasoning tag:
+		private_pattern_2 = re.compile(r'<\s*reasoning\s*>(.*?)(?:<\s*/reasoning\s*>\s*)+', re.DOTALL)
 		private_thoughts += private_pattern_2.findall(msg_text)
 
-		# Also this, our new reasoning tag:
-		private_pattern_3 = re.compile(r'<\s*reasoning\s*>(.*?)(?:<\s*/reasoning\s*>\s*)+', re.DOTALL)
+		# And this, our form for embedded thoughts.
+		private_pattern_3 = re.compile(r'\[\[Private: ((?:[^]]|\][^]])*)\]\]\s*')
 		private_thoughts += private_pattern_3.findall(msg_text)
 
 		# Print out all the private thought patterns to the console
@@ -8462,20 +8507,21 @@ async def process_response(update:Update, context:Context,
 			_logger.info('\n' + ':'*80 + f"\nSuppressing thought [{thought}] from being sent to chat {chat_id}")
 
 		# Strip them out of msg_text.
-		post_think_text = private_pattern.sub('', msg_text)
-		post_think_text = private_pattern_1.sub('', post_think_text)
-		post_think_text = private_pattern_2.sub('', post_think_text)
-		public_msg_text = private_pattern_3.sub('', post_think_text)
+		no_think_text = private_pattern.sub('', msg_text)				# Strip <think>...</think>
+		no_thought_text = private_pattern_1.sub('', no_think_text)		# Strip <thought>...</thought>
+		no_reasoning_text = private_pattern_2.sub('', no_thought_text)	# Strip <reasoning>...</reasoning>
+		no_private_text = private_pattern_3.sub('', no_reasoning_text)	# Strip [[Private: ...]]
 
 		# Just in case there's a begin-message prompt immediately after an initial thought, strip it out.
-		public_msg_text = _trim_prompt(public_msg_text)
+		public_msg_text = _trim_prompt(no_private_text)
 
 		# Send the response with private thoughts removed.
 		if public_msg_text:
 			await send_response(update, context, public_msg_text)
 
 		# We also need to check for embedded function calls... (concise syntax)
-		ncalls = await check_for_funcalls(update, context, post_think_text)
+		# But, do this to the version before stripping out [[Private: ...]] blocks.
+		ncalls = await check_for_funcalls(update, context, no_reasoning_text)
 			# Note this will also call the function and allow the AI to respond to its result.
 
 	#__/
@@ -8525,7 +8571,7 @@ async def check_for_funcalls(update:Update, context:Context, response_text:str) 
 		(?:							# Non-capture group for arguments
 			"(?:[^"\\]|\\.)*"		# String positional argument
 		|							# OR
-			[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*(\d+|True|False|None|"(?:[^"\\]|\\.)*")
+			[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*(\d+|True|true|False|false|None|none|Null|null|"(?:[^"\\]|\\.)*")
 									# Keyword argument (alphanumeric with value, either integer or "" string)
 		)\s*,?\s*					# Allow comma-separated arguments with optional whitespace
 	)*								# Zero or more occurrences of arguments
@@ -8548,7 +8594,7 @@ async def check_for_funcalls(update:Update, context:Context, response_text:str) 
 		ncalls += 1
 
 		# Diagnostic output to console
-		_logger.normal(f"\n({ncalls}) Found a '{func_name}' invocation: {full_call}")
+		_logger.normal(f"\nInline call #{ncalls}: Found a '{func_name}' invocation: {full_call}")
 
 		# Extract the argument list part from the full_call
 		arguments_str = full_call[full_call.find('(') + 1 : full_call.rfind(')')]
@@ -8562,7 +8608,7 @@ async def check_for_funcalls(update:Update, context:Context, response_text:str) 
 		\s*							 # Optional leading whitespace
 		("(?:[^"\\]|\\.)*")			 # Match string argument
 		|							 # OR
-		([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(\d+|True|False|None|"(?:[^"\\]|\\.)*")
+		([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(\d+|True|true|False|false|None|none|Null|null|"(?:[^"\\]|\\.)*")
 									 # Match keyword argument
 		'''
 		argument_regex = re.compile(argument_pattern, re.VERBOSE)
@@ -8570,20 +8616,24 @@ async def check_for_funcalls(update:Update, context:Context, response_text:str) 
 		# Iterate over all arguments found
 		for arg_match in argument_regex.finditer(arguments_str):
 			if arg_match.group(1):	# Positional argument (string)
-				positional_arglist.append(arg_match.group(1)[1:-1])	# Strip quotes
+				posarg = arg_match.group(1)
+				_logger.debug(f"\tFound a positional argument: {posarg}.")				
+				positional_arglist.append(posarg[1:-1])	# Strip quotes
 			elif arg_match.group(2) and arg_match.group(3):	 # Keyword argument
+				key = arg_match.group(2)
 				value = arg_match.group(3)
+				_logger.debug(f"\tFound a keyword argument: {key}={value}.")
 				if value[0]=='"':	# String
 					value = value[1:-1]	# Strip quotes
-				elif value=='True':
+				elif value=='True' or value=='true':
 					value = True
-				elif value=='False':
+				elif value=='False' or value=='false':
 					value = False
-				elif value=='None':
+				elif value=='None' or value=='none' or value=='Null' or value=='null':
 					value = None
 				else:
 					value = int(value)	# Integer
-				keyword_arglist[arg_match.group(2)] = value
+				keyword_arglist[key] = value
 
 		# Print the accumulated arguments
 		_logger.normal(f"\tPositional arguments: {positional_arglist}")
